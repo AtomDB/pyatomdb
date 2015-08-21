@@ -9,14 +9,12 @@ laptop which were useful. Some produce lots of unhelpful onscreen output.
 
 
 There are several different modules currently. These are:
-* ``atomdb``  : a series of codes for interacting with the AtomDB atomic
-database
-* ``atomic``  : basic atomic data routines - e.g. converting element symbols to
-atomic number, etc.
-* ``const``   : a series of physical constants
-* ``spectrum``: routines for generating spectra from the published AtomDB line
-and continuum emissivity files
-* ``util``    : sumple utility codes (sorting etc) that pyatomdb relies on.
+
+- ``atomdb``  : a series of codes for interacting with the AtomDB atomic database
+- ``atomic``  : basic atomic data routines - e.g. converting element symbols to atomic number, etc.
+- ``const``   : a series of physical constants
+- ``spectrum``: routines for generating spectra from the published AtomDB line and continuum emissivity files
+- ``util``    : sumple utility codes (sorting etc) that pyatomdb relies on.
 
 Currently, only the spectrum library has been extensively tested. Expect bugs.
 Report those bugs!
@@ -63,16 +61,16 @@ these are the ones which I have been working on::
   
   # set up a grid of energy bins to model the spectrum on:
   ebins=numpy.linspace(0.3,10,1000)
-
+  
   # define a broadening, in keV, for the lines
   de = 0.01
   
   # define the temperature at which to plot (keV)
   te = 3.0
-
+  
   # find the index which is closest to this temperature
-  ite = pyatomdb.spectrum.get_index( te, teunits='keV', logscale=False):
-
+  ite = pyatomdb.spectrum.get_index( te, teunits='keV', logscale=False)
+  
   # create both a broadened and an unbroadened spectrum
   a = pyatomdb.spectrum.make_spectrum(ebins, ite,dummyfirst=True)
   b = pyatomdb.spectrum.make_spectrum(ebins, ite, broadening=de, \
@@ -80,27 +78,26 @@ these are the ones which I have been working on::
   # The dummyfirst argument adds an extra 0 at teh beginning of the
   # returned array so it is the same length as ebins. It allows
   # accurate plotting using the "drawstyle='steps'" flag to plot.
-
+  
   # plot the results
   fig = pylab.figure()
   fig.show()
   ax = fig.add_subplot(111)
-
-
-  emid = (ebins[:-1]+ebins[1:])/2
-  ax.loglog(emid, a, drawstyle='steps', label='Unbroadened')
-  ax.loglog(emid, b, drawstyle='steps', label='sigma = %.2f'%(de))
+  
+  ax.loglog(ebins, a, drawstyle='steps', label='Unbroadened')
+  ax.loglog(ebins, b, drawstyle='steps', label='sigma = %.2f'%(de))
   ax.set_xlabel('Energy (keV)')
   ax.set_ylabel('Emissivity (ph cm$^{3}$ s$^{-1}$ bin$^{-1}$)')
-  ax.add_legend(loc=0)
+  ax.legend(loc=0)
   pylab.draw()
-
+  zzz = raw_input("Press enter to continue")
+  
+  print "Listing lines between 1 and 2 A"
   # now list the lines in a wavelength region
   llist = pyatomdb.spectrum.list_lines([1,2.0], index=ite)
   # print these to screen
   pyatomdb.spectrum.print_lines(llist)
   # print to screen, listing the energy, not the wavelength
+  print "Listing lines between 1 and 2 A, using keV."
+  
   pyatomdb.spectrum.print_lines(llist, specunits = 'keV')
-
-
-

@@ -24,13 +24,13 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
                   elements=False, abund=False, dummyfirst=False):
 
   """
-  make_spectrum is the most generic "make me a spectrum" routine. It returns
-  the emissivity in counts cm^3 s^-1 bin^-1.
+  make_spectrum is the most generic "make me a spectrum" routine. 
+  It returns the emissivity in counts cm^3 s^-1 bin^-1.
   
   inputs:
-  bins - the bin edges for the spectrum to be calculated on, in units of keV
-         or Angstroms. Must be monotonically increasing. Spectrum will return
-         len(bins)-1 values.
+  bins - the bin edges for the spectrum to be calculated on, in 
+         units of keV or Angstroms. Must be monotonically
+         increasing. Spectrum will return len(bins)-1 values.
   index - the index to plot the spectrum from. note that the AtomDB files
           the emission starts in hdu number 2. So for the first block, you
           set index=2
@@ -48,6 +48,7 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
              all of them.
   abund - if set, and array of length (elements) with the abundances of each
           element.
+  dummyfirst - if true, add a "0" to the beginning of the return array.
 
   Version 0.1 - initial release
     Adam Foster July 17th 2015
@@ -232,7 +233,7 @@ def get_index(te, filename='$ATOMDB/apec_line.fits', \
   elif type(filename) == pyfits.hdu.table.BinTableHDU:
     a = filename.data
   elif type(filename)==type('somestring'):
-    a = pyfits.open(os.expandvars(filename))[1].data
+    a = pyfits.open(os.path.expandvars(filename))[1].data
   if logscale:
     i = numpy.argmin(numpy.abs(numpy.log(a['kT'])-numpy.log(te)))
   else:

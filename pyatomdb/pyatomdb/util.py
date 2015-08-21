@@ -1,3 +1,11 @@
+"""
+util.py contains a range of miscellaneous helper codes that assist in running
+other AtomDB codes but are not in any way part of a physical calculation.
+
+Version -.1 - initial release
+Adam Foster July 17th 2015
+"""
+
 import numpy, os, errno
 
 

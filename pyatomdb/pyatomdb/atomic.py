@@ -1,3 +1,11 @@
+"""
+atomic.py contains routines related to basic atomic data, e.g. converting
+integer nuclear charge to element symbols, etc.
+
+Version -.1 - initial release
+Adam Foster July 17th 2015
+"""
+
 import re, numpy
 ################################################################################
 #

@@ -1,3 +1,15 @@
+"""
+The atomdb module contains several routines for interfacing with the AtomDB
+database to extract useful physical quantities, line lists, write new fits
+files and more. It is currently a dump of everything I've done with AtomDB.
+This should all be considered unstable and possibly susceptible to being
+wrong. It will be fixed, including moving many routines out of this library,
+as time goes on.
+
+Version -.1 - initial release
+Adam Foster July 17th 2015
+"""
+
 import os, datetime, numpy, re, time
 import util, atomic, spectrum
 import astropy.io.fits as pyfits

@@ -10,7 +10,7 @@ readme.close()
 
 
 setup(name='pyatomdb',
-      version='0.0.0.2',
+      version='0.0.0.4',
       description='AtomDB python library. This is a very early development version.',
       url='http://www.atomdb.org',
       author='Adam Foster',

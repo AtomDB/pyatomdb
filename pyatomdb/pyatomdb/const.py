@@ -1,3 +1,10 @@
+"""
+This contains a list of constants, both physical and apec code related.
+
+Version -.1 - initial release
+Adam Foster July 17th 2015
+"""
+
 #PHYSICAL CONSTANTS
 KBOLTZ = 8.617385e-8#  /*!< in units of keV/K */
 M_E = 2.7182818284590452354 # /*!< Euler e */
