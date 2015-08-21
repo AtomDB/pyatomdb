@@ -6,12 +6,16 @@ This should all be considered unstable and possibly susceptible to being
 wrong. It will be fixed, including moving many routines out of this library,
 as time goes on.
 
-Version -.1 - initial release
+Version 0.1 - initial release
 Adam Foster July 17th 2015
+
+
+Version 0.2 - added PI reading routines and get_data online enhancements.
+Adam Foster August 17th 2015
 """
 
 import os, datetime, numpy, re, time
-import util, atomic, spectrum
+import util, atomic, spectrum, const
 import astropy.io.fits as pyfits
 from scipy import stats, integrate
 
@@ -587,7 +591,7 @@ def get_filemap_file(ftype, z0, z1, fmapfile=False,atomdbroot=False, quiet=False
       else:
         ret = fmap['miscfiles']['file'][i[0]]
   else:
-    i = numpy.where((fmap['ionfiles']['z0']==z0)&(fmap['ionfiles']['z1']==z1))[0]
+    i = numpy.where((fmap['z0']==z0)&(fmap['z1']==z1))[0]
     ret=''
     if len(i)==0:
       if not quiet :
@@ -604,13 +608,13 @@ def get_filemap_file(ftype, z0, z1, fmapfile=False,atomdbroot=False, quiet=False
       i=i[0]
       ftypel = ftype.lower()
     
-      if not ftypel in fmap['ionfiles'].dtype.names:
+      if not ftypel in fmap.keys():
       
         print "Error: invalid file type: "+ftype
         ret = ''
       
       else:
-        ret = fmap['ionfiles'][ftypel][i]
+        ret = fmap[ftypel][i]
         if len(ret)==0:
           if not quiet :
             print "WARNING: no data of type "+ftype+" exists for ion "+\
@@ -2498,15 +2502,682 @@ def rrc_ph_value (energy, rrc_ph_factor, ionpot, kT, sigparam):
            numpy.exp( -(energy-ionpot)/kT)
   return result
 
+
+
+
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 
-def sigma_photoion(energy, sigparam):
-  if sigparam['phot_type']==0:
-    result = sigma_hydrogenic( sigparam['nq'], sigparam['lq'],sigparam['Zel'],\
-                              energy)
-    return result
+def read_filemap(filemap=False, atomdbroot=False):
+  """
+  Reads the AtomDB filemap file in to memory. By default, tries to read
+  $ATOMDB/filemap, replacing all instances of $ATOMDB in the filemap
+  file with the value of the environment variable $ATOMDB
+  
+  KWARGS
+  filemap:  string : the filemap file to read
+  atomdbroot: string: string to replace $ATOMDB by 
+  
+  
+  Version 0.1 - initial release
+  Adam Foster August 15th 2015
+  """
+  
+  # parse the options here.
+  if atomdbroot:
+    if filemap:
+      # in this case, use filemap. Replace any $ATOMDB with atomdbroot
+      fmapfile = filemap
+      fmapfile = re.sub('\$ATOMDB', atomdbroot)
+    else:
+      # in this case, use filemap. Replace any $ATOMDB with atomdbroot
+      fmapfile = atomdbroot+'/filemap'
+  else:
+    if filemap:
+      atomdbroot=  os.environ.get('ATOMDB')
+      fmapfile = filemap
+      fmapfile = re.sub('\$ATOMDB', atomdbroot)
+    else:
+      atomdbroot=  os.environ.get('ATOMDB')
+      fmapfile = atomdbroot+'/filemap'
+  
+  f = open(fmapfile,'r')
+
+  z0=[]
+  z1=[]
+  eclist=[]
+  lvlist=[]
+  pclist=[]
+  lalist=[]
+  drlist=[]
+  irlist=[]
+  emlist=[]
+  pilist=[]
+  ailist=[]
+  cilist=[]
+  misc=[]
+  misc_type=[]
+
+  for i in f:
+#    print i
+    splt = i.split()
+#    print splt
+    fname = re.sub('\$ATOMDB',atomdbroot,splt[3])
+    z0_tmp = int(splt[1])
+    z1_tmp = int(splt[2])
+
+    if z0_tmp < 1:
+      misc.append(fname)
+      misc_type.append(int(splt[0]))
+    else:
+      j = numpy.where((numpy.array(z0)==z0_tmp) & \
+                      (numpy.array(z1)==z1_tmp))[0]
+      if len(j)==0:
+        z0.append(z0_tmp)
+        z1.append(z1_tmp)
+        eclist.append('')
+        lvlist.append('')
+        lalist.append('')
+        pclist.append('')
+        drlist.append('')
+        irlist.append('')
+        emlist.append('')
+        pilist.append('')
+        ailist.append('')
+        cilist.append('')
+        j = numpy.where((numpy.array(z0)==z0_tmp) & \
+                        (numpy.array(z1)==z1_tmp))[0]
+
+      if int(splt[0]) == 1:
+        irlist[j] = fname
+      if int(splt[0]) == 2:
+        lvlist[j] = fname
+      if int(splt[0]) == 3:
+        lalist[j] = fname
+      if int(splt[0]) == 4:
+        eclist[j] = fname
+      if int(splt[0]) == 5:
+        pclist[j] = fname
+      if int(splt[0]) == 6:
+        drlist[j] = fname
+      if int(splt[0]) == 7:
+        emlist[j] = fname
+      if int(splt[0]) == 8:
+        pilist[j] = fname
+      if int(splt[0]) == 9:
+        ailist[j] = fname
+      if int(splt[0]) == 10:
+        cilist[j] = fname
+
+
+  ret={}
+  ret['z0'] = numpy.array(z0)
+  ret['z1'] = numpy.array(z1)
+  ret['ec'] = numpy.array(eclist, dtype='|S160')
+  ret['lv'] = numpy.array(lvlist, dtype='|S160')
+  ret['ir'] = numpy.array(irlist, dtype='|S160')
+  ret['pc'] = numpy.array(pclist, dtype='|S160')
+  ret['dr'] = numpy.array(drlist, dtype='|S160')
+  ret['la'] = numpy.array(lalist, dtype='|S160')
+  ret['em'] = numpy.array(emlist, dtype='|S160')
+  ret['pi'] = numpy.array(pilist, dtype='|S160')
+  ret['ai'] = numpy.array(ailist, dtype='|S160')
+  ret['ci'] = numpy.array(cilist, dtype='|S160')
+  ret['misc'] = numpy.array(misc, dtype='|S160')
+  ret['misc_type'] = numpy.array(misc_type)
+
+  return ret
+
+
+
+#-------------------------------------------------------------------------------
+#--#-------------------------------------------------------------------------------
+#--#-------------------------------------------------------------------------------
+#--
+#--def get_filemap_file(ftype, z0, z1, filemapfile=False, atomdbroot=False,\
+#--                     quiet=False, misc=False):
+#--  """
+#--  Gets the filename for the file of type ftype for the ion z0,z1 from the 
+#--  given filemap.
+#--  
+#--  INPUTS
+#--  ftype: string: type of data to read. Currently available:
+#--                'IR' - ionization and recombination
+#--                'LV' - energy levels
+#--                'LA' - radiative transition data (lambda and A-values)
+#--                'EC' - electron collision data
+#--                'PC' - proton collision data
+#--                'DR' - dielectronic recombination satellite line data
+#--                'PI' - XSTAR photoionization data
+#--                'AI' - autoionization data
+#--  z0: int : nuclear charge
+#--  z1: int : ion charge +1 e.g. 5 for C+4, a.k.a. C V
+#--  
+#--  KWARGS
+#--  filemapfile: string: if a particular filemap should be read. Otherwise
+#--                       defaults to $ATOMDB/filemap
+#--  atomdbroot: string : string to replace $ATOMDB by. If not set, use enviroment
+#--                       variable $ATOMDB instead.
+#--  quiet : If not set, code will provide warnings where data types not found
+#--  misc  : If data requested is not ion specific but generic data, e.g. 
+#--          bremsstrahlung data sets, set this to true and ftype becomes integer
+#--          10 =  Abundances
+#--          11 =  Bremsstrahlung: Hummer
+#--          12 =  Bremsstrahlung: Kellogg
+#--          13 =  Bremsstrahlung: Relativistic
+#--
+#--  RETURNS
+#--     string filename if file exists.
+#--     zero length string ('') if file does not exist in filemap.
+#--
+#--  Version 0.1 - initial release
+#--  Adam Foster August 15th 2015
+#--  """
+#--  fmap=read_filemap(fmapfile, atomdbroot=atomdbroot)
+#--  
+#--  
+#--  if misc:
+#--    # looking for type 10,11 or 12 data
+#--    if ftype in [10,11,12,13]:
+#--      i = numpy.where(fmap['misc_type']==ftype)[0]
+#--      if len(i)==0:
+#--        print "Error: file type: %i not found in filemap %s" %(ftype,fmapfile)
+#--        ret = ''        
+#--      else:
+#--        ret = fmap['misc'][i[0]]
+#--  else:
+#--    i = numpy.where((fmap['z0']==z0)&(fmap['z1']==z1))[0]
+#--    ret=''
+#--    if len(i)==0:
+#--      if not quiet :
+#--        print "WARNING: there is no data for the ion "+\
+#--               atomic.spectroscopic_name(z0,z1-1)
+#--      ret=''
+#--           
+#--    if len(i)>1:
+#--      print "ERROR: there are multiple entries for the ion "+\
+#--             atomic.spectroscopic_name(z0,z1-1)
+#--      ret=''
+#--    
+#--    if len(i)==1:
+#--      i=i[0]
+#--      ftypel = ftype.lower()
+#--    
+#--      if not ftypel in fmap.keys():
+#--      
+#--        print "Error: invalid file type: "+ftype
+#--        ret = ''
+#--      
+#--      else:
+#--        ret = fmap[ftypel][i]
+#--        if len(ret)==0:
+#--          if not quiet :
+#--            print "WARNING: no data of type "+ftype+" exists for ion "+\
+#--                atomic.spectroscopic_name(z0,z1-1)
+#--
+#--  return ret
+#--
+#--#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+def get_data(Z, rmJ, ftype, settings=False, indexzero=False, offline=False):
+  """
+  Read AtomDB data of type ftype for ion rmJ of element Z.
+  If settings are set, the filemap can be overwritten (see below), otherwise
+  $ATOMDB/filemap will be used to locate the file.
+  If indexzero is set, all levels will have 1 subtracted from them (AtomDB
+  indexes lines from 1, but python and C index arrays from 0, so this can be
+  useful)
+
+  INPUTS
+  Z     : int    :element nuclear charge
+  rmJ   : int    : ion charge +1 (e.g. 5 for C+4, a.k.a. C V)
+  ftype : string :type of data to read. Currently available:
+                  'IR' - ionization and recombination
+                  'LV' - energy levels
+                  'LA' - radiative transition data (lambda and A-values)
+                  'EC' - electron collision data
+                  'PC' - proton collision data
+                  'DR' - dielectronic recombination satellite line data
+                  'PI' - XSTAR photoionization data
+                  'AI' - autoionization data
+                
+  KWARGS:
+  settings:
+    This is complicated one.
+    Inputs: If set, settings should be a dictionary, even if blank
+            (e.g. settings={})
+    It serves multiple purposes: 
+    Settings['data'] will store a copy of the data
+    you read in. This means that if your code ends up calling for the same
+    file multiple times, rather than re-reading from the disk, it will just
+    point to this data already in memory. To clear the read files, just reset
+    the data dictionary (e.g. settings['data'] ={})
+  
+    settings['datasums'] stores the datasum when read in. Can be used later for
+    comparisons etc.
+  
+    Both data and datasums store the data in identical trees, e.g.:
+    settings['data'][Z][rmJ][ftype] will have the data.
+  indexzero: if True, subtract 1 from all level indexes as python indexes from 0
+  offline: if True, do not search online to download data files.
+  
+  RETURNS:
+    the opened pyfits hdulist if succesful. False if file doesn't exist
+  
+  Version 0.1 - initial release
+  Adam Foster August 15th 2015
+  """
+  d = False
+  didurl=False
+  if settings:
+    if not 'data' in settings.keys():
+      settings['data']={}
+    if not Z in settings['data'].keys():
+      settings['data'][Z]={}
+    if not rmJ in settings['data'][Z].keys():
+      settings['data'][Z][rmJ]={}
+
+    if not 'datasums' in settings.keys():
+      settings['datasums']={}
+    if not Z in settings['datasums'].keys():
+      settings['datasums'][Z]={}
+    if not rmJ in settings['datasums'][Z].keys():
+      settings['datasums'][Z][rmJ]={}
+
+    if ftype.upper() in settings['data'][Z][rmJ].keys():
+      pass
+    else:
+      fname = atomdb.get_filemap_file(settings['filemap'], ftype, Z, rmJ, \
+                             atomdbroot=settings['atomdbroot'], quiet=True)
+      if fname=='':
+        settings['data'][Z][rmJ][ftype.upper()] = False
+#      ret =  settings['data'][Z][rmJ][ftype.upper()]
+      else:
+        # Try and open the files in the following order:
+        # (1) filename
+        # (2) filename+'.gz'
+        # (3) atomdburl/filename+'.gz'
+        
+        try:
+          d = pyfits.open(fname)
+        except IOError:
+          try:
+            d = pyfits.open(fname+'.gz')
+          except IOError:
+            if offline:
+              d = False
+            else:
+              url = re.sub(settings['atomdbroot'],\
+                           'ftp://sao-ftp.harvard.edu/AtomDB')+'.gz'
+              try:
+                d = pyfits.open(url)
+                didurl=True
+              except URLError:
+                print "Error trying to open file %s. Not found locally or on"+\
+                      " server."
+                d=False
+
+  else:
+    fname = get_filemap_file(ftype, Z, rmJ, \
+                             quiet=True)
+
+    if fname=='':
+      pass
+    else:
+        # Try and open the files in the following order:
+        # (1) filename
+        # (2) filename+'.gz'
+        # (3) atomdburl/filename+'.gz'
+      try:
+        d = pyfits.open(fname)
+      except IOError:
+        try:
+          d = pyfits.open(fname+'.gz')
+        except IOError:
+          if offline:
+            d = False
+          else:
+            s = os.environ['ATOMDB']
+            url = re.sub(s,\
+                         'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
+            try:
+              d = pyfits.open(url)
+              didurl=True
+            except URLError:
+              print "Error trying to open file %s. Not found locally or on"+\
+                    " server."
+              d=False
+            
+
+  if didurl:
+    # cache file locally
+    
+    # make directory if required
+    util.mkdir_p(fname.rsplit('/',1)[0])
+    # save file
+    d.writeto(fname, output_verify='warn')
+    print "wrote file locally to %s"%(fname)
+
+  if d:  
+    if indexzero:
+      # python indexes from zero. Easiest to just subtract here.
+      if ftype.upper()=='LA':
+        d[1].data.field('lower_lev')[:] -= 1
+        d[1].data.field('upper_lev')[:] -= 1
+      elif ftype.upper()=='EC':
+        d[1].data.field('lower_lev')[:] -= 1
+        d[1].data.field('upper_lev')[:] -= 1
+      elif ftype.upper()=='PC':
+        d[1].data.field('lower_lev')[:] -= 1
+        d[1].data.field('upper_lev')[:] -= 1
+      elif ftype.upper()=='DR':
+        d[1].data.field('lower_lev')[:] -= 1
+        d[1].data.field('upper_lev')[:] -= 1
+      elif ftype.upper()=='AI':
+        d[1].data.field('level_init')[:] -= 1
+        d[1].data.field('level_final')[:] -= 1
+      elif ftype.upper()=='IR':
+        d[1].data.field('level_init')[:] -= 1
+        d[1].data.field('level_final')[:] -= 1
+      elif ftype.upper()=='LV':
+        pass
+      elif ftype.upper()=='PI':
+        d[1].data.field('lev_init')[:] -= 1
+        d[1].data.field('lev_final')[:] -= 1
+      else:
+        print "Unknown filetype: %s"%(ftype)
+
+    # rename columns in older versions of EC & PC files
+    if ftype.upper() in ['PC','EC']:
+      if d[1].header['HDUVERS1']=='1.0.0':
+        d[1].columns.change_name('COEFF_OM','EFFCOLLSTRPAR')
+        d[1].columns[d[1].data.names.index('COEFF_OM')].name='EFFCOLLSTRPAR'
+    if settings:
+      settings['data'][Z][rmJ][ftype.upper()] = d
+      settings['datasums'][Z][rmJ][ftype.upper()] = d[1].header['DATASUM']
+   
+      return settings['data'][Z][rmJ][ftype.upper()]
+    else:
+      return d
+  else:
+    return False
+    
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+
+def sort_pi_data(pidat, lev_init, lev_final):
+  """
+  Given the pidat (returned by opening the PI data file, i.e.
+  pyfits.open('XX_YY_PI.fits')
+  
+  And the initial and final levels, return the PI cross section data.
+
+  INPUTS 
+  pidat hdulist The photoionization data for the ion
+  lev_init: int: the initial level
+  lev_final: int: the final level
+  
+  
+  RETURNS:
+  pi dict, which contains the following information:
+  pi['ion_init'] - the initial ion charge +1
+  pi['lev_init'] - the initial level
+  pi['ion_final'] - the final ion charge+1 (should be ion_init+1)
+  pi['lev_final'] - the final level
+  pi['pi_type'] - the type. (best to ignore)
+  pi['g_ratio'] - the ratio of the statistical weight of the intitial and final
+                  levels
+  pi['energy'] - the array of energies (keV)
+  pi['pi_param'] - the array of pi cross sections in Mbarn.
+  
+  Version 0.1 - initial release
+  Adam Foster August 15th 2015
+  """
+  
+  i = numpy.where((pidat[1].data['lev_init'] ==lev_init) &\
+                  (pidat[1].data['lev_final'] ==lev_final))[0]
+  energy = numpy.zeros(0,dtype=float)
+  pi_param = numpy.zeros(0,dtype=float)
+
+  if len(i)==0:
+    return False
+  for ii in i:
+    energy = numpy.append(energy, pidat[1].data['energy'][ii])
+    pi_param = numpy.append(pi_param, pidat[1].data['pi_param'][ii])
+  n_expected = sum(numpy.array(util.unique(pidat[1].data['pi_type'][i]))%10000)
+  
+  n_found = sum(energy>0)
+  if n_found != n_expected:
+    print "WARNING: we do not have the same length of expected and found parameters"
+    print "Expected: %i, found %i"%(n_expected, n_found)
+  pi_param = pi_param[energy>0]
+  energy = energy[energy>0]/1000.0 # convert to keV
+  
+  i  = numpy.argsort(energy)
+  pi_param = pi_param[i]
+  energy = energy[i]
+  pi = {}
+  pi['ion_init'] = pidat[1].data['ion_init'][ii]
+  pi['lev_init'] = pidat[1].data['lev_init'][ii]
+  pi['ion_final'] = pidat[1].data['ion_final'][ii]
+  pi['lev_final'] = pidat[1].data['lev_final'][ii]
+  pi['pi_type'] = pidat[1].data['pi_type'][ii]
+  pi['g_ratio'] = pidat[1].data['g_ratio'][ii]
+  pi['energy'] = energy
+  pi['pi_param'] = pi_param
+  
+
+  return pi
+
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+
+def vsigma_photoion(E, sig_coeffts):
+  myfunc = numpy.vectorize(sigma_photoion)
+  ret = myfunc(E, sig_coeffts)
+  return ret
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+
+
+def sigma_photoion(E, pi_type, pi_coeffts, xstardata=False, xstarfinallev=1):
+  """
+   Returns the photoionization cross section at E, given an input of 
+   sig_coeffts.
+   
+   inputs:
+   E: Energy (keV)
+   pi_type   : the "PI_TYPE" from the energy level file for this level
+   pi_coeffts: the "PI_PARAM" array from this file.
+      OPTIONAL
+      if the data is XSTAR data, supply the xstardata. This can be either
+      the specific array from the file, the file name, or the entire PI file
+      (already loaded)
+   e.g. 
+     # load level data
+     lvdata = atomdb.get_data(26, 24, 'LV', settings)
+     
+     # load XSTAR PI data if it exists
+     pidata = atomdb.get_data(26, 24, 'PI', settings)
+     
+     # get pi xsection at energy E for the ground state to ground state
+     sigma_photoion(E,
+                    lvdata[1].data['pi_type'][0],\
+                    lvdata[1].data['pi_param'][0],\
+                    xstardata=pidata,\
+                    xstarfinallev=3)
+
+   KWARGS:
+     xstardata : the PI data file for the ion from XSTAR data. Not all ions
+                 have xstar data so this is not always possible. Can provide
+                 either filename or opened file (i.e. hdulist)
+     xstarfinallev: the level to ionize in to. Defaults to 1.
+                    
+   RETURNS:
+     pi cross section in cm^2 at energy E. Does not accept vector inputs 
+     currently
+     
+   
+   Values of the PI_TYPE:
+   -1 : no data
+    0 : Hydrogenic
+    1 : Clark
+    2 : Verner
+    3 : XSTAR
+
+  Version 0.1 - initial release
+  Adam Foster August 15th 2015
+  """
+
+  # set up the sigma coefficients
+  if pi_type==const.NO_PHOT:
+    pass
+  elif pi_type==const.VERNER:
+    E_th = pi_coeffts[0]
+    E_0 = pi_coeffts[1]
+    sigma0 = pi_coeffts[2]
+    ya = pi_coeffts[3]
+    P = pi_coeffts[4]
+    yw = pi_coeffts[5]
+    l1 = pi_coeffts[6]
+    Q = 5.5 + l1 - 0.5*P
+    sig_coeffts={}
+    sig_coeffts['E_th']   = E_th
+    sig_coeffts['E_0']    = E_0
+    sig_coeffts['sigma0'] = sigma0
+    sig_coeffts['ya']     = ya
+    sig_coeffts['P']      = P
+    sig_coeffts['yw']     = yw
+    sig_coeffts['l1']     = l1
+    sig_coeffts['Q']      = Q
+    
+    
+  elif pi_type==const.HYDROGENIC:
+    nq = int(round(pi_coeffts[0]))
+    lq = int(round(pi_coeffts[1]))
+    Zel = Z
+    sig_coeffts={}
+    sig_coeffts['nq']=nq
+    sig_coeffts['lq']=lq
+    sig_coeffts['Zel']=Zel
+    
+  elif pi_type==const.CLARK:
+    Zel = Z
+    frac = pi_coeffts[0]
+    IonE = pi_coeffts[1]
+    ip = pi_coeffts[2]
+    n1 = pi_coeffts[3]
+    b1 = pi_coeffts[4]
+    d1 = pi_coeffts[5]
+    b2 = pi_coeffts[6]
+    d2 = pi_coeffts[7]
+    c = numpy.array(pi_coeffts[8:12])
+
+    sig_coeffts={}
+    sig_coeffts['Zel']  = Zel
+    sig_coeffts['frac'] = frac
+    sig_coeffts['ip']   = ip
+    sig_coeffts['n1']   = n1
+    sig_coeffts['b1']   = b1
+    sig_coeffts['d1']   = d1
+    sig_coeffts['b2']   = b2
+    sig_coeffts['d2']   = d2
+    sig_coeffts['c']    = c
+    sig_coeffts['I_e'] = IonE
+
+  elif pi_type==const.XSTAR:
+    # now look into type of xstardata
+    
+    if not xstardata:
+      return
+    # just filename
+    if isinstance(xstardata, basestring):
+      #yay.
+      pidat = pyfits.open(xstardata)
+      initlevel = int(pi_coeffts[0])
+    elif isinstance(xstardata, pyfits.hdu.hdulist.HDUList):
+      initlevel = int(pi_coeffts[0])
+      pidat=xstardata
+    else:
+      pass
+    sigma_coeff = sort_pi_data(pidat, initlevel, xstarfinallev)
+    sig_coeffts = sigma_coeff
+
+
+  # now calculate the sigma.
+
+  if pi_type==const.NO_PHOT:
+    result = 0.0
+
+  elif pi_type == const.VERNER:
+    if (E > sig_coeffts['E_th']):
+      y = E/sig_coeffts['E_0']
+      F_y = ((y-1)**2. + sig_coeffts['yw']**2.) * y**(-sig_coeffts['Q']) *\
+            (1.+numpy.sqrt(y/sig_coeffts['ya']))**(-sig_coeffts['P'])
+      result = sig_coeffts['sigma0'] * F_y * 1e-18 # conversion to cm2 
+    else:
+      result = 0.0
+
+  elif pi_type == const.HYDROGENIC:
+    if (sig_coeffts['nq']<6):
+      result = sigma_hydrogenic(sig_coeffts['Zel'],\
+                                sig_coeffts['nq'],\
+                                sig_coeffts['lq'],\
+                                E)
+    else:
+      result = 0.0
+
+  elif pi_type == const.CLARK:
+    if (E > sig_coeffts['I_e']):
+      x = E/sig_coeffts['I_e']
+      term1 = 1/((sig_coeffts['Zel'] + sig_coeffts['b1'] + \
+                  sig_coeffts['d1']/sig_coeffts['Zel']) * \
+                  (sig_coeffts['Zel'] + sig_coeffts['b1'] +\
+                   sig_coeffts['d1']/sig_coeffts['Zel']))
+      #print sig_coeffts
+      sum1=0.0
+      for ii in numpy.arange(sig_coeffts['n1'], dtype=int):
+          sum1 += sig_coeffts['c'][ii]* \
+                  x**(sig_coeffts['ip']+ii)
+ 
+      term2 = 1/((sig_coeffts['Zel'] + sig_coeffts['b2'] + \
+                  sig_coeffts['d2']/sig_coeffts['Zel']) * \
+                  (sig_coeffts['Zel'] + sig_coeffts['b2'] +\
+                   sig_coeffts['d2']/sig_coeffts['Zel']))
+      sum2=0.0
+      for ii in numpy.arange(sig_coeffts['n1'],4, dtype=int):
+          sum2 += sig_coeffts['c'][ii]* \
+                  x**(sig_coeffts['ip']+ii)
+
+      result = term1*sum1 + term2*sum2
+    else:
+      result = 0.0  
+  elif pi_type == const.XSTAR:
+    if (E > sig_coeffts['energy'][0]):
+      tmp2=numpy.interp(numpy.log(E), \
+                        numpy.log(sig_coeffts['energy']),\
+                        numpy.log(sig_coeffts['pi_param']),\
+                        left=numpy.nan,right=numpy.inf)
+      if numpy.isnan(tmp2):
+        result = 0.0
+      elif numpy.isinf(tmp2):
+        result = sig_coeffts['pi_param'][-1]* ((E/sig_coeffts['energy'][-1])**-3.0)*1e-18
+      else:
+        result = 1e-18  * numpy.exp(tmp2) # convert to cm2
+    else:
+      result = 0.0
+
+  else:
+    print "Error"
+
+  return result                              
+
+
 
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------

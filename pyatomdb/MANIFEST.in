@@ -1,2 +1,4 @@
 include COPYING.txt
 recursive-include docs *
+recursive-include examples *
+

@@ -27,6 +27,11 @@ July 21st 2015: added ``dummyfirst`` keyword to
 August 12th 2015: fixed some errors in spectrum.py. Updated readme.
 
 0.0.0.4
-August 12th 2015: fixed example script in manual
+August 12th 2015: fixed example script in manual.
 
+0.0.0.5
+August 17th 2015: added PI cross section graphing data.
+Updated get_data to fetch files from remote server
 
+0.0.0.6
+August 18th 2015: Fixed bug with documentation

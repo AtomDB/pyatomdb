@@ -54,8 +54,48 @@ been warned of the possibility of such loss or damage.
 Usage
 =====
 
-In this section, I will describe only functions in the ``spectrum`` module as
-these are the ones which I have been working on::
+--------------------------
+Interrogating the database
+--------------------------
+This makes use of the atomdb module. Before starting, it is a good
+idea to download the AtomDB tarballs from www.atomdb.org/Downloads: the latest one is version 3.0.2. This dataset contains the filemap, which identifies the correct files for each different ion and process.
+
+It is also important to set the ATOMDB environment variable to point to where this data was untarred, e.g. the folder with the filemap in it, so $ATOMDB/filemap should exist.
+e.g::
+
+ bash: export ATOMDB=/myfolder/atomdb_v3.0.2
+ csh: setenv ATOMDB /myfolder/atomdb_v3.0.2
+
+or within python:: 
+
+ import os
+ os.environ['ATOMDB']='/myfolder/atomdb_v3.0.2'
+
+Currently, the AtomDB database is more than 10GB of data, so we are avoiding distributing it to all users. You can, however, get the individual data you need using the ``get_data`` routine::
+
+  lvdata = pyatomdb.atomdb.get_data(z0, z1, ftype)
+
+This will try to open the file locally if it exists, and if it does not it will then go to the AtomDB FTP server and download the data for element z0, ion z1, with ftype a 2-character string denoting the type of data to get:
+
+- ``IR``: ionization and recombination
+- ``LV``: energy levels
+- ``LA``: radiative transition data (lambda and A-values)
+- ``EC``: electron collision data
+- ``PC``: proton collision data
+- ``DR``: dielectronic recombination satellite line data
+- ``PI``: XSTAR photoionization data
+- ``AI``: autoionization data
+
+So to open the energy levels for oxygen with 2 electrons (O 6+, or O VII)::
+  
+ lvdata = pyatomdb.atomdb.get_data(8,7,'LV')
+
+Data files are stored in ``$ATOMDB/APED/<elsymb>/<elsymb>_<ionnum>/``
+
+-----------------
+Making a Spectrum
+-----------------
+These functions are in the ``spectrum`` module::
   
   import pyatomdb, numpy, pylab
   

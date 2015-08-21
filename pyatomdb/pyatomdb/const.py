@@ -1,7 +1,7 @@
 """
 This contains a list of constants, both physical and apec code related.
 
-Version -.1 - initial release
+Version 0.1 - initial release
 Adam Foster July 17th 2015
 """
 
