@@ -31,7 +31,7 @@ import shlex
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon',
+    'numpydoc',
     'sphinx.ext.todo',
     'sphinx.ext.mathjax',
 ]

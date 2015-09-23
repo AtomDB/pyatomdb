@@ -35,3 +35,6 @@ Updated get_data to fetch files from remote server
 
 0.0.0.6
 August 18th 2015: Fixed bug with documentation
+
+0.0.1.0
+September 23rd 2015: Added significant documentation. Converted all 'z0' to 'Z' and 'rmJ' to 'z1' throught the code for consistency.
