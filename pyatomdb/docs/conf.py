@@ -36,6 +36,10 @@ extensions = [
     'sphinx.ext.mathjax',
 ]
 
+print "sys.path = ", sys.path
+
+sys.path.append('/home/workspace/myproj/myproj')
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
