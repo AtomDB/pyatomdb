@@ -53,33 +53,67 @@ import re, numpy
 #
 #*******************************************************************************
 
-def z0toelsymb(z0) :
+def Ztoelsymb(Z) :
+  """
+  Returns element symbol of element with nuclear charge Z.
+  
+  INPUTS
+  Z  - nuclear charge of element (e.g. 6 for carbon)
+  
+  RETURNS
+  element symbol (e.g. "C" for carbon)
+  
+  Version 0.1 28 July 2009
+  Adam Foster
+  """
 
+  elsymb=('H' , 'He', 'Li', 'Be', 'B' , 'C' , 'N' , 'O' , 'F' , 'Ne',
+          'Na', 'Mg', 'Al', 'Si', 'P' , 'S' , 'Cl', 'Ar', 'K' , 'Ca',
+          'Sc', 'Ti', 'V' , 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn',
+          'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr', 'Rb', 'Sr', 'Y' , 'Zr',
+          'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn',
+          'Sb', 'Te', 'I ', 'Xe', 'Cs', 'Ba', 'La', 'Ce', 'Pr', 'Nd',
+          'Pm', 'Sm', 'Eu', 'Gd', 'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb',
+          'Lu', 'Hf', 'Ta', 'W' , 'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg',
+          'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn', 'Fr', 'Ra', 'Ac', 'Th',
+          'Pa', 'U')
 
-    elsymb=('H' , 'He', 'Li', 'Be', 'B' , 'C' , 'N' , 'O' , 'F' , 'Ne',
-            'Na', 'Mg', 'Al', 'Si', 'P' , 'S' , 'Cl', 'Ar', 'K' , 'Ca',
-            'Sc', 'Ti', 'V' , 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn',
-            'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr', 'Rb', 'Sr', 'Y' , 'Zr',
-            'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn',
-            'Sb', 'Te', 'I ', 'Xe', 'Cs', 'Ba', 'La', 'Ce', 'Pr', 'Nd',
-            'Pm', 'Sm', 'Eu', 'Gd', 'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb',
-            'Lu', 'Hf', 'Ta', 'W' , 'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg',
-            'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn', 'Fr', 'Ra', 'Ac', 'Th',
-            'Pa', 'U')
-
-    if z0 < 1 :
-        print "z0 must be between 1 and 92. You have given z0= " + repr(z0)
-        ret=-1
-    elif z0 > 92 :
-        print "z0 must be between 1 and 92. You have given z0= " + repr(z0)
-        ret=-1
-    else :
-        ret=elsymb[z0-1]
-    return ret
+  if Z < 1 :
+      print "Z must be between 1 and 92. You have given Z= " + repr(z0)
+      ret=-1
+  elif Z > 92 :
+      print "Z must be between 1 and 92. You have given Z= " + repr(z0)
+      ret=-1
+  else :
+      ret=elsymb[Z-1]
+  return ret
 
 #*******************************************************************************
 #*******************************************************************************
 #*******************************************************************************
+
+def z0toelsymb(z0):
+  """
+  Returns element symbol of element with nuclear charge z0.
+  (wrapper to Ztoelsymb for compatibility purposes)
+  
+  INPUTS
+  z0  - nuclear charge of element (e.g. 6 for carbon)
+  
+  RETURNS
+  element symbol (e.g. "C" for carbon)
+  
+  Version 0.1 28 July 2009
+  Adam Foster
+  """
+  ret = Ztoelsymb(z0)
+
+  return ret
+
+#*******************************************************************************
+#*******************************************************************************
+#*******************************************************************************
+
 
 #*******************************************************************************
 #
@@ -96,42 +130,70 @@ def z0toelsymb(z0) :
 #
 #*******************************************************************************
 
+
 def z0toelname(z0):
-    elname=('Hydrogen'    , 'Helium'      , 'Lithium'     , 'Beryllium'   ,
-            'Boron'       , 'Carbon'      , 'Nitrogen'    , 'Oxygen'      ,
-            'Fluorine'    , 'Neon'        , 'Sodium'      , 'Magnesium'   ,
-            'Aluminum'    , 'Silicon'     , 'Phosphorus'  , 'Sulfur'      ,
-            'Chlorine'    , 'Argon'       , 'Potassium'   , 'Calcium'     ,
-            'Scandium'    , 'Titanium'    , 'Vanadium'    , 'Chromium'    ,
-            'Manganese'   , 'Iron'        , 'Cobalt'      , 'Nickel'      ,
-            'Copper'      , 'Zinc'        , 'Gallium'     , 'Germanium'   ,
-            'Arsenic'     , 'Selenium'    , 'Bromine'     , 'Krypton'     ,
-            'Rubidium'    , 'Strontium'   , 'Yttrium'     , 'Zirconium'   ,
-            'Niobium'     , 'Molybdenum'  , 'Technetium'  , 'Ruthenium'   ,
-            'Rhodium'     , 'Palladium'   , 'Silver'      , 'Cadmium'     ,
-            'Indium'      , 'Tin'         , 'Antimony'    , 'Tellurium'   ,
-            'Iodine'      , 'Xenon'       , 'Cesium'      , 'Barium'      ,
-            'Lanthanum'   , 'Cerium'      , 'Praseodymium', 'Neodymium'   ,
-            'Promethium'  , 'Samarium'    , 'Europium'    , 'Gadolinium'  ,
-            'Terbium'     , 'Dysprosium'  , 'Holmium'     , 'Erbium'      ,
-            'Thulium'     , 'Ytterbium'   , 'Lutetium'    , 'Hafnium'     ,
-            'Tantalum'    , 'Tungsten'    , 'Rhenium'     , 'Osmium'      ,
-            'Iridium'     , 'Platinum'    , 'Gold'        , 'Mercury'     ,
-            'Thallium'    , 'Lead'        , 'Bismuth'     , 'Polonium'    ,
-            'Astatine'    , 'Radon'       , 'Francium'    , 'Radium'      ,
-            'Actinium'    , 'Thorium'     , 'Protactinium', 'Uranium')
+  """
+  Returns element name of element with nuclear charge z0.
+  (wrapper to Ztoelname for compatibility purposes)
+  
+  INPUTS
+  z0  - nuclear charge of element (e.g. 6 for carbon)
+  
+  RETURNS
+  element name (e.g. "Carbon" for carbon)
+  
+  Version 0.1 28 July 2009
+  Adam Foster
+  """
+  ret = Ztoelname(Z)
+  return ret
 
+def Ztoelname(Z):
+  """
+  Returns element name of element with nuclear charge Z.
+  
+  INPUTS
+  Z  - nuclear charge of element (e.g. 6 for carbon)
+  
+  RETURNS
+  element name (e.g. "Carbon" for carbon)
+  
+  Version 0.1 28 July 2009
+  Adam Foster
+  """
+  elname=('Hydrogen'    , 'Helium'      , 'Lithium'     , 'Beryllium'   ,
+          'Boron'       , 'Carbon'      , 'Nitrogen'    , 'Oxygen'      ,
+          'Fluorine'    , 'Neon'        , 'Sodium'      , 'Magnesium'   ,
+          'Aluminum'    , 'Silicon'     , 'Phosphorus'  , 'Sulfur'      ,
+          'Chlorine'    , 'Argon'       , 'Potassium'   , 'Calcium'     ,
+          'Scandium'    , 'Titanium'    , 'Vanadium'    , 'Chromium'    ,
+          'Manganese'   , 'Iron'        , 'Cobalt'      , 'Nickel'      ,
+          'Copper'      , 'Zinc'        , 'Gallium'     , 'Germanium'   ,
+          'Arsenic'     , 'Selenium'    , 'Bromine'     , 'Krypton'     ,
+          'Rubidium'    , 'Strontium'   , 'Yttrium'     , 'Zirconium'   ,
+          'Niobium'     , 'Molybdenum'  , 'Technetium'  , 'Ruthenium'   ,
+          'Rhodium'     , 'Palladium'   , 'Silver'      , 'Cadmium'     ,
+          'Indium'      , 'Tin'         , 'Antimony'    , 'Tellurium'   ,
+          'Iodine'      , 'Xenon'       , 'Cesium'      , 'Barium'      ,
+          'Lanthanum'   , 'Cerium'      , 'Praseodymium', 'Neodymium'   ,
+          'Promethium'  , 'Samarium'    , 'Europium'    , 'Gadolinium'  ,
+          'Terbium'     , 'Dysprosium'  , 'Holmium'     , 'Erbium'      ,
+          'Thulium'     , 'Ytterbium'   , 'Lutetium'    , 'Hafnium'     ,
+          'Tantalum'    , 'Tungsten'    , 'Rhenium'     , 'Osmium'      ,
+          'Iridium'     , 'Platinum'    , 'Gold'        , 'Mercury'     ,
+          'Thallium'    , 'Lead'        , 'Bismuth'     , 'Polonium'    ,
+          'Astatine'    , 'Radon'       , 'Francium'    , 'Radium'      ,
+          'Actinium'    , 'Thorium'     , 'Protactinium', 'Uranium')
 
-    if z0 < 1 :
-        print "z0 must be between 1 and 92. You have given z0= " + repr(z0)
-        ret=-1
-    elif z0 > 92 :
-        print "z0 must be between 1 and 92. You have given z0= " + repr(z0)
-        ret=-1
-    else :
-        ret=elname[z0-1]
-        
-    return ret
+  if Z < 1 :
+    print "Z must be between 1 and 92. You have given Z= " + repr(Z)
+    ret=-1
+  elif Z > 92 :
+    print "Z must be between 1 and 92. You have given Z= " + repr(Z)
+    ret=-1
+  else :
+    ret=elname[Z-1]
+  return ret
 
 #*******************************************************************************
 #*******************************************************************************
@@ -186,45 +248,6 @@ def int_to_roman(input):
    """
    Convert an integer to Roman numerals.
 
-   Examples:
-   >>> int_to_roman(0)
-   Traceback (most recent call last):
-   ValueError: Argument must be between 1 and 3999
-
-   >>> int_to_roman(-1)
-   Traceback (most recent call last):
-   ValueError: Argument must be between 1 and 3999
-
-   >>> int_to_roman(1.5)
-   Traceback (most recent call last):
-   TypeError: expected integer, got <type 'float'>
-
-   >>> for i in range(1, 21): print int_to_roman(i)
-   ...
-   I
-   II
-   III
-   IV
-   V
-   VI
-   VII
-   VIII
-   IX
-   X
-   XI
-   XII
-   XIII
-   XIV
-   XV
-   XVI
-   XVII
-   XVIII
-   XIX
-   XX
-   >>> print int_to_roman(2000)
-   MM
-   >>> print int_to_roman(1999)
-   MCMXCIX
    """
    if type(input) != type(1):
       raise TypeError, "expected integer, got %s" % type(input)
@@ -259,29 +282,6 @@ def int_to_roman(input):
 def roman_to_int(input):
    """
    Convert a roman numeral to an integer.
-   
-   >>> r = range(1, 4000)
-   >>> nums = [int_to_roman(i) for i in r]
-   >>> ints = [roman_to_int(n) for n in nums]
-   >>> print r == ints
-   1
-
-   >>> roman_to_int('VVVIV')
-   Traceback (most recent call last):
-    ...
-   ValueError: input is not a valid roman numeral: VVVIV
-   >>> roman_to_int(1)
-   Traceback (most recent call last):
-    ...
-   TypeError: expected string, got <type 'int'>
-   >>> roman_to_int('a')
-   Traceback (most recent call last):
-    ...
-   ValueError: input is not a valid roman numeral: A
-   >>> roman_to_int('IL')
-   Traceback (most recent call last):
-    ...
-   ValueError: input is not a valid roman numeral: IL
    """
    if type(input) != type(""):
       raise TypeError, "expected string, got %s" % type(input)
@@ -326,19 +326,30 @@ def roman_to_int(input):
 #
 #*******************************************************************************
 
-def spectroscopic_name(z0,ioncharge) :
-# convert z0 & ioncharge (=0 for neutral) to spectroscopic notation
-# (eg 12, 3 to 'Mg IV')
-
+def spectroscopic_name(Z,z1) :
+  """
+  Converts Z,z1 to spectroscopic name, e.g. 6,5 to "C V"
+  
+  INPUTS
+  Z (int) nuclear charge (e.g. 6 for C)
+  z1 (int) ion charge +1 (e.g. 5 for C4+)
+   
+  RETURNS
+  spectroscopic symbol for ion (e.g. "C V" for C+4)
+  
+  Version 0.1 28 July 2009
+  Adam Foster 
+  """
+    
     # get element symbol
-    elsymb = z0toelsymb(z0)
+  elsymb = Ztoelsymb(Z)
 
     # convert z1 to spectroscopic
 
-    roman = int2roman(ioncharge+1)
-    ret = elsymb + ' ' + roman
+  roman = int2roman(z1)
+  ret = elsymb + ' ' + roman
 
-    return ret
+  return ret
 
 
 #*******************************************************************************
@@ -361,21 +372,31 @@ def spectroscopic_name(z0,ioncharge) :
 #*******************************************************************************
 
 def spectroscopictoz0(name):
-
+  """
+  Converts spectroscopic name to Z, z1, e.g. "C V" to 6,5
+  
+  INPUTS
+  name (string), e.g. "C V" 
+  RETURNS
+  Z, z1 for the ion. (e.g. 6,5 for C V)
+  
+  Version 0.1 28 July 2009
+  Adam Foster 
+  """
 # convert name (e.g. Fe VIII) to z0 & ioncharge (=0 for neutral)
 
     # get element symbol
-    d = name.split()
-    
-    elsymb = d[0]
-    chargesymb = d[1]
-    
-    z0 = elsymb_to_z0(elsymb)
-    
-    z1 = roman_to_int(chargesymb)
-    z=z1-1
-    
-    return z0,z
+  d = name.split()
+  
+  elsymb = d[0]
+  chargesymb = d[1]
+  
+  z0 = elsymb_to_z0(elsymb)
+  
+  z1 = roman_to_int(chargesymb)
+  z=z1-1
+  
+  return z0,z
 
 
 
@@ -440,7 +461,19 @@ def occup_to_cfg(occlist) :
 #
 #*******************************************************************************
 
-def elsymb_to_z0(elsymb) :
+def elsymb_to_Z(elsymb) :
+  """
+  Converts element symbol to nuclear charge, e.g. "C" -> 6
+  
+  INPUTS
+  elsymb (string), e.g "C". Case insensitive.
+
+  RETURNS
+  Z for the ion. (e.g. 6 for C)
+  
+  Version 0.1 28 July 2009
+  Adam Foster 
+  """
   ellist=('h' , 'he', 'li', 'be', 'b' , 'c' , 'n' , 'o' , 'f' , 'ne',
           'na', 'mg', 'al', 'si', 'p' , 's' , 'cl', 'ar', 'k' , 'ca',
           'sc', 'ti', 'v' , 'cr', 'mn', 'fe', 'co', 'ni', 'cu', 'zn',
@@ -460,7 +493,22 @@ def elsymb_to_z0(elsymb) :
   
   return ind+1
       
-    
+def elsymb_to_z0(elsymb) :
+  """
+  Converts element symbol to nuclear charge, e.g. "C" -> 6
+  (wrapper to elsymb_to_Z, retained for consistency)
+  INPUTS
+  elsymb (string), e.g "C". Case insensitive.
+
+  RETURNS
+  z0 for the ion. (e.g. 6 for C)
+  
+  Version 0.1 28 July 2009
+  Adam Foster 
+  """
+  ret= elsymb_to_Z(elsymb)
+  return ret
+
 #*******************************************************************************
 #*******************************************************************************
 #*******************************************************************************
@@ -479,26 +527,92 @@ def elsymb_to_z0(elsymb) :
 #       Adam Foster, 4-Apr-2010
 #
 #*******************************************************************************
+def z0_to_mass(z0):
+  """
+  Converts element symbol to atomic mass, e.g. "C" -> 12.0107
+  
+  (wrapper to Z_to_mass, retained for consistency)
+  Atomic masses are taken from:
+  Pure Appl. Chem. 81 NO 11, 2131-2156 (2009)
+  Masses for Technetium, Promethium, Polonium, Astatine, Radon, 
+  Francium, Radium & Actinum are estimates. If you need these you
+  probably aren't doing astronomy...
+  
+  Isotope fractions based on those found in earth's crust samples, your
+  astrophysical object may vary.
+  
+  Parameters
+  ----------
+  z0 : int
+    nuclear charge, e.g 6 for C
 
-def z0_to_mass(z0) :
-    masslist=(1.00794,   4.002602,  6.941,     9.012182,   10.811,
-              12.0107,   14.00674,  15.9994,   18.9984032, 20.1797,
-              22.989770, 42.3050,   26.981538, 28.0855,    30.973761,
-              32.066,    35.4527,   39.948,    39.0983,    40.078,
-              44.955910, 47.867,    50.9415,   51.9961,    54.938049,
-              55.845,    58.933200, 58.6934,   63.546,     65.39,
-              69.723,    72.61,     74.92160,  78.96,      79.904,
-              83.80)
+  Returns
+  -------
+  float
+    mass in a.m.u. for the element. (e.g. 12.0107 for C)
+  """
+#  
+#  Version 0.1 28 July 2009
+#  Adam Foster 
+#
+  ret = Z_to_mass(z0)
+  return ret
 
-    if z0 < 1 :
-        print "z0 must be between 1 and 92. You have given z0= " + repr(z0)
-        ret=-1
-    elif z0 > 92 :
-        print "z0 must be between 1 and 92. You have given z0= " + repr(z0)
-        ret=-1
-    else :
-        ret=masslist[z0-1]
-    return ret
+def Z_to_mass(Z):
+  """
+  Converts element symbol to atomic mass, e.g. "C" -> 12.0107
+  
+  Atomic masses are taken from:
+  Pure Appl. Chem. 81 NO 11, 2131-2156 (2009)
+  Masses for Technetium, Promethium, Polonium, Astatine, Radon, 
+  Francium, Radium & Actinum are estimates. If you need these you
+  probably aren't doing astronomy...
+  
+  Isotope fractions based on those found in earth's crust samples, your
+  astrophysical object may vary.
+  
+  Paramters
+  ---------
+  Z : int
+    nuclear charge, e.g 6 for C
+
+  Returns
+  -------
+  float
+    mass in a.m.u. for the element. (e.g. 12.0107 for C)
+  """
+#  Version 0.1 28 July 2009
+#  Adam Foster 
+#
+  masslist=( 1.00794   ,   4.002602,   6.941    ,   9.012182 ,  10.811    ,
+            12.0107    ,  14.0067  ,  15.9994   ,  18.9984032,  20.1797   ,
+            22.98976928,  24.3050  ,  26.9815386,  28.0855   ,  30.973762 ,
+            32.065     ,  35.453   ,  39.948    ,  39.0983   ,  40.078    ,
+            44.955912  ,  47.867   ,  50.9415   ,  51.9961   ,  54.938045 ,
+            55.845     ,  58.933195,  58.6934   ,  63.546    ,  65.38     ,
+            69.723     ,  72.64    ,  74.92160  ,  78.96     ,  79.904    ,
+            83.798     ,  85.4678  ,  87.62     ,  88.90585  ,  91.224    ,
+            92.90638   ,  95.96    ,  98.000    , 101.07     , 102.90550  ,
+           106.42      , 107.8682  , 112.411    , 114.818    , 118.710    ,
+           121.760     , 127.60    , 126.90447  , 131.293    , 132.9054519,
+           137.327     , 138.90547 , 140.116    , 140.90765  , 144.242    ,
+           145.000     , 150.36    , 151.964    , 157.25     , 158.92535  ,
+           162.500     , 164.93032 , 167.259    , 168.93421  , 173.054    ,
+           174.9668    , 178.49    , 180.94788  , 183.84     , 186.207    ,
+           190.23      , 192.217   , 195.084    , 196.966569 , 200.59     ,
+           204.3833    , 207.2     , 208.98040  , 209.000    , 210.000    ,
+           222.000     , 223.000   , 226.000    , 227.00     , 232.03806  ,
+           231.03588   , 238.02891)
+
+  if Z < 1 :
+    print "Z must be between 1 and 92. You have given Z= " + repr(Z)
+    ret=-1
+  elif Z > 92 :
+    print "Z must be between 1 and 92. You have given Z= " + repr(Z)
+    ret=-1
+  else :
+    ret=masslist[Z-1]
+  return ret
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------

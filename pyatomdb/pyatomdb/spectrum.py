@@ -1,14 +1,14 @@
 """
 This module contains methods for creating spectra from the AtomDB files. Some
 are more primitive than others...
-
-Adam Foster
-
-Version 0.1, July 17th 2015
-First Release
-Adam Foster
-
 """
+
+# Adam Foster
+#
+# Version 0.1, July 17th 2015
+# First Release
+# Adam Foster
+
 try:
   import astropy.io.fits as pyfits
 except ImportError:
@@ -23,41 +23,59 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
                   binunits='keV', broadening=False, broadenunits='keV', \
                   elements=False, abund=False, dummyfirst=False):
 
-  """
-  make_spectrum is the most generic "make me a spectrum" routine. 
+  r"""
+  make_spectrum is the most generic "make me a spectrum" routine.
+  
   It returns the emissivity in counts cm^3 s^-1 bin^-1.
   
-  inputs:
-  bins - the bin edges for the spectrum to be calculated on, in 
-         units of keV or Angstroms. Must be monotonically
-         increasing. Spectrum will return len(bins)-1 values.
-  index - the index to plot the spectrum from. note that the AtomDB files
-          the emission starts in hdu number 2. So for the first block, you
-          set index=2
-  optional inputs:
-  linefile - the file containing all the line emission. Defaults to 
-             "$ATOMDB/apec_line.fits"
-  cocofile - the file containing all the continuum emission. Defaults to 
-             "$ATOMDB/apec_coco.fits"
+  Parameters
+  ----------
+  bins : array(float)
+       The bin edges for the spectrum to be calculated on, in \
+       units of keV or Angstroms. Must be monotonically\
+       increasing. Spectrum will return len(bins)-1 values.
+  index : int
+       The index to plot the spectrum from. note that the AtomDB files\
+       the emission starts in hdu number 2. So for the first block, you\
+       set index=2
+  linefile : str
+       The file containing all the line emission. Defaults to \
+       "$ATOMDB/apec_line.fits"
+  cocofile : str
+       The file containing all the continuum emission. Defaults to \
+       "$ATOMDB/apec_coco.fits"
+  binunits : {'keV','A'}
+       The energy units for bins. "keV" or "A". Default keV.
+  broadening : float
+       Line broadening to be applied
+  broadenunits : {'keV','A'}
+       Units of line broadening "keV" or "A". Default keV.
+  elements : iterable of int
+       Elements to include, listed by atomic number. if not set, include all.
+  abund : iterable of float, length same as elements.
+       If set, and array of length (elements) with the abundances of each\
+       element relative to the Andres and Grevesse values. Otherwise, assumed to\
+       be 1.0 for all elements
+  dummyfirst : bool
+       If true, add a "0" to the beginning of the return array so it is of the 
+       same length as bins (can be useful for plotting results)
   
+  Returns
+  -------
+  array of floats
+      eEissivity in counts cm^3 s^-1 bin^-1.
   
-  binunits - the energy units for bins. "keV" or "A". Default keV.
-  broadening - line broadening to be applied
-  broadenunits - units of line broadening "keV" or "A". Default keV.
-  elements - iterable covering all the lines of interest. If not set, include
-             all of them.
-  abund - if set, and array of length (elements) with the abundances of each
-          element.
-  dummyfirst - if true, add a "0" to the beginning of the return array.
+  """  
+#  History
+#  -------    
+#  Version 0.1 - initial release
+#    Adam Foster July 17th 2015
+#  
+#  Version 0.2
+#    Added dummyfirst keyword
+#    Adam Foster July 21st 2015
+# 
 
-  Version 0.1 - initial release
-    Adam Foster July 17th 2015
-  
-  Version 0.2
-    Added dummyfirst keyword
-    Adam Foster July 21st 2015
- 
-  """
 
   # set up the bins
   if (sum((bins[1:]-bins[:-1])<0) > 0):
@@ -129,30 +147,44 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
-def add_lines(Z, abund, lldat, ebins, broadening, broadenunits):
+def add_lines(Z, abund, lldat, ebins, broadening=False, broadenunits='A'):
   """
-  add the lines in list lldat, with atomic number Z, to a spectrum delineated
+  Add lines to spectrum, applying gaussian broadening.
+
+  Add the lines in list lldat, with atomic number Z, to a spectrum delineated
   by ebins (these are the edges, in keV). Apply broadening to the spectrum
-  is broadening != False, with units of broadenunits (so can do constant
+  if broadening != False, with units of broadenunits (so can do constant
   wavelength or energy broadening)
   
-  inputs:
-  Z    - element of interest (e.g. 6 for carbon)
-  abund - abundance of element, relative to AG89 data.
-  lldat - the linelist to add. Usually the hdu from the apec_line.fits
-          file, often with some filters pre-applied.
-  ebins - energy bins. Will return spectrum with nbins-1 data points.
-  broadedning - apply spectral broadening if > 0. Units of A of keV
-  broadenunits - the units of broadening
+  Parameters
+  ----------
+  Z : int
+    Element of interest (e.g. 6 for carbon)
+  abund : float
+    Abundance of element, relative to AG89 data.
+  lldat : dtype linelist
+    The linelist to add. Usually the hdu from the apec_line.fits \
+    file, often with some filters pre-applied.
+  ebins : array of floats
+    Energy bins. Will return spectrum with nbins-1 data points.
+  broadening : float
+    Apply spectral broadening if > 0. Units of A of keV
+  broadenunits : {'A' , 'keV'}
+    The units of broadening, Angstroms or keV
+    
   
-  returns:
-  broadened emissivity spectrum, in photons cm^3 s^-1 bin^-1. Array has 
-  len(ebins)-1 values.
-
-  Version 0.1 - initial release
-    Adam Foster July 17th 2015
-
+  Returns
+  -------
+  array of float
+    broadened emissivity spectrum, in photons cm^3 s^-1 bin^-1. Array has \
+    len(ebins)-1 values.
   """
+#  
+#  History
+#  -------
+#  Version 0.1 - initial release
+#    Adam Foster July 17th 2015
+#
 
   lammax = (const.HC_IN_KEV_A/ebins[0]) 
   lammin = (const.HC_IN_KEV_A/ebins[-1])
@@ -205,21 +237,33 @@ def add_lines(Z, abund, lldat, ebins, broadening, broadenunits):
 def get_index(te, filename='$ATOMDB/apec_line.fits', \
               teunits='keV', logscale=False):
   """
-  opens the line or coco file, and looks for the header unit
+  Finds HDU with kT closest ro desired kT in given line or coco file.
+  
+  Opens the line or coco file, and looks for the header unit
   with temperature closest to te. Use result as index input to make_spectrum
   
-  inputs:
-  te       - temperature in keV or K
-  
-  kwargs:
-  teunits  - units of te (kev or K, default keV)
-  logscale - search on a log scale for nearest temperature
-  filename - line or continuum file, already opened or filename. 
+  Parameters
+  ----------
+  te : float
+    Temperature in keV or K
+  teunits : {'keV' , 'K'}
+    Units of te (kev or K, default keV)
+  logscale : bool
+    Search on a log scale for nearest temperature if set.
+  filename : str or hdulist
+    line or continuum file, already opened or filename. 
 
-  Version 0.1 - initial release
-    Adam Foster July 17th 2015
-  
-  """
+  Returns
+  -------
+  int
+    Index in HDU file with nearest temperature to te.
+  """  
+
+#  History
+#  -------
+#  Version 0.1 - initial release
+#    Adam Foster July 17th 2015
+#  
 
   if teunits.lower() == 'kev':
     teval = te
@@ -247,49 +291,70 @@ def get_index(te, filename='$ATOMDB/apec_line.fits', \
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 def list_lines(specrange, lldat=False, index=False, linefile=False,\
-              units='angstroms', printlist=False):
+              units='angstroms'):
   """
-  specrange: spectral range [min,max] to return lines on
-  units: units of specrange(default angstroms)
+  Gets list of the lines in a given spectral range
+  
+  Parameters
+  ----------
+  specrange : [float,float]
+    spectral range [min,max] to return lines on
+  units : {'A' , 'keV'}
+    units of specrange (default A)
+  lldat : see notes
+    line data
+  index : int
+    index in lldat, see notes
+  linefile : see notes
+    line data file, see notes
+
+  Notes
+  -----
   
   The actual line list can be defined in one of several ways:
 
   specrange = [10,100]
   
-  (1) lldat as an actual list of lines, e.g.:
-    a = pyfits.open('apec_line.fits')
-    llist = a[30].data
-    l= list_lines(specrange, lldat=llist)
+    1. lldat as an actual list of lines, e.g.::
   
-  (2) lldat as a numpy array of lines, e.g.:
-    a = pyfits.open('apec_line.fits')
-    llist = numpy.array(a[30].data)
-    l= list_lines(specrange, lldat=llist)
-  
-  (3) lldat is a BinTableHDU from pyfits
-    a = pyfits.open('apec_line.fits')
-    llist = numpy.array(a[30])
-    l= list_lines(specrange, lldat=llist)
-    
-  (4) lldat is a HDUList from pyfits. In this case index must also be set
-    a = pyfits.open('apec_line.fits')
-    index = 30
-    l= list_lines(specrange, lldat=a, index=index)
+         a = pyfits.open('apec_line.fits')
+         llist = a[30].data
+         l= list_lines(specrange, lldat=llist)
 
-  (5) lldat NOT set:
-    linefile contains apec_line.fits file location, index identifies the HDU
-    linefile = 'mydir/apec_v2.0.2_line.fits'
-    index = 30
-    l= list_lines(specrange, linefile=linefile, index=index)
-    
-  (6) lldat NOT set & linefile NOT set
-    linefile is set to $ATOMDB/apec_line.fits. index identifies the HDU
-    index = 30
-    l= list_lines(specrange, index=index)
+    2. lldat as a numpy array of lines, e.g.::
 
-  returns:
-  a line list filtered by the various elements. This list is a numpy dtype:
-    dtype([('Lambda', '>f4'), \
+         a = pyfits.open('apec_line.fits')
+         llist = numpy.array(a[30].data)
+         l= list_lines(specrange, lldat=llist)
+
+    3. lldat is a BinTableHDU from pyfits::
+
+         a = pyfits.open('apec_line.fits')
+         llist = numpy.array(a[30])
+         l= list_lines(specrange, lldat=llist)
+
+    4. lldat is a HDUList from pyfits. In this case index must also be set::
+         
+         a = pyfits.open('apec_line.fits')
+         index = 30
+         l= list_lines(specrange, lldat=a, index=index)
+
+    5. lldat NOT set, \
+       linefile contains apec_line.fits file location, index identifies the HDU::
+       
+         linefile = 'mydir/apec_v2.0.2_line.fits'
+         index = 30
+         l= list_lines(specrange, linefile=linefile, index=index)
+    
+    6. lldat NOT set & linefile NOT set,\ 
+       linefile is set to $ATOMDB/apec_line.fits. index identifies the HDU::
+       
+         index = 30
+         l= list_lines(specrange, index=index)
+
+  Returns
+  -------
+  dtype=([('Lambda', '>f4'), \
            ('Lambda_Err', '>f4'), \
            ('Epsilon', '>f4'), \
            ('Epsilon_Err', '>f4'), \
@@ -297,14 +362,20 @@ def list_lines(specrange, lldat=False, index=False, linefile=False,\
            ('Ion', '>i4'), \
            ('UpperLev', '>i4'), \
            ('LowerLev', '>i4')])
-           
+    
+     A line list filtered by the various elements. This list is a numpy dtype::       
   Note that the output from this can be passed directly to print_lines
-
-  Version 0.1 - initial release
-    Adam Foster July 17th 2015
-
-
   """
+  
+#  History
+#  -------
+#  Version 0.1 - initial release
+#    Adam Foster July 17th 2015
+#
+#  Version 0.2 - bugfix:
+#    corrected lldat test to be if not false, instead of if true.
+#    Adam Foster September 16th 2015
+#
            
   # check the units
   
@@ -319,8 +390,9 @@ def list_lines(specrange, lldat=False, index=False, linefile=False,\
 
   # check that either "lldat" is provided, which is a line list, or
   # that an index in a line file is specified
-  
-  if lldat:
+    
+    
+  if lldat != False:
     #options here:
     # (1) This is a line list, i.e. the ldata[index].data from a file,
     #     either in original pyfits format or a numpy array
@@ -365,21 +437,29 @@ def list_lines(specrange, lldat=False, index=False, linefile=False,\
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 
-def print_lines(llist, specunits = 'angstroms'):
+def print_lines(llist, specunits = 'A'):
   """
-  
-  INPUTS
-  llist: list of lines to print. Typically returned by list_lines.
-  
-  KWARGS:
-  specunits: units to list the line positions by (A or keV, default A)
+  Prints lines in a linelist to screen
   
   This routine is very primitive as things stand. Plenty of room for refinement.
   
-  Version 0.1 - initial release
-    Adam Foster July 17th 2015
+  Parameters
+  ----------
+  llist: dtype(linelist)
+    list of lines to print. Typically returned by list_lines.
+  specunits: {'A' , 'keV'}
+    units to list the line positions by (A or keV, default A)
   
+  Returns
+  -------
+  Nothing, though prints data to standard out.
   """
+  
+#  History
+#  -------
+#  Version 0.1 - initial release
+#    Adam Foster July 17th 2015
+#  
   
   if specunits.lower()=='kev':
     specunits = 'keV'
@@ -439,39 +519,54 @@ def make_ion_index_continuum(bins,  element, \
                              ion=0,\
                              broadening=False,\
                              broadenunits='keV'):
-  """ Code to create the continuum for a given ion.
-  INPUTS
-  bins     : the bin edges for the spectrum to be calculated on, in units of 
-             keV or Angstroms. Must be monotonically increasing. Spectrum 
-             will return len(bins)-1 values.
-  element  : atomic number of element to make spectrum of (e.g. 6 for carbon)  
-     
-  KWARGS
-  binunits : the energy units for bins. "keV" or "A". Default keV.
-  fluxunits: whether to return the emissivity in photons ('ph') or ergs ('erg').
-             Defaults to  photons
-  no_coco  : if set, do not include the compressed continuum
-  no_pseudo: if set, do not include the pseudo continuum (weak lines)
-  ion      : ion to calculate, e.g. 4 for C IV. By default, 0 (whole element). 
-  index    : the index to generate the spectrum from. note that the AtomDB files
-             the emission starts in hdu number 2. So for the first block, you
-             set index=2. Only required if cocofile is a filename or an HDULIST
-  cocofile : the continuum file, either already open (HDULIST) or filename. 
-             alternatively, provide the HDU itself, and then do not need
-             to define the index
-  broadening: broaden the continuum by gaussians of this width (if False,
-              no broadening is applied)
-  broadenunits: units for broadening (kev or A)
-             
-
-  RETURNS
-  len(bins)-1 array of continuum emission, in units of \
-  photons cm^3 s^-1 bin^-1 (fluxunits = 'ph') or
-  ergs cm^3 s^-1 bin^-1 (fluxunits = 'erg')
-
-  Version 0.1 - initial release
-    Adam Foster July 17th 2015
   """
+  Creates the continuum for a given ion.
+  
+  Parameters
+  ----------
+  bins : array(float)
+    The bin edges for the spectrum to be calculated on, in units of keV \
+    or Angstroms. Must be monotonically increasing. Spectrum will return \
+    len(bins)-1 values.
+  element : int
+    Atomic number of element to make spectrum of (e.g. 6 for carbon)  
+  binunits : {'keV' , 'A'}
+    The energy units for bins. "keV" or "A". Default keV.
+  fluxunits : {'ph' , 'erg'}
+    Whether to return the emissivity in photons ('ph') or ergs ('erg').\
+    Defaults to  photons
+  no_coco : bool
+    If true, do not include the compressed continuum
+  no_pseudo : bool
+    If true, do not include the pseudo continuum (weak lines)
+  ion : int
+    Ion to calculate, e.g. 4 for C IV. By default, 0 (whole element). 
+  index : int
+    The index to generate the spectrum from. Note that the AtomDB files
+    the emission starts in hdu number 2. So for the first block, you
+    set index=2. Only required if cocofile is a filename or an HDULIST
+  cocofile : HDUList, HDU or str
+    The continuum file, either already open (HDULIST) or filename.
+    alternatively, provide the HDU itself, and then do not need
+    to define the index
+  broadening: float
+    Broaden the continuum by gaussians of this width (if False,
+    no broadening is applied)
+  broadenunits: {'keV' , 'A'}
+    Units for broadening (kev or A)
+             
+  Returns
+  -------
+  array(float)
+    len(bins)-1 array of continuum emission, in units of \
+    photons cm^3 s^-1 bin^-1 (fluxunits = 'ph') or
+    ergs cm^3 s^-1 bin^-1 (fluxunits = 'erg')
+
+  """
+#  History
+#  -------
+#  Version 0.1 - initial release
+#    Adam Foster July 17th 2015
              
 
   if binunits.lower() in ['kev']:
@@ -548,21 +643,31 @@ def make_ion_index_continuum(bins,  element, \
 #-------------------------------------------------------------------------------
 def expand_E_grid(eedges, n,Econt_in_full, cont_in_full):
 
-  """ Code to expand the compressed continuum onto a series of bins.
-  INPUTS
-  eedges   : the bin edges for the spectrum to be calculated on, in units of 
-             keV
-  n        : the number of good data points in the continuum array
-  Econt_in_full: the compressed continuum energies
-  cont_in_full: the compressed continuum emissivities
-
-  RETURNS
-  len(bins)-1 array of continuum emission, in units of 
-  photons cm^3 s^-1 bin^-1
-
-  Version 0.1 - initial release
-    Adam Foster July 17th 2015
   """
+  Code to expand the compressed continuum onto a series of bins.
+  
+  Parameters
+  ----------
+  eedges : float(array)
+    The bin edges for the spectrum to be calculated on, in units of keV
+  n : int
+    The number of good data points in the continuum array
+  Econt_in_full: float(array)
+    The compressed continuum energies
+  cont_in_full: float(array)
+    The compressed continuum emissivities
+
+  Returns
+  -------
+  float(array)
+    len(bins)-1 array of continuum emission, in units of \
+    photons cm^3 s^-1 bin^-1
+  """
+  
+#  History
+#  -------
+#  Version 0.1 - initial release
+#    Adam Foster July 17th 2015
   
   import scipy.integrate
   cont_in = cont_in_full[:n]
@@ -602,24 +707,33 @@ def broaden_continuum(bins, spectrum, binunits = 'keV', \
                       broadenunits='keV'):
   """
   Apply a broadening to the continuum
-  INPUTS
-  bins     : the bin edges for the spectrum to be calculated on, in units of 
-             keV or Angstroms. Must be monotonically increasing. Spectrum 
-             will return len(bins)-1 values.
-  spectrum : the emissivities in each bin in the unbroadened spectrum     
-  KWARGS
-  binunits : the energy units for bins. "keV" or "A". Default keV.
-  broadening: broaden the continuum by gaussians of this width (if False,
-              no broadening is applied)
-  broadenunits: units for broadening (kev or A)
   
-  RETURNS
-  spectrum broadened by gaussians of width broadening
+  Parameters
+  ----------
+  bins : array(float)
+    The bin edges for the spectrum to be calculated on, in units of \
+    keV or Angstroms. Must be monotonically increasing. Spectrum \
+    will return len(bins)-1 values.
+  spectrum : array(float)
+    The emissivities in each bin in the unbroadened spectrum     
+  binunits : {'keV' , 'A'}
+    The energy units for bins. "keV" or "A". Default keV.
+  broadening : float
+    Broaden the continuum by gaussians of this width (if False,\
+    no broadening is applied)
+  broadenunits : {'keV' , 'A'}
+    Units for broadening (kev or A)
   
-  Version 0.1 - initial release
-    Adam Foster July 17th 2015
-  
+  Returns
+  -------
+  array(float)
+    spectrum broadened by gaussians of width broadening
   """
+
+#  History
+#  -------
+#  Version 0.1 - initial release
+#    Adam Foster July 17th 2015
 
   # convert to energy grid
   if binunits.lower() in ['kev']:

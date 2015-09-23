@@ -12,6 +12,9 @@ Adam Foster July 17th 2015
 
 Version 0.2 - added PI reading routines and get_data online enhancements.
 Adam Foster August 17th 2015
+
+Version 0.3 - added RRC generation routines
+Adam Foster August 28th 2015
 """
 
 import os, datetime, numpy, re, time
@@ -47,7 +50,7 @@ def write_filemap(d, filemap, atomdbroot=''):
                               d['misc'][i]+'\n')
 
   tlist = ['ir','lv','la','ec','pc','dr','em','pi','ai','ci']
-  for i in range(0, len(d['z0'])):
+  for i in range(0, len(d['Z'])):
 
     for t in range(1, len(tlist)+1):
       tt = tlist[t-1]
@@ -69,7 +72,7 @@ def write_filemap(d, filemap, atomdbroot=''):
 
         y = t
         if t>=10: y+=10  
-        a.write('%2i %2i %2i ' % (y, d['z0'][i], d['z1'][i])+\
+        a.write('%2i %2i %2i ' % (y, d['Z'][i], d['z1'][i])+\
                               d[tt][i]+'\n')
 
   a.close()
@@ -97,9 +100,24 @@ def extract_n(conf_str):
 
 def read_filemap(filemap=False, atomdbroot=False):
   """
-  filemap - name of filemap file to read. If zero length, use "$ATOMDB/filemap"
-  atomdbroot - replace any $ATOMDB in the file names with this. If not provided
-              will use "ATOMDB" environment variable instead
+  Reads AtomDB filemap data into dictionary
+  
+  Parameters
+  ----------
+  filemap : str
+    Name of filemap file to read. If zero length, use "$ATOMDB/filemap"
+  atomdbroot : str
+    Replace any $ATOMDB in the file names with this. If not provided,
+    use "ATOMDB" environment variable instead
+    
+  Returns
+  -------
+    dict
+      dictionary listing all the filenames for each different datatype.
+      Files separated into "misctypes" for abundance and bremsstrahlung files,
+      and 'ionfiles', which are then split by element, ion, and datatype, e.g.
+      ret['ionfiles'][6][5]['lv'] contains the energy level (lv) data for 
+      carbon V.
   """              
 
   if not(atomdbroot):
@@ -118,7 +136,7 @@ def read_filemap(filemap=False, atomdbroot=False):
 
   f = open(filemap,'r')
 
-  filedtype = numpy.dtype({'names':['z0','z1','ec','lv','ir','pc','dr',\
+  filedtype = numpy.dtype({'names':['Z','z1','ec','lv','ir','pc','dr',\
                                     'la','em','pi','ai'],\
                            'formats':[int, int, '|S160','|S160','|S160',\
                                       '|S160','|S160','|S160','|S160',\
@@ -135,10 +153,10 @@ def read_filemap(filemap=False, atomdbroot=False):
   for i in f:
     splt = i.split()
     fname = re.sub('\$ATOMDB',atomdbroot,splt[3])
-    z0_tmp = int(splt[1])
+    Z_tmp = int(splt[1])
     z1_tmp = int(splt[2])
     
-    if z0_tmp < 1:
+    if Z_tmp < 1:
       # in this case, we have a "misc" datatype, not corresponding to a particular ion
       misc_type = int(splt[0])
       misc_file = fname
@@ -146,14 +164,14 @@ def read_filemap(filemap=False, atomdbroot=False):
                                                                     dtype=miscdtype))
       
     else:
-      j = numpy.where((ret['ionfiles']['z0']==z0_tmp) & \
+      j = numpy.where((ret['ionfiles']['Z']==Z_tmp) & \
                       (ret['ionfiles']['z1']==z1_tmp))[0]
       if len(j)==0:
         j = len(ret['ionfiles'])
 
         ret['ionfiles'] = numpy.append(ret['ionfiles'], numpy.zeros(1,\
                                                                     dtype=filedtype))
-        ret['ionfiles']['z0'][j]=z0_tmp
+        ret['ionfiles']['Z'][j]=Z_tmp
         ret['ionfiles']['z1'][j]=z1_tmp
       else:
         j = j[0]
@@ -181,7 +199,7 @@ def read_filemap(filemap=False, atomdbroot=False):
 
 
 #  ret={}
-#  ret['z0'] = numpy.array(z0)
+#  ret['Z'] = numpy.array(Z)
 #  ret['z1'] = numpy.array(z1)
 #  ret['ec'] = numpy.array(eclist, dtype='|S160')
 #  ret['lv'] = numpy.array(lvlist, dtype='|S160')
@@ -203,10 +221,20 @@ def read_filemap(filemap=False, atomdbroot=False):
 #-------------------------------------------------------------------------------
 
 def ci_younger(Te, c):
-  """Te is an array in Kelvin
-     c is the ionrec_par
-     returns ionization rate in cm^3 s^-1"""
-
+  """
+  Calculates Collisional Ionization Rates from Younger formula
+  
+  Parameters
+  ----------
+  Te : array(float)
+    Temperatures in Kelvin
+  c : the ionrec_par from the transition in the AtomDB IR file
+  
+  Returns
+  -------
+  array(float) 
+    returns ionization rate in cm^3 s^-1
+  """
   KBOLTZ = 8.617385e-8  #keV/K
 
   T_eV = 1.e3*KBOLTZ*Te
@@ -329,25 +357,26 @@ def f1_fcn(x):
 #  /*   Arnaud \& Rothenflug, 1985 A&A, Appendix B, p. 436                 */
 #  /* Version used from Mazzotta's original code.                          */
 
-  result=0.0
+  result=numpy.zeros(len(x), dtype=float)
 
   a=numpy.array( [-0.57721566,0.99999193,-0.24991055,
      0.05519968,-0.00976004,0.00107857])
   b=numpy.array( [8.5733287401,18.0590169730,8.6347608925,0.2677737343,
      9.5733223454,25.6329561486,21.0996530827,3.9584969228])
 
-  if (x < 0.0 ) :
+  if sum(x < 0.0 )>0 :
     errmess("f1_fcn","Negative values of x not allowed")
 
-  if (x < 1.0) :
-    result=(a[0]+a[1]*x+a[2]*x*x + a[3]* x**3 + a[4]*x**4 +
-      a[5]*x**5-numpy.log(x))*numpy.exp(x)
-  else:
-    if (x < 1.0e9) :
-      result=(x**4+b[0]*x**3+b[1]*x**2+b[2]*x+b[3])/ \
-  (x**4+b[4]*x**3+b[5]*x**2+b[6]*x+b[7])/x
-    else:
-      result=1.0/x
+  i = numpy.where(x < 1.0)[0]
+  if len(i) > 0:
+    result[i]=(a[0]+a[1]*x[i]+a[2]*x[i]*x[i] + a[3]* x[i]**3 + a[4]*x[i]**4 +
+      a[5]*x[i]**5-numpy.log(x[i]))*numpy.exp(x[i])
+  i = numpy.where((1.0 < x) & (x<1e9))[0]
+  if len(i) > 0:
+    result[i]=(x[i]**4+b[0]*x[i]**3+b[1]*x[i]**2+b[2]*x[i]+b[3])/ \
+  (x[i]**4+b[4]*x[i]**3+b[5]*x[i]**2+b[6]*x[i]+b[7])/x[i]
+  i = numpy.where((x>=1e9))[0]
+  result[i]=1.0/x[i]
 
   return result
 
@@ -432,25 +461,35 @@ def addline2(xbins, wv, amp, dx):
 #-------------------------------------------------------------------------------
 
  
-def get_ionfrac(ionbalfile, element, te, ion=-1):
-  """ Gets the ionization fraction of a given ion at a given Te
-      Assuming ionization equilibrium
-      ionbalfile : string, location of ionization balance file
-      element    : int, z0 of element (e.g. 6 for carbon)
-      ion        : if provided, z+1 of ion (e.g. 5 for O V)
+def get_ionfrac(ionbalfile, Z, te, z1=-1):
+  """
+  Reads the ionization fraction of a given ion at a given Te from an ionbalfile
+  Assumes ionization equilibrium
+  
+  Parameters
+  ----------
+  ionbalfile : str
+    location of ionization balance file
+  Z : int
+    atomic number of element (e.g. 6 for carbon)
+  te : float
+    electron temperature (in K)
+  z1 : int
+    if provided, z+1 of ion (e.g. 5 for O V)
                    if omitted, returns ionization fraction for all ions
                    of element
-      returns
-      ionization fraction, or if ion not specified, list of values
+  Returns
+  -------
+  ionization fraction of ion or, if not specified, of all ions at Te
   """
   
-  dat = get_ionbal(ionbalfile, element)
+  dat = get_ionbal(ionbalfile, Z)
   it = numpy.argmin(abs(dat['te']-te))
-  print it, dat['te'][it]
-  if ion==-1:
-    ion = range(0,element+1)
-  frac = dat['frac'][it,ion]
-  
+  if z1==-1:
+    z1 = range(0,Z+1)
+  else:
+    z1=z1-1  
+  frac = dat['frac'][it,z1]
   return frac
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -460,7 +499,7 @@ def get_ionfrac(ionbalfile, element, te, ion=-1):
 def get_ionbal(ionbalfile, element, ion=-1):
 
   # ionbalfile : string, location of ionization balance file
-  # element    : int, z0 of element (e.g. 6 for carbon)
+  # element    : int, Z of element (e.g. 6 for carbon)
   # ion        : if provided, z+1 of ion (e.g. 5 for O V, 3 for Ne III)
   #              if omitted, returns ionization balance for all ions of element
   #
@@ -474,10 +513,10 @@ def get_ionbal(ionbalfile, element, ion=-1):
 
   # check ion makes sense for the given element
   if ion ==0:
-    print 'ion should be in range 1 to z0, in this case '+repr(z0)
+    print 'ion should be in range 1 to Z, in this case '+repr(Z)
     print 'return whole element ionization balance in stead'
   if ion > element + 1:
-    print 'ion should be in range 1 to z0, in this case '+repr(z0)
+    print 'ion should be in range 1 to Z, in this case '+repr(Z)
     print 'ERROR, returning -1'
     return -1
   
@@ -546,36 +585,43 @@ def get_ionbal(ionbalfile, element, ion=-1):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 
-def get_filemap_file(ftype, z0, z1, fmapfile=False,atomdbroot=False, quiet=False, misc=False):
+def get_filemap_file(ftype, Z, z1, fmapfile=False,atomdbroot=False, quiet=False, misc=False):
   """
-  get_filemap_file: find the correct file from the database for atomic data of type ftype
-  for ion with nuclear charge z0 and ioncharge+1 = z1
+  Find the correct file from the database for atomic data of type ftype
+  for ion with nuclear charge Z and ioncharge+1 = z1
   
-  inputs:
-  ftype - file type of interest:
-    'ir' = ionization & recombination data
-    'lv' = energy levels
-    'la' = wavelength and transition probabilities (lambda & a-values)
-    'ec' = electron collision rates
-    'pc' = proton collision rates
-    'dr' = dielectronic recombination satellite line information
-    'ai' = autoionization rate data
-    'pi' = XSTAR photoionization data
-    'em' = emission feature data (currently unused)
-    
-  z0  - element atomic number (=6 for C+4)
-  z1  - ion charge +1 (=5 for C+4)
-  
-  kwargs:
-  fmapfile = specific filemap to use. Otherwise defaults to atomdbroot+'/filemap'
-  atomdbroot = location of ATOMDB database. Defaults to ATOMDB environment variable.
-               all $ATOMDB in the filemap will be expanded to this value
-  quiet = if true, suppress warnings about files not being present for certain ions
-  misc = if requesting "misc" data, i.e. the Bremsstrahlung inputs, use this. This is
-         for non ion-specific data.
+  Parameters
+  ----------
+  ftype : str
+   *  'ir' = ionization & recombination data
+   *  'lv' = energy levels
+   *  'la' = wavelength and transition probabilities (lambda & a-values)
+   *  'ec' = electron collision rates
+   *  'pc' = proton collision rates
+   *  'dr' = dielectronic recombination satellite line information
+   *  'ai' = autoionization rate data
+   *  'pi' = XSTAR photoionization data
+   *  'em' = emission feature data (currently unused)
+  Z : int
+    Element atomic number (=6 for C+4)
+  z1 : int
+    Ion charge +1 (=5 for C+4)
+  fmapfile : str
+    Specific filemap to use. Otherwise defaults to atomdbroot+'/filemap'
+  atomdbroot : str
+    Location of ATOMDB database. Defaults to ATOMDB environment variable.
+    all $ATOMDB in the filemap will be expanded to this value
+  quiet : bool
+    If true, suppress warnings about files not being present for certain ions
+  misc : bool
+    If requesting "misc" data, i.e. the Bremsstrahlung inputs, use this. This is
+    for non ion-specific data.
 
-  returns: the filename for the relevant file, with all $ATOMDB expanded. If 
-           no file exists, returns zero length string.
+  Returns
+  -------
+  str
+    The filename for the relevant file, with all $ATOMDB expanded. If 
+    no file exists, returns zero length string.
   """
   
   fmap=read_filemap(filemap=fmapfile, atomdbroot=atomdbroot)
@@ -591,17 +637,17 @@ def get_filemap_file(ftype, z0, z1, fmapfile=False,atomdbroot=False, quiet=False
       else:
         ret = fmap['miscfiles']['file'][i[0]]
   else:
-    i = numpy.where((fmap['z0']==z0)&(fmap['z1']==z1))[0]
+    i = numpy.where((fmap['Z']==Z)&(fmap['z1']==z1))[0]
     ret=''
     if len(i)==0:
       if not quiet :
         print "WARNING: there is no data for the ion "+\
-               adbatomic.spectroscopic_name(z0,z1-1)
+               adbatomic.spectroscopic_name(Z,z1)
       ret=''
            
     if len(i)>1:
       print "ERROR: there are multiple entries for the ion "+\
-             adbatomic.spectroscopic_name(z0,z1-1)
+             adbatomic.spectroscopic_name(Z,z1)
       ret=''
     
     if len(i)==1:
@@ -618,7 +664,7 @@ def get_filemap_file(ftype, z0, z1, fmapfile=False,atomdbroot=False, quiet=False
         if len(ret)==0:
           if not quiet :
             print "WARNING: no data of type "+ftype+" exists for ion "+\
-                adbatomic.spectroscopic_name(z0,z1-1)
+                adbatomic.spectroscopic_name(Z,z1)
 
   return ret
 #-------------------------------------------------------------------------------
@@ -648,12 +694,8 @@ def make_level_descriptor(lv):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
-def get_ionpot(z0, z1, filemap, atomdbroot=''):
-  
-  irfile = get_filemap_file(filemap,'IR', z0, z1, atomdbroot=atomdbroot)
-  
-  irdat = pyfits.open(irfile)
-  
+def get_ionpot(Z, z1, filemap=False, atomdbroot=False, settings=False):
+  irdat = get_data(Z,z1,'IR', settings=settings)
   ionpot = irdat[1].header['IONPOT']
   
   return ionpot
@@ -664,28 +706,28 @@ def get_ionpot(z0, z1, filemap, atomdbroot=''):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 
-def get_level_details(level, z0=-1, z1=-1, filename='', \
+def get_level_details(level, Z=-1, z1=-1, filename='', \
                       filemap='', atomdbroot=''):
   """Function returns the details in the level file for the specified 
-  level. LV file can be specified by filename, or by filemap, z0, z1"""
+  level. LV file can be specified by filename, or by filemap, Z, z1"""
   
   if filename=='':
     # get the filename from the other variables
-    if z0 < 0:
+    if Z < 0:
       print "Error in get_level_details: must specify filename or "+\
-            "z0, z1 and filemap"
+            "Z, z1 and filemap"
       return -1
 
     if z1 < 0:
       print "Error in get_level_details: must specify filename or "+\
-            "z0, z1 and filemap"
+            "Z, z1 and filemap"
       return -1
 
     if filemap =='':
       print "Error in get_level_details: must specify filename or "+\
-            "z0, z1 and filemap"
+            "Z, z1 and filemap"
       return -1
-    filename = get_filemap_file(filemap, 'LV', z0, z1,\
+    filename = get_filemap_file(filemap, 'LV', Z, z1,\
                                 atomdbroot=atomdbroot)
 
   # open the file
@@ -732,9 +774,9 @@ def get_abundance(abundfile, abundset, element=[-1]):
           a[1].data.field('Source')
     return -1
   ret = {}
-  for z0 in element:
-    elsymb = adbatomic.z0toelsymb(z0)
-    ret[z0]=10**(a[1].data.field(elsymb)[ind[0]])/1e12
+  for Z in element:
+    elsymb = adbatomic.Ztoelsymb(Z)
+    ret[Z]=10**(a[1].data.field(elsymb)[ind[0]])/1e12
   return ret
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -828,14 +870,14 @@ def interp_rate(Te, npar, Te_grid,ionrec_par):
 #-------------------------------------------------------------------------------
 
  
-def get_ion_lines(linefile, z0, z1, fullinfo=False):
+def get_ion_lines(linefile, Z, z1, fullinfo=False):
   a = pyfits.open(linefile)
   kT = a[1].data.field('kT')
   nlines = numpy.zeros(len(kT), dtype=int)
   for ikT in range(len(kT)):
     iikT = ikT + 2
 
-    j = numpy.where((a[iikT].data.field("element") == z0) &\
+    j = numpy.where((a[iikT].data.field("element") == Z) &\
                     (a[iikT].data.field("ion") == z1))[0]
     nlines[ikT] = len(j)
     if (fullinfo):
@@ -853,7 +895,7 @@ def get_ion_lines(linefile, z0, z1, fullinfo=False):
 #-------------------------------------------------------------------------------
 
  
-def get_line_emissivity(linefile, z0, z1, upind, loind,ion_drv=False, elem_drv=False):
+def get_line_emissivity(linefile, Z, z1, upind, loind,ion_drv=False, elem_drv=False):
   a = pyfits.open(linefile)
   kT = a[1].data.field('kT')
   dens = a[1].data.field('eDensity')
@@ -863,13 +905,13 @@ def get_line_emissivity(linefile, z0, z1, upind, loind,ion_drv=False, elem_drv=F
   for ikT in range(len(kT)):
     iikT = ikT + 2
     if ion_drv:
-      j = numpy.where((a[iikT].data.field("element") == z0) &\
+      j = numpy.where((a[iikT].data.field("element") == Z) &\
                       (a[iikT].data.field("ion") == z1) &\
                       (a[iikT].data.field("ion_drv") == ion_drv) &\
                       (a[iikT].data.field("UpperLev") == upind) &
                       (a[iikT].data.field("LowerLev") == loind))[0]
     else:
-      j = numpy.where((a[iikT].data.field("element") == z0) &\
+      j = numpy.where((a[iikT].data.field("element") == Z) &\
                       (a[iikT].data.field("ion") == z1) &\
                       (a[iikT].data.field("UpperLev") == upind) &
                       (a[iikT].data.field("LowerLev") == loind))[0]
@@ -1038,7 +1080,6 @@ def calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
                        lolev=False, uplev=False, \
                        force_extrap=False, did_extrap=False):
 
-  import calc_maxwell_rates_constants as const
   from scipy.special import expn
   from scipy import interpolate
   
@@ -1068,7 +1109,8 @@ def calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
 #    return False;
 
 
-  #print "Coll_type=%i"%(coll_type)
+#  print "Coll_type=%i"%(coll_type)
+#  zzz=raw_input("URGH")
 
 
   if (coll_type == const.BURGESSTULLY):
@@ -1413,7 +1455,7 @@ def calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
                                  numpy.log(om[:N_interp]), \
                                  bounds_error=False, \
                                  fill_value=fill_value)(numpy.log(T[it]))
-                                 
+
       rate_coeff[it] = numpy.exp(tmp)
     calc_type = const.E_RATE_COEFF
 
@@ -1608,7 +1650,6 @@ def calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
 
 def calc_sampson_s(om, Z,Te):
   from scipy.special import expn
-  import calc_maxwell_rates_constants as const
 #  /* These routines come from Sampson, Goett, & Clark, ADNDT 29, 467 */
   
   result=0.0
@@ -1672,7 +1713,6 @@ def calc_sampson_s(om, Z,Te):
 
 def calc_sampson_p(om, Z, Te):
   from scipy.special import expn
-  import calc_maxwell_rates_constants as const
 
   dE  = om[0]
   a   = om[1]
@@ -1711,7 +1751,6 @@ def calc_sampson_p(om, Z, Te):
 
 def calc_sampson_h(om, Z, Te):
   from scipy.special import expn
-  import calc_maxwell_rates_constants as const
 
   dE   = om[0]
   z2s  = om[1]
@@ -1744,7 +1783,7 @@ def calc_sampson_h(om, Z, Te):
 #-------------------------------------------------------------------------------
 def calc_kato(coll_type, par, Z, Te):
   from scipy.special import expn
-  import calc_maxwell_rates_constants as const
+
 
   # This fit comes from Kato & Nakazaki, 1989, adbatomic Data and Nuclear 
   #   Data Tables 42, 2, 313 
@@ -1788,15 +1827,14 @@ def calc_kato(coll_type, par, Z, Te):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
-def interpolate_ionrec_rate(cidat,Te):
-  import calc_maxwell_rates_constants as const
+def interpolate_ionrec_rate(cidat,Te, force_extrap=False):
   from scipy import interpolate
-
-  if ((Te > cidat['max_temp']) |\
-      (Te < cidat['min_temp'])):
-    print "Te outside of CI data range: Te = %e, Te_min=%e, Te_max=%e" %\
-          (Te, cidat['min_temp'], cidat['max_temp'])
-    return 0.0
+  ret = numpy.zeros(len(Te), dtype=float)
+#  if ((Te > cidat['max_temp']) |\
+#      (Te < cidat['min_temp'])):
+#    print "Te outside of CI data range: Te = %e, Te_min=%e, Te_max=%e" %\
+#          (Te, cidat['min_temp'], cidat['max_temp'])
+#    return 0.0
   
   #real numbers.     
   if ((cidat['par_type'] >= const.INTERP_IONREC_RATE_COEFF) & 
@@ -1821,42 +1859,43 @@ def interpolate_ionrec_rate(cidat,Te):
 
   tmpci = cidat['ionrec_par'][:N_interp]
   tmpci[tmpci<0] = 0.0
-
-  try:
-    tmp = numpy.exp(interpolate.interp1d(numpy.log(cidat['temperature'][:N_interp]), \
+  
+#  try:
+  tmp = numpy.exp(interpolate.interp1d(numpy.log(cidat['temperature'][:N_interp]), \
                              numpy.log(tmpci+1e-30), \
-                             kind='cubic')(numpy.log(Te)))-1e-30
-  except ValueError:
-#    print "Raising a Value Error"
-    if (numpy.log(Te) < numpy.log(cidat['temperature'][0])):
-      if (numpy.log(Te) > numpy.log(cidat['temperature'][0])*0.99):
-        tmp= tmpci[0]
-#        zzz=raw_input('argh1')
-      else:
-        print cidat['temperature']
-        print Te, Tetmp
-        zzz=raw_input('ugh1')
+                             kind=1, bounds_error=False,\
+                             fill_value=numpy.nan)(numpy.log(Te)))-1e-30
+  
+  
+#  print Te, tmp, cidat['min_temp'], cidat['max_temp']
+
+#  for i in range(len(Te)):
+#    print Te[i],tmp[i]
+#  print 'input'
+#  for i in range(len(cidat['temperature'])):
+#    print cidat['temperature'][i], cidat['ionrec_par'][i]
+  
+  # let's deal with the near misses
+  nantest =  numpy.isnan(tmp)
+  for i in range(len(nantest)):
+    if nantest[i]:
+      if ((Te[i] > 0.99*(cidat['min_temp']))&\
+          (Te[i] <= (cidat['min_temp']))):
+        tmp[i] = cidat['ionrec_par'][0]
+    
+      if ((Te[i] < 1.01*(cidat['max_temp']))&\
+          (Te[i] >= (cidat['max_temp']))):
+        tmp[i] = cidat['ionrec_par'][N_interp-1]
         
-    elif (numpy.log(Te) > numpy.log(cidat['temperature'][N_interp-1])):
-      if (numpy.log(Te) < numpy.log(cidat['temperature'][N_interp-1])*1.01):
-        tmp = tmpci[N_interp-1]
-#        zzz=raw_input('argh2')
-      else:
-        print cidat['temperature']
-        print Te,Tetmp
-        zzz=raw_input('ugh2')
-    else:
-      print Te, cidat['temperature']
-      print numpy.log(Te), numpy.log(cidat['temperature'][:N_interp])
-#  print tmp
-#  if numpy.isnan(tmp):
-#    print '---'
-#    print numpy.log(cidat['temperature'][:N_interp])
-#    print numpy.log(cidat['ionrec_par'][:N_interp]+1e-30)
-#    print cidat['ionrec_par'][:N_interp]
-#    print numpy.log(cidat['ionrec_par'][:N_interp])
-#    print Te, numpy.log(Te)
-#    print '---'
+  if force_extrap:
+  
+    nantest =  numpy.isnan(tmp)
+    for i in range(len(nantest)):
+      if (Te[i] > cidat['max_temp']):
+        tmp[i]= tmp[N_interp-1] * (Te[N_interp-1]/Te[i])**1.5
+
+  # set other "nan" to zero
+  tmp[numpy.isnan(tmp)] = 0.0
   return tmp
 
 
@@ -1865,33 +1904,38 @@ def interpolate_ionrec_rate(cidat,Te):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 
-def calc_ionrec_ci(cidat, Te):
-  import calc_maxwell_rates_constants as const
+def calc_ionrec_ci(cidat, Te, extrap=False):
   from scipy import interpolate
+  ci = numpy.zeros(len(Te), dtype=float)
+  ci[(Te< cidat['min_temp']) | \
+     (Te> cidat['max_temp'])]= numpy.nan
 
-  if ((Te < cidat['min_temp'])|\
-      (Te > cidat['max_temp'])):
-    print " CI data is invalid at this temperature, Te=%e, Em_min = %e, Te_max=%e" %\
-         (Te, cidat['min_temp'],cidat['max_temp'])
-         
-    ci = 0.0
-    return ci
+  ici = numpy.where((Te<= cidat['max_temp']) & \
+                    (Te>= cidat['min_temp']))[0]
+#  if ((Te < cidat['min_temp'])|\
+#      (Te > cidat['max_temp'])):
+#    print " CI data is invalid at this temperature, Te=%e, Em_min = %e, Te_max=%e" %\
+#         (Te, cidat['min_temp'],cidat['max_temp'])
+#         
+#    ci = 0.0
+#    return ci
 
-  
   # See Arnaud \& Rothenflug, 1985 A&ASS 60, 425 
+  
   if (cidat['par_type'] == const.CI_YOUNGER):
-    T_eV = 1.e3*const.KBOLTZ*Te
-    x = cidat['ionrec_par'][0]/T_eV
-    if (x <= 30.0):
-      f1_val = f1_fcn(x)
-      ci = (numpy.exp(-x)/x)*\
-            ( cidat['ionrec_par'][1]*( 1 - x*f1_val ) +
-              cidat['ionrec_par'][2]*( 1 + x - x*(x+2)*f1_val )+
+    T_eV = 1.e3*const.KBOLTZ*Te[ici]
+    x = cidat['ionrec_par'][0][ici]/T_eV
+    i = numpy.where(x <=30.0)[0]
+    if len(i) > 0:
+      f1_val = f1_fcn(x[i])
+      ci[ici[i]] = (numpy.exp(-x[i])/x[i])*\
+            ( cidat['ionrec_par'][1]*( 1 - x[i]*f1_val ) +
+              cidat['ionrec_par'][2]*( 1 + x[i] - x[i]*(x[i]+2)*f1_val )+
               cidat['ionrec_par'][3]*f1_val + 
-              cidat['ionrec_par'][4]*x*f2_fcn(x) )
-    
-    ci *= 6.69e-07/(T_eV*numpy.sqrt(T_eV))
-    return ci
+              cidat['ionrec_par'][4]*x[i]*f2_fcn(x[i]) )
+
+    ci[ici] *= 6.69e-07/(T_eV*numpy.sqrt(T_eV))
+
   elif (((cidat['par_type'] >= const.INTERP_IONREC_RATE_COEFF) & 
          (cidat['par_type'] <= const.INTERP_IONREC_RATE_COEFF + const.MAX_IONREC))|
         ((cidat['par_type'] >= const.INTERP_IONREC_RATE_OPEN) & 
@@ -1901,11 +1945,64 @@ def calc_ionrec_ci(cidat, Te):
         ((cidat['par_type'] >= const.INTERP_IONREC_RATE_INC_MAX) & 
          (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MAX + const.MAX_IONREC))):
          
-    ci = interpolate_ionrec_rate(cidat,Te)
-    return ci
+    ci[ici] = interpolate_ionrec_rate(cidat,Te[ici])
+    
   else:
     print "Unknown CI type: %i"%(cidat['par_type'])
-    return 0.0
+
+
+  # now see if extrappolation is required:
+  if extrap:
+    #  get Te, coeff for the 2 lowest points.
+    ilow = numpy.where(Te<cidat['min_temp'])[0]
+    
+    if len(ilow) > 0:
+      # calculate the value at Te_min
+      Te_min = numpy.array([cidat['min_temp']])
+      cimin = calc_ionrec_ci(cidat, Te_min)
+      # if log of this is < 46.0, this is a small number, just repeat this
+      if numpy.log(cimin[0])<46.0:
+        ci[ilow]=cimin
+      
+      # otherwise, calculate the value at a range of near-minimum temperatures,
+      # and use to construct a good second derivative.
+      else:
+        tetmp = numpy.logspace(numpy.log10(Te_min), numpy.log10(Te_min)+1,4)
+        citmp=calc_ionrec_ci(cidat, tetmp)
+      
+        tetmpl = numpy.log(tetmp)
+        citmpl = numpy.log(citmp)
+        
+        dci = (citmpl[1:]-citmpl[:-1])/(tetmpl[1:]-tetmpl[:-1])
+        ddci = (dci[1:]-dci[:-1])/(tetmpl[1:-1]-tetmpl[:-2])
+        dddci = (ddci[1:]-ddci[:-1])/(tetmpl[2:-1]-tetmpl[1:-2])
+
+        a=dddci[0]/6.0
+        b=-3.0*a*tetmpl[0]
+        c=dci[0]-(3*a*tetmpl[0]**2+2*b*tetmpl[0])
+        d = citmp[0]-(a*tetmpl[0]**3+b*tetmpl[0]**2+c*tetmpl[0])
+      
+        cinew= a * numpy.log(Te[ilow])**3 +\
+               b * numpy.log(Te[ilow])**2 +\
+               c * numpy.log(Te[ilow]) +\
+               d
+        ci[ilow]=cinew
+        
+#        Te_min = numpy.array([cidat['min_temp']])
+#        cimin = calc_ionrec_ci(cidat, Te_min)
+#        ci[ilow]=cimin[0]*(Te_min[0]/Te[ilow])**-4.5
+
+    
+    # calculate the value at "max_temp"
+    ihigh = numpy.where(Te>cidat['max_temp'])[0]
+    if len(ihigh) > 0:
+      Te_max = numpy.array([cidat['max_temp']])
+      cimax = calc_ionrec_ci(cidat, Te_max)
+      ci[ihigh]=cimax[0]*(Te_max[0]/Te[ihigh])**0.5
+
+
+
+  return ci
 
 
 #-------------------------------------------------------------------------------
@@ -1913,41 +2010,38 @@ def calc_ionrec_ci(cidat, Te):
 #-------------------------------------------------------------------------------
 
 
-def calc_ionrec_rr(cidat, Te):
-  import calc_maxwell_rates_constants as const
+def calc_ionrec_rr(cidat, Te, extrap=False):
   from scipy import interpolate
-  
-  if ((Te < cidat['min_temp']) |(Te > cidat['max_temp'])):
-    print " RR data is invalid at this temperature, Te=%e, Em_min = %e, Te_max=%e" %\
-         (Te, cidat['min_temp'],cidat['max_temp'])
-    rr = 0.0
-    return rr
 
+#  if ((Te < cidat['min_temp']) |(Te > cidat['max_temp'])):
+#    print " RR data is invalid at this temperature, Te=%e, Em_min = %e, Te_max=%e" %\
+#         (Te, cidat['min_temp'],cidat['max_temp'])
+#    rr = 0.0
+#    return rr
+  rr = numpy.zeros(len(Te), dtype=float)
   
+  irr = numpy.where((Te >= cidat['min_temp']) & \
+                    (Te <= cidat['max_temp']))[0]
+                    
   
   # Shull & Van Steenberg 1982; 1982ApJS...48...95S  
   if (cidat['par_type'] == const.RR_SHULL):
-    rr = cidat['ionrec_par'][0]* (Te/1.e4)**(-1*cidat['ionrec_par'][1])
-    return rr
+    rr[irr] = cidat['ionrec_par'][0]* (Te[irr]/1.e4)**(-1*cidat['ionrec_par'][1])
 
 
   # Verner & Ferland 1996; 1996ApJS..103..467V */
   elif (cidat['par_type'] == const.RR_VERNER):
-    tt0=numpy.sqrt(Te/cidat['ionrec_par'][2])
-    tt1=numpy.sqrt(Te/cidat['ionrec_par'][3])
-    rr = cidat['ionrec_par'][0]/\
+    tt0=numpy.sqrt(Te[irr]/cidat['ionrec_par'][2])
+    tt1=numpy.sqrt(Te[irr]/cidat['ionrec_par'][3])
+    rr[irr] = cidat['ionrec_par'][0]/\
          ( tt0* (tt0+1)**( 1-cidat['ionrec_par'][1]) * \
                 (1+tt1)**(1+cidat['ionrec_par'][1]) )
-    
-    return rr
-
-
   # Arnaud & Raymond 1992; 1992ApJ...398..394A  */
   elif (cidat['par_type'] == const.RR_ARNRAY):
-    rr = cidat['ionrec_par'][0]*\
-          (Te/1.e4)**(-1*(cidat['ionrec_par'][1]+\
-                          cidat['ionrec_par'][2]*numpy.log10(Te/1.e4)))
-    return rr
+    rr[irr] = cidat['ionrec_par'][0]*\
+          (Te[irr]/1.e4)**(-1*(cidat['ionrec_par'][1]+\
+                          cidat['ionrec_par'][2]*numpy.log10(Te[irr]/1.e4)))
+
 
   # Now handle 4 different interpolation cases. */
   elif (((cidat['par_type'] >= const.INTERP_IONREC_RATE_COEFF) & 
@@ -1958,41 +2052,107 @@ def calc_ionrec_rr(cidat, Te):
        (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MIN + const.MAX_IONREC))|
       ((cidat['par_type'] >= const.INTERP_IONREC_RATE_INC_MAX) & 
        (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MAX + const.MAX_IONREC))):
-    rr = interpolate_ionrec_rate(cidat,Te)
-    return rr  
+    rr[irr] = interpolate_ionrec_rate(cidat,Te[irr])
   
   else:
     print "calc_ionrec_rate: RR Recombination type %i not recognized" %(cidat['par_type'])
-    return 0.0
+  
+  if extrap:
+    ilow = numpy.where(Te<cidat['min_temp'])[0]
 
+    if len(ilow) > 0:
+      # calculate the value at Te_min
+      Te_min = numpy.array([cidat['min_temp']])
+      cimin = calc_ionrec_rr(cidat, Te_min)
+      # if log of this is < 46.0, this is a small number, just repeat this
+      if numpy.log(cimin[0])<46.0:
+        rr[ilow]=cimin
+      
+      # otherwise, calculate the value at a range of near-minimum temperatures,
+      # and use to construct a good second derivative.
+      else:
+        tetmp = numpy.logspace(numpy.log10(Te_min), numpy.log10(Te_min)+1,4)
+        citmp=calc_ionrec_rr(cidat, tetmp)
+      
+        tetmpl = numpy.log(tetmp)
+        citmpl = numpy.log(citmp)
+        
+        dci = (citmpl[1:]-citmpl[:-1])/(tetmpl[1:]-tetmpl[:-1])
+        ddci = (dci[1:]-dci[:-1])/(tetmpl[1:-1]-tetmpl[:-2])
+        dddci = (ddci[1:]-ddci[:-1])/(tetmpl[2:-1]-tetmpl[1:-2])
+
+        a=dddci[0]/6.0
+        b=-3.0*a*tetmpl[0]
+        c=dci[0]-(3*a*tetmpl[0]**2+2*b*tetmpl[0])
+        d = citmp[0]-(a*tetmpl[0]**3+b*tetmpl[0]**2+c*tetmpl[0])
+      
+        cinew= a * numpy.log(Te[ilow])**3 +\
+               b * numpy.log(Te[ilow])**2 +\
+               c * numpy.log(Te[ilow]) +\
+               d
+        rr[ilow]=cinew
+
+
+
+#    if len(ilow) > 0:
+#      citmp=numpy.log(cidat['ionrec_par'][:4])
+#      tetmp=numpy.log(cidat['temperature'][:4])
+#      if citmp[0]< 46.0:
+#        rr[ilow]=cidat['ionrec_par'][0]
+#      else:
+#        dci = (citmp[1:]-citmp[:-1])/(tetmp[1:]-tetmp[:-1])
+#        ddci = (dci[1:]-dci[:-1])/(tetmp[1:-1]-tetmp[:-2])
+#        dddci = (ddci[1:]-ddci[:-1])/(tetmp[2:-1]-tetmp[1:-2])
+#
+#        a=dddci[0]/6.0
+#        b=-3.0*a*tetmp[0]
+#        c=dci[0]-(3*a*tetmp[0]**2+2*b*tetmp[0])
+#        d = citmp[0]-(a*tetmp[0]**3+b*tetmp[0]**2+c*tetmp[0])
+#      
+#        cinew= a * numpy.log(Te[ilow])**3 +\
+#               b * numpy.log(Te[ilow])**2 +\
+#               c * numpy.log(Te[ilow]) +\
+#               d
+#        rr[ilow] = numpy.exp(cinew)
+#
+
+    
+    # calculate the value at "max_temp"
+    ihigh = numpy.where(Te>cidat['max_temp'])[0]
+
+    if len(ihigh) > 0:
+      Te_max = numpy.array([cidat['max_temp']])
+      rrmax = calc_ionrec_rr(cidat, Te_max)
+      rr[ihigh]=rrmax[0]*(Te_max[0]/Te[ihigh])**1.5
+  return rr
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 
 
-def calc_ionrec_dr(cidat, Te):
-  import calc_maxwell_rates_constants as const
+def calc_ionrec_dr(cidat, Te, extrap=False):
   from scipy import interpolate
 
-  if ((Te < cidat['min_temp']) |(Te > cidat['max_temp'])):
-    print " DR data is invalid at this temperature, Te=%e, Em_min = %e, Te_max=%e" %\
-         (Te, cidat['min_temp'],cidat['max_temp'])
-    dr = 0.0
-    return dr
+#  if ((Te < cidat['min_temp']) |(Te > cidat['max_temp'])):
+#    print " DR data is invalid at this temperature, Te=%e, Em_min = %e, Te_max=%e" %\
+#         (Te, cidat['min_temp'],cidat['max_temp'])
+#    dr = 0.0
+#    return dr
+  dr = numpy.zeros(len(Te))
+  # set values outside range to NAN
+  idr = numpy.where((Te >= cidat['min_temp']) & (Te <= cidat['max_temp']))[0]
+  dr[:] = numpy.nan
+  dr[idr] = 0.0
 
   
-  
-
-
   # Mazzotta
   if (cidat['par_type'] == const.DR_MAZZOTTA):
-    T_eV = 1.e3*const.KBOLTZ*Te
-    dr = (cidat['par_type'][0]/(T_eV**1.5))  * \
+    T_eV = 1.e3*const.KBOLTZ*Te[idr]
+    dr[idr] = (cidat['par_type'][0]/(T_eV**1.5))  * \
          (cidat['par_type'][5]*numpy.exp(-cidat['par_type'][1]/T_eV) +\
           cidat['par_type'][6]*numpy.exp(-cidat['par_type'][2]/T_eV) +\
           cidat['par_type'][7]*numpy.exp(-cidat['par_type'][3]/T_eV) +\
           cidat['par_type'][8]*numpy.exp(-cidat['par_type'][4]/T_eV))
-    return dr
 
   elif (((cidat['par_type'] >= const.INTERP_IONREC_RATE_COEFF) & 
        (cidat['par_type'] <= const.INTERP_IONREC_RATE_COEFF + const.MAX_IONREC))|
@@ -2002,73 +2162,124 @@ def calc_ionrec_dr(cidat, Te):
        (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MIN + const.MAX_IONREC))|
       ((cidat['par_type'] >= const.INTERP_IONREC_RATE_INC_MAX) & 
        (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MAX + const.MAX_IONREC))):
-    dr = interpolate_ionrec_rate(cidat,Te)
-    return dr  
-  
+    dr[idr] = interpolate_ionrec_rate(cidat,Te[idr])
+    
   else:
     print "calc_ionrec_rate: DR Recombination type %i not recognized" %(cidat['par_type'])
-    return 0.0
 
+  # now extrappolate if required
+  if extrap:
+    ilow = numpy.where(Te<cidat['min_temp'])[0]
+    if len(ilow) > 0:
+      # calculate the value at Te_min
+      Te_min = numpy.array([cidat['min_temp']])
+      cimin = calc_ionrec_dr(cidat, Te_min)
+      # if log of this is < 46.0, this is a small number, just repeat this
+      if numpy.log(cimin[0])<46.0:
+        dr[ilow]=cimin
+      
+      # otherwise, calculate the value at a range of near-minimum temperatures,
+      # and use to construct a good second derivative.
+      else:
+        tetmp = numpy.logspace(numpy.log10(Te_min), numpy.log10(Te_min)+1,4)
+        citmp=calc_ionrec_dr(cidat, tetmp)
+      
+        tetmpl = numpy.log(tetmp)
+        citmpl = numpy.log(citmp)
+        
+        dci = (citmpl[1:]-citmpl[:-1])/(tetmpl[1:]-tetmpl[:-1])
+        ddci = (dci[1:]-dci[:-1])/(tetmpl[1:-1]-tetmpl[:-2])
+        dddci = (ddci[1:]-ddci[:-1])/(tetmpl[2:-1]-tetmpl[1:-2])
+
+        a=dddci[0]/6.0
+        b=-3.0*a*tetmpl[0]
+        c=dci[0]-(3*a*tetmpl[0]**2+2*b*tetmpl[0])
+        d = citmp[0]-(a*tetmpl[0]**3+b*tetmpl[0]**2+c*tetmpl[0])
+      
+        cinew= a * numpy.log(Te[ilow])**3 +\
+               b * numpy.log(Te[ilow])**2 +\
+               c * numpy.log(Te[ilow]) +\
+               d
+        dr[ilow]=cinew
+        
+#        Te_min = numpy.array([cidat['min_temp']])
+#        cimin = calc_ionrec_ci(cidat, Te_min)
+#        ci[ilow]=cimin[0]*(Te_min[0]/Te[ilow])**-4.5
+
+    
+    # calculate the value at "max_temp"
+    ihigh = numpy.where(Te>cidat['max_temp'])[0]
+    if len(ihigh) > 0:
+      Te_max = numpy.array([cidat['max_temp']])
+      cimax = calc_ionrec_dr(cidat, Te_max)
+      dr[ihigh]=cimax[0]*(Te_max[0]/Te[ihigh])**1.5
+
+  return dr
 
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 
-def calc_ionrec_ea(cidat, Te):
-  import calc_maxwell_rates_constants as const
+def calc_ionrec_ea(cidat, Te, extrap=False):
   from scipy import interpolate
+  ea = numpy.zeros(len(Te))
+  # set values outside range to NAN
+  iea = numpy.where((Te >= cidat['min_temp']) & (Te <= cidat['max_temp']))[0]
+  ea[:] = numpy.nan
+  ea[iea] = 0.0
 
 
-  if ((Te < cidat['min_temp']) |(Te > cidat['max_temp'])):
-    print " EA data is invalid at this temperature, Te=%e, Te_min = %e, Te_max=%e" %\
-         (Te, cidat['min_temp'],cidat['max_temp'])
-    ea = 0.0
-    return ea
+#  if ((Te < cidat['min_temp']) |(Te > cidat['max_temp'])):
+#    print " EA data is invalid at this temperature, Te=%e, Te_min = %e, Te_max=%e" %\
+#         (Te, cidat['min_temp'],cidat['max_temp'])
+#    ea = 0.0
+#    return ea
     
       
   T_eV = 1.e3*const.KBOLTZ*Te
-
   # 1985A&AS...60..425A (Arnaud & Rothenflug) 
   if (cidat['par_type'] == const.EA_ARNROTH_LITHIUM):
     # Note: c[1] = b/Zeff^2 in Arnaud & Rothenflug 
-    y = cidat['ionrec_par'][0]/T_eV
-    if (y < 50.0):# otherwise, rate is effectively zero 
-      yf1 = y*f1_fcn(y)
-      G = 2.22*f1_fcn(y) + 0.67*(1 - yf1) + 0.49*yf1 + 1.2*y*(1 - yf1)
-      ea = cidat['ionrec_par'][2] * cidat['ionrec_par'][1]  * \
-           1.92e-07 * numpy.exp(-y) * G/numpy.sqrt(T_eV)
-    return ea
+    y = cidat['ionrec_par'][0]/T_eV[iea]
+    i = numpy.where(y<50.0)[0]
+    if len(i)>0:# otherwise, rate is effectively zero 
+      yf1 = y[i]*f1_fcn(y[i])
+      G = 2.22*f1_fcn(y[i]) + 0.67*(1 - yf1) + 0.49*yf1 + 1.2*y[i]*(1 - yf1)
+      ea[i] = cidat['ionrec_par'][2] * cidat['ionrec_par'][1]  * \
+           1.92e-07 * numpy.exp(-y[i]) * G/numpy.sqrt(T_eV[iea[i]])
   
   # 1985A&AS...60..425A (Arnaud & Rothenflug) s
   elif (cidat['par_type'] == const.EA_ARNROTH):
     I_ea = cidat['ionrec_par'][0] # in eV 
     a = cidat['ionrec_par'][1]
     b = cidat['ionrec_par'][2]
-    y =  I_ea/T_eV
-    if (y < 50.0):
-      f1_val = f1_fcn(y)
-      ea = 6.69e7 * a * (I_ea/numpy.sqrt(T_eV)) * numpy.exp(-y) *\
-  (1.0 + b*f1_val - c[3]*y*f1_val -\
-   c[4]*0.5*(y - y*y + y*y*y*f1_val))
-    return ea
+    y =  I_ea/T_eV[iea]
+    i = numpy.where(y < 50.0)[0]
+    if len(y) > 0:
+      f1_val = f1_fcn(y[i])
+      ea[iea[i]] = 6.69e7 * a * (I_ea/numpy.sqrt(T_eV[iea[i]])) * numpy.exp(-y[i]) *\
+  (1.0 + b*f1_val - cidat['ionrec_par'][3]*y[i]*f1_val -\
+   cidat['ionrec_par'][4]*0.5*(y[i] - y[i]*y[i] + y[i]*y[i]*y[i]*f1_val))
+
 
 
   # 1998A&AS..133..403M (Mazzotta etal 1998) 
-  if (cidat['par_type'] == const.EA_MAZZOTTA_IRON):
-    y=cidat['ionrec_par'][0]/T_eV
-    if (y < 50.0):
-      f1_val = f1_fcn(y)
-      ea = (6.69e7/numpy.sqrt(T_eV))*numpy.exp(-y)*1.e-16*\
+  elif (cidat['par_type'] == const.EA_MAZZOTTA_IRON):
+    y=cidat['ionrec_par'][0]/T_eV[iea]
+    i = numpy.where(y < 50.0)[0]
+    if len(i)>0:
+      f1_val = f1_fcn(y[i])
+      ea[iea[i]] = (6.69e7/numpy.sqrt(T_eV[iea[i]]))*numpy.exp(-y[i])*1.e-16*\
            (cidat['ionrec_par'][1]+\
-            cidat['ionrec_par'][2]*(1-y*f1_val)+\
-            cidat['ionrec_par'][3]*(1-y*(1-y*f1_val))+\
-            cidat['ionrec_par'][4]*(1-0.5*(y - y*y + y*y*y*f1_val))+\
+            cidat['ionrec_par'][2]*(1-y[i]*f1_val)+\
+            cidat['ionrec_par'][3]*(1-y[i]*(1-y[i]*f1_val))+\
+            cidat['ionrec_par'][4]*(1-0.5*(y[i] - y[i]*y[i] + y[i]*y[i]*y[i]*f1_val))+\
             cidat['ionrec_par'][5]*f1_val)
 
-    return ea
+
 
   # Now handle 4 different interpolation cases. */
-  if (((cidat['par_type'] >= const.INTERP_IONREC_RATE_COEFF) & \
+  elif (((cidat['par_type'] >= const.INTERP_IONREC_RATE_COEFF) & \
        (cidat['par_type'] <= const.INTERP_IONREC_RATE_COEFF + const.MAX_IONREC))|\
       ((cidat['par_type'] >= const.INTERP_IONREC_RATE_OPEN) & \
        (cidat['par_type'] <= const.INTERP_IONREC_RATE_OPEN + const.MAX_IONREC))|\
@@ -2076,36 +2287,280 @@ def calc_ionrec_ea(cidat, Te):
        (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MIN + const.MAX_IONREC))|\
       ((cidat['par_type'] >= const.INTERP_IONREC_RATE_INC_MAX) & \
        (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MAX + const.MAX_IONREC))):
-    ea = interpolate_ionrec_rate(cidat, Te)
-    return ea;  
+    ea[iea] = interpolate_ionrec_rate(cidat, Te[iea])
+
 
 
   else:
     print "calc_ionrec_rate: EA type %i not recognized" %(cidat['par_type'])
-    return 0.0
+  # now extrappolate if required
+  
+  if extrap:
+    ilow = numpy.where(Te<cidat['min_temp'])[0]
+    ilow = numpy.where(Te<cidat['min_temp'])[0]
+    if len(ilow) > 0:
+      # calculate the value at Te_min
+      Te_min = numpy.array([cidat['min_temp']])
+      cimin = calc_ionrec_ea(cidat, Te_min)
+      # if log of this is < 46.0, this is a small number, just repeat this
+      if numpy.log(cimin[0])<46.0:
+        ea[ilow]=cimin
+      
+      # otherwise, calculate the value at a range of near-minimum temperatures,
+      # and use to construct a good second derivative.
+      else:
+        tetmp = numpy.logspace(numpy.log10(Te_min), numpy.log10(Te_min)+1,4)
+        citmp=calc_ionrec_ea(cidat, tetmp)
+      
+        tetmpl = numpy.log(tetmp)
+        citmpl = numpy.log(citmp)
+        
+        dci = (citmpl[1:]-citmpl[:-1])/(tetmpl[1:]-tetmpl[:-1])
+        ddci = (dci[1:]-dci[:-1])/(tetmpl[1:-1]-tetmpl[:-2])
+        dddci = (ddci[1:]-ddci[:-1])/(tetmpl[2:-1]-tetmpl[1:-2])
 
+        a=dddci[0]/6.0
+        b=-3.0*a*tetmpl[0]
+        c=dci[0]-(3*a*tetmpl[0]**2+2*b*tetmpl[0])
+        d = citmp[0]-(a*tetmpl[0]**3+b*tetmpl[0]**2+c*tetmpl[0])
+      
+        cinew= a * numpy.log(Te[ilow])**3 +\
+               b * numpy.log(Te[ilow])**2 +\
+               c * numpy.log(Te[ilow]) +\
+               d
+        ea[ilow]=cinew
+        
+#        Te_min = numpy.array([cidat['min_temp']])
+#        cimin = calc_ionrec_ci(cidat, Te_min)
+#        ci[ilow]=cimin[0]*(Te_min[0]/Te[ilow])**-4.5
+
+    
+    # calculate the value at "max_temp"
+    ihigh = numpy.where(Te>cidat['max_temp'])[0]
+    if len(ihigh) > 0:
+      Te_max = numpy.array([cidat['max_temp']])
+      cimax = calc_ionrec_ea(cidat, Te_max)
+      ea[ihigh]=cimax[0]*(Te_max[0]/Te[ihigh])**0.5
+  return ea
 
 
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
-def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', lvdatap1=False, ionpot = False):
+def get_ionrec_rate(Te_in, irdat_in, lvdat_in=False, Te_unit='K', \
+                     lvdatp1_in=False, ionpot=False, separate=False,
+                     Z=-1, z1=-1, settings=False, extrap=False):
+  """
+  Get the ionization and recombination rates at temperture(s) Te from 
+  ionization and recombination rate data file irdat.
+  
+  Parameters
+  ----------
+  Te_in : float or arr(float)
+    electron temperature in K (default), eV, or keV
+  irdat_in : HDUList
+    ionization and recombination rate data
+  lvdat_in : HDUList
+    level data for ion with lower charge (i.e. ionizing ion or recombined ion)
+  Te_unit : {'K' , 'keV' , 'eV'} 
+    temperature unit
+  lvdatp1_in : HDUList
+    level data for the ion with higher charge (i.e ionized or recombining ion)
+  ionpot : float
+    ionization potential of ion (eV).
+  separate : bool
+    if set, return DR, RR, EA and CI rates seperately. (DR = dielectronic recombination, RR = radiative recombination, EA = excitaiton autoionization, CI = collisional ionization)
+    Note that EA & CI are not stored separately in all cases, so 
+    may return zeros for EA as the data is incorporated into CI
+    rates.
+  Z : int
+    Element charge to get rates for (ignores "irdat_in")
+  z1  : int
+    Ion charge +1 to get rates for (ignores "irdat_in")
+    e.g. Z=6,z1=4 for C IV (C 3+)
+  settings : str
+    if supplied, will be used to read/store previously opened data
+    files. Will prevent unneccessarily reopening files in case
+    where Z, z1 is specified.
+  extrap : bool
+    Extrappolate rates to Te ranges which are off the provided 
+    scale
+  
+  Returns
+  -------
+  float, float:
+    (ionization rate coeff., recombination rate coeff.) in cm^3 s^-1
+    *unless* separate is set, in which case:
+  float, float, float, float:
+    (CI, EA, RR, DR rate coeffs) in cm^3 s^-1
+    Note that these assume low density & to get the real rates you need to
+    multiply by N_e N_ion. 
+  """
+#  Version 0.1 Initial Release
+#  Adam Foster 31st August 2015
+#
+  
+  # input checking
+  
+  # check if Te is iterable
+  Te = Te_in * 1.0
+
+  isiter=True
+  try:
+    _ = (e for e in Te)
+  except TypeError:
+    isiter=False
+    Te = numpy.array([Te])
+
+  # check units of Te
+  if Te_unit.lower()=='k':
+    pass
+  elif Te_unit.lower()=='ev':
+    Te /=KBOLTZ
+    Te *=1000.0
+  elif Te_unit.lower()=='kev':
+    Te /=KBOLTZ
+  else:
+    print "ERROR: units should be k, eV or keV"
+    return -1
+
+   # check IR data
+  # see the type of the IR data
+
+  if (z1>=0) &( Z>=0):
+    irdat = get_data(Z,z1, 'IR',settings=settings)
+  elif isinstance(irdat_in, basestring):
+    #string (assumed filename)
+    irdat = pyfits.open(irdat_in)
+  elif type(irdat_in)==pyfits.hdu.hdulist.HDUList:
+    # already opened IR file
+    irdat = irdat_in
+  else:
+    print "ERROR: unable to process irdat as supplied."
+    return -1
+
+  if (z1>=0) &( Z>=0):
+    lvdat = get_data(Z,z1, 'LV',settings=settings)
+  elif isinstance(lvdat_in, basestring):
+    #string (assumed filename)
+    lvdat = pyfits.open(lvdat_in)
+  elif type(lvdat_in)==pyfits.hdu.hdulist.HDUList:
+    # already opened IR file
+    lvdat = lvdat_in
+  else:
+    print "ERROR: unable to process lvdat as supplied."
+    return -1
+
+  if (z1>=0) &( Z>=0):
+    lvdatp1 = get_data(Z,z1+1, 'LV',settings=settings)
+  elif isinstance(lvdatp1_in, basestring):
+    #string (assumed filename)
+    lvdatp1 = pyfits.open(lvdatp1_in)
+  elif type(lvdatp1_in)==pyfits.hdu.hdulist.HDUList:
+    # already opened IR file
+    lvdatp1 = lvdatp1_in
+  else:
+    lvdatp1 = False
+
+  # -- OK, so now inputs should be *largely* settled -- *
+  
+  ciret = numpy.zeros(len(Te), dtype=float)
+  earet = numpy.zeros(len(Te), dtype=float)
+  rrret = numpy.zeros(len(Te), dtype=float)
+  drret = numpy.zeros(len(Te), dtype=float)
+  
+  ionpot = irdat[1].header['IONPOT']
+  # Start with the CI data
+  ici = numpy.where(irdat[1].data['TR_TYPE']=='CI')[0]
+
+  for i in ici:
+    tmp=get_maxwell_rate(Te, irdat, i, lvdat, Te_unit='K', \
+                         lvdatap1=lvdatp1, ionpot = False,\
+                         force_extrap=extrap)  
+    ciret += tmp
+
+  iea = numpy.where(irdat[1].data['TR_TYPE']=='EA')[0]
+  for i in iea:
+    tmp=get_maxwell_rate(Te, irdat, i, lvdat, Te_unit='K', \
+                         lvdatap1=lvdatp1, ionpot = False,\
+                         force_extrap=extrap)  
+    earet += tmp
+
+  irr = numpy.where(irdat[1].data['TR_TYPE']=='RR')[0]
+
+  for i in irr:
+    tmp=get_maxwell_rate(Te, irdat, i, lvdat, Te_unit='K', \
+                         lvdatap1=lvdatp1, ionpot = False,\
+                         force_extrap=extrap)  
+    rrret += tmp
+
+  idr = numpy.where(irdat[1].data['TR_TYPE']=='DR')[0]
+  for i in idr:
+
+    tmp=get_maxwell_rate(Te, irdat, i, lvdat, Te_unit='K', \
+                         lvdatap1=lvdatp1, ionpot = False,\
+                         force_extrap=extrap)  
+
+    drret += tmp
+
+  # convert back to scalars if required
+  if not isiter:
+    ciret = ciret[0]
+    earet = earet[0]
+    rrret = rrret[0]
+    drret = drret[0]
+
+  # return the requested data
+  if separate:
+    return ciret, earet, rrret, drret
+  else:  
+    return ciret+ earet, rrret+ drret
+
+
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
+                     lvdatap1=False, ionpot = False, \
+                     force_extrap=False, silent=True):
   """
   Get the maxwellian rate for a transition from a file, typically for ionization,
   recombination or excitation.
-  inputs:
-    Te: electron temperature(s), in K by default
-    colldata: the hdulist for the collision file (as returned by pyfits.open('file'))
-    index: the line in the data to do the calculation for. Indexed from 0.
-    lvdata: the hdulist for the energy level file (as returned by pyfits.open('file'))
-    Te_unit: can be K or eV, K by default. 
   
-  Returned values are in units of cm^3 s^-1  
-  """
+  Parameters
+  ----------
+  Te: float
+    electron temperature(s), in K by default
+  colldata: HDUList
+    The collisional data of interest
+  index: int
+    The line in the data to do the calculation for. Indexed from 0.
+  lvdata: HDUList
+    the hdulist for the energy level file (as returned by pyfits.open('file'))
+  lvdatap1 : HDUList
+    The level data for the recombining or ionized data.
+  Te_unit: {'K','eV','keV'}
+    Units of temperature grid.
 
-  Te_arr = numpy.array(Te)
+  Returns
+  -------
+  float or array(float)  
+    Maxwellian rate coefficient, in units of cm^3 s^-1  
+  """
+  isiter=True
+  try:
+    _ = (e for e in Te)
+  except TypeError:
+    isiter=False
+    Te_arr = numpy.array([Te])
+  else:
+    Te_arr = Te
+    
+#  Te_arr = numpy.array(Te)
   if Te_unit.lower()=='ev':
     Te_arr = Te_arr*11604.505
+  elif Te_unit.lower() != 'kev':
+    Te_arr = Te_arr*11604.505*1000.0
   elif Te_unit.lower() != 'k':
     print 'ERROR: Unknown Te_unit "%s": should be "K" or "keV"' % (Te_unit)
     return False
@@ -2178,10 +2633,11 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', lvdatap1=False, i
 
   elif dtype=='CI':
     cidat = colldata[1].data[index]
-    
+
     if ((cidat['par_type']>900) & \
         (cidat['par_type']<=920)):
 
+      
       
       upind = cidat['upper_lev']
       loind = cidat['lower_lev']
@@ -2202,60 +2658,100 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', lvdatap1=False, i
       
     
     else:
-      ci = calc_ionrec_ci(cidat,Te)
-      if (ci < 0.0):
-        print "calc_ionrec_rate: CI(%10s -> %10s,T=%9.3e) = %8g"%\
-                  (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']-1),\
-                   adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']-1),\
-                   Te,ci)
+      ci = calc_ionrec_ci(cidat,Te_arr, extrap=force_extrap)
+      if sum(numpy.isnan(ci))>0:
+        if not silent:
+          print "calc_ionrec_rate: CI(%10s -> %10s): Te out of range min->max=%e->%e:"%\
+                    (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
+                     atomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
+                     cidat['min_temp'], cidat['max_temp']),\
+                     Te_arr[numpy.isnan(ci)]
+      if sum(ci[numpy.isfinite(ci)] < 0)>0:
+        if not silent:
+          s= "calc_ionrec_rate: CI(%10s -> %10s): negative CI found: =%e->%e:"%\
+                    (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
+                     atomic.spectroscopic_name(cidat['element'],cidat['ion_final']))
+          for i in  numpy.where(ci[numpy.isfinite(ci)] < 0)[0]:
+            s += " %e:%e, " % (Te_arr[i],ci[i])
+          print s
+      
       
     return ci
 
   elif dtype=='EA':
     cidat = colldata[1].data[index]
-    ea = calc_ionrec_ea(cidat,Te)
-    if (ea < 0.0):
-      print "calc_ionrec_rate: EA(%10s -> %10s,T=%9.3e) = %8g"%\
-                (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']-1),\
-                 adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']-1),\
-                 Te,ea)
-      
+    ea = calc_ionrec_ea(cidat,Te, extrap=force_extrap)
+    if sum(numpy.isnan(ea))>0:
+      if not silent:
+        print "calc_ionrec_rate: EA(%10s -> %10s): Te out of range min->max=%e->%e:"%\
+                 (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
+                 atomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
+                 cidat['min_temp'], cidat['max_temp']),\
+                 Te_arr[numpy.isnan(ea)]
+    if sum(ea[numpy.isfinite(ea)] < 0)>0:
+      if not silent:
+        s= "calc_ionrec_rate: EA(%10s -> %10s): negative EA found: =%e->%e:"%\
+                (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
+                 atomic.spectroscopic_name(cidat['element'],cidat['ion_final']))
+        for i in  numpy.where(ea[numpy.isfinite(ea)] < 0)[0]:
+          s += " %e:%e, " % (Te_arr[i],ea[i])
+        print s
     return ea
-
   elif dtype=='DR':
     cidat = colldata[1].data[index]
-    dr = calc_ionrec_dr(cidat,Te)
-    if (dr < 0.0):
-      print "calc_ionrec_rate: DR(%10s -> %10s,T=%9.3e) = %8g"%\
-                (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']-1),\
-                 adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']-1),\
-                 Te,dr)
-      
+    dr = calc_ionrec_dr(cidat,Te, extrap=force_extrap)
+    if sum(numpy.isnan(dr))>0:
+      if not silent:
 
+        print "calc_ionrec_rate: DR(%10s -> %10s): Te out of range min->max=%e->%e:"%\
+                (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
+                 atomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
+                 cidat['min_temp'], cidat['max_temp']),\
+                 Te_arr[numpy.isnan(dr)]
+    if sum(dr[numpy.isfinite(dr)] < 0)>0:
+      if not silent:
+
+        s= "calc_ionrec_rate: DR(%10s -> %10s): negative DR found: =%e->%e:"%\
+                  (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
+                   atomic.spectroscopic_name(cidat['element'],cidat['ion_final']))
+        for i in  numpy.where(dr[numpy.isfinite(dr)] < 0)[0]:
+          s += " %e:%e, " % (Te_arr[i],dr[i])
+        print s
     return dr
 
 
   elif dtype=='RR':
     cidat = colldata[1].data[index]
-    rr = calc_ionrec_rr(cidat,Te)
-    if (rr < 0.0):
-      print "calc_ionrec_rate: rr(%10s -> %10s,T=%9.3e) = %8g"%\
-                (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']-1),\
-                 adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']-1),\
-                 Te,rr)
-      
+    rr = calc_ionrec_rr(cidat,Te, extrap=force_extrap)
+    if sum(numpy.isnan(rr))>0:
+      if not silent:
+        print "calc_ionrec_rate: RR(%10s -> %10s): Te out of range min->max=%e->%e:"%\
+                (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
+                 atomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
+                 cidat['min_temp'], cidat['max_temp']),\
+                 Te_arr[numpy.isnan(r)]
+    if sum(rr[numpy.isfinite(rr)] < 0)>0:
+      if not silent:
+        s= "calc_ionrec_rate: RR(%10s -> %10s): negative RR found: =%e->%e:"%\
+                  (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
+                   atomic.spectroscopic_name(cidat['element'],cidat['ion_final']))
+        for i in  numpy.where(rr[numpy.isfinite(rr)] < 0)[0]:
+          s += " %e:%e, " % (Te_arr[i],rr[i])
+        print s
     return rr
 
 
 
   elif dtype=='XR':
     cidat = colldata[1].data[index]
-    xr = calc_ionrec_rr(cidat,Te)
-    if (xr < 0.0):
-      print "calc_ionrec_rate: xr(%10s -> %10s,T=%9.3e) = %8g"%\
-                (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']-1),\
-                 adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']-1),\
-                 Te,xr)
+    xr = calc_ionrec_rr(cidat,Te, extrap=force_extrap)
+    if sum(numpy.isnan(xr))>0:
+      if not silent:
+
+        print "calc_ionrec_rate: xr(%10s -> %10s,T=%9.3e) = %8g"%\
+                  (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
+                   adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
+                   Te,xr)
       
     return xr
 
@@ -2302,11 +2798,11 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', lvdatap1=False, i
 #      xitmp = 2.1716e-8 * (13.6068/(Te_arr/11604.5))**0.5 * numpy.exp(delta_E/(Te_arr/11604.5)) /(numpy.pi*degl)
       
     else:
-      xi = calc_ionrec_ci(cidat,Te)
+      xi = calc_ionrec_ci(cidat,Te, extrap=force_extrap)
       if (xi < 0.0):
         print "calc_ionrec_rate: CI(%10s -> %10s,T=%9.3e) = %8g"%\
-                  (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']-1),\
-                   adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']-1),\
+                  (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
+                   adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
                    Te,xi)
         xi=0.0
       
@@ -2319,8 +2815,8 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', lvdatap1=False, i
 #    xi = calc_ionrec_ci(cidat,Te)
 #    if (xi < 0.0):
 #      print "calc_ionrec_rate: xi(%10s -> %10s,T=%9.3e, %i -> %i) = %8g"%\
-#                (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']-1),\
-#                 adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']-1),\
+#                (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
+#                 adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
 #                 Te,\
 #                 cidat['level_init'],\
 #                 cidat['level_final'],\
@@ -2336,25 +2832,42 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', lvdatap1=False, i
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 def sigma_hydrogenic(N,L, Z, Ein):
-  """ Ein in keV """
+  """
+Calculate the PI cross sections of type hydrogenic.
+
+INPUTS
+N: n shell
+L: l quantum number
+Z: nuclear charge
+Ein: energy grid for PI cross sections (in keV)
+
+RETURNS
+Photoionization cross section (in cm^2)
+
+Version 0.1 - initial release
+Adam Foster August 28th 2015
+   """
+  
   n = N
   l = L
-  Z = Z
+  z = Z
   coeff=1.09768e-19
   RYDBERG = 0.013605804
   E = numpy.array(Ein)
 
-  chi = Z*Z*RYDBERG/(n*n)
+  chi = Z*Z*1.0*RYDBERG/(n*n)
+  print chi, Z, n
+  zzz=raw_input()
   Eelec = (E - chi)/RYDBERG
   sigma = numpy.zeros(len(E), dtype=float)
 
-  for iE in range(len(E)):
-    if (Eelec[iE] <= 0): continue
+  iE = numpy.where(Eelec > 0)[0]
+  if len(iE > 0):
 
     eta = Z/numpy.sqrt(Eelec[iE])
     rho = eta / n
     lp1 = l+1.0
-
+    print eta
     # Exponential term 
     expterm = numpy.exp(-4*eta*numpy.arctan(1./rho)) / (1-numpy.exp(-2*numpy.pi*eta))
 
@@ -2391,8 +2904,6 @@ def sigma_hydrogenic(N,L, Z, Ein):
     else:
       Gterm_m1 = 0.
 
-
-  
     sigma_p1 = (coeff/E[iE])*((2)**(4*l+6.)/3.)*(lp1*lp1/(2*l+1.))*\
                (commfact1/commfact2)*(prodterm/(lp1*lp1+eta*eta))*\
                expterm*rhoterm*eta*eta*Gterm_p1*Gterm_p1
@@ -2457,53 +2968,228 @@ def B_hyd(s, l, m, eta):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
-def calc_rrc(levdat, plevdat, Te, ionpot, Z):
-  #Te in K
-  #ionpot in keV
-  RRC_COEFF = 1.31e8
-  ERG_KEV = 1.60219e-9
+def calc_rrc(Z, z1, eedges, Te, lev, xstardat=False, \
+             xstarlevfinal=1,  settings=False):
+  """
+  z1 is the recombined ion
+  """
+ 
+  ### WORKING HERE $$$$
   
-  lev_deg = levdat['lev_deg']
-  if levdat['PHOT_TYPE'] == 0:
-    parent_lev_deg = 1.0
-  else:
-    parent_lev_deg = plevdat['lev_deg']
+  # calculate the RRC on bins of energy eedges (in keV)
+  # Te (K)
+  # I_e ionization potential (keV)
+  # lev is the level in question
+  # xstardat is the xstardata, if required
   
-  g_ratio = lev_deg*1.0/parent_lev_deg
+  #OK, let's get the line data.
+  
+  rrc = numpy.zeros(len(eedges)-1)
+  
+  lvdat = get_data(Z,z1,'LV',settings=settings)
+  ldat = lvdat[1].data[lev-1]
+#rrc_ph_value(E, Z, z1, rrc_ph_factor, IonE, kT, levdat, \
+#                 xstardata=False, xstarfinallev=False):
+  #Find the I_e for each case, and the gratio (recombined/recombining)
+  I_e=0.0
+  if ldat['PHOT_TYPE']==const.HYDROGENIC:
+    I_e = const.RYDBERG*Z**2*1.0/(ldat['n_quan']**2)
+    gfin = 1.0 * ldat['lev_deg']
+    ginit = 1.0
+    if Z-z1>0:
+      plvdat = get_data(Z, z1+1, 'LV', settings==settings)
+      if plvdat:
+        ginit = 1.0* plvdat[1].data['lev_deg'][0]
+    gratio = gfin/ginit
+  elif ldat['PHOT_TYPE']==const.CLARK:
+    I_e = ldat['phot_par'][1]
+    gfin = 1.0 * ldat['lev_deg']
+    ginit = 1.0
+    if Z-z1>0:
+      plvdat = get_data(Z, z1+1, 'LV', settings==settings)
+      if plvdat:
+        ginit = 1.0* plvdat[1].data['lev_deg'][0]
 
-  const  = g_ratio * RRC_COEFF/ERG_KEV
+    gratio = gfin/ginit
+  elif ldat['PHOT_TYPE']==const.VERNER:
+    I_e = ldat['phot_par'][0]
+    gfin = 1.0 * ldat['lev_deg']
+    ginit = 1.0
+    if Z-z1>0:
+      plvdat = get_data(Z, z1+1, 'LV', settings==settings)
+      if plvdat:
+        ginit = 1.0* plvdat[1].data['lev_deg'][0]
+    gratio = gfin/ginit
 
-  rrc_ph_factor = const /(Te**1.5)
-  
-  
-  if levdat['PHOT_TYPE'] == 0:
-    sigparam  = {}
-    sigparam['Zel'] = Z
-    sigparam['nq'] = levdat['N_QUAN']
-    sigparam['lq'] = levdat['L_QUAN']
-    sigparam['phot_type'] = 0
-
+  elif ldat['PHOT_TYPE']==const.XSTAR:
+    # get the xstar data
+    if not xstardat:
+      xstardat = get_data(Z,z1,'PI', settings=settings)
+    if not isinstance(xstardat,dict):
+      print lvdat[1].data.names
+      xstardat = sort_pi_data(xstardat, int(ldat['PHOT_PAR'][0]),\
+                               xstarlevfinal)
+    gratio = xstardat['g_ratio']
+    I_e = (get_ionpot(Z, z1) - ldat['energy'])/1000.0
     
-#    sigma = sigma_hydrogenic(levdat['N_QUAN'],\
-#                             levdat['L_QUAN'],\
-#                             Z, energy)
-  args = rrc_ph_factor, ionpot,Te, sigparam
-  rr_lev_pop = integrate.quad(rrc_ph_value, ionpot+0.001, numpy.inf,\
-                              args=args)
   
-  return rr_lev_pop
+  
+  rrc_ph_factor = (const.RRC_COEFF/const.ERG_KEV)*gratio/(Te**1.5)
+  rrc_erg_factor = const.RRC_COEFF*gratio/(Te**1.5) 
+    
+  # TOTAL INTEGRAL
+#  rr_lev_pop,err = integrate.quad(rrc_ph_value, I_e+1.e-4, numpy.inf,\
+#                                    epsabs=const.TOT_ABSACC,\
+#                                    epsrel=const.TOT_RELACC, \
+#                            args=(Z, z1, rrc_ph_factor, I_e, Te, ldat,
+#                                  xstardat, xstarlevfinal), limit=100000)
 
-#-------------------------------------------------------------------------------
-#-------------------------------------------------------------------------------
-#-------------------------------------------------------------------------------
+  # VALUE AT EACH BIN EDGE
+  emission_edges = rrc_ph_value(eedges, Z, z1,  rrc_ph_factor, I_e, \
+                                Te, ldat, xstardat, xstarlevfinal)
 
-def rrc_ph_value (energy, rrc_ph_factor, ionpot, kT, sigparam):
-  result = rrc_ph_factor * sigma_photoion(energy, sigparam) * energy**2 * \
-           numpy.exp( -(energy-ionpot)/kT)
-  return result
+  edgebin = numpy.argmin(eedges>I_e)-1
+
+  if edgebin > -1:
+    # we have an edge to deal with
+    rrc[edgebin] = integrate.quad(rrc_ph_value, I_e+1.e-4, eedges[edgebin+1],\
+                                    epsabs=const.TOT_ABSACC,\
+                                    epsrel=const.TOT_RELACC, \
+                            args=(Z, z1, rrc_ph_factor, I_e, Te, ldat,
+                                  xstardat, xstarlevfinal), limit=100000)
+  rrc[edgebin+1:] = (emission_edges[edgebin+1:-1]+emission_edges[edgebin+2:])/2.0
+  
+
+  return rrc
 
 
 
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+def get_pi_param(Z, z1, z1_drv, T, ebins, abund, ion_pop, settings):
+  """ Code to get the photoionization rate parameters for a given ion """
+  return
+  
+
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+
+def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund, ion_pop, settings):
+  # Z: nuclear charge
+  # z1: recombined ion charge+1
+  # z1_drv: recombining ion charge+1
+  # T: temperautre (K)
+  # ebins: energies (keV)
+
+  
+  initlevels = get_data(Z,z1_drv,'LV', settings)
+  if (initlevels):
+    hasparent = True
+  else:
+    hasparent = False
+  finallevels = get_data(Z,z1,'LV', settings)
+  rrc = numpy.zeros(len(ebins)-1, dtype=float)
+  if not finallevels:
+    return rrc, 0.0
+  nlev= len(finallevels[1].data)
+  tot_rec_rate = 0.0
+  rrc = numpy.zeros(len(ebins)-1, dtype=float)
+  LevelRecombRate = numpy.zeros(nlev, dtype=float)
+  
+  for iLev in range(nlev):
+    
+    finlev = finallevels[1].data[iLev]
+    if finlev['phot_type']==const.NO_PHOT:
+      continue
+    elif finlev['phot_type']==const.HYDROGENIC:
+      if (Z-z1==0):
+        I_e = const.RYDBERG*Z**2*1.0/(finlev['n_quan']**2)
+        lev_deg = finlev['lev_deg']
+        parent_lev_deg = 1.0
+        sig_type = const.HYDROGENIC
+        sigma_coeff=numpy.zeros(2, dtype=float)
+        sigma_coeff[0] = finlev['n_quan']
+        sigma_coeff[1] = finlev['l_quan']
+
+      else:
+        continue
+    elif finlev['phot_type']==const.CLARK:
+      I_e = finlev['phot_par'][1]
+      lev_deg = finlev['lev_deg']
+      if ((hasparent) & (len(initlevels[1].data)>0)):
+        parent_lev_deg = initlevels[1].data['lev_deg'][0]*1.0
+      else:
+        parent_lev_deg=1.0
+      sig_type = const.CLARK
+      sigma_coeff = finlev['phot_par']
+
+    elif finlev['phot_type']==const.VERNER:
+      I_e = finlev['phot_par'][0]
+      lev_deg = finlev['lev_deg']
+      if ((hasparent) & (len(initlevels[1].data)>0)):
+        parent_lev_deg = initlevels[1].data['lev_deg'][0]*1.0
+      else:
+        parent_lev_deg=1.0
+      sig_type = const.VERNER
+      sigma_coeff = finlev['phot_par']
+
+    elif finlev['phot_type']==const.XSTAR:
+      I_e = (atomdb.get_ionpot(Z, z1, settings['filemap'], \
+                              atomdbroot=settings['atomdbroot']) -\
+             finlev['energy'])/1000.0
+      lev_deg = finlev['lev_deg']*1.0
+      if (hasparent):
+        parent_lev_deg = initlevels[1].data['lev_deg'][0]*1.0
+      else:
+        parent_lev_deg = 1.0
+
+      #### FIXING HERE
+      xstarlevinit = finlev['phot_par'][0]-1
+      pidat = get_data(Z,z1,'PI', settings)
+
+      # find the possible places to photoionize to:
+      finlev_possible = arflib.unique(\
+        pidat[1].data['lev_final'][pidat[1].data['lev_init']==xstarlevinit])
+
+      finlev_possible = numpy.array([0])
+
+      for xstarlevfinal in finlev_possible:
+        # get the numbers
+        sigma_coeff = sort_pi_data(pidat, xstarlevinit, xstarlevfinal)
+        if not sigma_coeff:
+          continue
+        g_ratio = sigma_coeff['g_ratio']
+        rr_lev_rate,tmprrc = calc_rrc(Z, z1, abund, ion_pop, I_e, g_ratio,\
+           const.XSTAR, sigma_coeff, T, settings['min_epsilon'],\
+           ebins, settings)
+        LevelRecombRate[iLev] = rr_lev_rate
+        tot_rec_rate += rr_lev_rate
+        rrc += tmprrc
+    else:
+      print "Uh..."
+      continue
+    rr_lev_rate = 0.0
+    g_ratio = lev_deg/parent_lev_deg
+
+    if ((finlev['phot_type'] != const.NO_PHOT) &\
+        (finlev['phot_type'] != const.XSTAR)):
+      rr_lev_rate,tmprrc = calc_rrc(Z, z1, abund, ion_pop, I_e, g_ratio,\
+         sig_type, sigma_coeff, T, settings['min_epsilon'],\
+         ebins, settings)
+      LevelRecombRate[iLev] += rr_lev_rate
+      tot_rec_rate += rr_lev_rate
+      rrc += tmprrc
+#      for i in xrange(len(tmprrc)):
+        #print "%e %e %e" %(ebins[i], ebins[i+1], tmprrc[i])
+      #print "phot_type= %i"%(finlev['phot_type'])
+      #print finlev
+  return rrc, LevelRecombRate*abund
 
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -2544,7 +3230,7 @@ def read_filemap(filemap=False, atomdbroot=False):
   
   f = open(fmapfile,'r')
 
-  z0=[]
+  Z=[]
   z1=[]
   eclist=[]
   lvlist=[]
@@ -2564,17 +3250,17 @@ def read_filemap(filemap=False, atomdbroot=False):
     splt = i.split()
 #    print splt
     fname = re.sub('\$ATOMDB',atomdbroot,splt[3])
-    z0_tmp = int(splt[1])
+    Z_tmp = int(splt[1])
     z1_tmp = int(splt[2])
 
-    if z0_tmp < 1:
+    if Z_tmp < 1:
       misc.append(fname)
       misc_type.append(int(splt[0]))
     else:
-      j = numpy.where((numpy.array(z0)==z0_tmp) & \
+      j = numpy.where((numpy.array(Z)==Z_tmp) & \
                       (numpy.array(z1)==z1_tmp))[0]
       if len(j)==0:
-        z0.append(z0_tmp)
+        Z.append(Z_tmp)
         z1.append(z1_tmp)
         eclist.append('')
         lvlist.append('')
@@ -2586,7 +3272,7 @@ def read_filemap(filemap=False, atomdbroot=False):
         pilist.append('')
         ailist.append('')
         cilist.append('')
-        j = numpy.where((numpy.array(z0)==z0_tmp) & \
+        j = numpy.where((numpy.array(Z)==Z_tmp) & \
                         (numpy.array(z1)==z1_tmp))[0]
 
       if int(splt[0]) == 1:
@@ -2612,7 +3298,7 @@ def read_filemap(filemap=False, atomdbroot=False):
 
 
   ret={}
-  ret['z0'] = numpy.array(z0)
+  ret['Z'] = numpy.array(Z)
   ret['z1'] = numpy.array(z1)
   ret['ec'] = numpy.array(eclist, dtype='|S160')
   ret['lv'] = numpy.array(lvlist, dtype='|S160')
@@ -2635,10 +3321,10 @@ def read_filemap(filemap=False, atomdbroot=False):
 #--#-------------------------------------------------------------------------------
 #--#-------------------------------------------------------------------------------
 #--
-#--def get_filemap_file(ftype, z0, z1, filemapfile=False, atomdbroot=False,\
+#--def get_filemap_file(ftype, Z, z1, filemapfile=False, atomdbroot=False,\
 #--                     quiet=False, misc=False):
 #--  """
-#--  Gets the filename for the file of type ftype for the ion z0,z1 from the 
+#--  Gets the filename for the file of type ftype for the ion Z,z1 from the 
 #--  given filemap.
 #--  
 #--  INPUTS
@@ -2651,7 +3337,7 @@ def read_filemap(filemap=False, atomdbroot=False):
 #--                'DR' - dielectronic recombination satellite line data
 #--                'PI' - XSTAR photoionization data
 #--                'AI' - autoionization data
-#--  z0: int : nuclear charge
+#--  Z: int : nuclear charge
 #--  z1: int : ion charge +1 e.g. 5 for C+4, a.k.a. C V
 #--  
 #--  KWARGS
@@ -2687,17 +3373,17 @@ def read_filemap(filemap=False, atomdbroot=False):
 #--      else:
 #--        ret = fmap['misc'][i[0]]
 #--  else:
-#--    i = numpy.where((fmap['z0']==z0)&(fmap['z1']==z1))[0]
+#--    i = numpy.where((fmap['Z']==Z)&(fmap['z1']==z1))[0]
 #--    ret=''
 #--    if len(i)==0:
 #--      if not quiet :
 #--        print "WARNING: there is no data for the ion "+\
-#--               atomic.spectroscopic_name(z0,z1-1)
+#--               atomic.spectroscopic_name(Z,z1)
 #--      ret=''
 #--           
 #--    if len(i)>1:
 #--      print "ERROR: there are multiple entries for the ion "+\
-#--             atomic.spectroscopic_name(z0,z1-1)
+#--             atomic.spectroscopic_name(Z,z1)
 #--      ret=''
 #--    
 #--    if len(i)==1:
@@ -2714,61 +3400,74 @@ def read_filemap(filemap=False, atomdbroot=False):
 #--        if len(ret)==0:
 #--          if not quiet :
 #--            print "WARNING: no data of type "+ftype+" exists for ion "+\
-#--                atomic.spectroscopic_name(z0,z1-1)
+#--                atomic.spectroscopic_name(Z,z1)
 #--
 #--  return ret
 #--
 #--#-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
-def get_data(Z, rmJ, ftype, settings=False, indexzero=False, offline=False):
+def get_data(Z, z1, ftype, settings=False, indexzero=False, offline=False):
   """
   Read AtomDB data of type ftype for ion rmJ of element Z.
+  
   If settings are set, the filemap can be overwritten (see below), otherwise
   $ATOMDB/filemap will be used to locate the file.
   If indexzero is set, all levels will have 1 subtracted from them (AtomDB
   indexes lines from 1, but python and C index arrays from 0, so this can be
   useful)
 
-  INPUTS
-  Z     : int    :element nuclear charge
-  rmJ   : int    : ion charge +1 (e.g. 5 for C+4, a.k.a. C V)
-  ftype : string :type of data to read. Currently available:
-                  'IR' - ionization and recombination
-                  'LV' - energy levels
-                  'LA' - radiative transition data (lambda and A-values)
-                  'EC' - electron collision data
-                  'PC' - proton collision data
-                  'DR' - dielectronic recombination satellite line data
-                  'PI' - XSTAR photoionization data
-                  'AI' - autoionization data
-                
-  KWARGS:
-  settings:
-    This is complicated one.
-    Inputs: If set, settings should be a dictionary, even if blank
-            (e.g. settings={})
-    It serves multiple purposes: 
-    Settings['data'] will store a copy of the data
-    you read in. This means that if your code ends up calling for the same
-    file multiple times, rather than re-reading from the disk, it will just
-    point to this data already in memory. To clear the read files, just reset
-    the data dictionary (e.g. settings['data'] ={})
+  Parameters
+  ----------
   
-    settings['datasums'] stores the datasum when read in. Can be used later for
-    comparisons etc.
+  Z : int
+    Element nuclear charge
+  rmJ : int
+    Ion charge +1 (e.g. 5 for C^{4+}, a.k.a. C V)
+  ftype : string
+    type of data to read. Currently available
+       *           'IR' - ionization and recombination
+       *           'LV' - energy levels
+       *           'LA' - radiative transition data (lambda and A-values)
+       *           'EC' - electron collision data
+       *           'PC' - proton collision data
+       *           'DR' - dielectronic recombination satellite line data
+       *           'PI' - XSTAR photoionization data
+       *           'AI' - autoionization data
+  settings: dict
+    This is complicated one. If set, settings should be a dictionary, 
+    even if blank (e.g. settings={})
+    It serves multiple purposes:
+     
+    * Settings['data'] will store a copy of the data
+      you read in. This means that if your code ends up calling for the same
+      file multiple times, rather than re-reading from the disk, it will just
+      point to this data already in memory. To clear the read files, just reset
+      the data dictionary (e.g. settings['data'] ={})
+  
+    * settings['datasums'] stores the datasum when read in. Can be used later 
+      to check files are the same.
   
     Both data and datasums store the data in identical trees, e.g.:
     settings['data'][Z][rmJ][ftype] will have the data.
-  indexzero: if True, subtract 1 from all level indexes as python indexes from 0
-  offline: if True, do not search online to download data files.
+    
+  indexzero: bool
+    If True, subtract 1 from all level indexes as python indexes from 0, 
+    while AtomDB indexes from 1.
+    
+  offline: bool
+    If True, do not search online to download data files - just return
+    as if data does not exist
   
-  RETURNS:
+  Returns
+  -------
+  HDUlist  
     the opened pyfits hdulist if succesful. False if file doesn't exist
-  
-  Version 0.1 - initial release
-  Adam Foster August 15th 2015
   """
+#  
+#  
+#  Version 0.1 - initial release
+#  Adam Foster August 15th 2015
   d = False
   didurl=False
   if settings:
@@ -2776,24 +3475,24 @@ def get_data(Z, rmJ, ftype, settings=False, indexzero=False, offline=False):
       settings['data']={}
     if not Z in settings['data'].keys():
       settings['data'][Z]={}
-    if not rmJ in settings['data'][Z].keys():
-      settings['data'][Z][rmJ]={}
+    if not z1 in settings['data'][Z].keys():
+      settings['data'][Z][z1]={}
 
     if not 'datasums' in settings.keys():
       settings['datasums']={}
     if not Z in settings['datasums'].keys():
       settings['datasums'][Z]={}
-    if not rmJ in settings['datasums'][Z].keys():
-      settings['datasums'][Z][rmJ]={}
+    if not z1 in settings['datasums'][Z].keys():
+      settings['datasums'][Z][z1]={}
 
-    if ftype.upper() in settings['data'][Z][rmJ].keys():
+    if ftype.upper() in settings['data'][Z][z1].keys():
       pass
     else:
-      fname = atomdb.get_filemap_file(settings['filemap'], ftype, Z, rmJ, \
+      fname = atomdb.get_filemap_file(settings['filemap'], ftype, Z, z1, \
                              atomdbroot=settings['atomdbroot'], quiet=True)
       if fname=='':
-        settings['data'][Z][rmJ][ftype.upper()] = False
-#      ret =  settings['data'][Z][rmJ][ftype.upper()]
+        settings['data'][Z][z1][ftype.upper()] = False
+#      ret =  settings['data'][Z][z1][ftype.upper()]
       else:
         # Try and open the files in the following order:
         # (1) filename
@@ -2820,7 +3519,7 @@ def get_data(Z, rmJ, ftype, settings=False, indexzero=False, offline=False):
                 d=False
 
   else:
-    fname = get_filemap_file(ftype, Z, rmJ, \
+    fname = get_filemap_file(ftype, Z, z1, \
                              quiet=True)
 
     if fname=='':
@@ -2895,10 +3594,10 @@ def get_data(Z, rmJ, ftype, settings=False, indexzero=False, offline=False):
         d[1].columns.change_name('COEFF_OM','EFFCOLLSTRPAR')
         d[1].columns[d[1].data.names.index('COEFF_OM')].name='EFFCOLLSTRPAR'
     if settings:
-      settings['data'][Z][rmJ][ftype.upper()] = d
-      settings['datasums'][Z][rmJ][ftype.upper()] = d[1].header['DATASUM']
+      settings['data'][Z][z1][ftype.upper()] = d
+      settings['datasums'][Z][z1][ftype.upper()] = d[1].header['DATASUM']
    
-      return settings['data'][Z][rmJ][ftype.upper()]
+      return settings['data'][Z][z1][ftype.upper()]
     else:
       return d
   else:
@@ -2911,31 +3610,35 @@ def get_data(Z, rmJ, ftype, settings=False, indexzero=False, offline=False):
 def sort_pi_data(pidat, lev_init, lev_final):
   """
   Given the pidat (returned by opening the PI data file, i.e.
-  pyfits.open('XX_YY_PI.fits')
-  
-  And the initial and final levels, return the PI cross section data.
+  pyfits.open('XX_YY_PI.fits'), and the initial and final levels, return
+  the PI cross section data.
 
-  INPUTS 
-  pidat hdulist The photoionization data for the ion
-  lev_init: int: the initial level
-  lev_final: int: the final level
+  Parameters
+  ----------
+  pidat : hdulist
+    The photoionization data for the ion
+  lev_init: int
+    The initial level
+  lev_final: int :
+    The final level
   
-  
-  RETURNS:
-  pi dict, which contains the following information:
-  pi['ion_init'] - the initial ion charge +1
-  pi['lev_init'] - the initial level
-  pi['ion_final'] - the final ion charge+1 (should be ion_init+1)
-  pi['lev_final'] - the final level
-  pi['pi_type'] - the type. (best to ignore)
-  pi['g_ratio'] - the ratio of the statistical weight of the intitial and final
-                  levels
-  pi['energy'] - the array of energies (keV)
-  pi['pi_param'] - the array of pi cross sections in Mbarn.
-  
-  Version 0.1 - initial release
-  Adam Foster August 15th 2015
-  """
+  Returns
+  --------
+  dict:
+    which contains the following information:
+    pi['ion_init'] - the initial ion charge +1
+    pi['lev_init'] - the initial level
+    pi['ion_final'] - the final ion charge+1 (should be ion_init+1)
+    pi['lev_final'] - the final level
+    pi['pi_type'] - the type. (best to ignore)
+    pi['g_ratio'] - the ratio of the statistical weight of the intitial and final levels
+    pi['energy'] - the array of energies (keV)
+    pi['pi_param'] - the array of pi cross sections in Mbarn.
+"""
+#
+#  Version 0.1 - initial release
+#  Adam Foster August 15th 2015
+#
   
   i = numpy.where((pidat[1].data['lev_init'] ==lev_init) &\
                   (pidat[1].data['lev_final'] ==lev_final))[0]
@@ -2971,69 +3674,102 @@ def sort_pi_data(pidat, lev_init, lev_final):
   
 
   return pi
-
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
 
-def vsigma_photoion(E, sig_coeffts):
-  myfunc = numpy.vectorize(sigma_photoion)
-  ret = myfunc(E, sig_coeffts)
-  return ret
+def rrc_ph_value(E, Z, z1, rrc_ph_factor, IonE, kT, levdat, \
+                 xstardata=False, xstarfinallev=False):
+  isiter=True
+  try:
+    _ = (e for e in E)
+  except TypeError:
+    isiter=False
+    E = numpy.array([E])
+
+  igood = numpy.where((-(E - IonE)/kT)>const.MIN_RRC_EXPONENT)[0]
+
+  result = numpy.zeros(len(E))
+  result[igood] = rrc_ph_factor*sigma_photoion(E[igood], 
+                                               Z,\
+                                               z1,\
+                                               levdat['PHOT_TYPE'],\
+                                               levdat['PHOT_PAR'],\
+                                               xstardata=xstardata,\
+                                               xstarfinallev=xstarfinallev)*\
+                  E[igood]**2*numpy.exp(-(E[igood] - IonE)/kT)
+  if not isiter:
+    result=result[0]
+  return result
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
 
 
-def sigma_photoion(E, pi_type, pi_coeffts, xstardata=False, xstarfinallev=1):
+def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev=1):
   """
-   Returns the photoionization cross section at E, given an input of 
-   sig_coeffts.
+  Returns the photoionization cross section at E, given an input of sig_coeffts.
    
-   inputs:
-   E: Energy (keV)
-   pi_type   : the "PI_TYPE" from the energy level file for this level
-   pi_coeffts: the "PI_PARAM" array from this file.
-      OPTIONAL
-      if the data is XSTAR data, supply the xstardata. This can be either
-      the specific array from the file, the file name, or the entire PI file
-      (already loaded)
-   e.g. 
-     # load level data
-     lvdata = atomdb.get_data(26, 24, 'LV', settings)
+  Parameters
+  ----------
+  E: float or array of floats
+    Energy/ies to find PI cross section at (keV)
+  Z: int
+    Atomic number of element (i.e. 8 for Oxygen)
+  pi_type : int
+    the "PI_TYPE" from the energy level file for this level, can be:
+   
+     -1. No PI data
+     0.  Hydrogenic
+     1.  Clark
+     2.  Verner
+     3.  XSTAR
      
-     # load XSTAR PI data if it exists
-     pidata = atomdb.get_data(26, 24, 'PI', settings)
-     
-     # get pi xsection at energy E for the ground state to ground state
-     sigma_photoion(E,
-                    lvdata[1].data['pi_type'][0],\
-                    lvdata[1].data['pi_param'][0],\
-                    xstardata=pidata,\
-                    xstarfinallev=3)
-
-   KWARGS:
-     xstardata : the PI data file for the ion from XSTAR data. Not all ions
-                 have xstar data so this is not always possible. Can provide
-                 either filename or opened file (i.e. hdulist)
-     xstarfinallev: the level to ionize in to. Defaults to 1.
+  pi_coeffts : array(float)
+    the "PI_PARAM" array for this level from the LV file
+  xstardata : dict, str or HDUList
+    if the data is XSTAR data (pi_type=3), supply the xstardata. This can be 
+    a dictionary with 2 arrays, one "Energy", one "sigma", the file name, or
+    the entire PI file (already loaded)::
+    
+      # load level data
+      lvdata = atomdb.get_data(26, 24, 'LV', settings)
+    
+      # load XSTAR PI data if it exists
+      pidata = atomdb.get_data(26, 24, 'PI', settings)
+    
+      # get pi xsection at energy E for the ground state to ground state
+      sigma_photoion(E,
+                     lvdata[1].data['pi_type'][0],
+                     lvdata[1].data['pi_param'][0],
+                     xstardata=pidata,
+                     xstarfinallev=1)
+  xstarfinallev: the level to ionize in to. Defaults to 1.
                     
-   RETURNS:
-     pi cross section in cm^2 at energy E. Does not accept vector inputs 
-     currently
+  Returns
+  -------
+  array(float)
+    pi cross section in cm^2 at energy E. 
      
-   
-   Values of the PI_TYPE:
-   -1 : no data
-    0 : Hydrogenic
-    1 : Clark
-    2 : Verner
-    3 : XSTAR
+  """ 
+#   
+#  Version 0.1 - initial release
+#  Adam Foster August 15th 2015
+#
+#  Version 0.2 - 
+#  now accepts vector energy input.
+#  Will attempt to download the PI cross section files if not supplied.
+#  Adam Foster August 28th 2015
 
-  Version 0.1 - initial release
-  Adam Foster August 15th 2015
-  """
-
+  # determine whether input is scalar or vector
+  isvec = False
+  try:
+    _ = (e for e in E)
+  except TypeError:
+    isvec = False
+  Evec = numpy.array(E)
+  result = numpy.zeros(len(Evec), dtype=float)
+  
   # set up the sigma coefficients
   if pi_type==const.NO_PHOT:
     pass
@@ -3058,6 +3794,7 @@ def sigma_photoion(E, pi_type, pi_coeffts, xstardata=False, xstarfinallev=1):
     
     
   elif pi_type==const.HYDROGENIC:
+    print pi_coeffts
     nq = int(round(pi_coeffts[0]))
     lq = int(round(pi_coeffts[1]))
     Zel = Z
@@ -3094,19 +3831,24 @@ def sigma_photoion(E, pi_type, pi_coeffts, xstardata=False, xstarfinallev=1):
     # now look into type of xstardata
     
     if not xstardata:
-      return
+      # get the data
+      pidat = get_data(Z, z1, 'PI')
+      if not pidat:
+        print "ERROR: cannot find photoionization data requested"
+        return False
     # just filename
-    if isinstance(xstardata, basestring):
-      #yay.
-      pidat = pyfits.open(xstardata)
-      initlevel = int(pi_coeffts[0])
-    elif isinstance(xstardata, pyfits.hdu.hdulist.HDUList):
-      initlevel = int(pi_coeffts[0])
-      pidat=xstardata
+
+    if isinstance(xstardata,dict):
+      sig_coeffts = xstardata
+
     else:
-      pass
-    sigma_coeff = sort_pi_data(pidat, initlevel, xstarfinallev)
-    sig_coeffts = sigma_coeff
+      if isinstance(xstardata, basestring):
+      #yay.
+        pidat = pyfits.open(xstardata)
+        initlevel = int(pi_coeffts[0])
+
+      sigma_coeff = sort_pi_data(pidat, initlevel, xstarfinallev)
+      sig_coeffts = sigma_coeff
 
 
   # now calculate the sigma.
@@ -3115,31 +3857,30 @@ def sigma_photoion(E, pi_type, pi_coeffts, xstardata=False, xstarfinallev=1):
     result = 0.0
 
   elif pi_type == const.VERNER:
-    if (E > sig_coeffts['E_th']):
-      y = E/sig_coeffts['E_0']
+    iE = numpy.where(E > sig_coeffts['E_th'])[0]
+    if len(iE) > 0:
+      y = E[iE]/sig_coeffts['E_0']
       F_y = ((y-1)**2. + sig_coeffts['yw']**2.) * y**(-sig_coeffts['Q']) *\
             (1.+numpy.sqrt(y/sig_coeffts['ya']))**(-sig_coeffts['P'])
-      result = sig_coeffts['sigma0'] * F_y * 1e-18 # conversion to cm2 
-    else:
-      result = 0.0
+      result[iE] = sig_coeffts['sigma0'] * F_y * 1e-18 # conversion to cm2 
 
   elif pi_type == const.HYDROGENIC:
-    if (sig_coeffts['nq']<6):
+    if (sig_coeffts['nq']<6) & (sig_coeffts['nq']!=0):
       result = sigma_hydrogenic(sig_coeffts['Zel'],\
                                 sig_coeffts['nq'],\
                                 sig_coeffts['lq'],\
                                 E)
-    else:
-      result = 0.0
+
 
   elif pi_type == const.CLARK:
-    if (E > sig_coeffts['I_e']):
-      x = E/sig_coeffts['I_e']
+    iE = numpy.where(E > sig_coeffts['I_e'])[0]
+    if len(iE) > 0:
+      x = E[iE]/sig_coeffts['I_e']
       term1 = 1/((sig_coeffts['Zel'] + sig_coeffts['b1'] + \
                   sig_coeffts['d1']/sig_coeffts['Zel']) * \
                   (sig_coeffts['Zel'] + sig_coeffts['b1'] +\
                    sig_coeffts['d1']/sig_coeffts['Zel']))
-      #print sig_coeffts
+
       sum1=0.0
       for ii in numpy.arange(sig_coeffts['n1'], dtype=int):
           sum1 += sig_coeffts['c'][ii]* \
@@ -3154,28 +3895,34 @@ def sigma_photoion(E, pi_type, pi_coeffts, xstardata=False, xstarfinallev=1):
           sum2 += sig_coeffts['c'][ii]* \
                   x**(sig_coeffts['ip']+ii)
 
-      result = term1*sum1 + term2*sum2
-    else:
-      result = 0.0  
+      result[iE] = term1*sum1 + term2*sum2
+
   elif pi_type == const.XSTAR:
-    if (E > sig_coeffts['energy'][0]):
-      tmp2=numpy.interp(numpy.log(E), \
-                        numpy.log(sig_coeffts['energy']),\
-                        numpy.log(sig_coeffts['pi_param']),\
-                        left=numpy.nan,right=numpy.inf)
-      if numpy.isnan(tmp2):
-        result = 0.0
-      elif numpy.isinf(tmp2):
-        result = sig_coeffts['pi_param'][-1]* ((E/sig_coeffts['energy'][-1])**-3.0)*1e-18
-      else:
-        result = 1e-18  * numpy.exp(tmp2) # convert to cm2
-    else:
-      result = 0.0
+
+    tmp2=numpy.interp(numpy.log(E), \
+                      numpy.log(sig_coeffts['energy']),\
+                      numpy.log(sig_coeffts['pi_param']),\
+                      left=numpy.nan,right=numpy.inf)
+
+    # deal with the edge cases: zero below ionization potential,
+    # extrappolate as E^-3 at high energy
+    print E.shape
+    print tmp2.shape
+    zzz=raw_input('yikes')
+    inan = numpy.isnan(tmp2)
+    iinf = numpy.isinf(tmp2)
+    ifin = numpy.isfinite(tmp2)
+    print inan, pi_type
+    result[inan][:] = 0.0
+    result[iinf] = sig_coeffts['pi_param'][-1]* \
+                              ((E[iinf]/\
+                                sig_coeffts['energy'][-1])**-3.0)*1e-18
+    result[ifin] = 1e-18  * numpy.exp(tmp2[ifin])
 
   else:
     print "Error"
 
-  return result                              
+  return result
 
 
 
@@ -3184,28 +3931,27 @@ def sigma_photoion(E, pi_type, pi_coeffts, xstardata=False, xstarfinallev=1):
 #-------------------------------------------------------------------------------
 
 
-def calc_ionrec_ea(Z, Te, Ne, \
-          par_type, ionrec_par, min_temp, max_temp, temperatures):
-  # Te is in K          
+#def calc_ionrec_ea(Z, Te, Ne, \
+          #par_type, ionrec_par, min_temp, max_temp, temperatures):
+  ## Te is in K          
             
-  import calc_maxwell_rates_constants as const
   
-  T_eV= Te*const.KBOLTZ*1e3
-  ret = numpy.zeros(len(T_eV), dtype=float)
-  if (par_type == const.EA_MAZZOTTA_IRON):
-    for i in range(len(T_eV)):
-      y=ionrec_par[0]/T_eV[i]
-      if (y < 50.0):
-         f1_val = f1_fcn(y)
-         ea = (6.69e7/numpy.sqrt(T_eV[i]))*numpy.exp(-y)*1.e-16*\
-             (ionrec_par[1]+\
-              ionrec_par[2]*(1-y*f1_val)+\
-              ionrec_par[3]*(1-y*(1-y*f1_val))+\
-              ionrec_par[4]*(1-0.5*(y - y*y + y*y*y*f1_val))+\
-              ionrec_par[5]*f1_val)
-         ret[i] = ea
+  #T_eV= Te*const.KBOLTZ*1e3
+  #ret = numpy.zeros(len(T_eV), dtype=float)
+  #if (par_type == const.EA_MAZZOTTA_IRON):
+    #for i in range(len(T_eV)):
+      #y=ionrec_par[0]/T_eV[i]
+      #if (y < 50.0):
+         #f1_val = f1_fcn(y)
+         #ea = (6.69e7/numpy.sqrt(T_eV[i]))*numpy.exp(-y)*1.e-16*\
+             #(ionrec_par[1]+\
+              #ionrec_par[2]*(1-y*f1_val)+\
+              #ionrec_par[3]*(1-y*(1-y*f1_val))+\
+              #ionrec_par[4]*(1-0.5*(y - y*y + y*y*y*f1_val))+\
+              #ionrec_par[5]*f1_val)
+         #ret[i] = ea
     
-    return ret
+    #return ret
   
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
