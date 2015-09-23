@@ -1,4 +1,3 @@
 numpydoc
 astropy
-pyatomdb
 
