@@ -14,6 +14,7 @@ Contents:
    apec
    atomic
    atomdb
+   const
    spectrum
    util
    
@@ -34,7 +35,7 @@ laptop which were useful. Some produce lots of unhelpful onscreen output.
 
 There are several different modules currently. These are:
 
--  :doc:`atomdb </atomdb>`  : a series of codes for interacting with the AtomDB atomic database
+- :doc:`atomdb </atomdb>`  : a series of codes for interacting with the AtomDB atomic database
 - :doc:`atomic </atomic>`  : basic atomic data routines - e.g. converting element symbols to atomic number, etc.
 - :doc:`const </const>`   : a series of physical constants
 - :doc:`spectrum </spectrum>` : routines for generating spectra from the published AtomDB line and continuum emissivity files
