@@ -15,6 +15,7 @@
 import sys
 import os
 import shlex
+import pyatomdb
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -37,6 +38,7 @@ extensions = [
 ]
 
 print "sys.path = ", sys.path
+print "pyatomdb.__file__ = ", pyatomdb.__file__
 
 sys.path.append('/home/workspace/myproj/myproj')
 
