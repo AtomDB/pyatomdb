@@ -1,2 +1,4 @@
 numpydoc
+astropy
 pyatomdb
+
