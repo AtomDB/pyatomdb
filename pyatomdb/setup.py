@@ -4,9 +4,6 @@ readme = open('README.txt', 'r')
 README_TEXT = readme.read()
 readme.close()
 
-readme = open('docs/pyatomdb_manual.rst','r')
-DOC =  readme.read()
-readme.close()
 
 setup(name='pyatomdb',
       version='0.0.1.0',
@@ -27,4 +24,4 @@ setup(name='pyatomdb',
                    'Programming Language :: Python',\
                    'Operating System :: POSIX'],
       zip_safe=False,
-      long_description = README_TEXT+DOC)
+      long_description = README_TEXT)
