@@ -97,15 +97,20 @@ def z0toelsymb(z0):
   Returns element symbol of element with nuclear charge z0.
   (wrapper to Ztoelsymb for compatibility purposes)
   
-  INPUTS
-  z0  - nuclear charge of element (e.g. 6 for carbon)
+  Parameters
+  ----------
+  z0 : int
+    nuclear charge of element (e.g. 6 for carbon)
   
-  RETURNS
-  element symbol (e.g. "C" for carbon)
-  
-  Version 0.1 28 July 2009
-  Adam Foster
+  Returns
+  -------
+  str
+    element symbol (e.g. "C" for carbon)
   """
+#  
+#  Version 0.1 28 July 2009
+#  Adam Foster
+#
   ret = Ztoelsymb(z0)
 
   return ret
@@ -136,15 +141,22 @@ def z0toelname(z0):
   Returns element name of element with nuclear charge z0.
   (wrapper to Ztoelname for compatibility purposes)
   
-  INPUTS
-  z0  - nuclear charge of element (e.g. 6 for carbon)
+  Parameters
+  ----------
   
-  RETURNS
-  element name (e.g. "Carbon" for carbon)
+  z0 :  int
+    nuclear charge of element (e.g. 6 for carbon)
   
-  Version 0.1 28 July 2009
-  Adam Foster
+  Returns
+  -------
+  str
+    element name (e.g. "Carbon" for carbon)
   """
+#
+#  Version 0.1 28 July 2009
+#  Adam Foster
+#
+
   ret = Ztoelname(Z)
   return ret
 
@@ -152,15 +164,22 @@ def Ztoelname(Z):
   """
   Returns element name of element with nuclear charge Z.
   
-  INPUTS
-  Z  - nuclear charge of element (e.g. 6 for carbon)
+  Parameters
+  ----------
   
-  RETURNS
-  element name (e.g. "Carbon" for carbon)
+  Z :  int
+    nuclear charge of element (e.g. 6 for carbon)
   
-  Version 0.1 28 July 2009
-  Adam Foster
+  Returns
+  -------
+  str
+    element name (e.g. "Carbon" for carbon)
   """
+#
+#  Version 0.1 28 July 2009
+#  Adam Foster
+#
+
   elname=('Hydrogen'    , 'Helium'      , 'Lithium'     , 'Beryllium'   ,
           'Boron'       , 'Carbon'      , 'Nitrogen'    , 'Oxygen'      ,
           'Fluorine'    , 'Neon'        , 'Sodium'      , 'Magnesium'   ,
@@ -330,17 +349,24 @@ def spectroscopic_name(Z,z1) :
   """
   Converts Z,z1 to spectroscopic name, e.g. 6,5 to "C V"
   
-  INPUTS
-  Z (int) nuclear charge (e.g. 6 for C)
-  z1 (int) ion charge +1 (e.g. 5 for C4+)
-   
-  RETURNS
-  spectroscopic symbol for ion (e.g. "C V" for C+4)
+  Parameters
+  ----------
   
-  Version 0.1 28 July 2009
-  Adam Foster 
+  Z : int
+    nuclear charge (e.g. 6 for C)
+  z1 : int
+    ion charge +1 (e.g. 5 for C4+)
+   
+  Returns
+  -------
+  str
+    spectroscopic symbol for ion (e.g. "C V" for C+4)
+  
   """
-    
+#
+#  Version 0.1 28 July 2009
+#  Adam Foster 
+#    
     # get element symbol
   elsymb = Ztoelsymb(Z)
 
@@ -375,14 +401,22 @@ def spectroscopictoz0(name):
   """
   Converts spectroscopic name to Z, z1, e.g. "C V" to 6,5
   
-  INPUTS
-  name (string), e.g. "C V" 
-  RETURNS
-  Z, z1 for the ion. (e.g. 6,5 for C V)
+  Parameters
+  ----------
   
-  Version 0.1 28 July 2009
-  Adam Foster 
+  name : str
+    Ion name, e.g. "C V" 
+  
+  Returns
+  -------
+  int, int
+    Z, z1 for the ion. (e.g. 6,5 for C V)
+  
   """
+#  
+#  Version 0.1 28 July 2009
+#  Adam Foster 
+#
 # convert name (e.g. Fe VIII) to z0 & ioncharge (=0 for neutral)
 
     # get element symbol
@@ -465,15 +499,21 @@ def elsymb_to_Z(elsymb) :
   """
   Converts element symbol to nuclear charge, e.g. "C" -> 6
   
-  INPUTS
-  elsymb (string), e.g "C". Case insensitive.
-
-  RETURNS
-  Z for the ion. (e.g. 6 for C)
+  Parameters
+  ----------
   
-  Version 0.1 28 July 2009
-  Adam Foster 
+  elsymb : str
+    Element symbol, e.g. "C". Case insensitive.
+
+  Returns
+  -------
+  int
+    Z for the ion. (e.g. 6 for C)
   """
+#  
+#  Version 0.1 28 July 2009
+#  Adam Foster 
+#
   ellist=('h' , 'he', 'li', 'be', 'b' , 'c' , 'n' , 'o' , 'f' , 'ne',
           'na', 'mg', 'al', 'si', 'p' , 's' , 'cl', 'ar', 'k' , 'ca',
           'sc', 'ti', 'v' , 'cr', 'mn', 'fe', 'co', 'ni', 'cu', 'zn',
@@ -497,14 +537,17 @@ def elsymb_to_z0(elsymb) :
   """
   Converts element symbol to nuclear charge, e.g. "C" -> 6
   (wrapper to elsymb_to_Z, retained for consistency)
-  INPUTS
-  elsymb (string), e.g "C". Case insensitive.
-
-  RETURNS
-  z0 for the ion. (e.g. 6 for C)
   
-  Version 0.1 28 July 2009
-  Adam Foster 
+  Parameters
+  ----------
+  
+  elsymb : str
+    Element symbol, e.g. "C". Case insensitive.
+
+  Returns
+  -------
+  int
+    Z for the ion. (e.g. 6 for C)
   """
   ret= elsymb_to_Z(elsymb)
   return ret
@@ -532,11 +575,6 @@ def z0_to_mass(z0):
   Converts element symbol to atomic mass, e.g. "C" -> 12.0107
   
   (wrapper to Z_to_mass, retained for consistency)
-  Atomic masses are taken from:
-  Pure Appl. Chem. 81 NO 11, 2131-2156 (2009)
-  Masses for Technetium, Promethium, Polonium, Astatine, Radon, 
-  Francium, Radium & Actinum are estimates. If you need these you
-  probably aren't doing astronomy...
   
   Isotope fractions based on those found in earth's crust samples, your
   astrophysical object may vary.
@@ -550,6 +588,15 @@ def z0_to_mass(z0):
   -------
   float
     mass in a.m.u. for the element. (e.g. 12.0107 for C)
+
+  References
+  ----------
+  Atomic masses are taken from:
+  Pure Appl. Chem. 81 NO 11, 2131-2156 (2009)
+  Masses for Technetium, Promethium, Polonium, Astatine, Radon, 
+  Francium, Radium & Actinum are estimates. If you need these you
+  probably aren't doing astronomy...
+
   """
 #  
 #  Version 0.1 28 July 2009
@@ -561,12 +608,6 @@ def z0_to_mass(z0):
 def Z_to_mass(Z):
   """
   Converts element symbol to atomic mass, e.g. "C" -> 12.0107
-  
-  Atomic masses are taken from:
-  Pure Appl. Chem. 81 NO 11, 2131-2156 (2009)
-  Masses for Technetium, Promethium, Polonium, Astatine, Radon, 
-  Francium, Radium & Actinum are estimates. If you need these you
-  probably aren't doing astronomy...
   
   Isotope fractions based on those found in earth's crust samples, your
   astrophysical object may vary.
@@ -580,6 +621,15 @@ def Z_to_mass(Z):
   -------
   float
     mass in a.m.u. for the element. (e.g. 12.0107 for C)
+  
+  References
+  ----------
+  Atomic masses are taken from:
+  Pure Appl. Chem. 81 NO 11, 2131-2156 (2009)
+  Masses for Technetium, Promethium, Polonium, Astatine, Radon, 
+  Francium, Radium & Actinum are estimates. If you need these you
+  probably aren't doing astronomy...
+  
   """
 #  Version 0.1 28 July 2009
 #  Adam Foster 

@@ -318,7 +318,7 @@ def list_lines(specrange, lldat=False, index=False, linefile=False,\
   specrange = [10,100]
 
   1. lldat as an actual list of lines::
-  
+
        a = pyfits.open('apec_line.fits')
        llist = a[30].data
        l = list_lines(specrange, lldat=llist)
@@ -336,20 +336,20 @@ def list_lines(specrange, lldat=False, index=False, linefile=False,\
        l = list_lines(specrange, lldat=llist)
 
   4. lldat is a HDUList from pyfits. In this case index must also be set::
-         
+
        a = pyfits.open('apec_line.fits')
        index = 30
        l = list_lines(specrange, lldat=a, index=index)
 
-  5. lldat NOT set, \
-     linefile contains apec_line.fits file location, index identifies the HDU::
+  5. lldat NOT set, linefile contains apec_line.fits file location, index 
+     identifies the HDU::
 
        linefile = 'mydir/apec_v2.0.2_line.fits'
        index = 30
        l = list_lines(specrange, linefile=linefile, index=index)
-    
-  6. lldat NOT set & linefile NOT set,\ 
-       linefile is set to $ATOMDB/apec_line.fits. index identifies the HDU::
+
+  6. lldat NOT set & linefile NOT set, linefile is set to 
+     $ATOMDB/apec_line.fits. index identifies the HDU::
        
        index = 30
        l = list_lines(specrange, index=index)

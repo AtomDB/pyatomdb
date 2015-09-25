@@ -468,6 +468,7 @@ def get_ionfrac(ionbalfile, Z, te, z1=-1):
   
   Parameters
   ----------
+  
   ionbalfile : str
     location of ionization balance file
   Z : int
@@ -475,12 +476,14 @@ def get_ionfrac(ionbalfile, Z, te, z1=-1):
   te : float
     electron temperature (in K)
   z1 : int
-    if provided, z+1 of ion (e.g. 5 for O V)
-                   if omitted, returns ionization fraction for all ions
-                   of element
+    if provided, z+1 of ion (e.g. 5 for O V). If omitted, returns ionization 
+    fraction for all ions of element
+  
   Returns
   -------
+  
   ionization fraction of ion or, if not specified, of all ions at Te
+  
   """
   
   dat = get_ionbal(ionbalfile, Z)
@@ -920,8 +923,54 @@ def get_ion_lines(linefile, Z, z1, fullinfo=False):
 #-------------------------------------------------------------------------------
 
  
-def get_line_emissivity(linefile, Z, z1, upind, loind,ion_drv=False, elem_drv=False):
-  a = pyfits.open(linefile)
+def get_line_emissivity( Z, z1, upind, loind, \
+                         linefile="$ATOMDB/apec_line.fits",\
+                         ion_drv=False, elem_drv=False):
+                         
+  """
+  Get the emissivity of a line as fn of temperature from APEC line file
+  
+  Parameters
+  ----------
+  Z : int
+    Atomic number of element of line
+  z1 : int
+    Ion charge +1 of ion
+  upind : int
+    Upper level of transition
+  loind : int
+    Lower level of transition
+  linefile : str
+    line emissivity file. defaults to $ATOMDB/apec_line.fits
+  ion_drv : int
+    if set, return only the contribution from driving ion ion_drv. This is
+    useful for non-equilibrium plasma calculations, and requires an 
+    nei_line file to be specified in linefile
+  elem_drv : int
+    same as ion_drv, but specified driving element. Currently this setting
+    is pointless, as all transitions have the same driving element as element.
+
+  Returns
+  -------
+  dict
+    dictionary with the following data in it:
+  ['kT'] : array(float)
+      the electron temperatures, in keV
+  ['dens'] : array(float)
+      the electron densities, in cm^-3
+  ['time'] : array(float)
+      the time (for old-style NEI files only, typically all zeros in 
+      current files)
+  ['epsilon'] : array(float)
+      the emissivity in ph cm^3 s^-1
+  
+  """
+  #
+  # Version 0.1 - Initial Release
+  # Adam Foster 25 Sep 2015
+  #
+    
+  a = pyfits.open(os.path.expandvars(linefile))
   kT = a[1].data.field('kT')
   dens = a[1].data.field('eDensity')
   time = a[1].data.field('time')
@@ -2555,17 +2604,18 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
   
   Parameters
   ----------
-  Te: float
+  
+  Te : float
     electron temperature(s), in K by default
-  colldata: HDUList
+  colldata : HDUList
     The collisional data of interest
-  index: int
+  index : int
     The line in the data to do the calculation for. Indexed from 0.
-  lvdata: HDUList
+  lvdata : HDUList
     the hdulist for the energy level file (as returned by pyfits.open('file'))
   lvdatap1 : HDUList
     The level data for the recombining or ionized data.
-  Te_unit: {'K','eV','keV'}
+  Te_unit : {'K','eV','keV'}
     Units of temperature grid.
 
   Returns
@@ -2859,20 +2909,29 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
 #-------------------------------------------------------------------------------
 def sigma_hydrogenic(N,L, Z, Ein):
   """
-Calculate the PI cross sections of type hydrogenic.
+  Calculate the PI cross sections of type hydrogenic.
 
-INPUTS
-N: n shell
-L: l quantum number
-Z: nuclear charge
-Ein: energy grid for PI cross sections (in keV)
+  Parameters
+  ----------
+  N : int
+    n shell
+  L : int
+    l quantum number
+  Z : int
+    nuclear charge
+  Ein : array(float)
+    energy grid for PI cross sections (in keV)
 
-RETURNS
-Photoionization cross section (in cm^2)
+  Returns
+  -------
+  array(float)
+    Photoionization cross section (in cm^2)
 
-Version 0.1 - initial release
-Adam Foster August 28th 2015
-   """
+  """
+#
+# Version 0.1 - initial release
+# Adam Foster August 28th 2015
+#
   
   n = N
   l = L
@@ -3269,38 +3328,28 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 
-def read_filemap(filemap=False, atomdbroot=False):
+def read_filemap(filemap="$ATOMDB/filemap", atomdbroot="$ATOMDB"):
   """
   Reads the AtomDB filemap file in to memory. By default, tries to read
   $ATOMDB/filemap, replacing all instances of $ATOMDB in the filemap
   file with the value of the environment variable $ATOMDB
   
-  KWARGS
-  filemap:  string : the filemap file to read
-  atomdbroot: string: string to replace $ATOMDB by 
+  Parameters
+  ----------
   
-  
-  Version 0.1 - initial release
-  Adam Foster August 15th 2015
+  filemap:  str
+    the filemap file to read
+  atomdbroot: str
+    location of files, if not $ATOMDB.
   """
+#  
+#  Version 0.1 - initial release
+#  Adam Foster August 15th 2015
+#  
   
   # parse the options here.
-  if atomdbroot:
-    if filemap:
-      # in this case, use filemap. Replace any $ATOMDB with atomdbroot
-      fmapfile = filemap
-      fmapfile = re.sub('\$ATOMDB', atomdbroot)
-    else:
-      # in this case, use filemap. Replace any $ATOMDB with atomdbroot
-      fmapfile = atomdbroot+'/filemap'
-  else:
-    if filemap:
-      atomdbroot=  os.environ.get('ATOMDB')
-      fmapfile = filemap
-      fmapfile = re.sub('\$ATOMDB', atomdbroot)
-    else:
-      atomdbroot=  os.environ.get('ATOMDB')
-      fmapfile = atomdbroot+'/filemap'
+  
+  fmapfile = os.path.expandvars(filemap)
   
   f = open(fmapfile,'r')
 
@@ -3318,12 +3367,17 @@ def read_filemap(filemap=False, atomdbroot=False):
   cilist=[]
   misc=[]
   misc_type=[]
-
+  
+  # temporarily store ATOMDB environment variable
+  os.environ['OLDATOMDB'] = os.environ['ATOMDB']  
+  # set ATOMDB to new value
+  os.environ['ATOMDB'] = os.path.expandvars(atomdbroot)
+  
   for i in f:
 #    print i
     splt = i.split()
 #    print splt
-    fname = re.sub('\$ATOMDB',atomdbroot,splt[3])
+    fname = os.path.expandvars(splt[3])
     Z_tmp = int(splt[1])
     z1_tmp = int(splt[2])
 
@@ -3387,6 +3441,11 @@ def read_filemap(filemap=False, atomdbroot=False):
   ret['misc'] = numpy.array(misc, dtype='|S160')
   ret['misc_type'] = numpy.array(misc_type)
 
+
+  # restore the ATOMDB variable
+  os.environ['ATOMDB']=os.environ['OLDATOMDB']
+  x=os.environ.pop('OLDATOMDB')
+  
   return ret
 
 
@@ -3737,9 +3796,9 @@ def sort_pi_data(pidat, lev_init, lev_final):
   ----------
   pidat : hdulist
     The photoionization data for the ion
-  lev_init: int
+  lev_init : int
     The initial level
-  lev_final: int :
+  lev_final : int
     The final level
   
   Returns

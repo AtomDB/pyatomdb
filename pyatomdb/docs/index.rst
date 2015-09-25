@@ -88,7 +88,7 @@ If you run the following code, PyAtomDB will download the files you need to get 
   import pyatomdb
   pyatomdb.util.initalize()
 
-This will prompt you for an install location and whether to download the emissivity files. It is suggested that you say yes. It will also ask if you mind sharing anonymous download information with us. We would appreciate it if you say yes, but it is not necessary for the functioning of the software.
+This will prompt you for an install location (defaulting to `$ATOMDB`)and whether to download the emissivity files. It is suggested that you say yes. It will also ask if you mind sharing anonymous download information with us. We would appreciate it if you say yes, but it is not necessary for the functioning of the software.
 
 --------------------------
 Example: Making a Spectrum
@@ -151,9 +151,9 @@ Interrogating the atomic database
 
 The atomic database APED contains a range of data for a host of different ions. It contains a host of different files covering a range of different processes. The full database, when uncompressed is more than 10GB of data, so we are avoiding distributing it to all users. You can, however, get the individual data you need using the ``get_data`` routine::
 
-  mydata = pyatomdb.atomdb.get_data(z0, z1, ftype)
+  mydata = pyatomdb.atomdb.get_data(Z, z1, ftype)
 
-This will try to open the file locally if it exists, and if it does not it will then go to the AtomDB FTP server and download the data for element z0, ion z1, with ftype a 2-character string denoting the type of data to get:
+This will try to open the file locally if it exists, and if it does not it will then go to the AtomDB FTP server and download the data for element Z, ion z1, with ftype a 2-character string denoting the type of data to get:
 
 - ``IR``: ionization and recombination
 - ``LV``: energy levels

@@ -105,6 +105,23 @@ def unique(s):
      If that's not possible either, the sequence elements must support
      equality-testing.  Then unique() will usually work in quadratic
      time.
+     
+     Parameters
+     ----------
+     s : list type object
+       List to remove the duplicates from
+     
+     Returns
+     -------
+     list type object
+       ...with all the duplicates removed
+     
+     References
+     ----------
+     Taken from Python Cookbook, written by Tim Peters.
+     http://code.activestate.com/recipes/52560/
+       
+     
      """
 
      n = len(s)
@@ -264,8 +281,8 @@ def md5Checksum(filePath):
   string
     the hexadecimal string md5 hash of the file
     
-  Notes
-  -----------
+  References
+  ----------
   Taken from http://joelverhagen.com/blog/2011/02/md5-hash-of-file-in-python/
   
   """
