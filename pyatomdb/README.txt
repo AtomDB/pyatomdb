@@ -40,3 +40,8 @@ August 18th 2015: Fixed bug with documentation
 
 0.0.1.0
 September 23rd 2015: Added significant documentation. Converted all 'z0' to 'Z' and 'rmJ' to 'z1' throught the code for consistency.
+
+0.0.1.1
+September 25th 2015:   Major documentation revamp.
+Separated datacache from settings keyword
+Introduced automatic install and update into util package.
