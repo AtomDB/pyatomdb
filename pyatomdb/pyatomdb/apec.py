@@ -34,10 +34,10 @@ def solve_ionbal(ionrate, recrate, init_pop=False, tau=False):
   final_pop : float array
     final populations.
   
-  Info
-  ----
-  Note that init_pop & final_pop will have 1 more element that ionrate 
-  and recrate.
+  Notes
+  -----
+  Note that init_pop & final_pop will have 1 more element than ionrate and recrate.
+  
   """
 #  
 #  Version 0.1 Initial Release

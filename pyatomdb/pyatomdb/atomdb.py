@@ -18,7 +18,7 @@ Adam Foster August 28th 2015
 """
 
 import os, datetime, numpy, re, time
-import util, atomic, spectrum, const
+import util, atomic, spectrum, const, urllib2
 import astropy.io.fits as pyfits
 from scipy import stats, integrate
 
@@ -694,8 +694,33 @@ def make_level_descriptor(lv):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
-def get_ionpot(Z, z1, filemap=False, atomdbroot=False, settings=False):
-  irdat = get_data(Z,z1,'IR', settings=settings)
+def get_ionpot(Z, z1, settings=False, 
+               datacache=False):
+  """
+  Get the ionization potential of an ion in eV
+  
+  Parameters
+  ----------
+  Z : int
+    The atomic number of the element
+  z1 : int
+    The ion charge + 1 of the ion
+  settings : dict
+    See description in get_data
+  datacache : dict
+    Used for caching the data. See description in get_data
+  
+  Returns
+  -------
+  float
+    The ionization potential of the ion in eV.
+    
+  """
+#
+# Version 0.1 Initial Release
+# Adam Foster 25 Sep 2015
+#
+  irdat = get_data(Z,z1,'IR', settings=settings, datacache=datacache)
   ionpot = irdat[1].header['IONPOT']
   
   return ionpot
@@ -2348,8 +2373,9 @@ def calc_ionrec_ea(cidat, Te, extrap=False):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 def get_ionrec_rate(Te_in, irdat_in, lvdat_in=False, Te_unit='K', \
-                     lvdatp1_in=False, ionpot=False, separate=False,
-                     Z=-1, z1=-1, settings=False, extrap=False):
+                     lvdatp1_in=False, ionpot=False, separate=False,\
+                     Z=-1, z1=-1, settings=False, datacache=False,\
+                     extrap=False):
   """
   Get the ionization and recombination rates at temperture(s) Te from 
   ionization and recombination rate data file irdat.
@@ -2378,10 +2404,10 @@ def get_ionrec_rate(Te_in, irdat_in, lvdat_in=False, Te_unit='K', \
   z1  : int
     Ion charge +1 to get rates for (ignores "irdat_in")
     e.g. Z=6,z1=4 for C IV (C 3+)
-  settings : str
-    if supplied, will be used to read/store previously opened data
-    files. Will prevent unneccessarily reopening files in case
-    where Z, z1 is specified.
+  settings : dict
+    See description in read_data
+  datacache : dict
+    See description in read_data
   extrap : bool
     Extrappolate rates to Te ranges which are off the provided 
     scale
@@ -2428,7 +2454,7 @@ def get_ionrec_rate(Te_in, irdat_in, lvdat_in=False, Te_unit='K', \
   # see the type of the IR data
 
   if (z1>=0) &( Z>=0):
-    irdat = get_data(Z,z1, 'IR',settings=settings)
+    irdat = get_data(Z,z1, 'IR',settings=settings, datacache=datacache)
   elif isinstance(irdat_in, basestring):
     #string (assumed filename)
     irdat = pyfits.open(irdat_in)
@@ -2440,7 +2466,7 @@ def get_ionrec_rate(Te_in, irdat_in, lvdat_in=False, Te_unit='K', \
     return -1
 
   if (z1>=0) &( Z>=0):
-    lvdat = get_data(Z,z1, 'LV',settings=settings)
+    lvdat = get_data(Z,z1, 'LV',settings=settings, datacache=datacache)
   elif isinstance(lvdat_in, basestring):
     #string (assumed filename)
     lvdat = pyfits.open(lvdat_in)
@@ -2452,7 +2478,7 @@ def get_ionrec_rate(Te_in, irdat_in, lvdat_in=False, Te_unit='K', \
     return -1
 
   if (z1>=0) &( Z>=0):
-    lvdatp1 = get_data(Z,z1+1, 'LV',settings=settings)
+    lvdatp1 = get_data(Z,z1+1, 'LV',settings=settings, datacache=datacache)
   elif isinstance(lvdatp1_in, basestring):
     #string (assumed filename)
     lvdatp1 = pyfits.open(lvdatp1_in)
@@ -2969,9 +2995,33 @@ def B_hyd(s, l, m, eta):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 def calc_rrc(Z, z1, eedges, Te, lev, xstardat=False, \
-             xstarlevfinal=1,  settings=False):
+             xstarlevfinal=1,  settings=False, datacache=False):
+
   """
-  z1 is the recombined ion
+  Calculate the radiative recombination continuum for a given ion
+  
+  Parameters
+  ----------
+  Z : int
+    Atomic number
+  z1 : int
+    recombined ion charge
+  eedges : array(float)
+    the bin edges for the spectrum to be calculated on (keV)
+  Te : float
+    The electron temperature (keV)
+  lev : int
+    The level of the ion for the recombination to be calculated into
+  xstardat : dict or HDUList
+    The xstar PI data. This can be an already sorted dictionary, as returned by
+    sort_xstar_data, or the raw results of opening the PI file
+  xstarlevfinal : int
+    If you need to identify the recombining level, you can do so here. Should normally
+    be 1.
+  settings : dict
+    See description in read_data
+  datacache : dict
+    See description in read_data  
   """
  
   ### WORKING HERE $$$$
@@ -2986,7 +3036,7 @@ def calc_rrc(Z, z1, eedges, Te, lev, xstardat=False, \
   
   rrc = numpy.zeros(len(eedges)-1)
   
-  lvdat = get_data(Z,z1,'LV',settings=settings)
+  lvdat = get_data(Z,z1,'LV',settings=settings, datacache=datacache)
   ldat = lvdat[1].data[lev-1]
 #rrc_ph_value(E, Z, z1, rrc_ph_factor, IonE, kT, levdat, \
 #                 xstardata=False, xstarfinallev=False):
@@ -2997,7 +3047,7 @@ def calc_rrc(Z, z1, eedges, Te, lev, xstardat=False, \
     gfin = 1.0 * ldat['lev_deg']
     ginit = 1.0
     if Z-z1>0:
-      plvdat = get_data(Z, z1+1, 'LV', settings==settings)
+      plvdat = get_data(Z, z1+1, 'LV', settings==settings, datacache=datacache)
       if plvdat:
         ginit = 1.0* plvdat[1].data['lev_deg'][0]
     gratio = gfin/ginit
@@ -3006,17 +3056,16 @@ def calc_rrc(Z, z1, eedges, Te, lev, xstardat=False, \
     gfin = 1.0 * ldat['lev_deg']
     ginit = 1.0
     if Z-z1>0:
-      plvdat = get_data(Z, z1+1, 'LV', settings==settings)
+      plvdat = get_data(Z, z1+1, 'LV', settings==settings, datacache=datacache)
       if plvdat:
         ginit = 1.0* plvdat[1].data['lev_deg'][0]
-
     gratio = gfin/ginit
   elif ldat['PHOT_TYPE']==const.VERNER:
     I_e = ldat['phot_par'][0]
     gfin = 1.0 * ldat['lev_deg']
     ginit = 1.0
     if Z-z1>0:
-      plvdat = get_data(Z, z1+1, 'LV', settings==settings)
+      plvdat = get_data(Z, z1+1, 'LV', settings==settings, datacache=datacache)
       if plvdat:
         ginit = 1.0* plvdat[1].data['lev_deg'][0]
     gratio = gfin/ginit
@@ -3024,15 +3073,17 @@ def calc_rrc(Z, z1, eedges, Te, lev, xstardat=False, \
   elif ldat['PHOT_TYPE']==const.XSTAR:
     # get the xstar data
     if not xstardat:
-      xstardat = get_data(Z,z1,'PI', settings=settings)
+      xstardat = get_data(Z,z1,'PI', settings=settings, datacache=datacache)
     if not isinstance(xstardat,dict):
-      print lvdat[1].data.names
       xstardat = sort_pi_data(xstardat, int(ldat['PHOT_PAR'][0]),\
                                xstarlevfinal)
     gratio = xstardat['g_ratio']
     I_e = (get_ionpot(Z, z1) - ldat['energy'])/1000.0
     
-  
+  else:
+    #no photoionization data
+    rrc = numpy.zeros(len(eedges)-1,dtype=float)
+    return rrc  
   
   rrc_ph_factor = (const.RRC_COEFF/const.ERG_KEV)*gratio/(Te**1.5)
   rrc_erg_factor = const.RRC_COEFF*gratio/(Te**1.5) 
@@ -3062,38 +3113,48 @@ def calc_rrc(Z, z1, eedges, Te, lev, xstardat=False, \
 
   return rrc
 
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
 
-
-#-----------------------------------------------------------------------
-#-----------------------------------------------------------------------
-#-----------------------------------------------------------------------
-def get_pi_param(Z, z1, z1_drv, T, ebins, abund, ion_pop, settings):
-  """ Code to get the photoionization rate parameters for a given ion """
-  return
+def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
+                      settings=False, datacache=False):
+  """
+  Calculate the radiative recombination continuum for an ion at temperature T
   
+  Parameters
+  ----------
+  Z : int
+    nuclear charge
+  z1 : int
+    recombined ion charge+1
+  z1_drv : int
+    recombining ion charge+1
+  T : float
+    temperautre (keV)
+  ebins : array(float)
+    energy bins (in keV) on which to caclulate the spectrum
+  abund : float
+    elemental abundance, relative to hydrogen
+  ion_pop : float
+    the ion's population fraction of that element 
+    (i.e. sum of all ion_pop for an element = 1)
 
-#-----------------------------------------------------------------------
-#-----------------------------------------------------------------------
-#-----------------------------------------------------------------------
-
-#-----------------------------------------------------------------------
-#-----------------------------------------------------------------------
-#-----------------------------------------------------------------------
-
-def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund, ion_pop, settings):
-  # Z: nuclear charge
-  # z1: recombined ion charge+1
-  # z1_drv: recombining ion charge+1
-  # T: temperautre (K)
-  # ebins: energies (keV)
-
-  
-  initlevels = get_data(Z,z1_drv,'LV', settings)
+  Returns
+  -------
+  array(float)
+    RRC in photons cm^3 s^-1 bin^-1, in an array of length(ebins)-1
+  """
+#  
+#  Version 0.1 Initial Release
+#  Adam Foster 25 Sep 2015
+# 
+  initlevels = get_data(Z,z1_drv,'LV', settings=settings, datacache = datacache)
   if (initlevels):
     hasparent = True
   else:
     hasparent = False
-  finallevels = get_data(Z,z1,'LV', settings)
+  finallevels = get_data(Z,z1,'LV', settings=settings, datacache=datacache)
   rrc = numpy.zeros(len(ebins)-1, dtype=float)
   if not finallevels:
     return rrc, 0.0
@@ -3103,8 +3164,10 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund, ion_pop, settings):
   LevelRecombRate = numpy.zeros(nlev, dtype=float)
   
   for iLev in range(nlev):
-    
+      
     finlev = finallevels[1].data[iLev]
+    if finlev['phot_type'] >=0:
+      print "iLev=%i, phot_type=%i"%(iLev, finlev['phot_type'])
     if finlev['phot_type']==const.NO_PHOT:
       continue
     elif finlev['phot_type']==const.HYDROGENIC:
@@ -3140,8 +3203,8 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund, ion_pop, settings):
       sigma_coeff = finlev['phot_par']
 
     elif finlev['phot_type']==const.XSTAR:
-      I_e = (atomdb.get_ionpot(Z, z1, settings['filemap'], \
-                              atomdbroot=settings['atomdbroot']) -\
+      I_e = (get_ionpot(Z, z1, settings=settings, \
+                               datacache=datacache) -\
              finlev['energy'])/1000.0
       lev_deg = finlev['lev_deg']*1.0
       if (hasparent):
@@ -3150,24 +3213,32 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund, ion_pop, settings):
         parent_lev_deg = 1.0
 
       #### FIXING HERE
-      xstarlevinit = finlev['phot_par'][0]-1
-      pidat = get_data(Z,z1,'PI', settings)
-
+      xstarlevinit = int(finlev['phot_par'][0])
+      pidat = get_data(Z,z1,'PI', settings=settings, \
+                               datacache=datacache)
+      print pidat[1].data['lev_final']
+      print pidat[1].data['lev_init']==xstarlevinit
+      print pidat[1].data['lev_final'][pidat[1].data['lev_init']==xstarlevinit]
       # find the possible places to photoionize to:
-      finlev_possible = arflib.unique(\
+      finlev_possible = util.unique(\
         pidat[1].data['lev_final'][pidat[1].data['lev_init']==xstarlevinit])
 
-      finlev_possible = numpy.array([0])
-
+      finlev_possible = numpy.array([min(finlev_possible)])
+      print 'HI!', finlev_possible
       for xstarlevfinal in finlev_possible:
         # get the numbers
         sigma_coeff = sort_pi_data(pidat, xstarlevinit, xstarlevfinal)
+        print sigma_coeff
         if not sigma_coeff:
+          print 'oops'
           continue
         g_ratio = sigma_coeff['g_ratio']
-        rr_lev_rate,tmprrc = calc_rrc(Z, z1, abund, ion_pop, I_e, g_ratio,\
-           const.XSTAR, sigma_coeff, T, settings['min_epsilon'],\
-           ebins, settings)
+        
+        tmprrc = calc_rrc(Z, z1, ebins, T, iLev+1, xstardat=sigma_coeff, \
+              settings=settings, datacache=datacache)
+        print 'tmprrc', tmprrc
+        tmprrc *= abund*ion_pop
+        rr_lev_rate = sum(tmprrc)
         LevelRecombRate[iLev] = rr_lev_rate
         tot_rec_rate += rr_lev_rate
         rrc += tmprrc
@@ -3179,9 +3250,12 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund, ion_pop, settings):
 
     if ((finlev['phot_type'] != const.NO_PHOT) &\
         (finlev['phot_type'] != const.XSTAR)):
-      rr_lev_rate,tmprrc = calc_rrc(Z, z1, abund, ion_pop, I_e, g_ratio,\
-         sig_type, sigma_coeff, T, settings['min_epsilon'],\
-         ebins, settings)
+
+      tmprrc = calc_rrc(Z, z1, ebins, T, lev, \
+              settings=settings, datacache=datacache)
+      tmprrc *= abund*ion_pop
+      rr_lev_rate = sum(tmprrc)
+        
       LevelRecombRate[iLev] += rr_lev_rate
       tot_rec_rate += rr_lev_rate
       rrc += tmprrc
@@ -3189,7 +3263,7 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund, ion_pop, settings):
         #print "%e %e %e" %(ebins[i], ebins[i+1], tmprrc[i])
       #print "phot_type= %i"%(finlev['phot_type'])
       #print finlev
-  return rrc, LevelRecombRate*abund
+  return rrc, LevelRecombRate
 
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -3407,7 +3481,8 @@ def read_filemap(filemap=False, atomdbroot=False):
 #--#-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
-def get_data(Z, z1, ftype, settings=False, indexzero=False, offline=False):
+def get_data(Z, z1, ftype, datacache=False, \
+             settings=False, indexzero=False, offline=False):
   """
   Read AtomDB data of type ftype for ion rmJ of element Z.
   
@@ -3434,10 +3509,26 @@ def get_data(Z, z1, ftype, settings=False, indexzero=False, offline=False):
        *           'DR' - dielectronic recombination satellite line data
        *           'PI' - XSTAR photoionization data
        *           'AI' - autoionization data
-  settings: dict
-    This is complicated one. If set, settings should be a dictionary, 
-    even if blank (e.g. settings={})
-    It serves multiple purposes:
+  filemap : string
+    The filemap to use, if you do not want to use the default one.
+    
+  settings : dict
+    This will let you override some standard inputs for get_data:
+    
+    * settings['filemap']: the filemap to use if you do not want to use
+      the default $ATOMDB/filemap
+      
+    * settings['atomdbroot']: If you have files in non-standard locations
+      you can replace $ATOMDB with this value
+    
+  datacache : dict
+    This variable will hold the results of the read in a dictionary.
+    It will also be checked to see if the requested data has already been
+    cached here before re-reading from the disk. If you have not yet read
+    in any data but want to start caching, provide it as an empty dictionary
+    i.e. mydatacache={}
+    
+    2 parts of the data ares stored here:
      
     * Settings['data'] will store a copy of the data
       you read in. This means that if your code ends up calling for the same
@@ -3447,9 +3538,9 @@ def get_data(Z, z1, ftype, settings=False, indexzero=False, offline=False):
   
     * settings['datasums'] stores the datasum when read in. Can be used later 
       to check files are the same.
-  
+
     Both data and datasums store the data in identical trees, e.g.:
-    settings['data'][Z][rmJ][ftype] will have the data.
+    settings['data'][Z][z1][ftype] will have the data.
     
   indexzero: bool
     If True, subtract 1 from all level indexes as python indexes from 0, 
@@ -3468,31 +3559,50 @@ def get_data(Z, z1, ftype, settings=False, indexzero=False, offline=False):
 #  
 #  Version 0.1 - initial release
 #  Adam Foster August 15th 2015
+
+#  Version 0.2 - separated "settings" and "datacache"
+#  Adam Foster September 24th 2015
+
   d = False
   didurl=False
-  if settings:
-    if not 'data' in settings.keys():
-      settings['data']={}
-    if not Z in settings['data'].keys():
-      settings['data'][Z]={}
-    if not z1 in settings['data'][Z].keys():
-      settings['data'][Z][z1]={}
 
-    if not 'datasums' in settings.keys():
-      settings['datasums']={}
-    if not Z in settings['datasums'].keys():
-      settings['datasums'][Z]={}
-    if not z1 in settings['datasums'][Z].keys():
-      settings['datasums'][Z][z1]={}
+  if datacache != False:
+    # make sure that the relevant dictionaries are ready to receive the data
+    if not 'data' in datacache.keys():
+      datacache['data']={}
+    if not Z in datacache['data'].keys():
+      datacache['data'][Z]={}
+    if not z1 in datacache['data'][Z].keys():
+      datacache['data'][Z][z1]={}
 
-    if ftype.upper() in settings['data'][Z][z1].keys():
+    if not 'datasums' in datacache.keys():
+      datacache['datasums']={}
+    if not Z in datacache['datasums'].keys():
+      datacache['datasums'][Z]={}
+    if not z1 in datacache['datasums'][Z].keys():
+      datacache['datasums'][Z][z1]={}
+
+
+    if ftype.upper() in datacache['data'][Z][z1].keys():
+      # this means we have the data cached, no need to fetch it
       pass
     else:
-      fname = atomdb.get_filemap_file(settings['filemap'], ftype, Z, z1, \
-                             atomdbroot=settings['atomdbroot'], quiet=True)
+      # check for file location overrides
+      fmapfile = False
+      atomdbroot=False
+      if settings:
+        if settings['filemap']:
+          fmapfile = settings['filemap']
+        if settings['atomdbroot']:
+          atomdbroot = settings['atomdbroot']
+          
+      fname = atomdb.get_filemap_file(ftype, Z, z1, fmapfile=fmapfile,\
+                             atomdbroot=atomdbroot, quiet=True)
+
       if fname=='':
-        settings['data'][Z][z1][ftype.upper()] = False
-#      ret =  settings['data'][Z][z1][ftype.upper()]
+        # no data exists
+        datacache['data'][Z][z1][ftype.upper()] = False
+
       else:
         # Try and open the files in the following order:
         # (1) filename
@@ -3508,19 +3618,29 @@ def get_data(Z, z1, ftype, settings=False, indexzero=False, offline=False):
             if offline:
               d = False
             else:
-              url = re.sub(settings['atomdbroot'],\
-                           'ftp://sao-ftp.harvard.edu/AtomDB')+'.gz'
+              url = re.sub(atomdbroot,\
+                           'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
               try:
                 d = pyfits.open(url)
                 didurl=True
-              except URLError:
-                print "Error trying to open file %s. Not found locally or on"+\
-                      " server."
+                util.record_upload(re.sub(atomdbroot,'',fname))
+              except urllib2.URLError:
+                print "Error trying to open file %s. Not found locally or on"%(fname)+\
+                    " server." 
                 d=False
 
   else:
+    fmapfile = False
+    atomdbroot=os.environ['ATOMDB']
+    if settings:
+      if settings['filemap']:
+        fmapfile = settings['filemap']
+      if settings['atomdbroot']:
+        atomdbroot = settings['atomdbroot']
+
     fname = get_filemap_file(ftype, Z, z1, \
-                             quiet=True)
+                             quiet=True, fmapfile=fmapfile,\
+                             atomdbroot=atomdbroot)
 
     if fname=='':
       pass
@@ -3538,15 +3658,15 @@ def get_data(Z, z1, ftype, settings=False, indexzero=False, offline=False):
           if offline:
             d = False
           else:
-            s = os.environ['ATOMDB']
-            url = re.sub(s,\
+            url = re.sub(atomdbroot,\
                          'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
             try:
               d = pyfits.open(url)
               didurl=True
-            except URLError:
-              print "Error trying to open file %s. Not found locally or on"+\
-                    " server."
+              util.record_upload(re.sub(atomdbroot,'',fname))
+            except urllib2.URLError:
+              print "Error trying to open file %s. Not found locally or on"%(fname)+\
+                    " server." 
               d=False
             
 
@@ -3593,11 +3713,11 @@ def get_data(Z, z1, ftype, settings=False, indexzero=False, offline=False):
       if d[1].header['HDUVERS1']=='1.0.0':
         d[1].columns.change_name('COEFF_OM','EFFCOLLSTRPAR')
         d[1].columns[d[1].data.names.index('COEFF_OM')].name='EFFCOLLSTRPAR'
-    if settings:
-      settings['data'][Z][z1][ftype.upper()] = d
-      settings['datasums'][Z][z1][ftype.upper()] = d[1].header['DATASUM']
+    if datacache:
+      datacache['data'][Z][z1][ftype.upper()] = d
+      datacache['datasums'][Z][z1][ftype.upper()] = d[1].header['DATASUM']
    
-      return settings['data'][Z][z1][ftype.upper()]
+      return datacache['data'][Z][z1][ftype.upper()]
     else:
       return d
   else:
@@ -3639,12 +3759,12 @@ def sort_pi_data(pidat, lev_init, lev_final):
 #  Version 0.1 - initial release
 #  Adam Foster August 15th 2015
 #
-  
+  print 'lev_init=', lev_init, ', lev_final=', lev_final
   i = numpy.where((pidat[1].data['lev_init'] ==lev_init) &\
                   (pidat[1].data['lev_final'] ==lev_final))[0]
+  print 'i=', i
   energy = numpy.zeros(0,dtype=float)
   pi_param = numpy.zeros(0,dtype=float)
-
   if len(i)==0:
     return False
   for ii in i:
@@ -3794,7 +3914,6 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
     
     
   elif pi_type==const.HYDROGENIC:
-    print pi_coeffts
     nq = int(round(pi_coeffts[0]))
     lq = int(round(pi_coeffts[1]))
     Zel = Z
@@ -3906,13 +4025,9 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
 
     # deal with the edge cases: zero below ionization potential,
     # extrappolate as E^-3 at high energy
-    print E.shape
-    print tmp2.shape
-    zzz=raw_input('yikes')
     inan = numpy.isnan(tmp2)
     iinf = numpy.isinf(tmp2)
     ifin = numpy.isfinite(tmp2)
-    print inan, pi_type
     result[inan][:] = 0.0
     result[iinf] = sig_coeffts['pi_param'][-1]* \
                               ((E[iinf]/\

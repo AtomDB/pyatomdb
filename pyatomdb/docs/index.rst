@@ -6,18 +6,6 @@
 PyAtomDB
 ====================================
 
-Contents:
-
-.. toctree::
-   :maxdepth: 2
-   
-   apec
-   atomic
-   atomdb
-   const
-   spectrum
-   util
-   
 
 ============
 Introduction
@@ -27,10 +15,8 @@ Introduction
 
 
 
-pyatomdb is a selection of utilities designed to interact with the AtomDB
-database. Currently, these utilities are in a far from finished format, however
-progress on this is ongoing. These have been taken from a series of codes on my
-laptop which were useful. Some produce lots of unhelpful onscreen output.
+PyAtomDB is a selection of utilities designed to interact with the `AtomDB
+database <https://www.atomdb.org>`_ . Currently, these utilities are in a far from finished format, however progress on this is ongoing. These have been taken from a series of codes on my laptop which were useful. Some produce lots of unhelpful onscreen output.
 
 
 There are several different modules currently. These are:
@@ -40,14 +26,15 @@ There are several different modules currently. These are:
 - :doc:`const </const>`   : a series of physical constants
 - :doc:`spectrum </spectrum>` : routines for generating spectra from the published AtomDB line and continuum emissivity files
 - :doc:`util </util>`    : sumple utility codes (sorting etc) that pyatomdb relies on.
+- :doc:`apec </apec>`  : ultimately, the full apec code. For now, incomplete.
 
 Currently, only the spectrum library has been extensively tested. Expect bugs.
-Report those bugs!
-
+Report those bugs! Make feature requests! Email the code authors or raise an issue at the `github page <https://github.com/jagophile/atomdb/issues>`_  
 
 =======
 License
 =======
+
 Pyatomdb is released under the Smithsonian License:
 
 Copyright 2015 Smithsonian Institution. Permission is granted to use, copy, 
@@ -79,47 +66,33 @@ been warned of the possibility of such loss or damage.
 Usage
 =====
 
---------------------------
-Interrogating the database
---------------------------
-This makes use of the atomdb module. Before starting, it is a good
-idea to download the AtomDB tarballs from www.atomdb.org/Downloads: the latest one is version 3.0.2. This dataset contains the filemap, which identifies the correct files for each different ion and process.
+------------
+Installation
+------------
+PyAtomDB can be installed from pypi, using the simple ``pip install pyatomdb`` command.
 
-It is also important to set the ATOMDB environment variable to point to where this data was untarred, e.g. the folder with the filemap in it, so $ATOMDB/filemap should exist.
-e.g::
+For PyAtomDB to be useful, it requires access to a range of AtomDB database files (these are all `FITS <fits.gsfc.nasa.gov>`_ files). The database has two broad types of files, emissivity files and fundamental atomic data files (APED, the Astrophysical Plasma Emission Database). 
 
- bash: export ATOMDB=/myfolder/atomdb_v3.0.2
- csh: setenv ATOMDB /myfolder/atomdb_v3.0.2
+The emissivity files are needed for things such as producing spectra. The APED files are underlying atomic data and are not strictly needed for creating a spectrum, but can be useful for getting later information out.
 
-or within python:: 
+In order for PyAtomDB to work efficiently, you should choose a location to store all of these files (e.g. /home/username/atomdb). It is strongly recommended that you set the environment variable ATOMDB to point to this, i.e. for bash add the following line to your .bashrc file::
 
- import os
- os.environ['ATOMDB']='/myfolder/atomdb_v3.0.2'
-
-Currently, the AtomDB database is more than 10GB of data, so we are avoiding distributing it to all users. You can, however, get the individual data you need using the ``get_data`` routine::
-
-  lvdata = pyatomdb.atomdb.get_data(z0, z1, ftype)
-
-This will try to open the file locally if it exists, and if it does not it will then go to the AtomDB FTP server and download the data for element z0, ion z1, with ftype a 2-character string denoting the type of data to get:
-
-- ``IR``: ionization and recombination
-- ``LV``: energy levels
-- ``LA``: radiative transition data (lambda and A-values)
-- ``EC``: electron collision data
-- ``PC``: proton collision data
-- ``DR``: dielectronic recombination satellite line data
-- ``PI``: XSTAR photoionization data
-- ``AI``: autoionization data
-
-So to open the energy levels for oxygen with 2 electrons (O 6+, or O VII)::
+  export ATOMDB=/home/username/atomdb
   
- lvdata = pyatomdb.atomdb.get_data(8,7,'LV')
+or for csh, add this to your .cshrc or .cshrc.login::
+  
+  setenv ATOMDB /home/username/atomdb   
 
-Data files are stored in ``$ATOMDB/APED/<elsymb>/<elsymb>_<ionnum>/``
+If you run the following code, PyAtomDB will download the files you need to get started::
 
------------------
-Making a Spectrum
------------------
+  import pyatomdb
+  pyatomdb.util.initalize()
+
+This will prompt you for an install location and whether to download the emissivity files. It is suggested that you say yes. It will also ask if you mind sharing anonymous download information with us. We would appreciate it if you say yes, but it is not necessary for the functioning of the software.
+
+--------------------------
+Example: Making a Spectrum
+--------------------------
 These functions are in the ``spectrum`` module::
   
   import pyatomdb, numpy, pylab
@@ -168,6 +141,51 @@ These functions are in the ``spectrum`` module::
   pyatomdb.spectrum.print_lines(llist, specunits = 'keV')
 
 
+
+
+
+
+---------------------------------
+Interrogating the atomic database
+---------------------------------
+
+The atomic database APED contains a range of data for a host of different ions. It contains a host of different files covering a range of different processes. The full database, when uncompressed is more than 10GB of data, so we are avoiding distributing it to all users. You can, however, get the individual data you need using the ``get_data`` routine::
+
+  mydata = pyatomdb.atomdb.get_data(z0, z1, ftype)
+
+This will try to open the file locally if it exists, and if it does not it will then go to the AtomDB FTP server and download the data for element z0, ion z1, with ftype a 2-character string denoting the type of data to get:
+
+- ``IR``: ionization and recombination
+- ``LV``: energy levels
+- ``LA``: radiative transition data (lambda and A-values)
+- ``EC``: electron collision data
+- ``PC``: proton collision data
+- ``DR``: dielectronic recombination satellite line data
+- ``PI``: XSTAR photoionization data
+- ``AI``: autoionization data
+
+So to open the energy levels for oxygen with 2 electrons (O 6+, or O VII)::
+  
+ lvdata = pyatomdb.atomdb.get_data(8,7,'LV')
+
+Downloaded data files are stored in ``$ATOMDB/APED/<elsymb>/<elsymb>_<ionnum>/``. You can delete them if you need to free up space, whenever a code needs the data it will reload them. There are many routines in the atomdb module which relate to extracting the data from the files, i.e. getting collisional excitation rates or line wavelengths. If you have trouble finding a routine to do what you want, please contact us and we'll be happy to write one if we can (this is how this module will grow - through user demand!)
+
+
+Contents
+========
+
+Contents:
+
+.. toctree::
+   :maxdepth: 2
+   
+   apec
+   atomic
+   atomdb
+   const
+   spectrum
+   util
+   
 
 
 

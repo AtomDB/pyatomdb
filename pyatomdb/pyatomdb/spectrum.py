@@ -295,6 +295,9 @@ def list_lines(specrange, lldat=False, index=False, linefile=False,\
   """
   Gets list of the lines in a given spectral range
   
+  Note that the output from this can be passed directly to print_lines
+  
+  
   Parameters
   ----------
   specrange : [float,float]
@@ -310,51 +313,50 @@ def list_lines(specrange, lldat=False, index=False, linefile=False,\
 
   Notes
   -----
-  
   The actual line list can be defined in one of several ways:
 
   specrange = [10,100]
+
+  1. lldat as an actual list of lines::
   
-    1. lldat as an actual list of lines, e.g.::
-  
-         a = pyfits.open('apec_line.fits')
-         llist = a[30].data
-         l= list_lines(specrange, lldat=llist)
+       a = pyfits.open('apec_line.fits')
+       llist = a[30].data
+       l = list_lines(specrange, lldat=llist)
 
-    2. lldat as a numpy array of lines, e.g.::
+  2. lldat as a numpy array of lines::
 
-         a = pyfits.open('apec_line.fits')
-         llist = numpy.array(a[30].data)
-         l= list_lines(specrange, lldat=llist)
+       a = pyfits.open('apec_line.fits')
+       llist = numpy.array(a[30].data)
+       l = list_lines(specrange, lldat=llist)
 
-    3. lldat is a BinTableHDU from pyfits::
+  3. lldat is a BinTableHDU from pyfits::
 
-         a = pyfits.open('apec_line.fits')
-         llist = numpy.array(a[30])
-         l= list_lines(specrange, lldat=llist)
+       a = pyfits.open('apec_line.fits')
+       llist = numpy.array(a[30])
+       l = list_lines(specrange, lldat=llist)
 
-    4. lldat is a HDUList from pyfits. In this case index must also be set::
+  4. lldat is a HDUList from pyfits. In this case index must also be set::
          
-         a = pyfits.open('apec_line.fits')
-         index = 30
-         l= list_lines(specrange, lldat=a, index=index)
+       a = pyfits.open('apec_line.fits')
+       index = 30
+       l = list_lines(specrange, lldat=a, index=index)
 
-    5. lldat NOT set, \
-       linefile contains apec_line.fits file location, index identifies the HDU::
-       
-         linefile = 'mydir/apec_v2.0.2_line.fits'
-         index = 30
-         l= list_lines(specrange, linefile=linefile, index=index)
+  5. lldat NOT set, \
+     linefile contains apec_line.fits file location, index identifies the HDU::
+
+       linefile = 'mydir/apec_v2.0.2_line.fits'
+       index = 30
+       l = list_lines(specrange, linefile=linefile, index=index)
     
-    6. lldat NOT set & linefile NOT set,\ 
+  6. lldat NOT set & linefile NOT set,\ 
        linefile is set to $ATOMDB/apec_line.fits. index identifies the HDU::
        
-         index = 30
-         l= list_lines(specrange, index=index)
+       index = 30
+       l = list_lines(specrange, index=index)
 
   Returns
   -------
-  dtype=([('Lambda', '>f4'), \
+  linelist : dtype=([('Lambda', '>f4'), \
            ('Lambda_Err', '>f4'), \
            ('Epsilon', '>f4'), \
            ('Epsilon_Err', '>f4'), \
@@ -362,11 +364,9 @@ def list_lines(specrange, lldat=False, index=False, linefile=False,\
            ('Ion', '>i4'), \
            ('UpperLev', '>i4'), \
            ('LowerLev', '>i4')])
-    
-     A line list filtered by the various elements. This list is a numpy dtype::       
-  Note that the output from this can be passed directly to print_lines
+     A line list filtered by the various elements.
   """
-  
+
 #  History
 #  -------
 #  Version 0.1 - initial release

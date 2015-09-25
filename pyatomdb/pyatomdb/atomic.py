@@ -571,8 +571,8 @@ def Z_to_mass(Z):
   Isotope fractions based on those found in earth's crust samples, your
   astrophysical object may vary.
   
-  Paramters
-  ---------
+  Parameters
+  ----------
   Z : int
     nuclear charge, e.g 6 for C
 
