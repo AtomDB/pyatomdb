@@ -35,8 +35,7 @@ for i in sys.path:
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.coverage',
-    'numpydoc',
+    'sphinx.ext.napoleon',
     'sphinx.ext.todo',
     'sphinx.ext.mathjax',
 ]
