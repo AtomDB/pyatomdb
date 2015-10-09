@@ -7,8 +7,10 @@ Adam Foster July 17th 2015
 """
 
 import numpy, os, errno, hashlib
-import curl, urllib, time, subprocess, shutil, wget, glob
+import requests, urllib, time, subprocess, shutil, wget, glob
 import const
+from StringIO import StringIO
+import ftplib
 
 ################################################################################
 #
@@ -259,11 +261,8 @@ def record_upload(fname):
                   'USERID': int(userid),\
                   'FILE': fname,\
                   'TIME': time.time()}
-    c = curl.pycurl.Curl()
-    c.setopt(c.URL, 'http://www.atomdb.org/util/process_downloads.php')
-    c.setopt(c.POSTFIELDS, urllib.urlencode(postform))
-    c.perform()
-    c.close()
+    r = requests.post('http://www.atomdb.org/util/process_downloads.php',\
+                      data = postform)
   return
     
 
@@ -596,10 +595,16 @@ def initialize():
     print "...done"
     
     print "finding current version of AtomDB. ",
-    a=curl.Curl()
-    version=a.get('ftp://sao-ftp.harvard.edu/AtomDB/releases/LATEST')
-    a.close()
-    version = version[:-1]
+#    a=curl.Curl()
+#    version=a.get('ftp://sao-ftp.harvard.edu/AtomDB/releases/LATEST')
+#    a.close()
+    
+    ftp = ftplib.FTP('sao-ftp.harvard.edu') 
+    x = ftp.login()
+    r = StringIO()
+    x = ftp.retrbinary('RETR /AtomDB/releases/LATEST', r.write)
+    version = r.getvalue()[:-1]
+    x = ftp.quit()
     print "Latest version is %s"%(version)
     
     get_new_files=question(\
@@ -638,11 +643,13 @@ def check_version():
     print "You must set the ATOMDB environment variable for this to work!"
     raise
   
-  a=curl.Curl()
-  newversion=a.get('ftp://sao-ftp.harvard.edu/AtomDB/releases/LATEST')
-  a.close()
-  newversion = newversion[:-1]
-  
+  ftp = ftplib.FTP('sao-ftp.harvard.edu') 
+  x = ftp.login()
+  r = StringIO()
+  x = ftp.retrbinary('RETR /AtomDB/releases/LATEST', r.write)
+  newversion = r.getvalue()[:-1]
+  x = ftp.quit()
+
   curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
 
   if (curversion != newversion):
