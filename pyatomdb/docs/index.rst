@@ -186,9 +186,6 @@ Contents:
    spectrum
    util
    
-
-
-
 Indices and tables
 ==================
 
