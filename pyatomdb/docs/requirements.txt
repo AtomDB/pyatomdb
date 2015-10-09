@@ -1,3 +1,5 @@
 numpydoc
 astropy
 pyatomdb
+curl
+wget
