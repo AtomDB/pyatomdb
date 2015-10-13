@@ -3346,8 +3346,15 @@ def read_filemap(filemap="$ATOMDB/filemap", atomdbroot="$ATOMDB"):
 #  Version 0.1 - initial release
 #  Adam Foster August 15th 2015
 #  
+#  
+#  Version 0.2 - bugfix
+#  added check for "filemap==False"
+#  Adam Foster October 9th 2015
+#  
   
   # parse the options here.
+  if filemap==False:
+    filemap = "$ATOMDB/filemap"
   
   fmapfile = os.path.expandvars(filemap)
   

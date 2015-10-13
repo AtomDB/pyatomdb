@@ -346,26 +346,33 @@ def download_atomdb_emissivity_files(adbroot, userid, version):
   record_upload(fname)
     
   #uncompress
-  print "Uncompressing",
+  print "\nUncompressing",
   cwd=os.getcwd()
   os.chdir(tmpdir)
   subprocess.call(["tar", "-xjf", "%s"%(fnameout)])
   print "...done"
   
-  print "Moving files to %s" % (adbroot)
+  print "Moving files to %s" % (adbroot),
   for ifile in glob.glob('./*/*'):
     outfile = adbroot+'/'+ifile.split('/')[-1]
     if os.path.exists(outfile):
-      if md5Checksum(outfile) == md5Checksum(ifile):
+      try:
+        if md5Checksum(outfile) == md5Checksum(ifile):
+          
         # these files are the same, don't bother copying or 
         # asking about copying them.
-        continue
+          continue
+      except IOError:
+        print "outfile = %s, ifile = %s"%(outfile, ifile)
+        raise
+      
       overwrite = question("file %s already exists. Overwrite?"%(outfile),"y",["y","n"])
       if overwrite:
         os.remove(outfile)
       else:
         continue
     shutil.move(ifile,outfile)
+
 
   os.chdir(cwd)
   shutil.rmtree(tmpdir)
@@ -423,20 +430,26 @@ def download_atomdb_nei_emissivity_files(adbroot, userid, version):
   record_upload(fname)
     
   #uncompress
-  print "Uncompressing",
+  print "\nUncompressing",
   cwd=os.getcwd()
   os.chdir(tmpdir)
   subprocess.call(["tar", "-xjf", "%s"%(fnameout)])
-  print "...done"
+  print "... done"
   
-  print "Moving files to %s" % (adbroot)
+  print "Moving files to %s" % (adbroot),
   for ifile in glob.glob('./*/*'):
     outfile = adbroot+'/'+ifile.split('/')[-1]
     if os.path.exists(outfile):
-      if md5Checksum(outfile) == md5Checksum(ifile):
+      try:
+        if md5Checksum(outfile) == md5Checksum(ifile):
+          
         # these files are the same, don't bother copying or 
         # asking about copying them.
-        continue
+          continue
+      except IOError:
+        print "outfile = %s, ifile = %s"%(outfile, ifile)
+        raise
+      
       overwrite = question("file %s already exists. Overwrite?"%(outfile),"y",["y","n"])
       if overwrite:
         os.remove(outfile)
@@ -447,7 +460,7 @@ def download_atomdb_nei_emissivity_files(adbroot, userid, version):
   os.chdir(cwd)
   shutil.rmtree(tmpdir)
     
-  print "...done"
+  print "... done"
   
             
 

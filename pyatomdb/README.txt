@@ -45,3 +45,9 @@ September 23rd 2015: Added significant documentation. Converted all 'z0' to 'Z' 
 September 25th 2015:   Major documentation revamp.
 Separated datacache from settings keyword
 Introduced automatic install and update into util package.
+
+0.0.1.2
+October 13th 2015:   More documentation improvements
+Removed use of "curl" library, as apparently is non-standard. Replaced with 
+wget, ftplib and requests.
+

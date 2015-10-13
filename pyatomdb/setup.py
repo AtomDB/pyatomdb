@@ -24,4 +24,10 @@ setup(name='pyatomdb',
                    'Programming Language :: Python',\
                    'Operating System :: POSIX'],
       zip_safe=False,
-      long_description = README_TEXT)
+      long_description = README_TEXT,\
+      install_requires=[
+      "requests",\
+      "wget",\
+      "numpy",\
+      "scipy"])
+
