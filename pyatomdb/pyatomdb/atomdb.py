@@ -3622,6 +3622,10 @@ def get_data(Z, z1, ftype, datacache=False, \
 #  Version 0.2 - separated "settings" and "datacache"
 #  Adam Foster September 24th 2015
 
+#  Version 0.3 - Fixed fmapfile and atomdbroot use to avoid returning
+#  "False" and triggering errors
+#  Adam Foster October 27th 2015
+
   d = False
   didurl=False
   fmapfile = "$ATOMDB/filemap"
@@ -3677,12 +3681,12 @@ def get_data(Z, z1, ftype, datacache=False, \
             if offline:
               d = False
             else:
-              url = re.sub(atomdbroot,\
+              url = re.sub(os.path.expandvars(atomdbroot),\
                            'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
               try:
                 d = pyfits.open(url)
                 didurl=True
-                util.record_upload(re.sub(atomdbroot,'',fname))
+                util.record_upload(re.sub(os.path.expandvars(atomdbroot),'',fname))
               except urllib2.URLError:
                 print "Error trying to open file %s. Not found locally or on"%(fname)+\
                     " server." 
@@ -3715,12 +3719,13 @@ def get_data(Z, z1, ftype, datacache=False, \
           if offline:
             d = False
           else:
-            url = re.sub(atomdbroot,\
+            url = re.sub(os.path.expandvars(atomdbroot),\
                          'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
+            print "trying URL %s"%(url)
             try:
               d = pyfits.open(url)
               didurl=True
-              util.record_upload(re.sub(atomdbroot,'',fname))
+              util.record_upload(re.sub(os.path.expandvars(atomdbroot),'',fname))
             except urllib2.URLError:
               print "Error trying to open file %s. Not found locally or on"%(fname)+\
                     " server." 
