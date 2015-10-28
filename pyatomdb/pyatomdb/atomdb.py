@@ -3346,15 +3346,8 @@ def read_filemap(filemap="$ATOMDB/filemap", atomdbroot="$ATOMDB"):
 #  Version 0.1 - initial release
 #  Adam Foster August 15th 2015
 #  
-#  
-#  Version 0.2 - bugfix
-#  added check for "filemap==False"
-#  Adam Foster October 9th 2015
-#  
   
   # parse the options here.
-  if filemap==False:
-    filemap = "$ATOMDB/filemap"
   
   fmapfile = os.path.expandvars(filemap)
   
@@ -3631,7 +3624,9 @@ def get_data(Z, z1, ftype, datacache=False, \
 
   d = False
   didurl=False
-
+  fmapfile = "$ATOMDB/filemap"
+  atomdbroot = "$ATOMDB"
+  
   if datacache != False:
     # make sure that the relevant dictionaries are ready to receive the data
     if not 'data' in datacache.keys():
@@ -3654,8 +3649,6 @@ def get_data(Z, z1, ftype, datacache=False, \
       pass
     else:
       # check for file location overrides
-      fmapfile = False
-      atomdbroot=False
       if settings:
         if settings['filemap']:
           fmapfile = settings['filemap']
@@ -3696,8 +3689,6 @@ def get_data(Z, z1, ftype, datacache=False, \
                 d=False
 
   else:
-    fmapfile = False
-    atomdbroot=os.environ['ATOMDB']
     if settings:
       if settings['filemap']:
         fmapfile = settings['filemap']
