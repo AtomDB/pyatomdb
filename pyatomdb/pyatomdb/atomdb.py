@@ -3646,6 +3646,8 @@ def get_data(Z, z1, ftype, datacache=False, \
 
   d = False
   didurl=False
+  fmapfile = "$ATOMDB/filemap"
+  atomdbroot="$ATOMDB"
 
   if datacache != False:
     # make sure that the relevant dictionaries are ready to receive the data
@@ -3669,8 +3671,6 @@ def get_data(Z, z1, ftype, datacache=False, \
       pass
     else:
       # check for file location overrides
-      fmapfile = "$ATOMDB/filemap"
-      atomdbroot="$ATOMDB"
       if settings:
         if settings['filemap']:
           fmapfile = settings['filemap']
@@ -3711,8 +3711,6 @@ def get_data(Z, z1, ftype, datacache=False, \
                 d=False
 
   else:
-    fmapfile = False
-    atomdbroot=os.environ['ATOMDB']
     if settings:
       if settings['filemap']:
         fmapfile = settings['filemap']
