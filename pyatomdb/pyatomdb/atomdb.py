@@ -3148,6 +3148,16 @@ def calc_rrc(Z, z1, eedges, Te, lev, xstardat=False, \
     if not isinstance(xstardat,dict):
       xstardat = sort_pi_data(xstardat, int(ldat['PHOT_PAR'][0]),\
                                xstarlevfinal)
+    if xstardat==False:
+      #no photoionization data
+      gratio = 0
+      I_e = 0
+      rrc = numpy.zeros(len(eedges)-1,dtype=float)
+      if returntotal:
+        return rrc , 0.0
+      else:
+        return rrc
+
     gratio = xstardat['g_ratio']
     I_e = (get_ionpot(Z, z1) - ldat['energy'])/1000.0
 
