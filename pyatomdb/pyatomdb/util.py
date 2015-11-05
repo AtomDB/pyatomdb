@@ -689,3 +689,167 @@ def check_version():
   userprefs = load_user_prefs()
   userprefs['LASTVERSIONCHECK'] = time.time()
   write_user_prefs(userprefs)
+
+
+
+
+
+
+
+def switch_version(version):
+  """
+  Changes the AtomDB version. Note this will overwrite several links 
+  on your hard disk, and will *NOT* be repaired upon quitting python.
+
+  The files affect are the VERSION file and the soft links
+  $ATOMDB/apec_line.fits, $ATOMDB/apec_coco.fits, $ATOMDB/filemap and
+  $ATOMDB/apec_linelist.fits
+  
+  Parameters
+  ----------
+  version: string
+    The version of AtomDB to switch to. Should be of the form "2.0.2"
+
+  Returns
+  -------
+  None
+
+  """
+  #
+  # Intial version November 4th 2015
+  # Adam Foster
+  #
+  import re
+  try:
+    adbroot_init = os.environ['ATOMDB']
+  except keyError:
+    print "You must set the ATOMDB environment variable for this to work!"
+    raise
+  
+  
+  # check the AtomDB version string is a suitable string
+  
+  if not re.match('^\d\.\d\.\d$',version):
+    print "Error: version number must be of format %i.%i.%i, e.g. 3.0.2"
+    return
+
+  # check current version
+  curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
+  
+  if curversion == version:
+    print "Already using version %s. Not changing anything!" %(version)
+    return
+  
+  # ok, otherwise we must do things!
+  startdir = os.getcwd()
+
+  # check for existing local files. If so we can just change the pointers
+  mustdownload = False  
+  
+  flist =   ['apec_vVERSION_line.fits', 'apec_vVERSION_coco.fits',\
+                'filemap_vVERSION', 'apec_vVERSION_linelist.fits']
+  if version[0] == '3':
+    flist.append('apec_vVERSION_nei_line.fits')
+    flist.append('apec_vVERSION_nei_comp.fits')
+  
+  for f in flist:
+    fname_test = re.sub('VERSION',version, os.path.expandvars("$ATOMDB/%s"%(f)))
+    
+    if os.path.exists(fname_test):
+      
+      pass
+      
+    else:
+      print "We are missing some files for this version, downloading now"
+      mustdownload = True
+
+  if mustdownload:
+    # go find the files      
+    ftproot = 'sao-ftp.harvard.edu'
+    # get the filename
+    if version[0] =='2':
+      fname = re.sub('VERSION',version,'atomdb_vVERSION_runs.tar.gz')
+      dirname = 'AtomDB/releases/old'
+    elif version[0] =='3':
+      fname = re.sub('VERSION',version,'atomdb_vVERSION.tar.bz2')
+      dirname = 'AtomDB/releases'
+      
+    localfile = os.path.expandvars("$ATOMDB/tmp/%s"%(fname))
+      # create temporary folder
+    mkdir_p(os.path.expandvars("$ATOMDB/tmp"))
+      
+     
+    print "Attempting to download %s to %s"%('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile)
+    # get the file
+    try:
+      wget.download('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile)
+    except IOError:
+      print "Cannot find file ftp://%s/%s/%s on server. Please check that version %s is a valid version."%(ftproot,dirname,fname, version)
+      return    
+    # ok, now open up the relevant file and copy the things we need
+    print "\nUncompressing %s..." %(localfile)
+
+    cwd=os.getcwd()
+    os.chdir(os.path.expandvars("$ATOMDB/tmp"))
+    if fname.split('.')[-1] == 'gz':
+      subprocess.call(["tar", "-xvzf", "%s"%(fname)])
+    elif fname.split('.')[-1] == 'bz2':
+      subprocess.call(["tar", "-xvjf", "%s"%(fname)])
+
+    print "...done"
+
+    os.chdir(os.path.expandvars(re.sub('VERSION',version, "$ATOMDB/tmp/atomdb_vVERSION")))
+
+
+    for ifile in glob.glob('*%s*'%(version)):
+
+      outfile = os.path.expandvars("$ATOMDB/%s"%(ifile))
+      if os.path.exists(outfile):
+        try:
+          if md5Checksum(outfile) == md5Checksum(ifile):
+          
+        # these files are the same, don't bother copying or 
+        # asking about copying them.
+            continue
+        except IOError:
+          print "outfile = %s, ifile = %s"%(outfile, ifile)
+          raise
+      
+        overwrite = question("file %s already exists. Overwrite?"%(outfile),"y",["y","n"])
+        if overwrite:
+          os.remove(outfile)
+          shutil.move(ifile,outfile)
+        else:
+          continue
+      else: 
+
+        shutil.move(ifile,outfile)
+
+    print "...done"
+    
+    os.chdir(os.path.expandvars("$ATOMDB"))
+    # delete temporary directory
+    shutil.rmtree('tmp')
+    
+  os.chdir(os.path.expandvars("$ATOMDB"))
+  # OK, download complete. Now to make symlinks
+  for flist in ['apec_vVERSION_line.fits', 'apec_vVERSION_coco.fits',\
+                'filemap_vVERSION', 'apec_vVERSION_linelist.fits']:
+                  
+    # remove existing link if there is one
+#    print "CHECKING FOR %s/%s"%(os.getcwd(), re.sub('VERSION',version,flist))
+#    if os.path.exists(re.sub('VERSION',version,flist)):
+#      os.remove(re.sub('VERSION',version,flist))
+#      print "REMOVING LINK1!"
+    # add new link
+
+    if os.path.islink(re.sub('_vVERSION','',flist)):
+      os.remove(re.sub('_vVERSION','',flist))
+      
+    os.symlink(re.sub('VERSION',version,flist), re.sub('_vVERSION','',flist))
+    
+    # update version
+    a = open('VERSION','w')
+    a.write(version+'\n')
+    a.close()
+  os.chdir(startdir)
