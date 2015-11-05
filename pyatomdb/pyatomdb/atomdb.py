@@ -588,7 +588,7 @@ def get_ionbal(ionbalfile, element, ion=-1):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 
-def get_filemap_file(ftype, Z, z1, fmapfile="ATOMDB/filemap",\
+def get_filemap_file(ftype, Z, z1, fmapfile="$ATOMDB/filemap",\
                      atomdbroot="$ATOMDB", quiet=False, misc=False):
   """
   Find the correct file from the database for atomic data of type ftype
@@ -3653,6 +3653,10 @@ def get_data(Z, z1, ftype, datacache=False, \
 
 #  Version 0.2 - separated "settings" and "datacache"
 #  Adam Foster September 24th 2015
+
+#  Version 0.3 - Fixed fmapfile and atomdbroot use to avoid returning
+#  "False" and triggering errors
+#  Adam Foster October 27th 2015
 
   d = False
   didurl=False
