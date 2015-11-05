@@ -3709,12 +3709,12 @@ def get_data(Z, z1, ftype, datacache=False, \
             if offline:
               d = False
             else:
-              url = re.sub(atomdbroot,\
+              url = re.sub(os.path.expandvars(atomdbroot),\
                            'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
               try:
                 d = pyfits.open(url)
                 didurl=True
-                util.record_upload(re.sub(atomdbroot,'',fname))
+                util.record_upload(re.sub(os.path.expandvars(atomdbroot),'',fname))
               except urllib2.URLError:
                 print "Error trying to open file %s. Not found locally or on"%(fname)+\
                     " server."
@@ -3747,12 +3747,13 @@ def get_data(Z, z1, ftype, datacache=False, \
           if offline:
             d = False
           else:
-            url = re.sub(atomdbroot,\
+            url = re.sub(os.path.expandvars(atomdbroot),\
                          'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
             try:
+              print url
               d = pyfits.open(url)
               didurl=True
-              util.record_upload(re.sub(atomdbroot,'',fname))
+              util.record_upload(re.sub(os.path.expandvars(atomdbroot),'',fname))
             except urllib2.URLError:
               print "Error trying to open file %s. Not found locally or on"%(fname)+\
                     " server."
