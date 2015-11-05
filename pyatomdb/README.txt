@@ -51,3 +51,8 @@ October 13th 2015:   More documentation improvements
 Removed use of "curl" library, as apparently is non-standard. Replaced with 
 wget, ftplib and requests.
 
+0.0.1.3
+November 5th 2015: Many minor bugfixes. Added "switch_version" to util package
+to allow looking at older AtomDB version data. Added use option to get total RRC
+emission using integral to infinity. 
+
