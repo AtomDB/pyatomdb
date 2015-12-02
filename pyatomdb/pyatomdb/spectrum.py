@@ -16,7 +16,7 @@ except ImportError:
 
 import numpy, os
 # other pystomdb modules
-import atomic, util, const, atomdb
+import atomic, util, const, atomdb, apec
 
 def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
                   cocofile="$ATOMDB/apec_coco.fits",\
@@ -412,7 +412,8 @@ def list_lines(specrange, lldat=False, index=False, linefile=False,\
       llist = numpy.array(lldat)
   else:
     # no line data supplied.
-    linefile = os.path.expandvars('$ATOMDB/apec_line.fits')
+    if linefile==False:
+      linefile = os.path.expandvars('$ATOMDB/apec_line.fits')
     if not os.path.isfile(linefile):
       print "*** ERROR. No linefile supplied but $ATOMDB/apec_line.fits is"
       print " not a file. Exiting"
@@ -433,6 +434,196 @@ def list_lines(specrange, lldat=False, index=False, linefile=False,\
   return llist
 
 
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+def list_nei_lines(specrange, Te, tau, Te_init=1e4,  lldat=False, linefile=False,\
+              units='angstroms', teunit='K', minepsilon=1e-20):
+  """
+  Gets list of the lines in a given spectral range for a given NEI plasma
+  
+  For speed purposes, this takes the nearest temperature tabulated in the
+  linefile, and applies the exact ionization balance as calculated to this.
+  This is not perfect, but should be good enough.
+  
+  Note that the output from this can be passed directly to print_lines
+  
+  
+  Parameters
+  ----------
+  specrange : [float,float]
+    spectral range [min,max] to return lines on
+  Te : float
+    electron temperature
+  tau : float
+    electron density * time (cm^-3 s)
+  Te_init : float
+    initial ionization balance temperature
+  lldat : see notes
+    line data
+  linefile : see notes
+    line data file, see notes
+  units : {'A' , 'keV'}
+    units of specrange (default A)
+  teunit : {'K' , 'keV'}
+    units of temperatures (default K)
+  minepsilon : float
+    minimum emissivity (ph cm^3 s^{-1}) for inclusion in linelist
+  
+  Notes
+  -----
+  The actual line list can be defined in one of several ways:
+
+  specrange = [10,100]
+
+  1. lldat as an actual list of lines::
+
+       a = pyfits.open('apec_nei_line.fits')
+       llist = a[30].data
+       l = list_nei_lines(specrange, lldat=llist)
+
+  2. lldat as a numpy array of lines::
+
+       a = pyfits.open('apec_nei_line.fits')
+       llist = numpy.array(a[30].data)
+       l = list_nei_lines(specrange, lldat=llist)
+
+  3. lldat is a BinTableHDU from pyfits::
+
+       a = pyfits.open('apec_nei_line.fits')
+       llist = numpy.array(a[30])
+       l = list_nei_lines(specrange, lldat=llist)
+
+  4. lldat is a HDUList from pyfits. In this case index must also be set::
+
+       a = pyfits.open('apec_nei_line.fits')
+       index = 30
+       l = list_nei_lines(specrange, lldat=a, index=index)
+
+  5. lldat NOT set, linefile contains apec_line.fits file location, index 
+     identifies the HDU::
+
+       linefile = 'mydir/apec_v3.0.2_nei_line.fits'
+       index = 30
+       l = list_nei_lines(specrange, linefile=linefile, index=index)
+
+  6. lldat NOT set & linefile NOT set, linefile is set to 
+     $ATOMDB/apec_line.fits. index identifies the HDU::
+       
+       index = 30
+       l = list_nei_lines(specrange, Te, tau)
+
+  Returns
+  -------
+  linelist : dtype=([('Lambda', '>f4'), \
+           ('Lambda_Err', '>f4'), \
+           ('Epsilon', '>f4'), \
+           ('Epsilon_Err', '>f4'), \
+           ('Element', '>i4'), \
+           ('Element_drv', '>i4'), \
+           ('Ion', '>i4'), \
+           ('Ion_drv', '>i4'), \
+           ('UpperLev', '>i4'), \
+           ('LowerLev', '>i4')])
+     A line list filtered by the various elements.
+  """
+
+#  History
+#  -------
+#  Version 0.1 - initial release
+#    Adam Foster November 02nd 2015
+#
+           
+  # check the units
+  
+  if units.lower()=='kev':
+    specrange = [const.HC_IN_KEV_A/specrange[1], const.HC_IN_KEV_A/specrange[0]]
+  elif units.lower() in ['a', 'angstrom', 'angstroms']:
+    specrange = specrange
+  else:
+    print "*** ERROR: unknown unit %s, Must be keV or A. Exiting ***"%\
+          (units)
+
+  if teunit.lower() == 'kev':
+    kT = Te*1.0
+  elif teunit.lower() == 'ev':
+    kT = Te/1000.0
+  elif teunit.lower() == 'k':
+    kT = Te*const.KBOLTZ
+  else:
+    print "*** ERROR: unknown teunit %s, Must be keV or K. Exiting ***"%\
+          (teunit)
+
+
+  if Te_init != False:
+    if teunit.lower() == 'kev':
+      kT_init = Te_init*1.0
+    elif teunit.lower() == 'ev':
+      kT_init = Te_init/1000.0
+    elif teunit.lower() == 'k':
+      kT_init = Te_init*const.KBOLTZ
+    else:
+      print "*** ERROR: unknown teunit %s, Must be keV or K. Exiting ***"%\
+          (teunit)
+
+
+  # sort out the line file...
+    
+  if lldat != False:
+    #options here:
+    # (1) This is a line list, i.e. the ldata[index].data from a file,
+    #     either in original pyfits format or a numpy array
+    #
+    # (2) This is an hdu from a file
+    #
+    # (3) This is a _line.fits file, and requires an index to make sense of it
+    
+    if type(lldat) == pyfits.hdu.hdulist.HDUList:
+      # go get the index
+      te_index = get_index(kT, filename=lldat, \
+              teunits='keV', logscale=True)
+      llist = numpy.array(lldat[te_index].data)
+    elif type(lldat) == pyfits.hdu.table.BinTableHDU:
+      # no need to get index
+      llist = numpy.array(lldat.data)
+    elif type(lldat) in [pyfits.fitsrec.FITS_rec, numpy.ndarray]:
+      llist = numpy.array(lldat)
+  else:
+    # no line data supplied.
+    if linefile==False:
+      linefile = os.path.expandvars('$ATOMDB/apec_nei_line.fits')
+    if not os.path.isfile(linefile):
+      print "*** ERROR. Linefile %s is "%(linefile),
+      print " not a file. Exiting"
+    else:
+      lldat = pyfits.open(os.path.expandvars(linefile))
+      te_index = get_index(kT, filename=lldat, \
+              teunits='keV', logscale=True)
+      llist= numpy.array(lldat[te_index].data)
+
+  # get filtered line list
+  
+  llist = llist[(llist['Lambda']>= specrange[0]) &\
+                (llist['Lambda']<= specrange[1]) &\
+                (llist['Epsilon'] >= minepsilon)]
+  
+  # get the index
+  
+  # get list of all the elements present
+  Zlist = util.unique(llist['Element'])
+  # Calculate the ionization balance.
+  ionbal = apec.calc_full_ionbal(kT, tau, \
+                                 Te_init=kT_init, teunit='keV', Zlist=Zlist)
+
+  # multiply everything by the appropriate ionization fraction
+  for il in llist:
+    il['Epsilon'] *= ionbal[il['Elem_drv']][il['Ion_drv']-1]
+    
+  # filter again based on new epsilon values
+  llist=llist[llist['Epsilon']>minepsilon]
+  print "done"
+  # at this point, we have data
+  return llist
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------

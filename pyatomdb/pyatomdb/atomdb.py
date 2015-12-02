@@ -2492,10 +2492,10 @@ def get_ionrec_rate(Te_in, irdat_in, lvdat_in=False, Te_unit='K', \
   if Te_unit.lower()=='k':
     pass
   elif Te_unit.lower()=='ev':
-    Te /=KBOLTZ
+    Te /=const.KBOLTZ
     Te *=1000.0
   elif Te_unit.lower()=='kev':
-    Te /=KBOLTZ
+    Te /=const.KBOLTZ
   else:
     print "ERROR: units should be k, eV or keV"
     return -1
@@ -2636,13 +2636,13 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
 #  Te_arr = numpy.array(Te)
   if Te_unit.lower()=='ev':
     Te_arr = Te_arr*11604.505
-  elif Te_unit.lower() != 'kev':
+  elif Te_unit.lower() == 'kev':
     Te_arr = Te_arr*11604.505*1000.0
-  elif Te_unit.lower() != 'k':
+  elif Te_unit.lower() == 'k':
+    Te_arr = 1.0* Te_arr
+  else:
     print 'ERROR: Unknown Te_unit "%s": should be "K" or "keV"' % (Te_unit)
     return False
-  else:
-    pass
   exconly=False
 
 
