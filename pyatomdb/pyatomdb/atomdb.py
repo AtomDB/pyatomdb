@@ -4104,7 +4104,9 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
       #yay.
         pidat = pyfits.open(xstardata)
         initlevel = int(pi_coeffts[0])
-
+      else:
+        pidat = xstardata
+        initlevel = int(pi_coeffts[0])
       sigma_coeff = sort_pi_data(pidat, initlevel, xstarfinallev)
       sig_coeffts = sigma_coeff
 
