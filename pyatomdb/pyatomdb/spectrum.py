@@ -291,7 +291,7 @@ def get_index(te, filename='$ATOMDB/apec_line.fits', \
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 def list_lines(specrange, lldat=False, index=False, linefile=False,\
-              units='angstroms'):
+              units='angstroms', Te=False, teunit='K', minepsilon=1e-20):
   """
   Gets list of the lines in a given spectral range
   
@@ -302,14 +302,21 @@ def list_lines(specrange, lldat=False, index=False, linefile=False,\
   ----------
   specrange : [float,float]
     spectral range [min,max] to return lines on
-  units : {'A' , 'keV'}
-    units of specrange (default A)
   lldat : see notes
     line data
   index : int
     index in lldat, see notes
   linefile : see notes
     line data file, see notes
+  units : {'A' , 'keV'}
+    units of specrange (default A)
+  Te : float
+    electron temperature (used if index not set to select appropriate 
+    data HDU from line file)
+  teunit : {'K','keV','eV'}
+    units of Te
+  minepsilon : float
+    minimum epsilon for lines to be returned, in ph cm^3 s^-1
 
   Notes
   -----
@@ -387,9 +394,49 @@ def list_lines(specrange, lldat=False, index=False, linefile=False,\
     print "*** ERROR: unknown unit %s, Must be keV or A. Exiting ***"%\
           (units)
 
+  # open the line file if only specified by a name
+  if lldat==False:
+    # use default file if not specified
+    if linefile==False:
+      linefile=os.path.expandvars("$ATOMDB/apec_line.fits")
+    # open file
+    lldat = pyfits.open(linefile)
 
-  # check that either "lldat" is provided, which is a line list, or
-  # that an index in a line file is specified
+  # convert temperature units
+  
+  if Te != False:
+    if teunit.lower() == 'kev':
+      kT = Te*1.0
+    elif teunit.lower() == 'ev':
+      kT = Te/1000.0
+    elif teunit.lower() == 'k':
+      kT = Te*const.KBOLTZ
+    else:
+      print "*** ERROR: unknown teunit %s, Must be keV or K. Exiting ***"%\
+          (teunit)
+
+  # if the temperature is specified, get the index
+  if index != False:
+
+    if Te != False:
+      print "Warning: both index and Te specified. Using index"
+    else:
+      # everything is fine!
+      pass
+      
+  else:
+    if Te != False:
+      # open the file and get the index of nearest block
+      index =  get_index(kT, filename=lldat, \
+              teunits='keV', logscale=True)
+    else:
+      if not type(lldat) in [pyfits.fitsrec.FITS_rec, numpy.ndarray]:
+        print "Error: did not specify index or Te"
+        return False
+    # index is specified, so we'll use it.
+    pass
+
+
     
     
   if lldat != False:
@@ -410,24 +457,30 @@ def list_lines(specrange, lldat=False, index=False, linefile=False,\
       llist = numpy.array(lldat.data)
     elif type(lldat) in [pyfits.fitsrec.FITS_rec, numpy.ndarray]:
       llist = numpy.array(lldat)
-  else:
-    # no line data supplied.
-    if linefile==False:
-      linefile = os.path.expandvars('$ATOMDB/apec_line.fits')
-    if not os.path.isfile(linefile):
-      print "*** ERROR. No linefile supplied but $ATOMDB/apec_line.fits is"
-      print " not a file. Exiting"
     else:
+      print "ERROR: unkonwn llist type!"
+  else:
+    # there should now be no way to get here. commenting out this section
+    print "ERROR: I SHOULD NEVER BE HERE"
+    pass
+    # no line data supplied.
+    #if linefile==False:
+      #linefile = os.path.expandvars('$ATOMDB/apec_line.fits')
+    #if not os.path.isfile(linefile):
+      #print "*** ERROR. No linefile supplied but $ATOMDB/apec_line.fits is"
+      #print " not a file. Exiting"
+    #else:
 
-      if not index:
-        print "*** ERROR. No index specified for line list. Exiting"
-      else:
-        lfile = pyfits.open(os.path.expandvars(linefile))
-        llist= numpy.array(lfile[index].data)
+      #if not index:
+        #print "*** ERROR. No index specified for line list. Exiting"
+      #else:
+        #lfile = pyfits.open(os.path.expandvars(linefile))
+        #llist= numpy.array(lfile[index].data)
 
-  # at this point, we have data
+  # at this point, we have data. Filter by specrange, minepsilon
   llist = llist[(llist['Lambda']>= specrange[0]) &\
-                (llist['Lambda']<= specrange[1])]
+                (llist['Lambda']<= specrange[1]) &\
+                (llist['Epsilon']>= minepsilon)]
 
                
           
@@ -665,33 +718,63 @@ def print_lines(llist, specunits = 'A'):
   # now print the header lines
   
   if specunits == 'keV':
-    s= "%-10s %-10s %-10s %-10s %-10s %-10s" %\
-       ('Energy','Epsilon','Element','Ion','UpperLev','LowerLev')
+    if 'Ion_drv' in llist.dtype.names:
+      s= "%-10s %-10s %-10s %-10s %-10s %-10s %-10s" %\
+         ('Energy','Epsilon','Element','Ion','Ion_drv','UpperLev','LowerLev')
+    else:  
+      s= "%-10s %-10s %-10s %-10s %-10s %-10s" %\
+         ('Energy','Epsilon','Element','Ion','UpperLev','LowerLev')
     print s
-    s= "%-10s %-10s %-10s %-10s %-10s %-10s" %\
-       ('keV','ph cm3 s-1','','','','')
+
+    if 'Ion_drv' in llist.dtype.names:
+      s= "%-10s %-10s %-10s %-10s %-10s %-10s %-10s" %\
+         ('keV','ph cm3 s-1','','','','','')
+    else:
+      s= "%-10s %-10s %-10s %-10s %-10s %-10s" %\
+         ('keV','ph cm3 s-1','','','','')
     print s
     
   else:
-    s= "%-10s %-10s %-10s %-10s %-10s %-10s" %\
-       ('Lambda','Epsilon','Element','Ion','UpperLev','LowerLev')
+    if 'Ion_drv' in llist.dtype.names:
+      s= "%-10s %-10s %-10s %-10s %-10s %-10s %-10s" %\
+         ('Lambda','Epsilon','Element','Ion','Ion_drv','UpperLev','LowerLev')
+    else:
+      s= "%-10s %-10s %-10s %-10s %-10s %-10s" %\
+         ('Lambda','Epsilon','Element','Ion','UpperLev','LowerLev')
     print s
-    s= "%-10s %-10s %-10s %-10s %-10s %-10s" %\
-       ('A','ph cm3 s-1','','','','')
+
+    if 'Ion_drv' in llist.dtype.names:
+      s= "%-10s %-10s %-10s %-10s %-10s %-10s %-10s" %\
+         ('A','ph cm3 s-1','','','','','')
+    else:
+      s= "%-10s %-10s %-10s %-10s %-10s %-10s" %\
+         ('A','ph cm3 s-1','','','','')
     print s
     
   # now print the data
-
-  for il in llist:
-    s = "%.4e %.4e %-10i %-10i %-10i %-10i" %\
-       (il['Lambda'],\
-        il['Epsilon'],\
-        il['Element'],\
-        il['Ion'],\
-        il['UpperLev'],\
-        il['LowerLev'])
-    print s
-
+  
+  if 'Ion_drv' in llist.dtype.names:
+  
+    for il in llist:
+      s = "%.4e %.4e %-10i %-10i %-10i %-10i %-10i" %\
+         (il['Lambda'],\
+          il['Epsilon'],\
+          il['Element'],\
+          il['Ion'],\
+          il['Ion_drv'],\
+          il['UpperLev'],\
+          il['LowerLev'])
+      print s
+  else:
+    for il in llist:
+      s = "%.4e %.4e %-10i %-10i %-10i %-10i" %\
+         (il['Lambda'],\
+          il['Epsilon'],\
+          il['Element'],\
+          il['Ion'],\
+          il['UpperLev'],\
+          il['LowerLev'])
+      print s
         
     
            
