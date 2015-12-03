@@ -4021,12 +4021,13 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
 #  Adam Foster August 28th 2015
 
   # determine whether input is scalar or vector
-  isvec = False
+  isvec = True
   try:
     _ = (e for e in E)
   except TypeError:
     isvec = False
-  Evec = numpy.array(E)
+  Evec = numpy.array([E])
+    
   result = numpy.zeros(len(Evec), dtype=float)
 
   # set up the sigma coefficients
@@ -4117,9 +4118,9 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
     result = 0.0
 
   elif pi_type == const.VERNER:
-    iE = numpy.where(E > sig_coeffts['E_th'])[0]
+    iE = numpy.where(Evec > sig_coeffts['E_th'])[0]
     if len(iE) > 0:
-      y = E[iE]/sig_coeffts['E_0']
+      y = Evec[iE]/sig_coeffts['E_0']
       F_y = ((y-1)**2. + sig_coeffts['yw']**2.) * y**(-sig_coeffts['Q']) *\
             (1.+numpy.sqrt(y/sig_coeffts['ya']))**(-sig_coeffts['P'])
       result[iE] = sig_coeffts['sigma0'] * F_y * 1e-18 # conversion to cm2
@@ -4129,7 +4130,7 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
       result = sigma_hydrogenic(sig_coeffts['Zel'],\
                                 sig_coeffts['nq'],\
                                 sig_coeffts['lq'],\
-                                E)
+                                Evec)
 
 
   elif pi_type == const.CLARK:
@@ -4159,7 +4160,7 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
 
   elif pi_type == const.XSTAR:
 
-    tmp2=numpy.interp(numpy.log(E), \
+    tmp2=numpy.interp(numpy.log(Evec), \
                       numpy.log(sig_coeffts['energy']),\
                       numpy.log(sig_coeffts['pi_param']),\
                       left=numpy.nan,right=numpy.inf)
@@ -4169,15 +4170,19 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
     inan = numpy.isnan(tmp2)
     iinf = numpy.isinf(tmp2)
     ifin = numpy.isfinite(tmp2)
+    #if sum(inan) > 0:
     result[inan][:] = 0.0
+    #if sum(iinf) > 0:
     result[iinf] = sig_coeffts['pi_param'][-1]* \
-                              ((E[iinf]/\
-                                sig_coeffts['energy'][-1])**-3.0)*1e-18
+                                ((Evec[iinf]/\
+                                  sig_coeffts['energy'][-1])**-3.0)*1e-18
+    #if sum(ifin) > 0:
     result[ifin] = 1e-18  * numpy.exp(tmp2[ifin])
 
   else:
     print "Error"
-
+  if not isvec:
+    result=result[0]
   return result
 
 

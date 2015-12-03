@@ -28,8 +28,27 @@ There are several different modules currently. These are:
 - :doc:`util </util>`    : sumple utility codes (sorting etc) that pyatomdb relies on.
 - :doc:`apec </apec>`  : ultimately, the full apec code. For now, incomplete.
 
-Currently, only the spectrum library has been extensively tested. Expect bugs.
-Report those bugs! Make feature requests! Email the code authors or raise an issue at the `github page <https://github.com/jagophile/atomdb/issues>`_  
+Expect bugs. Report those bugs! Make feature requests! Email the code authors or raise an issue at the `github page <https://github.com/jagophile/atomdb/issues>`_  
+
+
+Contents
+========
+
+.. contents::
+   :depth: 2
+   :backlinks: entry
+   
+.. toctree:: 
+   :maxdepth: 1
+   
+   apec
+   atomic
+   atomdb
+   const
+   spectrum
+   util
+   examples
+   
 
 =======
 License
@@ -65,6 +84,12 @@ been warned of the possibility of such loss or damage.
 =====
 Usage
 =====
+
+--------
+Examples
+--------
+Note: there are example routines demonstrating use of these features in the examples directory of the package.
+
 
 ------------
 Installation
@@ -171,20 +196,7 @@ So to open the energy levels for oxygen with 2 electrons (O 6+, or O VII)::
 Downloaded data files are stored in ``$ATOMDB/APED/<elsymb>/<elsymb>_<ionnum>/``. You can delete them if you need to free up space, whenever a code needs the data it will reload them. There are many routines in the atomdb module which relate to extracting the data from the files, i.e. getting collisional excitation rates or line wavelengths. If you have trouble finding a routine to do what you want, please contact us and we'll be happy to write one if we can (this is how this module will grow - through user demand!)
 
 
-Contents
-========
 
-Contents:
-
-.. toctree::
-   :maxdepth: 2
-   
-   apec
-   atomic
-   atomdb
-   const
-   spectrum
-   util
    
 Indices and tables
 ==================
