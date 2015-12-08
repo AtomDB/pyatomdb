@@ -11,6 +11,109 @@ import numpy, copy
 import util, atomdb, const
 import scipy
 
+def calc_full_ionbal(Te, tau, init_pop=False, Te_init=False, Zlist=False, teunit='K'):
+  """
+  Calculate the ionization balance for all the elements in Zlist.
+  
+  One of init_pop or Te_init should be set. If neither is set, assume 
+  all elements start from neutral.
+  
+  
+  Parameters
+  ----------
+  Te : float
+    electron temperature in keV or K (default K)
+  tau : float
+    N_e * t for the non-equilibrium ioniziation
+  init_pop : dict of float arrays, indexed by Z
+    initial populations. E.g. init_pop[6]=[0.1,0.2,0.3,0.2,0.2,0.0,0.0]
+  Te_init : float
+    initial ionization balance temperature, same units as Te
+  Zlist : int array
+    array of nuclear charges to include in calculation (e.g. [8,26] for 
+    oxygen and iron)
+  teunit : {'K' , 'keV'}
+    units of temperatures (default K) 
+  
+  Returns
+  -------
+  final_pop : dict of float arrays, indexed by Z
+    final populations. E.g. final_pop[6]=[0.1,0.2,0.3,0.2,0.2,0.0,0.0]
+  
+  """
+  
+  # input checking
+  if teunit.lower() == 'kev':
+    kT = Te*1.0
+  elif teunit.lower() == 'ev':
+    kT = Te/1000.0
+  elif teunit.lower() == 'k':
+    kT = Te*const.KBOLTZ
+  else:
+    print "*** ERROR: unknown teunit %s, Must be keV or K. Exiting ***"%\
+          (teunits)
+
+  # input checking
+  if Te_init != False:
+    if teunit.lower() == 'kev':
+      kT_init = Te_init*1.0
+    elif teunit.lower() == 'ev':
+      kT_init = Te_init/1000.0
+    elif teunit.lower() == 'k':
+      kT_init = Te_init*const.KBOLTZ
+    else:
+      print "*** ERROR: unknown teunit %s, Must be keV or K. Exiting ***"%\
+            (teunits)
+  if not Zlist:
+    Zlist = range(1,29)
+
+  if (not Te_init) & (not init_pop):
+    print "Warning: you have not specified an initial temperature or "+\
+          "ion population: assuming everything is neutral"
+    init_pop={}
+    for Z in Zlist:
+      init_pop[Z] = numpy.zeros(Z+1, dtype=float)
+      init_pop[Z][0] = 1.0
+
+  
+  if (Te_init!=False) & (init_pop!=False):
+    print "Warning: you have specified both an initial temperature and "+\
+          "ion population: using ion population"
+  
+  datacache={}
+  
+  if not init_pop:
+    init_pop = {}
+    for Z in Zlist:
+      ionrate = numpy.zeros(Z, dtype=float)
+      recrate = numpy.zeros(Z, dtype=float)
+      
+      for z1 in range(1,Z+1):
+        ionrate[z1-1], recrate[z1-1] = \
+          atomdb.get_ionrec_rate(kT_init, False,  Te_unit='keV', \
+                     Z=Z, z1=z1, datacache=datacache)
+      # now solve
+      init_pop[Z] = solve_ionbal(ionrate, recrate)
+      
+  # now solve the actual ionization balance we want.
+  pop = {}
+  for Z in Zlist:
+    ionrate = numpy.zeros(Z, dtype=float)
+    recrate = numpy.zeros(Z, dtype=float)
+    for z1 in range(1,Z+1):
+      ionrate[z1-1], recrate[z1-1] = \
+        atomdb.get_ionrec_rate(kT, False,  Te_unit='keV', \
+                   Z=Z, z1=z1, datacache=datacache)
+    
+    # now solve
+    pop[Z] = solve_ionbal(ionrate, recrate, init_pop=init_pop[Z], tau=tau)
+    
+  return pop
+      
+
+  
+  
+  
 def solve_ionbal(ionrate, recrate, init_pop=False, tau=False):
   """
   solve_ionbal: given a set of ionization and recombination rates, find
