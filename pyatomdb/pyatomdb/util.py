@@ -853,3 +853,32 @@ def switch_version(version):
     a.write(version+'\n')
     a.close()
   os.chdir(startdir)
+
+
+def make_vec(d):
+  """
+  Create vector version of d, return True or false depending on whether
+  input was vector or not
+
+  Parameters
+  ----------
+  d: any scalar or vector
+    The input
+
+  Returns
+  -------
+  vecd : array of floats
+    d as a vector (same as input if already an iterable type)
+  isvec : bool
+    True if d was a vector, otherwise False.
+  
+
+  """
+  isvec=True
+  try:
+    _ = (e for e in d)
+  except TypeError:
+    isvec=False
+    d= numpy.array([d])
+    
+  return d,isvec

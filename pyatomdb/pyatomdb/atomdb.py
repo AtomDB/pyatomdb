@@ -619,7 +619,12 @@ def get_filemap_file(ftype, Z, z1, fmapfile="$ATOMDB/filemap",\
     If true, suppress warnings about files not being present for certain ions
   misc : bool
     If requesting "misc" data, i.e. the Bremsstrahlung inputs, use this. This is
-    for non ion-specific data.
+    for non ion-specific data, therefore Z,z1 are ignored.
+    types are:
+    10 or 'abund': elemental abundances
+    11 or 'hbrems': Hummer bremstrahlung gaunt factor coefficients
+    13 or 'rbrems': Relativistic bremstrahlung gaunt factor coefficients
+        
 
   Returns
   -------
@@ -632,14 +637,27 @@ def get_filemap_file(ftype, Z, z1, fmapfile="$ATOMDB/filemap",\
 
 
   if misc:
-    # looking for type 10,11 or 12 data
-    if ftype in [10,11,12,13]:
-      i = numpy.where(fmap['miscfiles']['misc_type']==ftype)[0]
+    # looking for type 10,11 or 13 data
+    if ftype.lower() in ['10','11','13','abund','hbrems','rbrems']:
+      if ftype.lower() in ['abund','hbrems','rbrems']:
+        if ftype.lower() == 'abund':
+          ftype_misc = 10
+        if ftype.lower() == 'hbrems':
+          ftype_misc = 11
+        if ftype.lower() == 'rbrems':
+          ftype_misc = 13
+      else:
+        ftype_misc = int(ftype)
+        
+      i = numpy.where(fmap['misc_type']==ftype_misc)[0]
       if len(i)==0:
         print "Error: file type: %i not found in filemap %s" %(ftype,fmapfile)
         ret = ''
       else:
-        ret = fmap['miscfiles']['file'][i[0]]
+        ret = fmap['misc'][i[0]]
+    else:
+      print "Error: unknown file type: %s not recognized" %(ftype)
+      ret = ''
   else:
     i = numpy.where((fmap['Z']==Z)&(fmap['z1']==z1))[0]
     ret=''
@@ -791,21 +809,61 @@ def get_level_details(level, Z=-1, z1=-1, filename='', \
 #-------------------------------------------------------------------------------
 
 
-def get_abundance(abundfile, abundset, element=[-1]):
+def get_abundance(abundfile=False, abundset='AG89', element=[-1],\
+                  datacache=False, settings = False):
+  """
+  Get the elemental abundances, relative to H (H=1.0)
+  
+  Parameters
+  ----------
+  abundfile : string
+    special abundance file, if not using the default from filemap
+  abundset : string
+    Abundance set. Available:
+    * Allen: Allen,~C.~W.  ``Astrophysical Quantities'', 3rd Ed.,  1973 (London: Athlone Press)
+    * AG89: Anders,~E. \& Grevesse,~N. 1989, Geochimica et Cosmochimica Acta, 53, 197
+    * GA88: Grevesse,~N, \& Anders,~E.1988, ``Cosmic abundances of matter'',ed. C.~J.~Waddington, AIP Conference, Minneapolis, MN
+    * Feldman:  Feldman, U., Mandelbaum, P., Seely, J.L., Doschek, G.A.,Gursky H., 1992, ApJSS, 81,387
+    Defaul is AG89
+  element : list of int
+    Elements to find abundance for. If not specified, return all.
+  datacache : dict
+    See get_data
+  datacache : settings
+    See get_data
+    
+  Returns
+  -------
+  dict
+    abundances in dictionary, i.e :
+     {1: 1.0,
+      2: 0.097723722095581111,
+      3: 1.4454397707459272e-11,
+      4: 1.4125375446227541e-11,
+      5: 3.9810717055349735e-10,
+      6: 0.00036307805477010178,...
 
-  a = pyfits.open(abundfile)
+  """    
+    
+  if not abundfile:
+    abunddata = get_data(False, False, 'abund', \
+                                datacache=datacache,\
+                                settings = settings)
+  else:
+    abunddata = pyfits.open(abundfile)
+
   if element[0]==-1:
     element = range(1,29)
 
-  ind = numpy.where(a[1].data.field('Source')==abundset)[0]
+  ind = numpy.where(abunddata[1].data.field('Source')==abundset)[0]
   if len(ind)==0:
     print "Invalid Abundance Set chosen: select from ", \
-          a[1].data.field('Source')
+          abunddata[1].data.field('Source')
     return -1
   ret = {}
   for Z in element:
-    elsymb = adbatomic.Ztoelsymb(Z)
-    ret[Z]=10**(a[1].data.field(elsymb)[ind[0]])/1e12
+    elsymb = atomic.Ztoelsymb(Z)
+    ret[Z]=10**(abunddata[1].data.field(elsymb)[ind[0]])/1e12
   return ret
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -3600,6 +3658,13 @@ def get_data(Z, z1, ftype, datacache=False, \
        *           'DR' - dielectronic recombination satellite line data
        *           'PI' - XSTAR photoionization data
        *           'AI' - autoionization data
+       
+       Or, for non-ion-specific data (abundances and bremstrahlung coeffts)
+       *           'ABUND' - abundance tables
+       *           'HBREMS' - Hummer bremstrahlung coefficients
+       *           'RBREMS' - relativistic bremstrahlung coefficitients
+       
+       
   filemap : string
     The filemap to use, if you do not want to use the default one.
 
@@ -3663,66 +3728,133 @@ def get_data(Z, z1, ftype, datacache=False, \
   fmapfile = "$ATOMDB/filemap"
   atomdbroot="$ATOMDB"
 
+  # check if data type requested in "miscellanous", i.e. a bremstrahlung
+  # or abundance related file, not an ion-specific file.
+  
+  ismisc = False
+  if ftype.lower() in ['abund','hbrems','rbrems']:
+    ismisc = True
+  
+
   if datacache != False:
     # make sure that the relevant dictionaries are ready to receive the data
     if not 'data' in datacache.keys():
       datacache['data']={}
-    if not Z in datacache['data'].keys():
-      datacache['data'][Z]={}
-    if not z1 in datacache['data'][Z].keys():
-      datacache['data'][Z][z1]={}
+    if not ismisc:
+      if not Z in datacache['data'].keys():
+        datacache['data'][Z]={}
+      if not z1 in datacache['data'][Z].keys():
+        datacache['data'][Z][z1]={}
+    else:
+      if not 'misc' in datacache['data'].keys():
+        datacache['data']['misc'] = {}
 
     if not 'datasums' in datacache.keys():
       datacache['datasums']={}
-    if not Z in datacache['datasums'].keys():
-      datacache['datasums'][Z]={}
-    if not z1 in datacache['datasums'][Z].keys():
-      datacache['datasums'][Z][z1]={}
-
-
-    if ftype.upper() in datacache['data'][Z][z1].keys():
-      # this means we have the data cached, no need to fetch it
-      pass
+    if not ismisc:
+      if not Z in datacache['datasums'].keys():
+        datacache['datasums'][Z]={}
+      if not z1 in datacache['datasums'][Z].keys():
+        datacache['datasums'][Z][z1]={}
     else:
-      # check for file location overrides
-      if settings:
-        if settings['filemap']:
-          fmapfile = settings['filemap']
-        if settings['atomdbroot']:
-          atomdbroot = settings['atomdbroot']
+      if not 'misc' in datacache['datasums'].keys():
+        datacache['datasums']['misc'] = {}
 
-      fname = get_filemap_file(ftype, Z, z1, fmapfile=fmapfile,\
-                             atomdbroot=atomdbroot, quiet=True)
-
-      if fname=='':
-        # no data exists
-        datacache['data'][Z][z1][ftype.upper()] = False
-
+    if ismisc:
+      if ftype.upper() in datacache['data']['misc'].keys():
+      # this means we have the data cached, no need to fetch it
+        pass
       else:
+      # check for file location overrides
+        if settings:
+          if settings['filemap']:
+            fmapfile = settings['filemap']
+          if settings['atomdbroot']:
+            atomdbroot = settings['atomdbroot']
+ 
+        fname = get_filemap_file(ftype, False, False, fmapfile=fmapfile,\
+                               atomdbroot=atomdbroot, quiet=True,\
+                               misc = True)
+
+        if fname=='':
+        # no data exists
+          datacache['data']['misc'][ftype.upper()] = False
+
+        else:
         # Try and open the files in the following order:
         # (1) filename
         # (2) filename+'.gz'
         # (3) atomdburl/filename+'.gz'
 
-        try:
-          d = pyfits.open(fname)
-        except IOError:
           try:
-            d = pyfits.open(fname+'.gz')
+            d = pyfits.open(fname)
           except IOError:
-            if offline:
-              d = False
-            else:
-              url = re.sub(os.path.expandvars(atomdbroot),\
-                           'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
-              try:
-                d = pyfits.open(url)
-                didurl=True
-                util.record_upload(re.sub(os.path.expandvars(atomdbroot),'',fname))
-              except urllib2.URLError:
-                print "Error trying to open file %s. Not found locally or on"%(fname)+\
-                    " server."
-                d=False
+            try:
+              d = pyfits.open(fname+'.gz')
+            except IOError:
+              if offline:
+                d = False
+              else:
+                url = re.sub(os.path.expandvars(atomdbroot),\
+                             'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
+                try:
+                  d = pyfits.open(url)
+                  didurl=True
+                  util.record_upload(re.sub(os.path.expandvars(atomdbroot),'',fname))
+                except urllib2.URLError:
+                  print "Error trying to open file %s. Not found locally or on"%(fname)+\
+                      " server."
+                  d=False
+
+
+
+
+    else:
+      if ftype.upper() in datacache['data'][Z][z1].keys():
+      # this means we have the data cached, no need to fetch it
+        pass
+      else:
+      # check for file location overrides
+        if settings:
+          if settings['filemap']:
+            fmapfile = settings['filemap']
+          if settings['atomdbroot']:
+            atomdbroot = settings['atomdbroot']
+ 
+        fname = get_filemap_file(ftype, Z, z1, fmapfile=fmapfile,\
+                               atomdbroot=atomdbroot, quiet=True)
+
+        if fname=='':
+        # no data exists
+          datacache['data'][Z][z1][ftype.upper()] = False
+
+        else:
+        # Try and open the files in the following order:
+        # (1) filename
+        # (2) filename+'.gz'
+        # (3) atomdburl/filename+'.gz'
+
+          try:
+            d = pyfits.open(fname)
+          except IOError:
+            try:
+              d = pyfits.open(fname+'.gz')
+            except IOError:
+              if offline:
+                d = False
+              else:
+                url = re.sub(os.path.expandvars(atomdbroot),\
+                             'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
+                try:
+                  d = pyfits.open(url)
+                  didurl=True
+                  util.record_upload(re.sub(os.path.expandvars(atomdbroot),'',fname))
+                except urllib2.URLError:
+                  print "Error trying to open file %s. Not found locally or on"%(fname)+\
+                      " server."
+                  d=False
+
+
 
   else:
     if settings:
@@ -3731,7 +3863,13 @@ def get_data(Z, z1, ftype, datacache=False, \
       if settings['atomdbroot']:
         atomdbroot = settings['atomdbroot']
 
-    fname = get_filemap_file(ftype, Z, z1, \
+    if ismisc:
+
+      fname = get_filemap_file(ftype, False, False, \
+                             quiet=True, fmapfile=fmapfile,\
+                             atomdbroot=atomdbroot, misc = True)
+    else:
+      fname = get_filemap_file(ftype, Z, z1, \
                              quiet=True, fmapfile=fmapfile,\
                              atomdbroot=atomdbroot)
 
