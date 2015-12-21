@@ -4159,13 +4159,15 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
 #  Adam Foster August 28th 2015
 
   # determine whether input is scalar or vector
-  isvec = True
-  try:
-    _ = (e for e in E)
-  except TypeError:
-    isvec = False
-  Evec = numpy.array([E])
-    
+  
+  Evec,isvec=util.make_vec(E)
+#  isvec = True
+#  try:
+#    _ = (e for e in E)
+#  except TypeError:
+#    isvec = False
+#  Evec = numpy.array([E])
+#    
   result = numpy.zeros(len(Evec), dtype=float)
 
   # set up the sigma coefficients
@@ -4308,14 +4310,15 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
     inan = numpy.isnan(tmp2)
     iinf = numpy.isinf(tmp2)
     ifin = numpy.isfinite(tmp2)
-    #if sum(inan) > 0:
-    result[inan][:] = 0.0
-    #if sum(iinf) > 0:
-    result[iinf] = sig_coeffts['pi_param'][-1]* \
+    if sum(inan) > 0:
+      result[inan] = 0.0
+    if sum(iinf) > 0:
+      result[iinf] = sig_coeffts['pi_param'][-1]* \
                                 ((Evec[iinf]/\
                                   sig_coeffts['energy'][-1])**-3.0)*1e-18
-    #if sum(ifin) > 0:
-    result[ifin] = 1e-18  * numpy.exp(tmp2[ifin])
+    if sum(ifin) > 0:
+      print ifin
+      result[ifin] = 1e-18  * numpy.exp(tmp2[ifin])
 
   else:
     print "Error"
