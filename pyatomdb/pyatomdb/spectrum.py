@@ -874,7 +874,7 @@ def make_ion_index_continuum(bins,  element, \
   elif type(cocofile) == pyfits.fitsrec.FITS_rec:
     cdat = cocofile
   elif type(cocofile) == type('somestring'):
-    cdat = pyfits.open(os.expandvars(cocofile))[index].data
+    cdat = pyfits.open(os.path.expandvars(cocofile))[index].data
   else:
     print "*** ERROR: unable to parse cocofile = %s" %repr(cocofile)
     return -1 
