@@ -253,7 +253,7 @@ def solve_ionbal(ionrate, recrate, init_pop=False, tau=False):
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
     
-def calc_brems_gaunt(E, T, Z, brems_type, datacache=False, \
+def calc_brems_gaunt(E, T, z1, brems_type, datacache=False, \
                                           settings=False):
   """
   calculate the bremstrahulung free-free gaunt factor
@@ -264,8 +264,8 @@ def calc_brems_gaunt(E, T, Z, brems_type, datacache=False, \
     Energy (in keV) to calculate gaunt factor
   T : float
     Temperature (in K) of plasma
-  Z : int
-    Nuclear charge of element (e.g. 6 for carbon)
+  z1 : int
+    Ion charge +1 of ion (e.g. 6 for C VI)
   brems_type : int
     Type of bremstrahlung requested:
     1 = HUMMER = Non-relativistic: 1988ApJ...327..477H
@@ -289,16 +289,16 @@ def calc_brems_gaunt(E, T, Z, brems_type, datacache=False, \
   gaunt_ff = numpy.zeros(len(Evec), dtype=float)
   NUM_J=8
   NUM_I=11
-  
+  z0 = z1-1.0 # we need to use the actual ion charge
   if brems_type==const.HUMMER:
     # read in the hummer data
     hdat = atomdb.get_data(False, False,'hbrems', settings = settings,\
                                                datacache=datacache)
     gaunt_D=hdat['BR_GAUNT'].data['COEFFICIENT']
     
-    gamma2 = Z**2 * const.RYDBERG/(const.KBOLTZ*T)
+    gamma2 = z0**2 * const.RYDBERG/(const.KBOLTZ*T)
     if ((gamma2 < 1e-3) | (gamma2 > 1e3)):
-      if (Z<10):
+      if (z0<10):
         print "brems_hummer: Warning, gamma^2 = %e is out of range."%(gamma2)
       gaunt_ff[:]=1.0
 
@@ -361,7 +361,7 @@ def calc_brems_gaunt(E, T, Z, brems_type, datacache=False, \
                         
         
     kT = const.KBOLTZ*T
-    gam = Z * Z * const.RYDBERG / kT
+    gam = z0 * z0 * const.RYDBERG / kT
     gam1 = min(gam*1.e3,100.)
     if (gam > .1):
       gaunt_ff = kurucz(Evec/kT, gam)
@@ -487,12 +487,12 @@ def calc_brems_gaunt(E, T, Z, brems_type, datacache=False, \
     gaunt_gf = rdat['GAUNT_FF'].data['GAUNT_FF']
     
     
-    gamma2 = numpy.log10(Z*Z*const.RYDBERG/(const.KBOLTZ*T))
+    gamma2 = numpy.log10(z0*z0*const.RYDBERG/(const.KBOLTZ*T))
     
     # extract the gaunt factors
-    if Z in gaunt_Z:
+    if z0 in gaunt_Z:
       # exact element is in file
-      Uvec, GauntFFvec = extract_gauntff(Z, gamma2, gaunt_U, gaunt_Z, gaunt_Ng, gaunt_g2, gaunt_gf)
+      Uvec, GauntFFvec = extract_gauntff(z0, gamma2, gaunt_U, gaunt_Z, gaunt_Ng, gaunt_g2, gaunt_gf)
 #      print "we are here"
 #      for iuvec in xrange(len(Uvec)):
 #        print "Uvec[%i]=%e, GauntFFvec[%i]=%e"%(iuvec, Uvec[iuvec],\
@@ -500,12 +500,12 @@ def calc_brems_gaunt(E, T, Z, brems_type, datacache=False, \
       #zzz=raw_input()
     else:
       # find nearest elements in the file
-      zlo = gaunt_Z[numpy.where(gaunt_Z < Z)[0]]
+      zlo = gaunt_Z[numpy.where(gaunt_Z < z0)[0]]
       if len(zlo) ==0:
         zlo=0
       else:
         zlo = max(zlo)
-      zup = gaunt_Z[numpy.where(gaunt_Z > Z)[0]]
+      zup = gaunt_Z[numpy.where(gaunt_Z > z0)[0]]
       if len(zup)==0:
         zup=100
       else:
@@ -528,7 +528,7 @@ def calc_brems_gaunt(E, T, Z, brems_type, datacache=False, \
           print "Error: brems_relativistic: U vector mismatch ",  Uvecl, Uvecu
           
         Uvec = Uvecl
-        GauntFFvec = ((zup-Z)*GauntFFvecl + (Z-zlo)*GauntFFvecu)/(zup-zlo)
+        GauntFFvec = ((zup-z0)*GauntFFvecl + (z0-zlo)*GauntFFvecu)/(zup-zlo)
 #    print GauntFFvec  
     # ok, so now we have Uvec and GauntFFvec assigned
     u = numpy.log10(Evec/(const.KBOLTZ*T))
@@ -641,7 +641,7 @@ def extract_gauntff(Z, gamma2, gaunt_U, gaunt_Z, gaunt_Ng, gaunt_g2, gaunt_gf):
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
-def do_brems(Z, rmJ, T, abund, brems_type, eedges):
+def do_brems(Z, z1, T, abund, brems_type, eedges):
   """
   Calculate the bremstrahlung emission in units of photon cm^3 s^-1 bin^-1
   
@@ -649,7 +649,7 @@ def do_brems(Z, rmJ, T, abund, brems_type, eedges):
   ----------
   Z : int
     nuclear charge for which result is required
-  rmJ : int
+  z1 : int
     ion charge +1
   T : float
     temperture (Kelvin)
@@ -679,10 +679,10 @@ def do_brems(Z, rmJ, T, abund, brems_type, eedges):
   
   EkT=E/kT
   
-  gaunt_ff = calc_brems_gaunt(E, T, rmJ-1, brems_type)
+  gaunt_ff = calc_brems_gaunt(E, T, z1, brems_type)
 
   emission = const.BREMS_COEFF*abund*\
-      (rmJ-1)*(rmJ-1)*numpy.exp(-EkT)*(dE/numpy.sqrt(T))*gaunt_ff/(E*const.ERG_KEV)
+      (z1-1)*(z1-1)*numpy.exp(-EkT)*(dE/numpy.sqrt(T))*gaunt_ff/(E*const.ERG_KEV)
       
   return emission
 
