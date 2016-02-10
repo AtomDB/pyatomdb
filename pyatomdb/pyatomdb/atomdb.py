@@ -664,12 +664,12 @@ def get_filemap_file(ftype, Z, z1, fmapfile="$ATOMDB/filemap",\
     if len(i)==0:
       if not quiet :
         print "WARNING: there is no data for the ion "+\
-               adbatomic.spectroscopic_name(Z,z1)
+               atomic.spectroscopic_name(Z,z1)
       ret=''
 
     if len(i)>1:
       print "ERROR: there are multiple entries for the ion "+\
-             adbatomic.spectroscopic_name(Z,z1)
+             atomic.spectroscopic_name(Z,z1)
       ret=''
 
     if len(i)==1:
@@ -686,7 +686,7 @@ def get_filemap_file(ftype, Z, z1, fmapfile="$ATOMDB/filemap",\
         if len(ret)==0:
           if not quiet :
             print "WARNING: no data of type "+ftype+" exists for ion "+\
-                adbatomic.spectroscopic_name(Z,z1)
+                atomic.spectroscopic_name(Z,z1)
 
   return ret
 #-------------------------------------------------------------------------------
