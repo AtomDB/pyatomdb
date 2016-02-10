@@ -63,7 +63,7 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
   Returns
   -------
   array of floats
-      eEissivity in counts cm^3 s^-1 bin^-1.
+      Emissivity in counts cm^3 s^-1 bin^-1.
   
   """  
 #  History
@@ -144,10 +144,189 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
     return numpy.append([0],   cspectrum+lspectrum)
   else:
     return cspectrum+lspectrum
+
+
+def make_ion_spectrum(bins, index, Z,z1, linefile="$ATOMDB/apec_nei_line.fits",\
+                  cocofile="$ATOMDB/apec_nei_comp.fits",\
+                  binunits='keV', broadening=False, broadenunits='keV', \
+                  abund=False, dummyfirst=False, nei = True,\
+                  dolines = True, docont=True, dopseudo=True):
+
+  r"""
+  make_spectrum is the most generic "make me a spectrum" routine.
+  
+  It returns the emissivity in counts cm^3 s^-1 bin^-1.
+  
+  Parameters
+  ----------
+  bins : array(float)
+       The bin edges for the spectrum to be calculated on, in \
+       units of keV or Angstroms. Must be monotonically\
+       increasing. Spectrum will return len(bins)-1 values.
+  index : int
+       The index to plot the spectrum from. note that the AtomDB files\
+       the emission starts in hdu number 2. So for the first block, you\
+       set index=2
+  Z : int
+       Element of spectrum (e.g. 6 for carbon)
+  z1 : int
+       Ion charge +1 for the spectrum (e.g. 3 for C III)
+  linefile : str
+       The file containing all the line emission. Defaults to \
+       "$ATOMDB/apec_line.fits"
+  cocofile : str
+       The file containing all the continuum emission. Defaults to \
+       "$ATOMDB/apec_coco.fits"
+  binunits : {'keV','A'}
+       The energy units for bins. "keV" or "A". Default keV.
+  broadening : float
+       Line broadening to be applied
+  broadenunits : {'keV','A'}
+       Units of line broadening "keV" or "A". Default keV.
+  elements : iterable of int
+       Elements to include, listed by atomic number. if not set, include all.
+  abund : iterable of float, length same as elements.
+       If set, and array of length (elements) with the abundances of each\
+       element relative to the Andres and Grevesse values. Otherwise, assumed to\
+       be 1.0 for all elements
+  dummyfirst : bool
+       If true, add a "0" to the beginning of the return array so it is of the 
+       same length as bins (can be useful for plotting results)
+  nei : bool
+       If set, return the spectrum from the driving ion being Z, rmJ. If not set,
+       return the spectrum for the collisional ionization equilibrium *BUT*
+       note that the continuum will be wrong, as it is provided for each element
+       as a whole.
+  dolines : bool
+       Include lines in the spectrum
+  docont : bool
+       Include the continuum in the spectrum
+  dopseudo : bool
+       Include the pseudocontinuum in the spectrum.
+
+  Returns
+  -------
+  array of floats
+      Emissivity in counts cm^3 s^-1 bin^-1.
+  
+  """  
+#  History
+#  -------    
+#  Version 0.1 - initial release
+#    Adam Foster July 17th 2015
+#  
+#  Version 0.2
+#    Added dummyfirst keyword
+#    Adam Foster July 21st 2015
+# 
+
+
+  # set up the bins
+  if (sum((bins[1:]-bins[:-1])<0) > 0):
+    print "*** ERROR: bins must be monotonically increasing. Exiting ***"
+    return -1
+  
+  if binunits.lower()=='kev':
+    ebins = bins*1.0
+  elif binunits.lower() in ['a', 'angstrom', 'angstroms']:
+    ebins = const.HC_IN_KEV_A/bins[::-1]
+  else:
+    print "*** ERROR: unknown binning unit %s, Must be keV or A. Exiting ***"%\
+          (binunits)
+  print "len(ebins)1 =", len(ebins)
+  # check the files exist
+  if ((linefile == "$ATOMDB/apec_nei_line.fits") & (nei==False)):
+    linefile = "$ATOMDB/apec_line.fits"
+  if ((cocofile == "$ATOMDB/apec_nei_comp.fits") & (nei==False)):
+    cocofile = "$ATOMDB/apec_coco.fits"
+    print "Warning: you have specified a collisional ionization equilibrium plasma. Switching emissivity files to %s and %s"%\
+         (linefile, cocofile)  
+  lfile = os.path.expandvars(linefile)
+  cfile = os.path.expandvars(cocofile)
+  if not os.path.isfile(lfile):
+    print "*** ERROR: no such file %s. Exiting ***" %(lfile)
+    return -1
+  if not os.path.isfile(cfile):
+    print "*** ERROR: no such file %s. Exiting ***" %(cfile)
+    return -1
+  
+  # open the files
+  ldat = pyfits.open(lfile)
+  cdat = pyfits.open(cfile)
+      
+  # get the index
+  if ((index < 2) | (index > len(ldat))):
+    print "*** ERRROR: Index must be in range %i to %i"%(2, len(ldat)-1)
+    return -1
+    
+  lldat = ldat[index].data
+  ccdat = cdat[index].data
+  
+  if not abund:
+    abund= 1.0
+  
+  lspectrum = numpy.zeros(len(bins)-1, dtype=float)
+  cspectrum = numpy.zeros(len(bins)-1, dtype=float)
+  pspectrum = numpy.zeros(len(bins)-1, dtype=float)
+  
+  if dolines:
+    # ADD  LINES
+    print z1
+    if nei:
+      lspectrum += add_lines(Z, abund, lldat, ebins, broadening=broadening,\
+                             broadenunits=broadenunits,z1_drv=z1)
+    else:
+      lspectrum += add_lines(Z, abund, lldat, ebins,broadening, broadenunits,z1=z1)
+
+  if docont:
+    # ADD  LINES
+    if nei:
+      cspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
+                                         ion = z1, binunits=binunits,\
+                                         no_pseudo=True)*abund
+    else:
+      cspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
+                                         ion = 0, binunits=binunits,\
+                                         no_pseudo=True)*abund
+
+
+  if dopseudo:
+    # ADD  LINES
+    if nei:
+      pspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
+                                         ion = z1, binunits=binunits, \
+                                         no_coco=True)*abund
+    else:
+      pspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
+                                         ion = 0, binunits=binunits, \
+                                         no_coco=True)*abund
+
+  
+  
+  # broaden the continuum if required:
+  if broadening:
+    print "broadening"
+    cspectrum = broaden_continuum(ebins, cspectrum, binunits = binunits, \
+                      broadening=broadening,\
+                      broadenunits=broadenunits)
+    pspectrum = broaden_continuum(ebins, pspectrum, binunits = binunits, \
+                      broadening=broadening,\
+                      broadenunits=broadenunits)
+  if dummyfirst:
+    return numpy.append([0],   cspectrum+lspectrum+pspectrum)
+  else:
+    print "ARSE"
+    for i in range(len(cspectrum)):
+      print ebins[i], cspectrum[i], pspectrum[i],lspectrum[i]
+    
+    return cspectrum+lspectrum+pspectrum
+
+
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
-def add_lines(Z, abund, lldat, ebins, broadening=False, broadenunits='A'):
+def add_lines(Z, abund, lldat, ebins, z1=False, z1_drv=False, \
+              broadening=False, broadenunits='A'):
   """
   Add lines to spectrum, applying gaussian broadening.
 
@@ -167,6 +346,10 @@ def add_lines(Z, abund, lldat, ebins, broadening=False, broadenunits='A'):
     file, often with some filters pre-applied.
   ebins : array of floats
     Energy bins. Will return spectrum with nbins-1 data points.
+  z1 : int
+    Ion charge +1 of ion to return
+  z1_drv : int
+    Driving Ion charge +1 of ion to return
   broadening : float
     Apply spectral broadening if > 0. Units of A of keV
   broadenunits : {'A' , 'keV'}
@@ -208,6 +391,11 @@ def add_lines(Z, abund, lldat, ebins, broadening=False, broadenunits='A'):
   l = lldat[(lldat['element']==Z) &\
             (lldat['lambda'] <= lammax) &\
             (lldat['lambda'] >= lammin)]
+  print l.names
+  if z1:
+    l = l[l['ion'] ==z1]
+  if z1_drv:
+    l = l[l['ion_drv'] ==z1_drv]
     
   spectrum = numpy.zeros(len(ebins)-1, dtype=float)
   
@@ -264,6 +452,9 @@ def get_index(te, filename='$ATOMDB/apec_line.fits', \
 #  Version 0.1 - initial release
 #    Adam Foster July 17th 2015
 #  
+#
+#  Version 0.2 - fixed bug so teunits = l works properly
+#    Adam Foster Jan 26th 2016
 
   if teunits.lower() == 'kev':
     teval = te
@@ -278,10 +469,12 @@ def get_index(te, filename='$ATOMDB/apec_line.fits', \
     a = filename.data
   elif type(filename)==type('somestring'):
     a = pyfits.open(os.path.expandvars(filename))[1].data
+    
+
   if logscale:
-    i = numpy.argmin(numpy.abs(numpy.log(a['kT'])-numpy.log(te)))
+    i = numpy.argmin(numpy.abs(numpy.log(a['kT'])-numpy.log(teval)))
   else:
-    i = numpy.argmin(numpy.abs(a['kT']-te))
+    i = numpy.argmin(numpy.abs(a['kT']-teval))
   # need to increase the HDU by 2.
   return i+2
   
