@@ -128,7 +128,7 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
   
   for iZ, Z in enumerate(Zlist):
     # ADD  LINES
-    lspectrum += add_lines(Z, abund[iZ], lldat, ebins, broadening, broadenunits)
+    lspectrum += add_lines(Z, abund[iZ], lldat, ebins, broadening=broadening, broadenunits=broadenunits)
     
   for iZ, Z in enumerate(Zlist):
     # ADD  CONTINUUM
@@ -233,7 +233,7 @@ def make_ion_spectrum(bins, index, Z,z1, linefile="$ATOMDB/apec_nei_line.fits",\
   else:
     print "*** ERROR: unknown binning unit %s, Must be keV or A. Exiting ***"%\
           (binunits)
-  print "len(ebins)1 =", len(ebins)
+
   # check the files exist
   if ((linefile == "$ATOMDB/apec_nei_line.fits") & (nei==False)):
     linefile = "$ATOMDB/apec_line.fits"
@@ -271,7 +271,6 @@ def make_ion_spectrum(bins, index, Z,z1, linefile="$ATOMDB/apec_nei_line.fits",\
   
   if dolines:
     # ADD  LINES
-    print z1
     if nei:
       lspectrum += add_lines(Z, abund, lldat, ebins, broadening=broadening,\
                              broadenunits=broadenunits,z1_drv=z1)
@@ -305,7 +304,7 @@ def make_ion_spectrum(bins, index, Z,z1, linefile="$ATOMDB/apec_nei_line.fits",\
   
   # broaden the continuum if required:
   if broadening:
-    print "broadening"
+
     cspectrum = broaden_continuum(ebins, cspectrum, binunits = binunits, \
                       broadening=broadening,\
                       broadenunits=broadenunits)
@@ -315,10 +314,6 @@ def make_ion_spectrum(bins, index, Z,z1, linefile="$ATOMDB/apec_nei_line.fits",\
   if dummyfirst:
     return numpy.append([0],   cspectrum+lspectrum+pspectrum)
   else:
-    print "ARSE"
-    for i in range(len(cspectrum)):
-      print ebins[i], cspectrum[i], pspectrum[i],lspectrum[i]
-    
     return cspectrum+lspectrum+pspectrum
 
 
@@ -391,7 +386,7 @@ def add_lines(Z, abund, lldat, ebins, z1=False, z1_drv=False, \
   l = lldat[(lldat['element']==Z) &\
             (lldat['lambda'] <= lammax) &\
             (lldat['lambda'] >= lammin)]
-  print l.names
+
   if z1:
     l = l[l['ion'] ==z1]
   if z1_drv:
