@@ -8,9 +8,16 @@ Adam Foster July 17th 2015
 
 import numpy, os, errno, hashlib
 import requests, urllib, time, subprocess, shutil, wget, glob
-import const
+import datetime
+import const, atomic
 from StringIO import StringIO
 import ftplib
+try:
+  import astropy.io.fits as pyfits
+except:
+  import pyfits
+  
+  
 
 ################################################################################
 #
@@ -882,3 +889,936 @@ def make_vec(d):
     d= numpy.array([d])
     
   return d,isvec
+
+
+
+def write_lv_file(fname, dat, clobber=False):
+  """
+  Write the data in list dat to fname
+
+  Parameters
+  ----------
+  fname : string
+    The file to write
+  dat : list
+    The data to write
+    Should be a list with the following keywords:
+    Z : int
+       nuclear charge
+    z1 : int
+       ion charge + 1
+    comments : iterable of strings
+       comments to append to the file
+    data : numpy.array
+      stores all the individual level data, with the following types:
+      elec_config : string (40 char max)
+        Electron configuration strings
+      energy : float
+        Level energy (eV)
+      e_error : float
+        Energy level error (eV)
+      n_quan : int
+        N quantum number
+      l_quan : int
+        L quantum number
+      s_quan : float
+        S quantum number
+      lev_deg : int
+        level degeneracy
+      phot_type : int
+        photoionization data type
+         -1 : none
+          0 : hydrogenic
+          1 : Clark
+          2 : Verner
+          3 : XSTAR data
+      phot_par : float(20)
+        photoionization paramters (see specific PI type for definition)
+      energy_ref : string(20)
+        energy reference (usually bibcode)
+      phot_ref : string(20)
+        photoionization reference (bibcode)
+      Aaut_tot : float (optional)
+        the total autoionization rate out of the level (s^-1)
+      Arad_tot : float (optional)
+        the total radiative rate out of the level (s^-1)
+      Aaut_ref : string(20)
+        total autoionization rate reference (bibcode)
+      Arad_ref : string(20)
+        total radiative decay rate reference (bibcode)
+  clobber : bool
+    Overwrite existing file if it exists.
+    
+  Returns
+  -------
+  none
+  
+
+  """
+
+  # Create primary HDU (it's a dummy one)
+  hdu0 = pyfits.PrimaryHDU()
+  now = datetime.datetime.utcnow()
+
+  if 'aaut_tot' in dat['data'].dtype.names:
+    fileversion = '1.1.0'
+  else:
+    fileversion = '1.0.0'
+
+  hdu0.header.update('DATE', now.strftime('%d/%m/%y'))
+  hdu0.header.update('E_LEVEL', "Atomic Energy Levels")
+  hdu0.header.update('FILENAME', "Python routine")
+  hdu0.header.update('ORIGIN', "ATOMDB",comment=os.environ['USER']+", AtomDB project")
+  hdu0.header.update('HDUCLASS', "ATOMIC",comment="Atomic Data")
+  hdu0.header.update('HDUCLAS1', "E_LEVEL",comment="Atomic Energy levels")
+  hdu0.header.update('HDUVERS', fileversion,comment="Version of datafile")
+
+
+  # do a key case conversion
+  datakey=''
+  for i in dat.keys():
+    if i.lower()=='data':
+      datakey=i
+  keys={}
+  for i in dat[datakey].dtype.names:
+    if i.lower()=='elec_config':
+      keys['elec_config'] = i
+    if i.lower()=='energy':
+      keys['energy'] = i
+    if i.lower()=='e_error':
+      keys['e_error'] = i
+    if i.lower()=='n_quan':
+      keys['n_quan'] = i
+    if i.lower()=='l_quan':
+      keys['l_quan'] = i
+    if i.lower()=='s_quan':
+      keys['s_quan'] = i
+    if i.lower()=='lev_deg':
+      keys['lev_deg'] = i
+    if i.lower()=='phot_type':
+      keys['phot_type'] = i
+    if i.lower()=='phot_par':
+      keys['phot_par'] = i
+    if i.lower()=='energy_ref':
+      keys['energy_ref'] = i
+    if i.lower()=='phot_ref':
+      keys['phot_ref'] = i
+    if i.lower()=='arad_tot':
+      keys['arad_tot'] = i
+    if i.lower()=='aaut_tot':
+      keys['aaut_tot'] = i
+    if i.lower()=='aaut_ref':
+      keys['aaut_ref'] = i
+    if i.lower()=='arad_ref':
+      keys['arad_ref'] = i
+
+
+  #secondary HDU, hdu1:
+  if fileversion=='1.0.0':
+    hdu1 = pyfits.new_table(pyfits.ColDefs(
+            [pyfits.Column(name='ELEC_CONFIG',
+               format='40A',
+               array=dat[datakey][keys['elec_config']]),
+             pyfits.Column(name='ENERGY',
+               format='1E',
+               unit='eV',
+               array=dat[datakey][keys['energy']]),
+             pyfits.Column(name='E_ERROR',
+               format='1E',
+               unit='eV',
+               array=dat[datakey][keys['e_error']]),
+             pyfits.Column(name='N_QUAN',
+               format='1J',
+               array=dat[datakey][keys['n_quan']]),
+             pyfits.Column(name='L_QUAN',
+               format='1J',
+               array=dat[datakey][keys['l_quan']]),
+             pyfits.Column(name='S_QUAN',
+               format='1E',
+               array=dat[datakey][keys['s_quan']]),
+             pyfits.Column(name='LEV_DEG',
+               format='1J',
+               array=dat[datakey][keys['lev_deg']]),
+             pyfits.Column(name='PHOT_TYPE',
+               format='1J',
+               array=dat[datakey][keys['phot_type']]),
+             pyfits.Column(name='PHOT_PAR',
+               format='20E',
+               array=dat[datakey][keys['phot_par']]),
+             pyfits.Column(name='ENERGY_REF',
+               format='20A',
+               array=dat[datakey][keys['energy_ref']]),
+             pyfits.Column(name='PHOT_REF',
+               format='20A',
+               array=dat[datakey][keys['phot_ref']])]
+             ))
+
+  elif fileversion=='1.1.0':
+    hdu1 = pyfits.new_table(pyfits.ColDefs(
+            [pyfits.Column(name='ELEC_CONFIG',
+               format='40A',
+               array=dat[datakey][keys['elec_config']]),
+             pyfits.Column(name='ENERGY',
+               format='1E',
+               unit='eV',
+               array=dat[datakey][keys['energy']]),
+             pyfits.Column(name='E_ERROR',
+               format='1E',
+               unit='eV',
+               array=dat[datakey][keys['e_error']]),
+             pyfits.Column(name='N_QUAN',
+               format='1J',
+               array=dat[datakey][keys['n_quan']]),
+             pyfits.Column(name='L_QUAN',
+               format='1J',
+               array=dat[datakey][keys['l_quan']]),
+             pyfits.Column(name='S_QUAN',
+               format='1E',
+               array=dat[datakey][keys['s_quan']]),
+             pyfits.Column(name='LEV_DEG',
+               format='1J',
+               array=dat[datakey][keys['lev_deg']]),
+             pyfits.Column(name='PHOT_TYPE',
+               format='1J',
+               array=dat[datakey][keys['phot_type']]),
+             pyfits.Column(name='PHOT_PAR',
+               format='20E',
+               array=dat[datakey][keys['phot_par']]),
+             pyfits.Column(name='AAUT_TOT',
+               format='1E',
+               unit='s^-1',
+               array=dat[datakey][keys['aaut_tot']]),
+             pyfits.Column(name='ARAD_TOT',
+               format='1E',
+               unit='s^-1',
+               array=dat[datakey][keys['arad_tot']]),
+             pyfits.Column(name='ENERGY_REF',
+               format='20A',
+               array=dat[datakey][keys['energy_ref']]),
+             pyfits.Column(name='PHOT_REF',
+               format='20A',
+               array=dat[datakey][keys['phot_ref']]),
+             pyfits.Column(name='AAUT_REF',
+               format='20A',
+               array=dat[datakey][keys['aaut_ref']]),
+             pyfits.Column(name='ARAD_REF',
+               format='20A',
+               array=dat[datakey][keys['arad_ref']])] ))
+
+  hdu1.header.update('XTENSION', hdu1.header['XTENSION'],
+          comment='Written by '+os.environ['USER']+now.strftime('%a %Y-%m-%d %H:%M:%S')+ 'UTC')
+  hdu1.header.update('EXTNAME', atomic.spectroscopic_name(dat['Z'],dat['z1']),
+          comment='Ion Name', before="TTYPE1")
+  hdu1.header.update('HDUCLASS', 'ATOMIC',
+          comment='Atomic Data', before="TTYPE1")
+  hdu1.header.update('HDUCLAS1', 'E_LEVEL',
+          comment='Energy level tables', before="TTYPE1")
+  hdu1.header.update('ELEMENT', dat['Z'],
+          comment='Numer of protons in element', before="TTYPE1")
+  hdu1.header.update('ION_STAT', dat['z1']-1,
+          comment='ion state (0 = neutral)', before="TTYPE1")
+  hdu1.header.update('ION_NAME', atomic.spectroscopic_name(dat['Z'],dat['z1']),
+          comment='Ion Name', before="TTYPE1")
+  hdu1.header.update('N_LEVELS',len(dat[datakey][keys['elec_config']]) ,
+           comment='Number of energy levels', before="TTYPE1")
+  hdu1.header.update('HDUVERS1', '1.1.0',
+           comment='Version of datafile', before="TTYPE1")
+
+  if 'comments' in dat.keys():
+    for icmt in dat['comments']:
+      hdu1.header.add_comment(icmt)
+
+  # combine hdus
+
+  hdulist = pyfits.HDUList([hdu0,hdu1])
+
+  # write out file (overwrite any existing file)
+  if clobber:
+    try:
+      os.remove(fname)
+    except OSError:
+      pass
+  
+  hdulist.writeto(fname, checksum=True, clobber=clobber)
+
+  print "file written: "+fname
+
+
+
+
+
+def write_la_file(fname, dat, clobber=False):
+  """
+  Write the data in list dat to fname
+
+  Parameters
+  ----------
+  fname : string
+    The file to write
+  dat : list
+    The data to write
+    Should be a list with the following keywords:
+    Z : int
+       nuclear charge
+    z1 : int
+       ion charge + 1
+    comments : iterable of strings
+       comments to append to the file
+    data : numpy.array
+      stores all the individual level data, with the following types:
+      upper_lev : int
+        Upper level of transition
+      lower_lev : int
+        Lower level of transition
+      wavelen : float
+        Wavelength of transition (A)
+      wave_err : float
+        Error in wavelength (A)
+      einstein_a : float
+        Einstein A coefficient (s-1)
+      ein_a_err : float
+        Error in A coefficient (s-1)
+      wave_ref : string(20)
+        wavelength reference (bibcode)
+      ein_a_ref : string(20)
+        A-value reference (bibcode)
+  clobber : bool
+    Overwrite existing file if it exists.
+    
+  Returns
+  -------
+  none
+
+  """
+  # start generation of new HDU:
+
+  #primary HDU, hdu0
+  hdu0 = pyfits.PrimaryHDU()
+  now = datetime.datetime.utcnow()
+
+  hdu0.header.update('DATE', now.strftime('%d/%m/%y'))
+  hdu0.header.update('EM_LINES', "Emission Line Data")
+  hdu0.header.update('FILENAME', "Python routine")
+  hdu0.header.update('ORIGIN', "ATOMDB",comment=os.environ['USER']+", AtomDB project")
+  hdu0.header.update('HDUCLASS', "ATOMIC",comment="Atomic Data")
+  hdu0.header.update('HDUCLAS1', "EM_LINES",comment="Emission Line data")
+  hdu0.header.update('HDUVERS', "1.0.0",comment="Version of datafile")
+
+  # do a key case conversion
+  datakey=''
+  for i in dat.keys():
+    if i.lower()=='data':
+      datakey=i
+  keys={}
+  for i in dat[datakey].dtype.names:
+    if i.lower()=='upper_lev':
+      keys['upper_lev'] = i
+    if i.lower()=='lower_lev':
+      keys['lower_lev'] = i
+    if i.lower()=='upper_lev':
+      keys['upper_lev'] = i
+    if i.lower()=='wavelen':
+      keys['wavelen'] = i
+    if i.lower()=='wave_obs':
+      keys['wave_obs'] = i
+    if i.lower()=='wave_err':
+      keys['wave_err'] = i
+    if i.lower()=='einstein_a':
+      keys['einstein_a'] = i
+    if i.lower()=='ein_a_err':
+      keys['ein_a_err'] = i
+    if i.lower()=='wave_ref':
+      keys['wave_ref'] = i
+    if i.lower()=='wv_obs_ref':
+      keys['wv_obs_ref'] = i
+    if i.lower()=='ein_a_ref':
+      keys['ein_a_ref'] = i
+      
+  
+  #secondary HDU, hdu1:
+  hdu1 = pyfits.new_table(pyfits.ColDefs(
+        [pyfits.Column(name='UPPER_LEV',
+           format='1J',
+           array=dat[datakey][keys['upper_lev']]),
+         pyfits.Column(name='LOWER_LEV',
+           format='1J',
+           array=dat[datakey][keys['lower_lev']]),
+         pyfits.Column(name='WAVELEN',
+           format='1E',
+           unit='Angstrom',
+           array=dat[datakey][keys['wavelen']]),
+         pyfits.Column(name='WAVE_OBS',
+           format='1E',
+           unit='Angstrom',
+           array=dat[datakey][keys['wave_obs']]),
+         pyfits.Column(name='WAVE_ERR',
+           format='1E',
+           unit='Angstrom',
+           array=dat[datakey][keys['wave_err']]),
+         pyfits.Column(name='EINSTEIN_A',
+           format='1E',
+           unit='s**-1',
+           array=dat[datakey][keys['einstein_a']]),
+         pyfits.Column(name='EIN_A_ERR',
+           format='1E',
+           unit='s**-1',
+           array=dat[datakey][keys['ein_a_err']]),
+         pyfits.Column(name='WAVE_REF',
+           format='20A',
+           array=dat[datakey][keys['wave_ref']]),
+         pyfits.Column(name='WV_OBS_REF',
+           format='20A',
+           array=dat[datakey][keys['wv_obs_ref']]),
+         pyfits.Column(name='EIN_A_REF',
+           format='20A',
+           array=dat[datakey][keys['ein_a_ref']])]
+         ))
+
+  hdu1.header.update('XTENSION', hdu1.header['XTENSION'],
+          comment='Written by '+os.environ['USER']+now.strftime('%a %Y-%m-%d %H:%M:%S')+ 'UTC')
+  hdu1.header.update('EXTNAME', atomic.spectroscopic_name(dat['Z'],dat['z1']),
+          comment='Ion Name', before="TTYPE1")
+  hdu1.header.update('HDUCLASS', 'ATOMIC',
+          comment='Atomic Data', before="TTYPE1")
+  hdu1.header.update('HDUCLAS1', 'EM_LINES',
+          comment='Emission line tables', before="TTYPE1")
+  hdu1.header.update('ELEMENT', dat['Z'],
+          comment='Numer of protons in element', before="TTYPE1")
+  hdu1.header.update('ION_STAT', dat['z1'],
+          comment='ion state (0 = neutral)', before="TTYPE1")
+  hdu1.header.update('ION_NAME', atomic.spectroscopic_name(dat['Z'],dat['z1']),
+          comment='Ion Name', before="TTYPE1")
+  hdu1.header.update('N_LINES',len(dat['data']) ,
+           comment='Number of emission lines', before="TTYPE1")
+  hdu1.header.update('HDUVERS1', '1.0.0',
+           comment='Version of datafile', before="TTYPE1")
+
+  if  'comments' in dat.keys():
+    print 'adding comments'
+    for icmt in dat['comments']:
+      hdu1.header.add_comment(icmt)
+
+  # combine hdus
+  print 'combining HDUs'
+  hdulist = pyfits.HDUList([hdu0,hdu1])
+
+  # write out file (overwrite any existing file)
+  if clobber:
+    try:
+      os.remove(fname)
+    except OSError:
+      pass
+    print 'writing lafile'
+    hdulist.writeto(fname, checksum=True, clobber=clobber)
+
+  print "file written: "+fname
+
+
+
+
+
+def write_ai_file(fname, dat, clobber=False):
+  """
+  Write the data in list dat to fname
+
+  Parameters
+  ----------
+  fname : string
+    The file to write
+  dat : list
+    The data to write
+    Should be a list with the following keywords:
+    Z : int
+       nuclear charge
+    z1 : int
+       ion charge + 1
+    comments : iterable of strings
+       comments to append to the file
+    data : numpy.array
+      stores all the individual level data, with the following types:
+      ion_init : int
+        Inital ion state of transition
+      ion_final : int
+        Final ion state of transition
+      level_init : int
+        Initial level of transition
+      level_final : int
+        Final level of transition
+      auto_rate : float
+        Autoionization rate (s-1)
+      auto_err : float
+        Error in autoionization rate (s-1)
+      auto_ref : string(20)
+        Autoionization rate reference (bibcode)
+  clobber : bool
+    Overwrite existing file if it exists.
+    
+  Returns
+  -------
+  none
+
+  """
+  # start generation of new HDU:
+
+  #primary HDU, hdu0
+  hdu0 = pyfits.PrimaryHDU()
+  now = datetime.datetime.utcnow()
+
+  hdu0.header.update('DATE', now.strftime('%d/%m/%y'))
+  hdu0.header.update('AUTOION', "Autoionization Data")
+  hdu0.header.update('FILENAME', "Python routine")
+  hdu0.header.update('ORIGIN', "ATOMDB",comment=os.environ['USER']+", AtomDB project")
+  hdu0.header.update('HDUCLASS', "ATOMIC",comment="Atomic Data")
+  hdu0.header.update('HDUCLAS1', "AUTOION",comment="Autoionization data")
+  hdu0.header.update('HDUVERS', "1.0.0",comment="Version of datafile")
+
+  #secondary HDU, hdu1:
+  hdu1 = pyfits.new_table(pyfits.ColDefs(
+        [pyfits.Column(name='ION_INIT',
+           format='1J',
+           array=dat['data']['ion_init']),
+         pyfits.Column(name='ION_FINAL',
+           format='1J',
+           array=dat['data']['ion_final']),
+         pyfits.Column(name='LEVEL_INIT',
+           format='1J',
+           array=dat['data']['level_init']),
+         pyfits.Column(name='LEVEL_FINAL',
+           format='1J',
+           array=dat['data']['level_final']),
+         pyfits.Column(name='AUTO_RATE',
+           format='1E',
+           unit='s**-1',
+           array=dat['data']['auto_rate']),
+         pyfits.Column(name='AUTO_ERR',
+           format='1E',
+           unit='s**-1',
+           array=dat['data']['auto_err']),
+         pyfits.Column(name='AUTO_REF',
+           format='20A',
+           array=dat['data']['auto_ref'])]
+         ))
+
+  hdu1.header.update('XTENSION', hdu1.header['XTENSION'],
+          comment='Written by '+os.environ['USER']+now.strftime('%a %Y-%m-%d %H:%M:%S')+ 'UTC')
+  hdu1.header.update('EXTNAME', atomic.spectroscopic_name(dat['Z'],dat['z1']),
+          comment='Ion Name', before="TTYPE1")
+  hdu1.header.update('HDUCLASS', 'ATOMIC',
+          comment='Atomic Data', before="TTYPE1")
+  hdu1.header.update('HDUCLAS1', 'AUTOION',
+          comment='Autoionization data tables', before="TTYPE1")
+  hdu1.header.update('ELEMENT', dat['Z'],
+          comment='Numer of protons in element', before="TTYPE1")
+  hdu1.header.update('ION_STAT', dat['z1'],
+          comment='ion state (0 = neutral)', before="TTYPE1")
+  hdu1.header.update('ION_NAME', atomic.spectroscopic_name(dat['Z'],dat['z1']),
+          comment='Ion Name', before="TTYPE1")
+  hdu1.header.update('N_LINES',len(dat['data']) ,
+           comment='Number of emission lines', before="TTYPE1")
+  hdu1.header.update('HDUVERS1', '1.0.0',
+           comment='Version of datafile', before="TTYPE1")
+
+  # combine hdus
+
+  
+  if 'comments' in dat.keys():
+    print 'adding comments'
+    for icmt in dat['comments']:
+      hdu1.header.add_comment(icmt)
+
+  # combine hdus
+  print 'combining HDUs'
+  hdulist = pyfits.HDUList([hdu0,hdu1])
+
+  # write out file (overwrite any existing file)
+  if clobber:
+    try:
+      os.remove(fname)
+    except OSError:
+      pass
+    print 'writing lafile'
+    hdulist.writeto(fname, checksum=True, clobber=clobber)
+
+  print "file written: "+fname
+
+
+
+def write_ec_file(fname, dat, clobber=False):
+  """
+  Write the data in list dat to fname
+
+  Parameters
+  ----------
+  fname : string
+    The file to write
+  dat : list
+    The data to write
+    Should be a list with the following keywords:
+    Z : int
+       nuclear charge
+    z1 : int
+       ion charge + 1
+    comments : iterable of strings
+       comments to append to the file
+    data : numpy.array
+      stores all the individual level data, with the following types:
+      lower_lev : int
+        Lower level of transition
+      upper_lev : int
+        Upper level of transition
+      coeff_type : int
+        Coefficient type
+      min_temp : float
+        Minimum temperature in range (K)
+      max_temp : float
+        Maximum temperature in range (K)
+      temperature : float(20)
+        List of temperatures (K)
+      effcollstrpar : float(20)
+        Effective collision strength parameters
+      inf_limit  : float (OPTIONAL - if type 1.2.0)
+        High temperature limit point, if provided.
+      reference : string(20)
+        Collisional excitation reference (bibcode)
+  clobber : bool
+    Overwrite existing file if it exists.
+    
+  Returns
+  -------
+  none
+
+  """
+
+  # start generation of new HDU:
+
+  #primary HDU, hdu0
+  hdu0 = pyfits.PrimaryHDU()
+  now = datetime.datetime.utcnow()
+
+  # get version type
+  if 'inf_limit' in dat['data'].dtype.names:
+    version = '1.2.0'
+  else:
+    version = '1.1.0'
+  hdu0.header.update('DATE', now.strftime('%d/%m/%y'))
+  hdu0.header.update('COLL_STR', "Collision Strengths")
+  hdu0.header.update('FILENAME', "Python routine")
+  hdu0.header.update('ORIGIN', "ATOMDB",comment=os.environ['USER']+", AtomDB project")
+  hdu0.header.update('HDUCLASS', "ATOMIC",comment="Atomic Data")
+  hdu0.header.update('HDUCLAS1', "COLL_STR",comment="e + p Collision Strengths")
+  hdu0.header.update('HDUVERS', version,comment="Version of datafile")
+
+  #secondary HDU, hdu1:
+  if version == '1.2.0':
+    hdu1 = pyfits.new_table(pyfits.ColDefs(
+          [pyfits.Column(name='LOWER_LEV',
+             format='1J',
+             array=dat['data']['lower_lev']),
+           pyfits.Column(name='UPPER_LEV',
+             format='1J',
+             array=dat['data']['upper_lev']),
+           pyfits.Column(name='COEFF_TYPE',
+             format='1J',
+             array=dat['data']['coeff_type']),
+           pyfits.Column(name='MIN_TEMP',
+             format='1E',
+             unit='K',
+             array=dat['data']['min_temp']),
+           pyfits.Column(name='MAX_TEMP',
+             format='1E',
+             unit='K',
+             array=dat['data']['max_temp']),
+           pyfits.Column(name='TEMPERATURE',
+             format='20E',
+             unit='K',
+             array=dat['data']['temperature']),
+           pyfits.Column(name='EFFCOLLSTRPAR',
+             format='20E',
+             array=dat['data']['effcollstrpar']),
+           pyfits.Column(name='INF_LIMIT',
+             format='E',
+             array=dat['data']['inf_limit']),
+           pyfits.Column(name='REFERENCE',
+             format='20A',
+             array=dat['data']['reference'])]
+           ))
+  else:
+    hdu1 = pyfits.new_table(pyfits.ColDefs(
+          [pyfits.Column(name='LOWER_LEV',
+             format='1J',
+             array=dat['data']['lower_lev']),
+           pyfits.Column(name='UPPER_LEV',
+             format='1J',
+             array=dat['data']['upper_lev']),
+           pyfits.Column(name='COEFF_TYPE',
+             format='1J',
+             array=dat['data']['coeff_type']),
+           pyfits.Column(name='MIN_TEMP',
+             format='1E',
+             unit='K',
+             array=dat['data']['min_temp']),
+           pyfits.Column(name='MAX_TEMP',
+             format='1E',
+             unit='K',
+             array=dat['data']['max_temp']),
+           pyfits.Column(name='TEMPERATURE',
+             format='20E',
+             unit='K',
+             array=dat['data']['temperature']),
+           pyfits.Column(name='EFFCOLLSTRPAR',
+             format='20E',
+             array=dat['data']['effcollstrpar']),
+           pyfits.Column(name='REFERENCE',
+             format='20A',
+             array=dat['data']['reference'])]
+           ))
+    
+  hdu1.header.update('XTENSION', hdu1.header['XTENSION'],
+          comment='Written by '+os.environ['USER']+now.strftime('%a %Y-%m-%d %H:%M:%S')+ 'UTC')
+  hdu1.header.update('EXTNAME', atomic.spectroscopic_name(dat['Z'], dat['z1']),
+          comment='Ion Name', before="TTYPE1")
+  hdu1.header.update('HDUCLASS', 'ATOMIC',
+          comment='Atomic Data', before="TTYPE1")
+  hdu1.header.update('HDUCLAS1', 'COLL_STR',
+          comment='Collision Strengths (e,p)', before="TTYPE1")
+  hdu1.header.update('ELEMENT', dat['Z'],
+          comment='Numer of protons in element', before="TTYPE1")
+  hdu1.header.update('ION_STAT', dat['z1']-1,
+          comment='ion state (0 = neutral)', before="TTYPE1")
+  hdu1.header.update('ION_NAME', atomic.spectroscopic_name(dat['Z'], dat['z1']),
+          comment='Ion Name', before="TTYPE1")
+  hdu1.header.update('N_EXCITE',len(dat['data']['upper_lev']) ,
+           comment='Number of collisional excitations', before="TTYPE1")
+  hdu1.header.update('HDUVERS1', version,
+           comment='Version of datafile', before="TTYPE1")
+
+  if 'comments' in dat.keys():
+    print 'adding comments'
+    for icmt in dat['comments']:
+      hdu1.header.add_comment(icmt)
+
+
+  # combine hdus
+
+  hdulist = pyfits.HDUList([hdu0,hdu1])
+
+  # write out file (overwrite any existing file)
+  if clobber:
+    try:
+      os.remove(fname)
+    except OSError:
+      pass
+    print 'writing lafile'
+    hdulist.writeto(fname, checksum=True, clobber=clobber)
+
+  print "file written: "+fname
+
+
+def write_ir_file(fname, dat, clobber=False):
+  """
+  Write the data in list dat to fname
+
+  Parameters
+  ----------
+  fname : string
+    The file to write
+  dat : list
+    The data to write
+    Should be a list with the following keywords:
+    Z : int
+       nuclear charge
+    z1 : int
+       ion charge + 1
+    comments : iterable of strings
+       comments to append to the file
+    ionpot : float
+       ionization potential (eV)   
+    data : numpy.array
+      stores all the individual level data, with the following types:
+      element : int
+        Nuclear Charge
+      ion_init : int
+        Initial ion stage
+      ion_final : int
+        Final ion stage
+      level_init : int
+        Initial level
+      level_final : int
+        Final level
+      tr_type : string(2)
+        Transition type:
+        CI = collisional excitaion
+        EA = excitation autoionization
+        RR = radiative recombination
+        DR = dieclectronic recombination
+        XI = ionization, excluded from total rate calculation
+        XR = recombination, excluded from total rate calculation
+        (XR and XI are used to populate level directly)
+      tr_index : int
+        index within the file
+      par_type : int
+        parameter type, i.e. how the data is stored
+      min_temp : float
+        Minimum temperature in range (K)
+      max_temp : float
+        Maximum temperature in range (K)
+      temperature : float(20)
+        List of temperatures (K)
+      ionrec_par : float(20)
+        Ionization and recombination rate parameters
+      wavelen : float
+        Wavelength of emitted lines (A) [not used]
+      wave_obs : float
+        Observed wavelength of emitted lines (A) [not used]
+      wave_err : float
+        Error in these wavelengths (A) [not used]
+      br_ratio : float
+        Branching ratio of this line [not used]
+      br_rat_err : float
+        Error in branching ratio [not used]
+      label : string(20)
+        Label for the transition
+      rate_ref : string(20)
+        Rate reference (bibcode)
+      wave_ref : string(20)
+        Wavelength reference (bibcode)
+      wv_obs_ref : string(20)
+        Observed wavelength reference (bibcode)
+      br_rat_ref : string(20)
+        Branching ratio reference (bibcode)
+  clobber : bool
+    Overwrite existing file if it exists.
+    
+  Returns
+  -------
+  none
+
+  """
+  #primary HDU, hdu0
+  hdu0 = pyfits.PrimaryHDU()
+  now = datetime.datetime.utcnow()
+
+  hdu0.header.update('DATE', now.strftime('%d/%m/%y'))
+  hdu0.header.update('COLL_STR', "Collision Strengths")
+  hdu0.header.update('FILENAME', "Python routine")
+  hdu0.header.update('ORIGIN', "ATOMDB",comment=os.environ['USER']+", AtomDB project")
+  hdu0.header.update('HDUCLASS', "ATOMIC",comment="Atomic Data")
+  hdu0.header.update('HDUCLAS1', "IONREC",comment="Ionization/Recombination rates")
+  hdu0.header.update('HDUVERS', "1.0.0",comment="Version of datafile")
+
+  #secondary HDU, hdu1:
+  hdu1 = pyfits.new_table(pyfits.ColDefs(
+        [pyfits.Column(name='ELEMENT',
+           format='1J',
+           array=dat['data']['element']),
+         pyfits.Column(name='ION_INIT',
+           format='1J',
+           array=dat['data']['ion_init']),
+         pyfits.Column(name='ION_FINAL',
+           format='1J',
+           array=dat['data']['ion_final']),
+         pyfits.Column(name='LEVEL_FINAL',
+           format='1J',
+           array=dat['data']['level_final']),
+         pyfits.Column(name='LEVEL_INIT',
+           format='1J',
+           array=dat['data']['level_init']),
+         pyfits.Column(name='TR_TYPE',
+           format='2A',
+           array=dat['data']['tr_type']),
+         pyfits.Column(name='TR_INDEX',
+           format='1J',
+           array=numpy.arange(1,len(dat['data']['tr_type'])+1)),
+         pyfits.Column(name='PAR_TYPE',
+           format='1J',
+           array=dat['data']['par_type']),
+         pyfits.Column(name='MIN_TEMP',
+           format='1E',
+           unit='K',
+           array=dat['data']['min_temp']),
+         pyfits.Column(name='MAX_TEMP',
+           format='1E',
+           unit='K',
+           array=dat['data']['max_temp']),
+         pyfits.Column(name='TEMPERATURE',
+           format='20E',
+           unit='K',
+           array=dat['data']['temperature']),
+         pyfits.Column(name='IONREC_PAR',
+           format='20E',
+           array=dat['data']['ionrec_par']),
+         pyfits.Column(name='WAVELEN',
+           format='1E',
+           array=dat['data']['wavelen']),
+         pyfits.Column(name='WAVE_OBS',
+           format='1E',
+           array=dat['data']['wave_obs']),
+         pyfits.Column(name='WAVE_ERR',
+           format='1E',
+           array=dat['data']['wave_err']),
+         pyfits.Column(name='BR_RATIO',
+           format='1E',
+           array=dat['data']['br_ratio']),
+         pyfits.Column(name='BR_RAT_ERR',
+           format='1E',
+           array=dat['data']['br_rat_err']),
+         pyfits.Column(name='LABEL',
+           format='20A',
+           array=dat['data']['label']),
+         pyfits.Column(name='RATE_REF',
+           format='20A',
+           array=dat['data']['rate_ref']),
+         pyfits.Column(name='WAVE_REF',
+           format='20A',
+           array=dat['data']['wave_ref']),
+         pyfits.Column(name='WV_OBS_REF',
+           format='20A',
+           array=dat['data']['wv_obs_ref']),
+         pyfits.Column(name='BR_RAT_REF',
+           format='20A',
+           array=dat['data']['br_rat_ref'])]
+         ))
+
+  hdu1.header.update('XTENSION', hdu1.header['XTENSION'],
+          comment='Written by '+os.environ['USER']+now.strftime('%a %Y-%m-%d %H:%M:%S')+ 'UTC')
+  hdu1.header.update('EXTNAME', 'IONREC',
+          comment='Ionization/Recombination rates', before="TTYPE1")
+  hdu1.header.update('HDUCLASS', 'ATOMIC',
+          comment='Atomic Data', before="TTYPE1")
+  hdu1.header.update('HDUCLAS1', 'IONREC',
+          comment='Ionization/Recombinatoin rates', before="TTYPE1")
+  hdu1.header.update('ELEMENT', dat['Z'],
+          comment='Numer of protons in element', before="TTYPE1")
+  hdu1.header.update('ION_STAT', dat['z1'],
+          comment='ion state (0 = neutral)', before="TTYPE1")
+  hdu1.header.update('ION_NAME', atomic.spectroscopic_name(dat['Z'],dat['z1']),
+          comment='Ion Name', before="TTYPE1")
+  hdu1.header.update('N_ION',len(dat['data']['level_init']) ,
+           comment='Number of rates', before="TTYPE1")
+  hdu1.header.update('HDUVERS1', '1.0.0',
+           comment='Version of datafile', before="TTYPE1")
+  if 'ionpot' in dat.keys():
+    hdu1.header.update('IONPOT', dat['ionpot'],
+             comment='Ionization Potential (eV)', before="TTYPE1")
+  else:
+    print "WARNING: ionpot keyword not found in list"
+
+  if 'comments' in dat.keys():
+    print 'adding comments'
+    for icmt in dat['comments']:
+      hdu1.header.add_comment(icmt)
+  # combine hdus
+
+  hdulist = pyfits.HDUList([hdu0,hdu1])
+
+  # write out file (overwrite any existing file)
+  if clobber:
+    try:
+      os.remove(fname)
+    except OSError:
+      pass
+    print 'writing irfile'
+    hdulist.writeto(fname, checksum=True, clobber=clobber)
+
+  print "file written: "+fname
+
