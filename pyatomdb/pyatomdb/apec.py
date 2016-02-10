@@ -630,10 +630,10 @@ def extract_gauntff(Z, gamma2, gaunt_U, gaunt_Z, gaunt_Ng, gaunt_g2, gaunt_gf):
       #print "iii",iii, "GauntFFvec[iii]", GauntFFvec[iii]
     #zzz=raw_input()  
   ii = numpy.where(gamma2<gaunt_g2[i,0])[0]
-  GauntFFvec[i[ii]]=gaunt_gf[i[ii],0]
+  GauntFFvec[ii]=gaunt_gf[i[ii],0]
     
   ii = numpy.where(gamma2>gaunt_g2[i,gaunt_Ng[i]-1])[0]
-  GauntFFvec[i[ii]]=gaunt_gf[i[ii],gaunt_Ng[i[ii]]-1]
+  GauntFFvec[ii]=gaunt_gf[i[ii],gaunt_Ng[i[ii]]-1]
   return Uvec, GauntFFvec
     
     
@@ -748,3 +748,188 @@ def kurucz(uin, gam):
       
   return gaunt
 
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+
+
+def calc_ee_brems(E, T, N):
+  """
+  calculate the electron-electron bremsstrahlung.
+
+  Parameters
+  ----------
+  E : array (float)
+    energy grid (keV)
+  T : float
+    Electron temperature (keV)
+  N : float
+    electron density (cm^-3)
+  
+  Returns
+  -------
+  array(float)
+    ee_brems in photons cm^s s^-1 keV-1 at each point E.
+    This should be multiplied by the bin width to get flux per bin.
+    
+  References
+  ----------
+  Need to check this!
+  """
+#
+#  T is the electron temperature (in keV)
+#  N is the electron density (in cm^-3)
+#  E is the list of energies (in keV)
+#
+
+# series of data constants
+# Region I, k_BT<=1 keV
+  #print "T=%f"%(T)
+
+  aI1 = numpy.array([(3.15847E+0, -2.52430E+0, 4.04877E-1, 6.13466E-1, 6.28867E-1, 3.29441E-1),
+             (2.46819E-2, 1.03924E-1, 1.98935E-1, 2.18843E-1, 1.20482E-1, -4.82390E-2),
+             (-2.11118E-2, -8.53821E-2, -1.52444E-1, -1.45660E-1, -4.63705E-2, 8.16592E-2),
+             (1.24009E-2, 4.73623E-2, 7.51656E-2, 5.07201E-2, -2.25247E-2, -8.17151E-2),
+             (-5.41633E-3, -1.91406E-2, -2.58034E-2, -2.23048E-3, 5.07325E-2, 5.94414E-2),
+             (1.70070E-3, 5.39773E-3, 4.13361E-3, -1.14273E-2, -3.23280E-2, -2.19399E-2),
+             (-3.05111E-4, -7.26681E-4, 4.67015E-3, 1.24789E-2, -1.16976E-2, -1.13488E-2),
+             (-1.21721E-4, -7.47266E-4, -2.20675E-3, -2.74351E-3, -1.00402E-3, -2.38863E-3),
+             (1.77611E-4, 8.73517E-4, -2.67582E-3, -4.57871E-3, 2.96622E-2, 1.89850E-2),
+             (-2.05480E-5, -6.92284E-5, 2.95254E-5, -1.70374E-4, -5.43191E-4, 2.50978E-3),
+             (-3.58754E-5, -1.80305E-4, 1.40751E-3, 2.06757E-3, -1.23098E-2, -8.81767E-3)])
+
+# column j=0-5; line i=0-10
+  aI2 = numpy.array([(-1.71486E-1, -3.68685E-1, -7.59200E-2, 1.60187E-1, 8.37729E-2),
+             (-1.20811E-1, -4.46133E-4, 8.88749E-2, 2.50320E-2, -1.28900E-2),
+             (9.87296E-2, -3.24743E-2, -8.82637E-2, -7.52221E-3, 1.99419E-2),
+             (-4.59297E-2, 5.05096E-2, 5.58818E-2, -9.11885E-3, -1.71348E-2),
+             (-2.11247E-2, -5.05387E-2, 9.20453E-3, 1.67321E-2, -3.47663E-3),
+             (1.76310E-2, 2.23352E-2, -4.59817E-3, -8.24286E-3, -3.90032E-4),
+             (6.31446E-2, 1.33830E-2, -8.54735E-2, -6.47349E-3, 3.72266E-2),
+             (-2.28987E-3, 7.79323E-3, 7.98332E-3, -3.80435E-3, -4.25035E-3),
+             (-8.84093E-2, -2.93629E-2, 1.02966E-1, 1.38957E-2, -4.22093E-2),
+             (4.45570E-3, -2.80083E-3, -5.68093E-3, 1.10618E-3, 2.33625E-3),
+             (3.46210E-2, 1.23727E-2, -4.04801E-2, -5.68689E-3, 1.66733E-2)])
+# column j=6-10, line 0-10
+
+# Region II (1 keV<=k_B<=300 keV)
+  abII = numpy.array([(-3.7369800E+1, -9.3647000E+0, 9.2170000E-1, -1.1628100E+1, -8.6991000E+0),
+              (3.8036590E+2, 9.5918600E+1, -1.3498800E+1, 1.2560660E+2, 6.3383000E+1),
+              (-1.4898014E+3, -3.9701720E+2, 7.6453900E+1, -5.3274890E+2, -1.2889390E+2),
+              (2.8614150E+3, 8.4293760E+2, -2.1783010E+2, 1.1423873E+3, -1.3503120E+2),
+              (-2.3263704E+3, -9.0730760E+2, 3.2097530E+2, -1.1568545E+3, 9.7758380E+2),
+              (-6.9161180E+2, 3.0688020E+2, -1.8806670E+2, 7.5010200E+1, -1.6499529E+3),
+              (2.8537893E+3, 2.9129830E+2, -8.2416100E+1, 9.9681140E+2, 1.2586812E+3),
+              (-2.0407952E+3, -2.9902530E+2, 1.6371910E+2, -8.8818950E+2, -4.0474610E+2),
+              (4.9259810E+2, 7.6346100E+1, -6.0024800E+1, 2.5013860E+2, 2.7335400E+1)])
+# column a_0j-a2j, b0j,b1j; line j=0-8
+
+  cII = numpy.array([(-5.7752000E+0, 3.0558600E+1, -5.4327200E+1, 3.6262500E+1, -8.4082000E+0),
+             (4.6209700E+1, -2.4821770E+2, 4.5096760E+2, -3.1009720E+2, 7.4792500E+1),
+             (-1.6072800E+2, 8.7419640E+2, -1.6165987E+3, 1.1380531E+3, -2.8295400E+2),
+             (3.0500700E+2, -1.6769028E+3, 3.1481061E+3, -2.2608347E+3, 5.7639300E+2),
+             (-3.2954200E+2, 1.8288677E+3, -3.4783930E+3, 2.5419361E+3, -6.6193900E+2),
+             (1.9107700E+2, -1.0689366E+3, 2.0556693E+3, -1.5252058E+3, 4.0429300E+2),
+             (-4.6271800E+1, 2.6056560E+2, -5.0567890E+2, 3.8008520E+2, -1.0223300E+2)])
+# column CII_2j-cII_6j; line j=0-6
+
+# Region III (300 keV<= k_BT<=7 MeV)
+  abIII = numpy.array([(5.2163300E+1, 4.9713900E+1, 6.4751200E+1, -8.5862000E+0, 3.7643220E+2),
+               (-2.5703130E+2, -1.8977460E+2, -2.1389560E+2, 3.4134800E+1, -1.2233635E+3),
+               (4.4681610E+2, 2.7102980E+2, 1.7414320E+2, -1.1632870E+2, 6.2867870E+2),
+               (-2.9305850E+2, -2.6978070E+2, 1.3650880E+2, 2.9654510E+2, 2.2373946E+3),
+               (0.0000000E+0, 4.2048120E+2, -2.7148990E+2, -3.9342070E+2, -3.8288387E+3),
+               (7.7047400E+1, -5.7662470E+2, 8.9321000E+1, 2.3754970E+2, 2.1217933E+3),
+               (-2.3871800E+1, 4.3277900E+2, 5.8258400E+1, -3.0600000E+1, -5.5166700E+1),
+               (0.0000000E+0, -1.6053650E+2, -4.6080700E+1, -2.7617000E+1, -3.4943210E+2),
+               (1.9970000E-1, 2.3392500E+1, 8.7301000E+0, 8.8453000E+0, 9.2205900E+1)])
+# column aII_0j-aIII_2j, bIII_0j, bIII_1j; line j=0-8
+  #print "E:",E
+  aI = numpy.hstack((aI1,aI2))
+
+  inum1 = numpy.arange(11)
+  jnum = numpy.resize(inum1,(11,11))
+  inum = numpy.transpose(jnum)
+  aII = numpy.zeros((9,3))
+  bII = numpy.zeros((9,2))
+  [aII, bII] = numpy.hsplit(abII,numpy.array([3]))
+  
+  numII = numpy.arange(9)
+  aIIj = numpy.transpose(numpy.resize(numII,(3,9)))
+  aIIi = numpy.resize(numpy.arange(3),(9,3))
+  bIIj = numpy.transpose(numpy.resize(numpy.arange(9),(2,9)))
+  bIIi = numpy.resize(numpy.arange(2),(9,2))
+  cIIj = numpy.transpose(numpy.resize(numpy.arange(7),(5,7)))
+  cIIi = numpy.resize(numpy.arange(2,7),(7,5))
+  
+  aIII = numpy.zeros((9,3))
+  bIII = numpy.zeros((9,2))
+  
+  kTIII = 1.e3 #1 MeV, in unit of keV 
+  [aIII, bIII] = numpy.hsplit(abIII,numpy.array([3]))
+  
+
+  tao = T/const.ME_KEV
+  # find the length of the input
+  if isinstance(E, (collections.Sequence, numpy.ndarray)):
+    x = E/T
+    (numx,) = x.shape
+  else:
+    Earray = numpy.array([E])
+    x = Earray/T
+    numx=1
+  #print "x", x
+  #print "numx:", numx
+  GI = numpy.zeros((numx,))
+  AIIr = numpy.zeros((numx,))
+  BIIr = numpy.zeros((numx,))
+  GpwII = numpy.zeros((numx,))
+  GII = numpy.zeros((numx,))
+  FCCII = numpy.zeros((numx,))
+  Ei0 = numpy.zeros((numx,))
+  GpwIII = numpy.zeros((numx,))
+  if T<0.05:
+    ret = numpy.zeros(len(x), dtype=float)
+  elif 0.05<=T<70.:
+    # hmm
+    # ARF REDO
+    GI=numpy.zeros(len(x))
+    theta = (1/1.35) * ( numpy.log10(tao) + 2.65)
+    bigx = (1/2.5) * (numpy.log10(x) + 1.50)
+    for i in range(11):
+      for j in range(11):
+         GI += aI[i,j]*(theta**i)*(bigx**j)
+    GI *= numpy.sqrt(8/(3*numpy.pi))
+    ret = 1.455e-16*N**2*numpy.exp(-x)/(x*numpy.sqrt(tao))*GI
+  elif 70.<=T<300.:
+    taoII = tao
+    for k in range(numx):
+      def integrand(t):
+        return numpy.exp(-1.0*t)/t
+      [Ei0[k,],error] = scipy.integrate.quad(integrand,x[k,],\
+                                             numpy.Inf,args=())
+      AIIr[k,] = numpy.sum(aII*taoII**(aIIj/8.)*x[k,]**(aIIi))
+      BIIr[k,] = numpy.sum(bII*taoII**(bIIj/8.)*x[k,]**(bIIi)) 
+      FCCII[k,] = 1.+numpy.sum(cII*taoII**(cIIj/6.)*x[k,]**(cIIi/8.))   
+      GpwII[k,] = numpy.sum(aII*taoII**(aIIj/8.)*x[k,]**(aIIi))-\
+                      numpy.exp(x[k,])*(-1.0)*Ei0[k,]*\
+                      numpy.sum(bII*taoII**(bIIj/8.)*x[k,]**(bIIi))
+      GII[k,] = GpwII[k,]*FCCII[k,]
+    ret = 1.455e-16*N**2*numpy.exp(-x)/(x*numpy.sqrt(taoII))*GII
+  elif 300.<=T<7000.:
+    taoIII = taoII
+    for k in range(numx):
+      GpwIII[k,] = numpy.sum(aIII*taoIII**(aIIj/8.)*x[k,]**(aIIi))-\
+                   numpy.exp(x[k,])*(-1.0)*Ei0[k,]*\
+                   numpy.sum(bIII*taoIII**(bIIj/8.)*x[k,]**(bIIi))
+    ret = 1.455e-16*N**2*numpy.exp(-x)/\
+           (x*numpy.sqrt(taoIII))*GpwIII
+  else:
+    taoIV = tao
+    GIV = 3./(4.*numpy.pi*numpy.sqrt(taoIV))*\
+          (28./3.+2.*x+x**2/2.+2.*(8./3.+4.*x/3.+x**2)*\
+          (numpy.log(2.*taoIV)-0.57721)-numpy.exp(x) \
+          *(-1.0*Ei0)*(8./3.-4.*x/3.+x**2))
+          
+    ret = 1.455e-16*N**2*numpy.exp(-x)/(x*numpy.sqrt(taoIV))*GIV
+  return ret/const.ME_KEV
