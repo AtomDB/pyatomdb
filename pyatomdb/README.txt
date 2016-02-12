@@ -56,3 +56,7 @@ November 5th 2015: Many minor bugfixes. Added "switch_version" to util package
 to allow looking at older AtomDB version data. Added use option to get total RRC
 emission using integral to infinity. 
 
+0.0.1.4
+February 12th 2016: As ever, bugfixes. Also added ability to calculate
+ionization balance to apec module.
+
