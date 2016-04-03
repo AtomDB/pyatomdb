@@ -1237,3 +1237,84 @@ def broaden_continuum(bins, spectrum, binunits = 'keV', \
   if angstrom:
     spectrum=spectrum[::-1]
   return spectrum
+
+
+def apply_response(spectrum, rmf, arf=False):
+  """
+  Apply a response to a spectrum
+  
+  Parameters
+  ----------
+  spectrum : array(float)
+    The spectrum, in counts/bin/second, to have the response applied to. Must be
+    binned on the same grid as the rmf.
+  rmf : string or pyfits.hdu.hdulist.HDUList
+    The filename of the rmf or the opened rmf file
+  arf : string or pyfits.hdu.hdulist.HDUList
+    The filename of the arf or the opened arf file
+  Returns
+  -------
+  array(float)
+    spectrum folded through the response
+  """
+
+  if arf:
+    if type(arf)==str:
+      arfdat = pyfits.open(arf)
+    elif type(arf) == pyfits.hdu.hdulist.HDUList:
+      arfdat = arf
+    else:
+      print "ERROR: unknown arf type, %s"%(repr(type(arf)))
+      return
+    res = spectrum * arfdat['SPECRESP'].data['SPECRESP']
+  else:
+    res = spectrum*1.0
+  
+  ret = numpy.zeros(len(res), dtype=float)
+  
+  if type(rmf)==str:
+    rmfdat = pyfits.open(rmf)
+  elif type(rmf) == pyfits.hdu.hdulist.HDUList:
+    rmfdat = rmf
+  else:
+    print "ERROR: unknown rmf type, %s"%(repr(type(rmf)))
+    return
+  
+  for ibin, i in enumerate(rmfdat['MATRIX'].data):
+    if res[ibin]==0.0: continue
+    lobound = 0
+    for j in range(len(i['F_CHAN'])):
+      ilo = i['F_CHAN'][j]
+      if ilo < 0: continue
+      
+      ihi = i['F_CHAN'][j] + i['N_CHAN'][j]
+  
+      ret[ilo:ihi] += res[ibin]*i['MATRIX'][lobound:lobound+i['N_CHAN'][j]]
+      lobound += i['N_CHAN'][j]
+  return ret
+
+
+def get_response_ebins(rmf):
+  """
+  Get the energy bins from the rmf file
+  
+  Parameters
+  ----------
+  rmf : string or pyfits.hdu.hdulist.HDUList
+    The filename of the rmf or the opened rmf file
+  
+  Returns
+  -------
+  array(float)
+    energy bins used. nbins+1 length, with the last item being the final bin
+  """
+  if type(rmf)==str:
+    rmfdat = pyfits.open(rmf)
+  elif type(rmf) == pyfits.hdu.hdulist.HDUList:
+    rmfdat = rmf
+  else:
+    print "ERROR: unknown rmf type, %s"%(repr(type(rmf)))
+    return
+  ret = rmfdat['EBOUNDS'].data['E_MIN']
+  ret = numpy.append(ret, rmfdat['EBOUNDS'].data['E_MAX'][-1])
+  return ret

@@ -962,6 +962,8 @@ def write_lv_file(fname, dat, clobber=False):
 
   if 'aaut_tot' in dat['data'].dtype.names:
     fileversion = '1.1.0'
+  elif 'AAUT_TOT' in dat['data'].dtype.names:
+    fileversion = '1.1.0'
   else:
     fileversion = '1.0.0'
 
@@ -1139,7 +1141,10 @@ def write_lv_file(fname, dat, clobber=False):
     except OSError:
       pass
   
-  hdulist.writeto(fname, checksum=True, clobber=clobber)
+  try:
+    hdulist.writeto(fname, checksum=True, clobber=clobber)
+  except TypeError:
+    hdulist.writeto(fname, clobber=clobber)
 
   print "file written: "+fname
 
@@ -1308,8 +1313,12 @@ def write_la_file(fname, dat, clobber=False):
       os.remove(fname)
     except OSError:
       pass
-    print 'writing lafile'
+
+  print 'writing lafile'
+  try:
     hdulist.writeto(fname, checksum=True, clobber=clobber)
+  except TypeError:
+    hdulist.writeto(fname, clobber=clobber)
 
   print "file written: "+fname
 
@@ -1436,8 +1445,12 @@ def write_ai_file(fname, dat, clobber=False):
       os.remove(fname)
     except OSError:
       pass
-    print 'writing lafile'
+
+  print 'writing lafile'
+  try:
     hdulist.writeto(fname, checksum=True, clobber=clobber)
+  except TypeError:
+    hdulist.writeto(fname, clobber=clobber)
 
   print "file written: "+fname
 
@@ -1608,9 +1621,12 @@ def write_ec_file(fname, dat, clobber=False):
       os.remove(fname)
     except OSError:
       pass
-    print 'writing lafile'
-    hdulist.writeto(fname, checksum=True, clobber=clobber)
 
+  print 'writing lafile'
+  try:
+    hdulist.writeto(fname, checksum=True, clobber=clobber)
+  except TypeError:
+    hdulist.writeto(fname, clobber=clobber)
   print "file written: "+fname
 
 
@@ -1817,8 +1833,12 @@ def write_ir_file(fname, dat, clobber=False):
       os.remove(fname)
     except OSError:
       pass
-    print 'writing irfile'
+
+  print 'writing irfile'
+  try:
     hdulist.writeto(fname, checksum=True, clobber=clobber)
+  except TypeError:
+    hdulist.writeto(fname, clobber=clobber)
 
   print "file written: "+fname
 
