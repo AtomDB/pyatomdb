@@ -2656,7 +2656,10 @@ def get_ionrec_rate(Te_in, irdat_in, lvdat_in=False, Te_unit='K', \
 #-------------------------------------------------------------------------------
 def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
                      lvdatap1=False, ionpot = False, \
-                     force_extrap=False, silent=True):
+                     force_extrap=False, silent=True,\
+                     finallev=False, initlev=False,\
+                     Z=-1, z1=-1, dtype=False, exconly=False,\
+                     datacache=False, settings=False):
   """
   Get the maxwellian rate for a transition from a file, typically for ionization,
   recombination or excitation.
@@ -2667,21 +2670,75 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
   Te : float
     electron temperature(s), in K by default
   colldata : HDUList
-    The collisional data of interest
+    If provided, the HDUList for the collisional data
   index : int
-    The line in the data to do the calculation for. Indexed from 0.
+    The line in the HDUList to do the calculation for. Indexed from 0.
   lvdata : HDUList
     the hdulist for the energy level file (as returned by pyfits.open('file'))
-  lvdatap1 : HDUList
-    The level data for the recombining or ionized data.
   Te_unit : {'K','eV','keV'}
     Units of temperature grid.
-
+  lvdatap1 : HDUList
+    The level data for the recombining or ionized data.
+  ionpot : float
+    The ionization potential in eV (required for some calculations, if 
+    not provided, it will be looked up)
+  force_extrap : bool
+    Force extrappolation to occur for rates outside the nominal range
+    of the input data
+  silent : bool
+    Turn off notifications
+  finallev : int
+    Instead of specifying the index, can use upperlev, lowerlev instead.
+  initlev : int
+    Instead of specifying the index, can use upperlev, lowerlev instead
+  Z : int
+    Instead of providing colldata, can provide Z & z1. Z is the atomic
+    number of the element.
+  z1 : int
+    Instead of providing colldata, can provide Z & z1. z1 is the ion
+    charge +1 for the initial ion
+  dtype : str
+    data type. One of:
+      'EC' : electron impact excitation
+      'PC' : proton impact excitation
+      'CI' : collisional ionization
+      'EA' : excitation-autoionization
+      'XI' : excluded ionization
+      'XR' : excluded recombination
+      'RR' : radiative recombination
+      'DR' : dielectronic recombination
+  exconly : bool
+    For collisional excitation, return only the excitation rate, not
+    the de-excitation rate.
+  settings : dict
+    See description in read_data
+  datacache : dict
+    See description in read_data
+    
   Returns
   -------
   float or array(float)
     Maxwellian rate coefficient, in units of cm^3 s^-1
+    For collisional excitation (proton or electron) returns
+    excitation, dexcitation rates
+    
+  Examples
+  --------
+  Te = numpy.logspace(4,9,20)
+  
+  (1) Get excitation rates for row 12 of an Fe XVII file
+  colldata = pyatomdb.atomdb.get_data(26,17,'EC')
+  exc, dex = get_maxwell_rate(Te, colldata=colldata, index=12)
+  
+  (2) Get excitation rates for row 12 of an Fe XVII file
+  exc, dex = get_maxwell_rate(Te, Z=26,z1=17, index=12)
+  
+  (3) Get excitation rates for transitions from level 1 to 15 of FE XVII
+  exc, dex = get_maxwell_rate(Te, Z=26, z1=17, finallev=15, initlev=1)
+  
   """
+# Note interface update 03-Apr-2016  
+  
   isiter=True
   try:
     _ = (e for e in Te)
@@ -2701,32 +2758,163 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
   else:
     print 'ERROR: Unknown Te_unit "%s": should be "K" or "keV"' % (Te_unit)
     return False
-  exconly=False
 
-
-  # get the data type
-  if colldata[1].header['HDUCLAS1'] == 'COLL_STR':
-    dtype = 'EC'
-  elif colldata[1].header['HDUCLAS1'] == 'IONREC':
-    # get the type:
-    dtype = colldata[1].data.field('TR_TYPE')[index]
-    if not dtype in ['RR','DR','CI','EA', 'XI','XR']:
-      print "Unknown transition type %s, should be one of RR, DR, CI, EA, XI, XR. "+\
-            "Returning." % (dtype)
+  # CHECK THE INPUTS
+  # 1: the collional excitation data
+  if colldata:
+    if Z>=0 | z1 >=0:
+      print 'ERROR: specified colldata, Z and z1. Either specify colldata or Z, z1 & dtype'
       return False
-    # do things with DR
-#    if colldata[1].data.field('PAR_TYPE')[index]>300:
-#      d=interp_rate(Te_arr, colldata[1].data.field('PAR_TYPE')[index]-300,\
-#                  colldata[1].data.field('TEMPERATURE')[index],\
-#                  colldata[1].data.field('IONREC_PAR')[index])
-#      return d
+    # set the dtype
+    if dtype==False:
+      if colldata[1].header['HDUCLAS1']=='COLL_STR':
+        dtype='EC'
+    # get the Z, z1
+    if dtype=='EC':
+      Z=colldata[1].header['ELEMENT']
+      z1=colldata[1].header['ION_STAT']+1
+      
+        
+        
+  else:
+    # Check we have Z & z1 & dtype specified
+    if ((dtype != False) & (Z>0) & (z1>0)):
+      # we should have data...
+      if dtype in ['CI','EA','XI']:
+        colldata = get_data(Z,z1,'IR', settings=settings, datacache=datacache)
+      elif dtype in ['RR','DR','XR']:
+        colldata = get_data(Z,z1-1,'IR', settings=settings, datacache=datacache)
+      elif dtype == 'EC':
+        colldata = get_data(Z,z1,'EC', settings=settings, datacache=datacache)
+      elif dtype == 'PC':
+        colldata = get_data(Z,z1,'PC', settings=settings, datacache=datacache)
+      else:
+        print "Error: unknown dtype %s"%(dtype)
+        return False
+      
+          
+    else:
+      print "Error: must specify dtype, Z and z1 to load file"
+      return False
+  # OK, at this point we have the colldata. Yay.
+  # check colldata is real
+  if colldata==False:
+    print "No collisional data found. Returning zeros"
+    ret = numpy.zeros(len(Te_arr), dtype=float)
+    if dtype in ['EC','PC']:
+      if not(isiter):
+        ret = ret[0]
+      if exconly:
+        return ret
+      else:
+        return ret, ret
+    else:
+      return ret
+  
+  # now to sort out Z, z1
+  if Z<0:
+    Z = colldata[1].header['ELEMENT']
+  if z1<0:
+    if dtype in ['EC','PC','EA','CI','XI']:
+      z1 = colldata[1].header['ION_STAT']+1
+    elif dtype in ['XR','DR','RR']:
+      z1 = colldata[1].header['ION_STAT']+2
+  
+  # Now get the correct transition
+  if index>=0:
+    if (finallev | initlev):
+      print "Error: specify index or upperlev and lowerlev"
+      return False
+    # If I have the index, set the dtype
+    if colldata[1].header['HDUCLAS1'] == 'COLL_STR':
+      dtype = 'EC'
+    elif colldata[1].header['HDUCLAS1'] == 'IONREC':
+      # get the type:
+      dtype = colldata[1].data.field('TR_TYPE')[index]
+    else:
+      print "ERROR: supplied data is not a collision strength (EC) or "+\
+            "ionization/recombination (IR) set. Returning"
+      return False
+
+    if z1<0:
+      if dtype in ['EC','PC','EA','CI','XI']:
+        z1 = colldata[1].header['ION_STAT']+1
+      elif dtype in ['XR','DR','RR']:
+        z1 = colldata[1].header['ION_STAT']+2
+
 
   else:
-    print "ERROR: supplied data is not a collision strength (EC) or "+\
-          "ionization/recombination (IR) set. Returning"
-    return False
+  
+    if (finallev==False | initlev == False):
+      print "Error: if not specifying index, must specify finallev and ",
+      print "initlev"
+      return False
+    else:
+      
+      if dtype=='EC':
+        index = numpy.where((colldata[1].data['lower_lev']==initlev) &\
+                            (colldata[1].data['upper_lev']==finallev))[0]
+        if len(index)==0:
+          print "Warning: no data found for electron excitation from "+\
+                "level %i to %i"%(initlev, finallev)
+          ret = numpy.zeros(len(Te_arr), dtype=float)
+          if not isiter:
+            ret = ret[0]
+          if exconly:
+            return ret
+          else:
+            return ret, ret
+        else:
+          index = index[0]
+      elif dtype =='PC':
+        index = numpy.where((colldata[1].data['lowerlev']==initlev) &\
+                            (colldata[1].data['upperlev']==finallev))[0]
+        if len(index)==0:
+          print "Warning: no data found for proton excitation from "+\
+                "level %i to %i"%(initlev, finallev)
+          ret = numpy.zeros(len(Te_arr), dtype=float)
+          if not isiter:
+            ret = ret[0]
+          if exconly:
+            return ret
+          else:
+            return ret, ret
+        else:
+          index = index[0]
+      elif dtype in ['CI','XI','EA']:
+        index = numpy.where((colldata[1].data['level_init']==initlev) &\
+                            (colldata[1].data['level_final']==finallev) &\
+                            (colldata[1].data['tr_type']==dtype) &\
+                            (colldata[1].data['ion_init']==z1) &\
+                            (colldata[1].data['ion_final']==z1+1))[0]
+        if len(index)==0:
+          print "Warning: no data found for collisional ionization from "+\
+                "ion %i, level %i to ion %i, level %i"%\
+                 (z1, initlev, z1+1, finallev)
+          ret = numpy.zeros(len(Te_arr), dtype=float)
+          if not isiter:
+            ret = ret[0]
+          return ret
+        else:
+          index = index[0]
 
-
+      elif dtype in ['RR','XR','DR']:
+        index = numpy.where((colldata[1].data['level_init']==initlev) &\
+                            (colldata[1].data['level_final']==finallev) &\
+                            (colldata[1].data['tr_type']==dtype) &\
+                            (colldata[1].data['ion_init']==z1) &\
+                            (colldata[1].data['ion_final']==z1-1))[0]
+        if len(index)==0:
+          print "Warning: no data found for collisional ionization from "+\
+                "ion %i, level %i to ion %i, level %i"%\
+                 (z1, initlev, z1-1, finallev)
+          ret = numpy.zeros(len(Te_arr), dtype=float)
+          if not isiter:
+            ret = ret[0]
+          return ret
+        else:
+          index = index[0]
+          
   # convert the data.
 
   if dtype=='EC':
@@ -2734,11 +2922,16 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
     ecdat = colldata[1].data[index]
     upind = ecdat['upper_lev']
     loind = ecdat['lower_lev']
-    uplev = lvdata[1].data[upind]
-    lolev = lvdata[1].data[loind]
+    
+    if not(lvdata):
+      lvdata = get_data(Z,z1,'LV', settings=settings, datacache=datacache)
+    
+    uplev = lvdata[1].data[upind-1]
+    lolev = lvdata[1].data[loind-1]
 
     delta_E = uplev['energy']-lolev['energy']
-    Z = lvdata[1].header['ELEMENT']
+    Ztmp = lvdata[1].header['ELEMENT']
+    
     degu = uplev['lev_deg']
     degl = lolev['lev_deg']
 
@@ -2754,7 +2947,7 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
                                  ecdat['max_temp'],\
                                  ecdat['temperature'],\
                                  ecdat['effcollstrpar'],\
-                                 delta_E/1e3, Te_arr, Z, degl, degu)
+                                 delta_E/1e3, Te_arr, Ztmp, degl, degu)
 
     if numpy.isscalar(exc):
       if dex < 0:
@@ -2776,20 +2969,33 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
 
       upind = cidat['upper_lev']
       loind = cidat['lower_lev']
-      uplev = lvdatap1[1].data[upind]
-      lolev = lvdata[1].data[loind]
+      if not(lvdata):
+        lvdata = get_data(z,z1,'LV', settings=settings, datacache=datacache)
+      if not(lvdatap1):
+        lvdatap1 = get_data(z,z1+1,'LV', settings=settings, datacache=datacache)
+    
+      uplev = lvdatap1[1].data[upind-1]
+      lolev = lvdata[1].data[loind-1]
+      
+      # get the ionization potential
+      if not(ionpot):
+#        print "fixing ionpot"
+        ionpot = colldata[1].header['IONPOT']
+#      else:
+#        print "I don't need to fix ionpot, it is ", ionpot
 
       delta_E = ionpot + uplev['energy']-lolev['energy']
-      Z = lvdata[1].header['ELEMENT']
+      Ztmp = lvdata[1].header['ELEMENT']
       degl = lolev['lev_deg']
       degu = uplev['lev_deg']
+
 
       ci, dex = calc_maxwell_rates(cidat['par_type'],\
                          cidat['min_temp'],\
                          cidat['max_temp'],\
                                  cidat['temperature'],\
                                  cidat['ionrec_par'],\
-                                 delta_E/1e3, Te_arr, Z, degl, degu)
+                                 delta_E/1e3, Te_arr, Ztmp, degl, degu)
 
 
     else:
@@ -2898,6 +3104,15 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
         (cidat['par_type']<=920)):
 
       # sanity check
+      if not(lvdata):
+#        print "calling get lvdata"
+#        print lvdata, Z, z1
+        lvdata = get_data(Z,z1,'LV', settings=settings, datacache=datacache)
+#        print lvdata
+        
+      if not(lvdatap1):
+        lvdatap1 = get_data(Z,z1+1,'LV', settings=settings, datacache=catacache)
+
       if (lvdata[1].header['ion_stat']+1 != cidat['ion_init']):
         print "ERROR: lvdata and cidat not for matching ions!"
       if (lvdatap1[1].header['ion_stat']+1 != cidat['ion_final']):
@@ -2905,20 +3120,18 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
 
       upind = cidat['level_final']
       loind = cidat['level_init']
-      uplev = lvdatap1[1].data[upind]
-      lolev = lvdata[1].data[loind]
 
-      try:
-        delta_E = ionpot + uplev['energy']-lolev['energy']
-      except IndexError:
-        print upind
-        print loind
-        print ionpot
-        print "uplev", uplev
-        print uplev['energy']
-        print lolev['energy']
-        zzz=raw_input("HAD AN INDEXERROR")
-      Z = lvdata[1].header['ELEMENT']
+
+      uplev = lvdatap1[1].data[upind-1]
+      lolev = lvdata[1].data[loind-1]
+
+      # get the ionization potential
+      if not(ionpot):
+        ionpot = colldata[1].header['IONPOT']
+
+      delta_E = ionpot + uplev['energy']-lolev['energy']
+
+      Ztmp = lvdata[1].header['ELEMENT']
       degl = lolev['lev_deg']
       degu = uplev['lev_deg']
 
@@ -2928,9 +3141,7 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
                          cidat['max_temp'],\
                          cidat['temperature'],\
                          cidat['ionrec_par'],\
-                         delta_E/1e3, Te_arr, Z, degl, degu)
-
-#      xitmp = 2.1716e-8 * (13.6068/(Te_arr/11604.5))**0.5 * numpy.exp(delta_E/(Te_arr/11604.5)) /(numpy.pi*degl)
+                         delta_E/1e3, Te_arr, Ztmp, degl, degu)
 
     else:
       xi = calc_ionrec_ci(cidat,Te, extrap=force_extrap)
@@ -2940,27 +3151,7 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
                    adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
                    Te,xi)
         xi=0.0
-
     return xi
-
-
-#
-#  elif dtype=='XI':
-#    cidat = colldata[1].data[index]
-#    xi = calc_ionrec_ci(cidat,Te)
-#    if (xi < 0.0):
-#      print "calc_ionrec_rate: xi(%10s -> %10s,T=%9.3e, %i -> %i) = %8g"%\
-#                (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
-#                 adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
-#                 Te,\
-#                 cidat['level_init'],\
-#                 cidat['level_final'],\
-#                 xi)
-#      xi=0.0
-#
-#    return xi
-
-
 
 
 #-------------------------------------------------------------------------------
@@ -3941,8 +4132,10 @@ def get_data(Z, z1, ftype, datacache=False, \
     # rename columns in older versions of EC & PC files
     if ftype.upper() in ['PC','EC']:
       if d[1].header['HDUVERS1']=='1.0.0':
-        d[1].columns.change_name('COEFF_OM','EFFCOLLSTRPAR')
-        d[1].columns[d[1].data.names.index('COEFF_OM')].name='EFFCOLLSTRPAR'
+        try:
+          d[1].columns.change_name('COEFF_OM','EFFCOLLSTRPAR')
+        except:
+          d[1].columns[d[1].data.names.index('COEFF_OM')].name='EFFCOLLSTRPAR'
     if datacache:
       datacache['data'][Z][z1][ftype.upper()] = d
       datacache['datasums'][Z][z1][ftype.upper()] = d[1].header['DATASUM']
@@ -4231,7 +4424,7 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
 
     if not xstardata:
       # get the data
-      pidat = get_data(Z, z1, 'PI')
+      pidat = get_data(Z, z1, 'PI', settings=settings, datacache=datacache)
       if not pidat:
         print "ERROR: cannot find photoionization data requested"
         return False
