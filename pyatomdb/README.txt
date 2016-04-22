@@ -60,3 +60,9 @@ emission using integral to infinity.
 February 12th 2016: As ever, bugfixes. Also added ability to calculate
 ionization balance to apec module.
 
+0.0.1.6
+April 22nd 2016: Bugfixes! Also:
+Major change to get_maxwell_rate interface
+Added ability to apply RMF and ARF to spectra in spectrum module
+Fixed hydrogenic RRC calculation
+

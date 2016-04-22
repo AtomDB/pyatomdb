@@ -2675,7 +2675,7 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
     The line in the HDUList to do the calculation for. Indexed from 0.
   lvdata : HDUList
     the hdulist for the energy level file (as returned by pyfits.open('file'))
-  Te_unit : {'K','eV','keV'}
+  Te_unit : {'K' , 'eV' , 'keV'}
     Units of temperature grid.
   lvdatap1 : HDUList
     The level data for the recombining or ionized data.
@@ -2698,15 +2698,15 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
     Instead of providing colldata, can provide Z & z1. z1 is the ion
     charge +1 for the initial ion
   dtype : str
-    data type. One of:
-      'EC' : electron impact excitation
-      'PC' : proton impact excitation
-      'CI' : collisional ionization
-      'EA' : excitation-autoionization
-      'XI' : excluded ionization
-      'XR' : excluded recombination
-      'RR' : radiative recombination
-      'DR' : dielectronic recombination
+    data type. One of:\n
+    'EC' : electron impact excitation\n
+    'PC' : proton impact excitation\n
+    'CI' : collisional ionization\n
+    'EA' : excitation-autoionization\n
+    'XI' : excluded ionization\n
+    'XR' : excluded recombination\n
+    'RR' : radiative recombination\n
+    'DR' : dielectronic recombination
   exconly : bool
     For collisional excitation, return only the excitation rate, not
     the de-excitation rate.
@@ -4259,6 +4259,7 @@ def rrc_ph_value(E, Z, z1, rrc_ph_factor, IonE, kT, levdat, \
                      lvdata[1].data['pi_param'][0],
                      xstardata=pidata,
                      xstarfinallev=1)
+
   xstarfinallev: the level to ionize in to. Defaults to 1.
 
   Returns

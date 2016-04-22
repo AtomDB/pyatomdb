@@ -568,7 +568,7 @@ def extract_gauntff(Z, gamma2, gaunt_U, gaunt_Z, gaunt_Ng, gaunt_g2, gaunt_gf):
   Extract the appropriate Gaunt free-free factor from the relativistic 
   data tables of Nozawa, Itoh, & Kohyama, 1998 ApJ, 507,530
   
-  Paramters
+  Parameters
   ----------
   Z : int
     Z for which result is required
@@ -645,7 +645,7 @@ def do_brems(Z, z1, T, abund, brems_type, eedges):
   """
   Calculate the bremstrahlung emission in units of photon cm^3 s^-1 bin^-1
   
-  Paramters
+  Parameters
   ----------
   Z : int
     nuclear charge for which result is required

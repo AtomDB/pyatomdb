@@ -911,41 +911,26 @@ def write_lv_file(fname, dat, clobber=False):
        comments to append to the file
     data : numpy.array
       stores all the individual level data, with the following types:
-      elec_config : string (40 char max)
-        Electron configuration strings
-      energy : float
-        Level energy (eV)
-      e_error : float
-        Energy level error (eV)
-      n_quan : int
-        N quantum number
-      l_quan : int
-        L quantum number
-      s_quan : float
-        S quantum number
-      lev_deg : int
-        level degeneracy
-      phot_type : int
-        photoionization data type
-         -1 : none
-          0 : hydrogenic
-          1 : Clark
-          2 : Verner
-          3 : XSTAR data
-      phot_par : float(20)
-        photoionization paramters (see specific PI type for definition)
-      energy_ref : string(20)
-        energy reference (usually bibcode)
-      phot_ref : string(20)
-        photoionization reference (bibcode)
-      Aaut_tot : float (optional)
-        the total autoionization rate out of the level (s^-1)
-      Arad_tot : float (optional)
-        the total radiative rate out of the level (s^-1)
-      Aaut_ref : string(20)
-        total autoionization rate reference (bibcode)
-      Arad_ref : string(20)
-        total radiative decay rate reference (bibcode)
+      elec_config : string (40 char max) : Electron configuration strings\n
+      energy : float: Level energy (eV)\n
+      e_error : float : Energy level error (eV)\n
+      n_quan : int : N quantum number\n
+      l_quan : int : L quantum number\n
+      s_quan : float : S quantum number\n
+      lev_deg : int : level degeneracy\n
+      phot_type : int : photoionization data type\n
+          -1 : none\n
+          0  : hydrogenic\n
+          1  : Clark\n
+          2  : Verner\n
+          3  : XSTAR data
+      phot_par : float(20) : photoionization paramters (see specific PI type for definition)\n
+      Aaut_tot : float (optional) : the total autoionization rate out of the level (s^-1)\n
+      Arad_tot : float (optional) : the total radiative rate out of the level (s^-1)\n
+      energy_ref : string(20) :  energy reference (usually bibcode)\n
+      phot_ref : string(20) : photoionization reference (bibcode)\n
+      Aaut_ref : string(20) : total autoionization rate reference (bibcode)\n
+      Arad_ref : string(20) : total radiative decay rate reference (bibcode)\n
   clobber : bool
     Overwrite existing file if it exists.
     
