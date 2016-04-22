@@ -3157,7 +3157,7 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
-def sigma_hydrogenic(N,L, Z, Ein):
+def sigma_hydrogenic(Z, N,L,  Ein):
   """
   Calculate the PI cross sections of type hydrogenic.
 
@@ -3191,8 +3191,8 @@ def sigma_hydrogenic(N,L, Z, Ein):
   E = numpy.array(Ein)
 
   chi = Z*Z*1.0*RYDBERG/(n*n)
-  print chi, Z, n
-  zzz=raw_input()
+#  print chi, Z, n
+#  zzz=raw_input()
   Eelec = (E - chi)/RYDBERG
   sigma = numpy.zeros(len(E), dtype=float)
 
@@ -3202,7 +3202,7 @@ def sigma_hydrogenic(N,L, Z, Ein):
     eta = Z/numpy.sqrt(Eelec[iE])
     rho = eta / n
     lp1 = l+1.0
-    print eta
+#    print 'eta', eta
     # Exponential term
     expterm = numpy.exp(-4*eta*numpy.arctan(1./rho)) / (1-numpy.exp(-2*numpy.pi*eta))
 
@@ -4278,7 +4278,10 @@ def rrc_ph_value(E, Z, z1, rrc_ph_factor, IonE, kT, levdat, \
     E = numpy.array([E])
 
   igood = numpy.where((-(E - IonE)/kT)>const.MIN_RRC_EXPONENT)[0]
-
+  if levdat['PHOT_TYPE']==const.HYDROGENIC:
+    levdat['PHOT_PAR'][0] = levdat['n_quan']
+    levdat['PHOT_PAR'][1] = levdat['l_quan']
+    
   result = numpy.zeros(len(E))
   result[igood] = rrc_ph_factor*sigma_photoion(E[igood],
                                                Z,\
@@ -4510,7 +4513,7 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
                                 ((Evec[iinf]/\
                                   sig_coeffts['energy'][-1])**-3.0)*1e-18
     if sum(ifin) > 0:
-      print ifin
+#      print ifin
       result[ifin] = 1e-18  * numpy.exp(tmp2[ifin])
 
   else:
