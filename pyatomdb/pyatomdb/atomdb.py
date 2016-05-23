@@ -26,6 +26,25 @@ from scipy import stats, integrate
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 def write_filemap(d, filemap, atomdbroot=''):
+  """
+  Write filemap to file
+
+  Parameters
+  ----------
+  d : str
+    Dictionary with filemap data in it. Structure defined as return value from
+    read_filemap.
+  filemap : str
+    Name of filemap file to read. If zero length, use "$ATOMDB/filemap"
+  atomdbroot : str
+    Replace any $ATOMDB in the file names with this. If not provided,
+    use "ATOMDB" environment variable instead
+
+  Returns
+  -------
+  none
+  """
+
 #
 # filemap - name of filemap file to writeto
 #
@@ -3582,8 +3601,7 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
 
     if ((finlev['phot_type'] != const.NO_PHOT) &\
         (finlev['phot_type'] != const.XSTAR)):
-
-      tmprrc = calc_rrc(Z, z1, ebins, T, lev, \
+      tmprrc = calc_rrc(Z, z1, ebins, T, iLev+1, \
               settings=settings, datacache=datacache)
       tmprrc *= abund*ion_pop
       rr_lev_rate = sum(tmprrc)
