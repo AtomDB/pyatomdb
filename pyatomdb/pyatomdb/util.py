@@ -805,6 +805,44 @@ def switch_version(version):
 
     print "...done"
 
+
+    if version[0] =='3':
+      fname = re.sub('VERSION',version,'atomdb_vVERSION_nei.tar.bz2')
+      dirname = 'AtomDB/releases'
+      
+      localfile = os.path.expandvars("$ATOMDB/tmp/%s"%(fname))
+        # create temporary folder
+      mkdir_p(os.path.expandvars("$ATOMDB/tmp"))
+      
+     
+      print "Attempting to download %s to %s"%('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile)
+    # get the file
+      try:
+        wget.download('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile)
+      except IOError:
+        print "Cannot find file ftp://%s/%s/%s on server. Please check that version %s is a valid version."%(ftproot,dirname,fname, version)
+        return    
+    # ok, now open up the relevant file and copy the things we need
+      print "\nUncompressing %s..." %(localfile)
+
+      cwd=os.getcwd()
+      os.chdir(os.path.expandvars("$ATOMDB/tmp"))
+      if fname.split('.')[-1] == 'gz':
+        subprocess.call(["tar", "-xvzf", "%s"%(fname)])
+      elif fname.split('.')[-1] == 'bz2':
+        subprocess.call(["tar", "-xvjf", "%s"%(fname)])
+
+      print "...done"
+
+
+
+
+
+
+
+
+
+
     os.chdir(os.path.expandvars(re.sub('VERSION',version, "$ATOMDB/tmp/atomdb_vVERSION")))
 
 
@@ -814,7 +852,7 @@ def switch_version(version):
       if os.path.exists(outfile):
         try:
           if md5Checksum(outfile) == md5Checksum(ifile):
-          
+            print "file %s already exists, not overwriting"%(ifile)
         # these files are the same, don't bother copying or 
         # asking about copying them.
             continue
@@ -840,8 +878,14 @@ def switch_version(version):
     
   os.chdir(os.path.expandvars("$ATOMDB"))
   # OK, download complete. Now to make symlinks
-  for flist in ['apec_vVERSION_line.fits', 'apec_vVERSION_coco.fits',\
-                'filemap_vVERSION', 'apec_vVERSION_linelist.fits']:
+  
+  flistlist = ['apec_vVERSION_line.fits', 'apec_vVERSION_coco.fits',\
+                'filemap_vVERSION', 'apec_vVERSION_linelist.fits']
+  if int(version[0]) >=3:
+    flistlist.append('apec_vVERSION_nei_line.fits')
+    flistlist.append('apec_vVERSION_nei_comp.fits')
+    
+  for flist in flistlist:
                   
     # remove existing link if there is one
 #    print "CHECKING FOR %s/%s"%(os.getcwd(), re.sub('VERSION',version,flist))
