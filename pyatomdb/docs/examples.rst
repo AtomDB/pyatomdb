@@ -29,3 +29,10 @@ Extract the PI cross section data:  ``photoionization_data.py``
 
 .. literalinclude:: ../examples/photoionization_data.py
 
+=====================
+Make a Spectrum
+=====================
+
+Make a broadened and unbroadened spectrum:  ``make_spectrum.py``
+
+.. literalinclude:: ../examples/make_spectrum.py
