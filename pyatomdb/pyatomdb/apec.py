@@ -193,7 +193,7 @@ def solve_ionbal(ionrate, recrate, init_pop=False, tau=False):
       
       if (iRow==0):
         if (iCol==0):
-          if (Z>1):
+          if (Z>2):
             AA[0,iCol] = -(ionrate[0] + ionrate[1] + recrate[0])
           else:
             AA[0,iCol] = -(ionrate[0] + recrate[0])
