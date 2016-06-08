@@ -19,7 +19,7 @@ none
 """
 
 # call the setup routine
-pyatomdb.atomdb.initialize()
+pyatomdb.util.initialize()
 
 # this routine downloads a bunch of files and sets things up for you. It will 
 # take a few minutes, depending on your internet connection.
