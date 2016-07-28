@@ -4670,4 +4670,72 @@ def interpol_huntd(x, y, z):
   return f
 
 
+def get_oscillator_strength(Z, z1, upperlev, lowerlev, datacache=False):
 
+
+  """
+  Get the oscillator strength f_{ij} of a transition
+
+  Parameters
+  ----------
+  Z : int
+    The atomic number of the element
+  z1 : int
+    The ion charge + 1 of the ion
+  upperlev : int
+    The upper level, indexed from 1
+  lowerlev : int
+    The lower level, indexed from 1
+  datacache : dict
+    Used for caching the data. See description in get_data
+
+  Returns
+  -------
+  float
+    The oscillator strength. Returns 0 if transition not found.
+    If transition is not found but the inverse transition is present the
+    oscillator strength is calculated for this instead.
+
+  """
+#
+# Version 0.1 Initial Release
+# Adam Foster 28 Jul 2016
+#
+
+
+  lvdat = get_data(Z, z1, 'LV', datacache=datacache)
+  ladat = get_data(Z, z1, 'LA', datacache=datacache)
+  
+  # get the various things
+  
+  i = numpy.where((ladat[1].data['upper_lev']==upperlev) &\
+                  (ladat[1].data['lower_lev']==lowerlev))[0]
+
+  if len(i) ==0:
+    i = numpy.where((ladat[1].data['upper_lev']==lowerlev) &\
+                    (ladat[1].data['lower_lev']==upperlev))[0]
+
+    if len(i) > 0:
+      print "WARNING: no transition information found for transition %i->%i"%\
+       (upperlev, lowerlev),
+      print " but found data for reverse transition. Using this instead."
+      up = lowerlev
+      lo = upperlev
+    else:
+      print "WARNING: no transition information found for transition %i->%i"%\
+       (upperlev, lowerlev),
+      return 0.0
+  else:
+    up = upperlev
+    lo = lowerlev
+  
+  i = i[0]
+  Aji = ladat[1].data['einstein_a'][i]
+  g_j = lvdat[1].data['lev_deg'][up-1]
+  g_i = lvdat[1].data['lev_deg'][lo-1]
+  lam = ladat[1].data['wavelen'][i]
+  
+  
+  f_ij = Aji * (g_j*1.0/g_i) * (lam**2/6.6702e15)
+  
+  return f_ij
