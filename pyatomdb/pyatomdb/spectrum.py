@@ -1291,8 +1291,18 @@ def apply_response(spectrum, rmf, arf=False):
 
   ret = numpy.zeros(len(ebins)-1, dtype=float)
 
-
-  for ibin, i in enumerate(rmfdat['MATRIX'].data):
+  try:
+    k=rmfdat.index_of('MATRIX')
+    matrixname = 'MATRIX'
+  except KeyError:
+    try:
+      k=rmfdat.index_of('SPECRESP MATRIX')
+      matrixname = 'SPECRESP MATRIX'
+    except KeyError:
+      print "Cannot find index for matrix in this data"
+      raise
+    
+  for ibin, i in enumerate(rmfdat[matrixname].data):
     if res[ibin]==0.0: continue
     lobound = 0
     
@@ -1350,9 +1360,20 @@ def get_response_ebins(rmf):
     return
 #  ret = rmfdat['EBOUNDS'].data['E_MIN']
 #  ret = numpy.append(ret, rmfdat['EBOUNDS'].data['E_MAX'][-1])
+  try:
+    k=rmfdat.index_of('MATRIX')
+    matrixname = 'MATRIX'
+  except KeyError:
+    try:
+      k=rmfdat.index_of('SPECRESP MATRIX')
+      matrixname = 'SPECRESP MATRIX'
+    except KeyError:
+      print "Cannot find index for matrix in this data"
+      raise
 
-  ret = rmfdat['MATRIX'].data['ENERG_LO']
-  ret = numpy.append(ret, rmfdat['MATRIX'].data['ENERG_HI'][-1])
+
+  ret = rmfdat[matrixname].data['ENERG_LO']
+  ret = numpy.append(ret, rmfdat[matrixname].data['ENERG_HI'][-1])
 
   return ret
 
