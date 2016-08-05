@@ -112,7 +112,8 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
   lldat = ldat[index].data
   ccdat = cdat[index].data
   
-  if not elements:
+  
+  if not util.keyword_check(elements):
     Zl = util.unique(lldat['element'])
     Zc = util.unique(ccdat['Z'])
     Zlist = util.unique(numpy.append(Zl,Zc))
@@ -120,7 +121,7 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
   else:
     Zlist = elements
   
-  if not abund:
+  if not util.keyword_check(abund):
     abund= numpy.ones(len(Zlist))
 
   lspectrum = numpy.zeros(len(bins)-1, dtype=float)
@@ -129,7 +130,7 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
   for iZ, Z in enumerate(Zlist):
     # ADD  LINES
     lspectrum += add_lines(Z, abund[iZ], lldat, ebins, broadening=broadening, broadenunits=broadenunits)
-    
+    #print Z, abund[iZ]
   for iZ, Z in enumerate(Zlist):
     # ADD  CONTINUUM
     cspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
@@ -1207,7 +1208,7 @@ def broaden_continuum(bins, spectrum, binunits = 'keV', \
           (binunits)
 
   if angstrom:
-    bins = HC_IN_KEV_A/bins[::-1]
+    bins = const.HC_IN_KEV_A/bins[::-1]
   
   # broadening
   if broadening:
