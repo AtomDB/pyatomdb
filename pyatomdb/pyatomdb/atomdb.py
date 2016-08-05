@@ -2649,7 +2649,6 @@ def get_ionrec_rate(Te_in, irdat_in, lvdat_in=False, Te_unit='K', \
 
   idr = numpy.where(irdat[1].data['TR_TYPE']=='DR')[0]
   for i in idr:
-
     tmp=get_maxwell_rate(Te, irdat, i, lvdat, Te_unit='K', \
                          lvdatap1=lvdatp1, ionpot = False,\
                          force_extrap=extrap)
@@ -3498,6 +3497,8 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
   -------
   array(float)
     RRC in photons cm^3 s^-1 bin^-1, in an array of length(ebins)-1
+  array(float)
+    Recombination rates into the excited levels, in s-1
   """
 #
 #  Version 0.1 Initial Release
@@ -4569,7 +4570,111 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
          #ret[i] = ea
 
     #return ret
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
 
+  
+#-----------------------------------------------------------------------
+def A_twoph(A,E0,E):
+  """
+  Convert the A value into energy distribution for 2-photon transitions
+  
+  Parameters
+  ----------
+  A : float
+    Einstein A for transition
+  E0 : float
+    Energy in keV of transition
+  E : array(float)
+    Energies of each bin to output continuum at (keV)
+  Returns
+  -------
+  array(float)
+    Distribution of transtion rate amongst bins E (s^-1)
+  
+  References
+  ----------
+  From Nussbaumer & Schmutz, 1984, A+A, 138,495 
+  Z is the element, and E is the energy of the bin, in keV 
+  y is unitless, and is equal to nu/nu0 = lambda0/lambda, where 
+  lambda0 = 1215.7 A for hydrogen--the base wavelength of the 2s->1s 
+  transition.  This fit is accurate to better than 0.6% for 
+  0.01 < y < 0.99 
+
+  The A_norm is the A value for neutral hydrogen for this transition. 
+  For other transitions, we renormalize to the appropriate A value. 
+
+  This routine is used for BOTH hydrogenic and He-like two-photon 
+  distributions.  This is justified using the result of 
+  Derevianko & Johnson, 1997, Phys Rev A, 56, 1288 who show in 
+  Figures 5 and 2 of that paper that the difference is everywhere 
+  less than 10% between these two for Z=6-28 -- it is about 5% or so. 
+  """
+  
+  C     = 202.0 #s^-1
+  alpha = 0.88
+  beta  = 1.53
+  gamma = 0.80
+  A_norm= 8.2249 #s^-1
+  
+  
+  y = E/E0
+  i = numpy.where((y>0) & (y<1))[0]
+  
+  result = numpy.zeros(len(E), dtype=float)
+
+  x = y[i]*(1-y[i])
+  
+  z = (4*x)**gamma
+  
+  result[i] = C*(x*(1-z) + alpha* (x**beta)*z)
+  
+  result *= (A/A_norm)  # Also need R_Z/R_H, but even for Z=26, this is 
+                         # only 1.0005, so we'll ignore it. 
+                         
+  return result   # in s^-1 
+  
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+
+def calc_two_phot(wavelength, einstein_a, lev_pop, ebins):
+  """
+  Calculate two photon spectrum
+  
+  Parameters
+  ----------
+  wavelength : float
+    Wavelength of the transition (Angstroms)
+  einstein_a : float
+    The Einstein_A paramater for the transition
+  lev_pop : float
+    The level population for the upper level
+  ebins : array(float)
+    The bin edges for the spectrum (in keV)
+    
+  Returns
+  -------
+  array(float)
+    The flux in photons cm-3 s-1 bin-1
+    array is one element shorter than ebins.
+  """
+  emission = numpy.zeros(len(ebins)-1, dtype=float)
+  E = (ebins[1:]+ebins[:-1])/2.0
+  E0 = const.HC_IN_KEV_A/wavelength
+  dE= ebins[1:]-ebins[:-1]
+  A_E=A_twoph(einstein_a,E0,E)
+    
+#    emission = ldat['lev_pop']*(E/E0)*A_E*dE*const.ERG_KEV
+  emission = lev_pop*(E/E0)*A_E*dE*const.ERG_KEV
+  emission[E>E0]=0.0
+    # at this point, emission is in erg cm^3/s/bin
+    
+    # convert to photons cm^3/s/bin
+  emission/= (const.ERG_KEV*E)
+    
+  return emission
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -4668,6 +4773,7 @@ def interpol_huntd(x, y, z):
     f = y[jl]+(y[ju]-y[jl])*((z-x[jl])/(x[ju]-x[jl]))
 
   return f
+
 
 
 def get_oscillator_strength(Z, z1, upperlev, lowerlev, datacache=False):
