@@ -1871,3 +1871,35 @@ def write_ir_file(fname, dat, clobber=False):
 
   print "file written: "+fname
 
+def keyword_check(keyword):
+  """
+  Returns False is the keyword is in fact false, otherwise returns True
+  
+  Parameters
+  ----------
+  keyword: any 
+    The keyword value
+  
+  Returns
+  -------
+  bool
+    True if the keyword is set to not False, otherwise False
+  """
+  
+  # first, check if iterable
+  
+  isbool=True
+  
+  try:
+    it = iter(keyword)
+    return True
+  except TypeError: 
+    pass
+
+
+  # so it's not iterable
+  
+  if keyword==False:
+    return False
+  else:
+    return True  
