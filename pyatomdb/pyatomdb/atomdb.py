@@ -2672,7 +2672,7 @@ def get_ionrec_rate(Te_in, irdat_in, lvdat_in=False, Te_unit='K', \
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
-def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
+def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                      lvdatap1=False, ionpot = False, \
                      force_extrap=False, silent=True,\
                      finallev=False, initlev=False,\
@@ -4668,7 +4668,7 @@ def calc_two_phot(wavelength, einstein_a, lev_pop, ebins):
     
 #    emission = ldat['lev_pop']*(E/E0)*A_E*dE*const.ERG_KEV
   emission = lev_pop*(E/E0)*A_E*dE*const.ERG_KEV
-  emission[E>E0]=0.0
+  emission[E>=E0]=0.0
     # at this point, emission is in erg cm^3/s/bin
     
     # convert to photons cm^3/s/bin
