@@ -1,9 +1,13 @@
-from setuptools import setup
+from setuptools import setup, Extension
 
 readme = open('README.txt', 'r')
 README_TEXT = readme.read()
 readme.close()
 
+linapprox =  Extension('linear_approx',\
+                       define_macros = [('MAJOR_VERSION', '1'),\
+                                        ('MINOR_VERSION','0')],\
+                       sources=['linear_approx.c'])
 
 setup(name='pyatomdb',
       version='0.0.1.6',
@@ -29,5 +33,6 @@ setup(name='pyatomdb',
       "requests",\
       "wget",\
       "numpy",\
-      "scipy"])
+      "scipy"],
+      ext_modules = [linapprox])
 

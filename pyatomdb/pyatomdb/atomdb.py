@@ -544,9 +544,10 @@ def get_ionbal(ionbalfile, element, ion=-1):
 
 
 
-  a=pyfits.open(ionbalfile)
-
+  a=get_data(1,1,'IONBAL')
 #  find data type
+  for i in a[1].header:
+    print i
   if a[1].header['HDUCLASS']=='ION_BAL':
 
     # find index for correct ion
@@ -2242,6 +2243,7 @@ def calc_ionrec_rr(cidat, Te, extrap=False):
                b * numpy.log(Te[ilow])**2 +\
                c * numpy.log(Te[ilow]) +\
                d
+        
         rr[ilow]=cinew
 
 
@@ -3213,8 +3215,10 @@ def sigma_hydrogenic(Z, N,L,  Ein):
 #  zzz=raw_input()
   Eelec = (E - chi)/RYDBERG
   sigma = numpy.zeros(len(E), dtype=float)
-
+  if N>5:
+    return sigma
   iE = numpy.where(Eelec > 0)[0]
+
   if len(iE > 0):
 
     eta = Z/numpy.sqrt(Eelec[iE])
@@ -3223,18 +3227,18 @@ def sigma_hydrogenic(Z, N,L,  Ein):
 #    print 'eta', eta
     # Exponential term
     expterm = numpy.exp(-4*eta*numpy.arctan(1./rho)) / (1-numpy.exp(-2*numpy.pi*eta))
-
     # Common Factorial
     commfact1 = 1.
     commfact2 = 1.
+    
     if (n+l >= 2*l+2):
-      for iFact in range(2*l+3, n+2):
+      for iFact in range(2*l+3, n+l+1):
         commfact1 *= iFact
     else:
       for iFact in range(n+l+1, 2*l+3):
         commfact2 *= iFact
 
-    for iFact in range(2,2*l+3):
+    for iFact in range(2,2*l+2):
       commfact2 *= iFact
     for iFact in range(2,n-l):
       commfact2 *= iFact
@@ -3248,14 +3252,17 @@ def sigma_hydrogenic(Z, N,L,  Ein):
     rhoterm = (rho**(2*l+4.))/ ((1+rho*rho)**(2.*n))
 
   # G terms
+
     Gterm_p1 = (l+1-n)*G_hyd(l+1, n-l-1, eta, rho) +\
     ((l+1+n)/(1+rho*rho))*G_hyd(l+1, n-l, eta, rho)
-
+    
     if (l!=0):
       Gterm_m1 = G_hyd(l, n-l-1, eta, rho) - \
         G_hyd(l, n-l+1, eta, rho)/((1.+rho*rho)**2)
     else:
       Gterm_m1 = 0.
+
+    
 
     sigma_p1 = (coeff/E[iE])*((2)**(4*l+6.)/3.)*(lp1*lp1/(2*l+1.))*\
                (commfact1/commfact2)*(prodterm/(lp1*lp1+eta*eta))*\
@@ -3270,6 +3277,8 @@ def sigma_hydrogenic(Z, N,L,  Ein):
         (Gterm_m1*Gterm_m1/(Gterm_p1*Gterm_p1))*sigma_p1
 
     sigma[iE] = sigma_m1 + sigma_p1
+#    for i in range(len(iE)):
+#      print "%6i %e %e %e %e"%(iE,Ein[iE[i]], sigma[iE[i]], sigma_m1, sigma_p1)
   return sigma
 
 #-------------------------------------------------------------------------------
@@ -3284,7 +3293,7 @@ def G_hyd(l,m, eta, rho):
   B_s = B_hyd(2*m, l, m, eta)
   result = B_s
 
-  for s in range(2*m-1,0,-1):
+  for s in range(2*m-1,-1,-1):
     B_s = B_hyd(s, l, m, eta)
     result = result*rho + B_s
 
@@ -3389,6 +3398,11 @@ def calc_rrc(Z, z1, eedges, Te, lev, xstardat=False, \
       if plvdat:
         ginit = 1.0* plvdat[1].data['lev_deg'][0]
     gratio = gfin/ginit
+    if ldat['n_quan']>5:
+      if returntotal:
+        return rrc, 0.0
+      else:
+        return rrc
   elif ldat['PHOT_TYPE']==const.CLARK:
     I_e = ldat['phot_par'][1]
     gfin = 1.0 * ldat['lev_deg']
@@ -3450,6 +3464,7 @@ def calc_rrc(Z, z1, eedges, Te, lev, xstardat=False, \
   emission_edges = rrc_ph_value(eedges, Z, z1,  rrc_ph_factor, I_e, \
                                 kT, ldat, xstardat, xstarlevfinal)
 
+  
   edgebin = numpy.argmin(eedges>I_e)-1
 
   if edgebin > -1:
@@ -3484,7 +3499,7 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
   z1_drv : int
     recombining ion charge+1
   T : float
-    temperautre (keV)
+    temperautre (K)
   ebins : array(float)
     energy bins (in keV) on which to caclulate the spectrum
   abund : float
@@ -3517,6 +3532,8 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
   tot_rec_rate = 0.0
   rrc = numpy.zeros(len(ebins)-1, dtype=float)
   LevelRecombRate = numpy.zeros(nlev, dtype=float)
+  LevelRecombRate2 = numpy.zeros(nlev, dtype=float)
+  binwidth = ebins[1:]-ebins[:-1]
 
   for iLev in range(nlev):
 
@@ -3534,7 +3551,7 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
         sigma_coeff=numpy.zeros(2, dtype=float)
         sigma_coeff[0] = finlev['n_quan']
         sigma_coeff[1] = finlev['l_quan']
-
+        
       else:
         continue
     elif finlev['phot_type']==const.CLARK:
@@ -3586,13 +3603,19 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
           continue
         g_ratio = sigma_coeff['g_ratio']
 
-        tmprrc = calc_rrc(Z, z1, ebins, T, iLev+1, xstardat=sigma_coeff, \
-              settings=settings, datacache=datacache)
+        tmprrc,total = calc_rrc(Z, z1, ebins, T, iLev+1, xstardat=sigma_coeff, \
+              settings=settings, datacache=datacache, returntotal=True)
 
-        tmprrc *= abund*ion_pop
+        tmprrc *= abund*ion_pop*binwidth
+#        print "Calculated RRC for Z %i  z1 %i  iLev %i"%\
+#              (Z, z1, iLev)
+#        for i in range(len(tmprrc)):
+#          print ebins[i],ebins[i+1], tmprrc[i]      
+#        print "ENDCalculated RRC for Z %i  z1 %i  iLev %i"%\
+#              (Z, z1, iLev)
         rr_lev_rate = sum(tmprrc)
-        LevelRecombRate[iLev] = rr_lev_rate
-        tot_rec_rate += rr_lev_rate
+        LevelRecombRate[iLev] += total*abund*ion_pop
+        tot_rec_rate += total*abund*ion_pop
         rrc += tmprrc
     else:
 
@@ -3602,18 +3625,30 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
 
     if ((finlev['phot_type'] != const.NO_PHOT) &\
         (finlev['phot_type'] != const.XSTAR)):
-      tmprrc = calc_rrc(Z, z1, ebins, T, iLev+1, \
-              settings=settings, datacache=datacache)
-      tmprrc *= abund*ion_pop
+      tmprrc, total = calc_rrc(Z, z1, ebins, T, iLev+1, \
+              settings=settings, datacache=datacache, returntotal=True)
+      tmprrc *= abund*ion_pop*binwidth
+      
       rr_lev_rate = sum(tmprrc)
+#      print "Calculated RRC for Z %i  z1 %i  iLev %i"%\
+#            (Z, z1, iLev)
+#      for i in range(len(tmprrc)):
+#        print ebins[i],ebins[i+1], tmprrc[i]      
+#      print "ENDCalculated RRC for Z %i  z1 %i  iLev %i"%\
+#            (Z, z1, iLev)
 
-      LevelRecombRate[iLev] += rr_lev_rate
-      tot_rec_rate += rr_lev_rate
+      LevelRecombRate[iLev] += total*abund*ion_pop
+      
+      tot_rec_rate += total*abund*ion_pop
+      
       rrc += tmprrc
 #      for i in xrange(len(tmprrc)):
         #print "%e %e %e" %(ebins[i], ebins[i+1], tmprrc[i])
       #print "phot_type= %i"%(finlev['phot_type'])
       #print finlev
+#  for i in range(len(LevelRecombRate)):
+#      print "%i %e %e %e"%(i+1, LevelRecombRate[i], LevelRecombRate2[i], LevelRecombRate[i]/ LevelRecombRate2[i])
+#  zzz=raw_input('argh')
   return rrc, LevelRecombRate
 
 #-------------------------------------------------------------------------------
@@ -3873,6 +3908,7 @@ def get_data(Z, z1, ftype, datacache=False, \
        *           'ABUND' - abundance tables
        *           'HBREMS' - Hummer bremstrahlung coefficients
        *           'RBREMS' - relativistic bremstrahlung coefficitients
+       *           'IONBAL' - ionization balance tables
        
        
   filemap : string
@@ -3942,7 +3978,7 @@ def get_data(Z, z1, ftype, datacache=False, \
   # or abundance related file, not an ion-specific file.
   
   ismisc = False
-  if ftype.lower() in ['abund','hbrems','rbrems']:
+  if ftype.lower() in ['abund','hbrems','rbrems','ionbal']:
     ismisc = True
   
 
@@ -3988,7 +4024,13 @@ def get_data(Z, z1, ftype, datacache=False, \
 
         if fname=='':
         # no data exists
-          datacache['data']['misc'][ftype.upper()] = False
+          # This is expected if it's an ionbal file
+          
+          if ftype.lower()=='ionbal':
+            print "HELLO"
+            fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v2.0.2_ionbal.fits'
+          else:
+            datacache['data']['misc'][ftype.upper()] = False
 
         else:
         # Try and open the files in the following order:
@@ -4036,6 +4078,8 @@ def get_data(Z, z1, ftype, datacache=False, \
 
         if fname=='':
         # no data exists
+
+          
           datacache['data'][Z][z1][ftype.upper()] = False
 
         else:
@@ -4083,7 +4127,12 @@ def get_data(Z, z1, ftype, datacache=False, \
                              quiet=True, fmapfile=fmapfile,\
                              atomdbroot=atomdbroot)
 
+
+    if ftype.lower()=='ionbal':
+      fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v2.0.2_ionbal.fits'
+
     if fname=='':
+          # This is expected if it's an ionbal file
       pass
     else:
         # Try and open the files in the following order:
@@ -4301,7 +4350,8 @@ def rrc_ph_value(E, Z, z1, rrc_ph_factor, IonE, kT, levdat, \
   if levdat['PHOT_TYPE']==const.HYDROGENIC:
     levdat['PHOT_PAR'][0] = levdat['n_quan']
     levdat['PHOT_PAR'][1] = levdat['l_quan']
-    
+    if levdat['PHOT_PAR'][0]>5:
+      return  numpy.zeros(len(E))
   result = numpy.zeros(len(E))
   result[igood] = rrc_ph_factor*sigma_photoion(E[igood],
                                                Z,\
@@ -4487,7 +4537,11 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
                                 sig_coeffts['nq'],\
                                 sig_coeffts['lq'],\
                                 Evec)
-
+#      print "Zel=%i, n=%i, l=%i"%(sig_coeffts['Zel'],\
+#                                sig_coeffts['nq'],\
+#                                sig_coeffts['lq'])
+#      for i in range(len(Evec)):
+#        print "%6i, %e %e"%(i, Evec[i], result[i])
 
   elif pi_type == const.CLARK:
     iE = numpy.where(E > sig_coeffts['I_e'])[0]
@@ -4673,7 +4727,13 @@ def calc_two_phot(wavelength, einstein_a, lev_pop, ebins):
     
     # convert to photons cm^3/s/bin
   emission/= (const.ERG_KEV*E)
-    
+  
+#  print "A=%e, E0=%e, lev_pop=%e, wavelength=%e"%(einstein_a, E0, lev_pop, wavelength)
+  
+  i = numpy.where(E<E0)[0]
+#  for ii in i:
+#    print "iBin: %i E: %e A_E: %e Emiss: %e"%(ii, E[ii], A_E[ii], emission[ii])
+#  print "ENDtwo_photon"
   return emission
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
