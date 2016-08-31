@@ -1595,6 +1595,8 @@ def run_apec_element(settings, te, dens, Z):
     return neiout
 
 
+
+
 def generate_cie_outputs(settings, Z, linelist, contlist, pseudolist):
   """
   Convert a linelist and continuum values into an equilibrium AtomDB fits output
@@ -1846,7 +1848,9 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
           deltaearr[i] *= -1
           
         
-  
+        ladat = atomdb.get_data(Z, z1, 'LA', datacache=datacache, \
+                            settings = settings)
+
         exc,dex, tmp = atomdb.calc_maxwell_rates(ecdat[1].data['coeff_type'][i],\
                                      ecdat[1].data['min_temp'][i],\
                                      ecdat[1].data['max_temp'][i],\
@@ -1854,7 +1858,9 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
                                      ecdat[1].data['effcollstrpar'][i],\
                                      deltaearr[i]/1e3, Te_arr, Z, \
                                      degl, degu,\
-                                     force_extrap=True)
+                                     force_extrap=True,\
+                                     levdat=lvdat,ladat=ladat, \
+                                     lolev=ilo+1, uplev=iup+1)
 
         ecup[i] = ilo
         eclo[i] = iup
@@ -2151,10 +2157,10 @@ def solve_level_pop(init,final,rates,settings):
 
   import scipy.sparse as sparse
   from scipy.sparse.linalg import spsolve
-  stuff = {}
-  stuff['init'] = init
-  stuff['final'] = final
-  stuff['rates'] = rates
+  #stuff = {}
+  #stuff['init'] = init
+  #stuff['final'] = final
+  #stuff['rates'] = rates
   
 #  pickle.dump(stuff, open('tmpA.pkl','wb'))
 #  pickle.dump(stuff, open('tmpB.pkl','wb'))
@@ -2198,20 +2204,20 @@ def solve_level_pop(init,final,rates,settings):
 
     matrixA={}
     matrixB = numpy.zeros(nlev, dtype=float)
-    matrixA['lo'] = numpy.append(init, init)
-    matrixA['up'] = numpy.append(final, init)
+    matrixA['init'] = numpy.append(init, init)
+    matrixA['final'] = numpy.append(final, init)
     matrixA['rate'] = numpy.append(rates, -1.0*rates)
     
     # filter for the ground state levels
-    i = matrixA['lo']>0
-    matrixA['lo'] = matrixA['lo'][i]
-    matrixA['up'] = matrixA['up'][i]
+    i = matrixA['final']>0
+    matrixA['final'] = matrixA['final'][i]
+    matrixA['init'] = matrixA['init'][i]
     matrixA['rate'] = matrixA['rate'][i]
     # add in continuity eqn
 
-    matrixA['lo'] = numpy.append(matrixA['lo'], \
+    matrixA['final'] = numpy.append(matrixA['final'], \
                                  numpy.zeros(nlev, dtype=int))
-    matrixA['up'] = numpy.append(matrixA['up'], \
+    matrixA['init'] = numpy.append(matrixA['init'], \
                                  numpy.arange(nlev, dtype=int))
     matrixA['rate'] = numpy.append(matrixA['rate'], \
                                  numpy.ones(nlev, dtype=float))
@@ -2219,23 +2225,23 @@ def solve_level_pop(init,final,rates,settings):
     
 
     A = sparse.coo_matrix((matrixA['rate'],\
-                          (matrixA['lo'],matrixA['up'])), \
+                          (matrixA['final'],matrixA['init'])), \
                           shape=(nlev,nlev)).tocsr()
     
     matrixB[0] = 1.0
     tmp={}
-    tmp['A'] = matrixA
-    tmp['B'] = matrixB
+    #tmp['A'] = matrixA
+    #tmp['B'] = matrixB
 #    pickle.dump(tmp, open('dump_tmp.pkl','wb'))
     popn = spsolve(A, matrixB)
     # check the solution
 #    soln = numpy.allclose(numpy.dot(A, popn), matrixB)
 #    if soln==False:
 #      print "ERROR Solving population matrix!"
-    for i in range(len(popn)):
-      print i, popn[i]
-    print popn
-    zzz=raw_input('mycheck1')  
+#    for i in range(len(popn)):
+      #print i, popn[i]
+    #print popn
+    #zzz=raw_input('mycheck1')  
   
   return popn
 
@@ -2568,30 +2574,38 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
   
   # so recombrate has all the influxes
     matrixB = recombrate
+    print "Sum recomb rates in level>1:", sum(matrixB[1:])
     
     ladat = atomdb.get_data(Z, z1, 'LA', settings=settings, datacache=datacache)
     matrixA = {}
-    matrixA['up'] = numpy.array(ladat[1].data['upper_lev'], dtype=int)-1
-    matrixA['lo'] = numpy.array(ladat[1].data['lower_lev'], dtype=int)-1
+    matrixA['init'] = numpy.array(ladat[1].data['upper_lev'], dtype=int)-1
+    matrixA['final'] = numpy.array(ladat[1].data['lower_lev'], dtype=int)-1
     matrixA['rate'] = numpy.array(ladat[1].data['einstein_a'], dtype=float)
 
     ### FIXME HERE
 
     matrixB *= -1 
     nlev = len(matrixB)
+    
+    # append extras onto matrixA:
+    
+    matrixA['final'] = numpy.append(matrixA['final'],matrixA['init'])
+    matrixA['init'] = numpy.append(matrixA['init'],matrixA['init'])
+    matrixA['rate'] = numpy.append(matrixA['rate'],-1*matrixA['rate'])
+    
     # remove all matrix A from and to level 0
-    i = (matrixA['lo']>0) &(matrixA['up']>0)
-    matrixA['up'] = matrixA['up'][i]
-    matrixA['lo'] = matrixA['lo'][i]
+    i = matrixA['final']>0
+    matrixA['final'] = matrixA['final'][i]
+    matrixA['init'] = matrixA['init'][i]
     matrixA['rate'] = matrixA['rate'][i]
     
     # subtract 1 from the levels
-    matrixA['up']-= 1
-    matrixA['lo']-= 1
+    matrixA['init']-= 1
+    matrixA['final']-= 1
     
     # solve
     A = sparse.coo_matrix((matrixA['rate'],\
-                           (matrixA['lo'],matrixA['up'])), \
+                           (matrixA['final'],matrixA['init'])), \
                            shape=(nlev-1,nlev-1)).tocsr()
     levpop_this = numpy.zeros(len(matrixB))
 #    for i in numpy.where(matrixB != 0)[0]:
@@ -2774,6 +2788,11 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
   from scipy.sparse.linalg import spsolve
 
   lvdat = atomdb.get_data(Z,z1,'LV', settings=settings, datacache=datacache)
+  
+  # if we have no lv data, ignore.
+  if not util.keyword_check(lvdat):
+    nlev = 1
+    return numpy.array([0.0])
   nlev = len(lvdat[1].data)
   
   # get populating rate from previous ion
@@ -2808,6 +2827,13 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
   ionizrate=ionizrateir+ionizrateai
 
   matrixB = ionizrate
+  
+  # save some time if there is nothing to ionize.
+  if sum(matrixB[1:]) ==0:
+    levpop_this = numpy.zeros(len(matrixB))
+    return levpop_this
+ 
+ 
   matrixA_in={}
   matrixA_in['init'], matrixA_in['final'], matrixA_in['rate'] = \
    gather_rates(Z, z1, T, Ne, datacache=datacache, settings=settings,\
@@ -2840,23 +2866,24 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
         matrixA[i,i]=-1e10
         print "FIXING matrixA[%i,%i] = -1.0"%(i,i)
 
+    popn = numpy.zeros(nlev)
     try:
-      popn = numpy.linalg.solve(matrixA, matrixB)
+      popn[1:] = numpy.linalg.solve(matrixA[1:,1:], matrixB[1:])
     except numpy.linalg.linalg.LinAlgError:
       "EEK ERROR!"
       raise
 
-    if sum(matrixB[1:])<1e-40:
-      levpop_this = numpy.zeros(len(matrixB))
-    else:
-      matrixB = -1*matrixB
-      levpop_this = numpy.zeros(len(matrixB))
+    #if sum(matrixB[1:])<1e-40:
+      #levpop_this = numpy.zeros(len(matrixB))
+    #else:
+      #matrixB = -1*matrixB
+      #levpop_this = numpy.zeros(len(matrixB))
       
       # check for zeros
-      for iLev in range(1,len(matrixB)):
-         if not(matrixA[iLev,iLev]< 0.0):
-           matrixA[iLev,iLev]=-1e10
-      levpop_this[1:] = numpy.linalg.solve(matrixA[1:,1:], matrixB[1:])
+      #for iLev in range(1,len(matrixB)):
+         #if not(matrixA[iLev,iLev]< 0.0):
+         #  matrixA[iLev,iLev]=-1e10
+      #levpop_this[1:] = numpy.linalg.solve(matrixA[1:,1:], matrixB[1:])
 #      calc_cascade_population(matrixA, matrixB)
 
   else:
@@ -2867,57 +2894,34 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
     
     if sum(matrixB)>=0:
       return numpy.zeros(len(matrixB))
-    i = (matrixA_in['init']>1) &(matrixA_in['final']>1)
     
-    dump={}
-    dump['B'] = matrixB
-    dump['A'] = matrixA_in
-    pickle.dump(dump, open('dump.pkl','wb'))
     
-    for i in matrixA.keys():
-      print "start matrixA[%s]: shape = "%(i), matrixA[i].shape        
+    # add in the reverse processes
+    matrixA['init'] = numpy.append(matrixA['init'], matrixA['init'])
+    matrixA['final'] = numpy.append(matrixA['final'], matrixA['init'])
+    matrixA['rate'] = numpy.append(matrixA['rate'], -1*matrixA['rate'])
+    
+    # remove ground level
+    i = matrixA_in['init']>1
     matrixA['init'] = matrixA_in['init'][i]
     matrixA['final'] = matrixA_in['final'][i]
     matrixA['rate'] = matrixA_in['rate'][i]
-    matrixA['diag']=numpy.zeros(nlev)
-    for i in matrixA.keys():
-      print "middle matrixA[%s]: shape = "%(i), matrixA[i].shape        
-#    matrixA['final'] = numpy.append(matrixA['final'], matrixA['init'])
-#    matrixA['init'] = numpy.append(matrixA['init'], matrixA['init'])
-#    matrixA['rate'] = numpy.append(matrixA['rate'], -1.0*matrixA['rate'])
-
-    for i in range(len(matrixA['rate'])):
-      matrixA['diag'][matrixA['init'][i]]-=matrixA['rate'][i]
-    print matrixA['diag']
-    zzz=raw_input()
-    matrixA['diag'][matrixA['diag'] >=0] = -1e10
-    
-    matrixA['final'] = numpy.append(matrixA['final'], range(2, len(matrixA['diag'])))
-    matrixA['init'] = numpy.append(matrixA['init'],  range(2, len(matrixA['diag'])))
-    matrixA['rate'] = numpy.append(matrixA['rate'], matrixA['diag'][2:])
     
     
-    print "SHAPES"
-    print "matrixA['final']",matrixA['final'].shape
-    print "matrixA['init']",matrixA['init'].shape
-    print "matrixA['rate']",matrixA['rate'].shape
-    zzz=raw_input()
-    matrixA['init'] -= 2
-    matrixA['final'] -= 2
-
-    for i in range(len(matrixA['init'])):
-      print matrixA['init'][i], matrixA['final'][i],matrixA['rate'][i]
-#      if i % 50==49:
-#        zzz=raw_input('.')
-
+    # subtract 1 from the levels
+    matrixA['init']-=1
+    matrixA['final']-=1
+    
+    
+         
     A = sparse.coo_matrix((matrixA['rate'],\
                            (matrixA['final'],matrixA['init'])), \
                            shape=(nlev-1,nlev-1)).tocsr()
 
     levpop_this = numpy.zeros(len(matrixB))
     levpop_this[1:] = spsolve(A, matrixB[1:])
-    print levpop_this
-    zzz=raw_input('argh')
+    #print levpop_this
+    #zzz=raw_input('argh')
   return levpop_this
   
 #-----------------------------------------------------------------------
@@ -3093,7 +3097,7 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
       print "levpop_recomb Z=%i, z1=%i,z1_drv=%i:"%(Z,z1, z1_drv)
       for i in range(len(levpop_recomb)):
         print i, levpop_recomb[i]
-
+      #zzz=raw_input()
       linelist_rec, tmptwophot = \
                do_lines(Z, z1, levpop_recomb , dens, datacache=datacache, settings=settings, z1_drv_in=z1_drv)
       continuum['twophot']+= tmptwophot
@@ -3123,10 +3127,11 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
 #      for i in range(len(lev_pop)):
 #       print i, lev_pop[i]
       lev_pop[lev_pop<const.MIN_LEVPOP] = 0.0
-      linelist_ion_tmp, tmptwophot = \
-             do_lines(Z, z1, lev_pop, dens, datacache=datacache, settings=settings, z1_drv_in=z1_drv)
-      linelist_ion = numpy.append(linelist_ion, linelist_ion_tmp)
-      continuum['twophot']+=tmptwophot
+      if sum(lev_pop[1:]) > 0:
+        linelist_ion_tmp, tmptwophot = \
+               do_lines(Z, z1, lev_pop, dens, datacache=datacache, settings=settings,   z1_drv_in=z1_drv)
+        linelist_ion = numpy.append(linelist_ion, linelist_ion_tmp)
+        continuum['twophot']+=tmptwophot
 
       lev_pop_parent = lev_pop
       z1+=1
@@ -3139,18 +3144,19 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
   if settings['Ionization']=='CIE':
     MinEpsilon*=0.001
 #  istrong = linelist>=MinEpsilon
-  weaklines = linelist[(linelist['epsilon']< MinEpsilon) &\
-                       (linelist['lambda']>const.HC_IN_KEV_A /settings['GridMaximum']) &\
-                       (linelist['lambda']<const.HC_IN_KEV_A /settings['GridMinimum'])]
-#  print "filtered out % i weak lines"%(len(weaklines))
   pseudocont = numpy.zeros(len(ebins)-1, dtype=float)
+  if len(linelist) > 0:
+    weaklines = linelist[(linelist['epsilon']< MinEpsilon) &\
+                         (linelist['lambda']>const.HC_IN_KEV_A /settings['GridMaximum'])   &\
+                         (linelist['lambda']<const.HC_IN_KEV_A /settings['GridMinimum'])]
+#  print "filtered out % i weak lines"%(len(weaklines))
+  
+    for line in weaklines:
+      e = const.HC_IN_KEV_A /line['lambda']
+      ibin = numpy.where(ebins>e)[0][0] - 1
+      pseudocont[ibin]+=line['epsilon']
 
-  for line in weaklines:
-    e = const.HC_IN_KEV_A /line['lambda']
-    ibin = numpy.where(ebins>e)[0][0] - 1
-    pseudocont[ibin]+=line['epsilon']
-
-  linelist = linelist[linelist['epsilon'] > MinEpsilon]
+    linelist = linelist[linelist['epsilon'] > MinEpsilon]
 #  print "kept  % i strong lines"%(len(weaklines))
 
 #  ret = {}

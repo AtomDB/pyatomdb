@@ -1206,15 +1206,15 @@ def get_bt_approx(om, Tin, Tout, uplev, lolev, levdat,ladat):
     Aval = ladat[1].data['einstein_a'][i[0]]
 
   # find the type:
-  bttype = get_burgess_tully_transition_type(levdat[1].data[lolev],\
-                                             levdat[1].data[uplev],\
+  bttype = get_burgess_tully_transition_type(levdat[1].data[lolev-1],\
+                                             levdat[1].data[uplev-1],\
                                              Aval)
 
 
     # do the extrappolation etc
   btval = get_burgess_tully_extrap(bttype, \
-                                   levdat[1].data[lolev], \
-                                   levdat[1].data[uplev], \
+                                   levdat[1].data[lolev-1], \
+                                   levdat[1].data[uplev-1], \
                                    Aval, \
                                    Tin, \
                                    om, \
@@ -2607,6 +2607,7 @@ def get_ionrec_rate(Te_in, irdat_in, lvdat_in=False, Te_unit='K', \
     return -1
 
   if (z1>=0) &( Z>=0):
+    print z1, Z
     lvdatp1 = get_data(Z,z1+1, 'LV',settings=settings, datacache=datacache)
   elif isinstance(lvdatp1_in, basestring):
     #string (assumed filename)
@@ -3567,10 +3568,11 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
     elif finlev['phot_type']==const.VERNER:
       I_e = finlev['phot_par'][0]
       lev_deg = finlev['lev_deg']
-      if ((hasparent) & (len(initlevels[1].data)>0)):
-        parent_lev_deg = initlevels[1].data['lev_deg'][0]*1.0
-      else:
-        parent_lev_deg=1.0
+      hasinitlevels =  util.keyword_check(initlevels)
+      parent_lev_deg=1.0
+      if hasinitlevels:
+        if ((hasparent) & (len(initlevels[1].data)>0)):
+          parent_lev_deg = initlevels[1].data['lev_deg'][0]*1.0
       sig_type = const.VERNER
       sigma_coeff = finlev['phot_par']
 
@@ -4050,7 +4052,7 @@ def get_data(Z, z1, ftype, datacache=False, \
                 url = re.sub(os.path.expandvars(atomdbroot),\
                              'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
                 try:
-                  d = pyfits.open(url)
+                  d = pyfits.open(url, cache=False)
                   didurl=True
                   util.record_upload(re.sub(os.path.expandvars(atomdbroot),'',fname))
                 except urllib2.URLError:
@@ -4100,7 +4102,7 @@ def get_data(Z, z1, ftype, datacache=False, \
                 url = re.sub(os.path.expandvars(atomdbroot),\
                              'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
                 try:
-                  d = pyfits.open(url)
+                  d = pyfits.open(url, cache=False)
                   didurl=True
                   util.record_upload(re.sub(os.path.expandvars(atomdbroot),'',fname))
                 except urllib2.URLError:
@@ -4152,7 +4154,7 @@ def get_data(Z, z1, ftype, datacache=False, \
                          'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
             print "trying URL %s"%(url)
             try:
-              d = pyfits.open(url)
+              d = pyfits.open(url, cache=False)
               didurl=True
               util.record_upload(re.sub(os.path.expandvars(atomdbroot),'',fname))
             except urllib2.URLError:
