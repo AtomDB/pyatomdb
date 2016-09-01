@@ -8,9 +8,10 @@ Adam Foster September 16th 2015
 """
 
 import numpy, copy, pickle
-import util, atomdb, const, os, atomic
+import util, atomdb, const, os, atomic, time
 import scipy, ctypes
 import astropy.io.fits as pyfits
+from joblib import Parallel, delayed
 
 import pylab
 
@@ -1229,6 +1230,7 @@ def run_apec(fname):
         cocodata = numpy.zeros(0,dtype=generate_datatypes('continuum', ncontinuum=0, npseudo=0))
 
       for Z in Zlist:
+        print "Calling run_apec_element for Z=%i Te=%e dens=%e at %s"%(Z, te, dens, time.asctime())
         dat = run_apec_element(settings, te, dens, Z)
         
         # append this data to the output
@@ -1579,12 +1581,19 @@ def run_apec_element(settings, te, dens, Z):
   ebins = numpy.linspace(0.01,100,100001)
   ecent = (ebins[1:]+ebins[:-1])/2
 
-  for z1_drv in range(1, Z+2):
-    tmplinelist, tmpcontinuum, tmppseudocont = run_apec_ion(settings, te, dens, Z, z1_drv, ionfrac, abund)
-    linelist = numpy.append(linelist, tmplinelist)
-    contlist[z1_drv] = tmpcontinuum
-    pseudolist[z1_drv] = tmppseudocont
-                     
+  
+  z1_drv_list = numpy.arange(1,Z+2, dtype=int)
+#  for z1_drv in range(1, Z+2):
+#    tmplinelist, tmpcontinuum, tmppseudocont = run_apec_ion(settings, te, dens, Z, z1_drv, ionfrac, abund)
+#    linelist = numpy.append(linelist, tmplinelist)
+#    contlist[z1_drv] = tmpcontinuum
+#    pseudolist[z1_drv] = tmppseudocont
+  out = Parallel(n_jobs=4)(delayed(run_apec_ion)(settings, te, dens,Z,z1_drv,ionfrac,abund) for z1_drv in range(1,Z+2))
+  for ii,i in enumerate(out):
+    linelist = numpy.append(linelist, i[0])
+    contlist[ii+1] = i[1]
+    pseudolist[ii+1] = i[2]
+
   # now merge these together.
   if settings['Ionization']=='CIE':
     
@@ -3253,8 +3262,8 @@ def compress_continuum(xin, yin, tolerance, minval = 0.0):
            (yout[i-1]<=minval) &\
            (yout[i+1]<=minval)):
         isgood[i] = False
-  xout = xout[isgood]
-  yout = yout[isgood]
+    xout = xout[isgood]
+    yout = yout[isgood]
            
     
     
