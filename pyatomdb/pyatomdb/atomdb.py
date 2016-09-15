@@ -3662,6 +3662,8 @@ def calc_rrc(Z, z1, eedges, Te, lev, xstardat=False, \
                                   xstardat, xstarlevfinal), limit=100000)
   rrc[edgebin+1:] = (emission_edges[edgebin+1:-1]+emission_edges[edgebin+2:])/2.0
 
+
+
   if returntotal:
     return rrc, rr_lev_pop
   else:

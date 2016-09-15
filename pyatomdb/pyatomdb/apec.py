@@ -1089,6 +1089,31 @@ def parse_par_file(fname):
       data['BremsType']=const.RELATIVISTIC
     else:
       print "UNKNOWN BREMS TYPE: %s" %(data['BremsType'])
+  
+  if 'NEIMinEpsilon' in data.keys():
+      tmp = data['NEIMinEpsilon'].split(',')
+      tmp2 = []
+      for i in tmp:
+        tmp2.append(float(i))
+      data['NEIMinEpsilon']=tmp2
+
+  if 'NEIMinFrac' in data.keys():
+      tmp = data['NEIMinFrac'].split(',')
+      tmp2 = []
+      for i in tmp:
+        tmp2.append(float(i))
+      data['NEIMinFrac']=tmp2
+
+  if 'IncAtoms' in data.keys():
+    elsymblist = data['IncAtoms'].split(',')
+    Zlist=[]
+    for iel in elsymblist:
+      Zlist.append(atomic.elsymb_to_Z(iel))
+    data['Zlist']=Zlist
+    
+  if not ('WriteIon' in data.keys()):
+    data['WriteIon'] = False
+
         
   return data
 
@@ -1187,13 +1212,7 @@ def run_apec(fname):
   # we will transfer this to a "Zlist" parameter, in the form of
   # nuclear charges
 
-  elsymblist = settings['IncAtoms'].split(',')
-  print settings['IncAtoms']
-
-  Zlist=[]
-  for iel in elsymblist:
-    Zlist.append(atomic.elsymb_to_Z(iel))
-
+  Zlist = settings['Zlist']
   print "I will be running Z=", Zlist
   # run for each element, temperature, density
   
@@ -1228,18 +1247,24 @@ def run_apec(fname):
       if settings['Ionization']=='CIE':
         linedata = numpy.zeros(0,dtype=generate_datatypes('linelist_cie'))
         cocodata = numpy.zeros(0,dtype=generate_datatypes('continuum', ncontinuum=0, npseudo=0))
+      if settings['Ionization']=='NEI':
+        linedata = numpy.zeros(0,dtype=generate_datatypes('linetype'))
+        cocodata = numpy.zeros(0,dtype=generate_datatypes('continuum', ncontinuum=0, npseudo=0))
 
       for Z in Zlist:
         print "Calling run_apec_element for Z=%i Te=%e dens=%e at %s"%(Z, te, dens, time.asctime())
         dat = run_apec_element(settings, te, dens, Z)
-        
         # append this data to the output
         linedata = numpy.append(linedata, dat['lines'])
         cocodata = continuum_append(cocodata, dat['cont'])
+
+
       
       # now make an HDU for all of this
-      LHDUdat = create_lhdu_cie(linedata)
-      
+      if settings['Ionization']=='CIE':
+        LHDUdat = create_lhdu_cie(linedata)
+      elif settings['Ionization']=='NEI':
+        LHDUdat = create_lhdu_nei(linedata)
       # now update the headers
       iseclHDUdat=iDens+iTe*settings['NumDens']
       LHDUdat.header['EXTNAME']=("EMISSIVITY","name of this binary table extension")
@@ -1253,15 +1278,23 @@ def run_apec(fname):
                              'Line emission spectral model')
       LHDUdat.header['HDUCLAS2']=("LINE",\
                              'Emission line data')
-      LHDUdat.header['HDUVERS1']=("1.0.0",\
-                             'version of format')
+      if settings['Ionization']=='CIE':
+        LHDUdat.header['HDUVERS1']=("1.0.0",\
+                               'version of format')
+      elif settings['Ionization']=='NEI':
+        LHDUdat.header['HDUVERS1']=("2.0.0",\
+                               'version of format')
+
       LHDUdat.header['TEMPERATURE']=(te,\
                              'Electron temperature')
       LHDUdat.header['DENSITY']=(dens,\
                              'Electron density')
-      LHDUdat.header['TIME']=("%.2e"%(0),\
+      LHDUdat.header['TIME']=(0,\
                              'IN EQUILIBRIUM')
-      tot_emiss = sum(linedata['epsilon']*const.HC_IN_ERG_A/linedata['lambda'])
+      if settings['Ionization']=='CIE':
+        tot_emiss = sum(linedata['epsilon']*const.HC_IN_ERG_A/linedata['lambda'])
+      else:
+        tot_emiss=0.0
       LHDUdat.header['TOT_LINE']=(tot_emiss,\
                              'Total Line Emission (erg cm^3 s^-1)')
       LHDUdat.header['N_LINES']=(len(linedata),\
@@ -1343,7 +1376,8 @@ def run_apec(fname):
 
 
   fileroot = settings['OutputFileStem']
-  
+  if settings['Ionization']=='NEI':
+    fileroot+='_nei'
   # create the Primary HDU
   PrilHDU = pyfits.PrimaryHDU()
   lhdulist.insert(0,PrilHDU)
@@ -1356,7 +1390,10 @@ def run_apec(fname):
   chdulist.insert(0,PricHDU)
   chdulist.insert(1,seccHDU)
   tmpchdulist = pyfits.HDUList(chdulist)
-  tmpchdulist.writeto('%s_coco.fits'%(fileroot), clobber=True, checksum=True)
+  if settings['Ionization']=='CIE':
+    tmpchdulist.writeto('%s_coco.fits'%(fileroot), clobber=True, checksum=True)
+  elif settings['Ionization']=='NEI':
+    tmpchdulist.writeto('%s_comp.fits'%(fileroot), clobber=True, checksum=True)
 
 def calc_total_coco(cocodata, settings):
   """
@@ -1459,6 +1496,24 @@ def create_lhdu_cie(linedata):
   tbhdu = pyfits.BinTableHDU.from_columns(coldefs)
   return tbhdu
 
+def create_lhdu_nei(linedata):
+  
+  cols = []
+  cols.append(pyfits.Column(name='Lambda', format='1E', unit="A", array=linedata['lambda']))
+  cols.append(pyfits.Column(name='Lambda_Err', format='1E', unit="A", array=linedata['lambda_err']))
+  cols.append(pyfits.Column(name='Epsilon', format='1E', unit="photons cm^3 s^-1", array=linedata['epsilon']))
+  cols.append(pyfits.Column(name='Epsilon_Err', format='1E', unit="photons cm^3 s^-1", array=linedata['epsilon_err']))
+  cols.append(pyfits.Column(name='Element', format='1J',  array=linedata['element']))
+  cols.append(pyfits.Column(name='Element_drv', format='1J',  array=linedata['element']))
+  cols.append(pyfits.Column(name='Ion', format='1J',  array=linedata['ion']))
+  cols.append(pyfits.Column(name='Ion_drv', format='1J',  array=linedata['ion_drv']))
+  cols.append(pyfits.Column(name='UpperLev', format='1J', array=linedata['upperlev']))
+  cols.append(pyfits.Column(name='LowerLev', format='1J',  array=linedata['lowerlev']))
+
+  coldefs = pyfits.ColDefs(cols)
+  tbhdu = pyfits.BinTableHDU.from_columns(coldefs)
+  return tbhdu
+
 
 def create_chdu_cie(cocodata):
   
@@ -1537,6 +1592,7 @@ def run_apec_element(settings, te, dens, Z):
   if settings['Ionization']=='NEI':
     z1list = range(1, Z+2)
     ionfrac = numpy.ones(len(z1list), dtype=float)
+
   elif settings['Ionization']=='CIE':
     z1list = range(1, Z+2)
 
@@ -1584,11 +1640,12 @@ def run_apec_element(settings, te, dens, Z):
   
   z1_drv_list = numpy.arange(1,Z+2, dtype=int)
 #  for z1_drv in range(1, Z+2):
+#    
 #    tmplinelist, tmpcontinuum, tmppseudocont = run_apec_ion(settings, te, dens, Z, z1_drv, ionfrac, abund)
 #    linelist = numpy.append(linelist, tmplinelist)
 #    contlist[z1_drv] = tmpcontinuum
 #    pseudolist[z1_drv] = tmppseudocont
-  out = Parallel(n_jobs=4)(delayed(run_apec_ion)(settings, te, dens,Z,z1_drv,ionfrac,abund) for z1_drv in range(1,Z+2))
+  out = Parallel(n_jobs=4, max_nbytes=1e2)(delayed(run_apec_ion)(settings, te, dens,Z,z1_drv,ionfrac,abund) for z1_drv in range(1,Z+2))
   for ii,i in enumerate(out):
     linelist = numpy.append(linelist, i[0])
     contlist[ii+1] = i[1]
@@ -1600,11 +1657,127 @@ def run_apec_element(settings, te, dens, Z):
     cieout = generate_cie_outputs(settings, Z, linelist, contlist, pseudolist)
     return cieout
   elif settings['Ionization']=='NEI':
-    neiout = generate_nei_outputs(settings, Z, linelist, contlist, pseudolist)
+    ionftmp= calc_full_ionbal(te, 1e14, Te_init=te, Zlist=[Z], extrap=True)
+    ionfrac_nei = ionftmp[Z]
+    neiout = generate_nei_outputs(settings, Z, linelist, contlist, pseudolist, ionfrac_nei)
     return neiout
 
+def generate_nei_outputs(settings, Z, linelist, contlist, pseudolist, ionfrac_nei):
+  """
+  Convert a linelist and continuum values into a non-equilibrium AtomDB fits output
+  
+  Parameters
+  ----------
+  settings: dictionary
+    The settings read from the apec.par file by parse_par_file
 
+  Z: int
+    The nuclear charge of the element
+  
+  linelist: numpy.array(dtype=linelisttype)
+    The list of lines, separated by ion
+  
+  contlist: dict
+    Dictionary with the different continuum contributions from each ion.
+    Each is an array of ph cm^3 s^-1 bin^-1
+  
+  pseudolist: dict
+    Dictionary with the different pseudocontinuum contributions from each ion.
+    Each is an array of ph cm^3 s^-1 bin^-1
 
+  Returns
+  -------
+  None
+  """
+  
+  # ok, so we are first up going to combine the lines from the different ions
+  linelist.sort(order=['element','ion','upperlev','lowerlev'])
+  igood = numpy.ones(len(linelist), dtype=bool)
+
+  linelist= linelist[igood]
+  
+
+  
+
+  ebins =  make_vector_nbins(settings['LinearGrid'], \
+                             settings['GridMinimum'], \
+                             settings['GridMaximum'], \
+                             settings['NumGrid'])
+
+  pseudo = {}
+  cont = {}  
+  # now do some weak line filtering
+  igood = numpy.ones(len(linelist), dtype=bool)
+  for z1 in range(1, Z+2):
+    ionfrac = ionfrac_nei[z1-1]
+    mineps = settings['NEIMinEpsilon'][0]
+    pseudotmp = numpy.zeros(len(ebins)-1, dtype=float)
+
+    pseudotmp += pseudolist[z1]
+    
+    for i in range(len(settings['NEIMinFrac'])):
+      if ionfrac < settings['NEIMinFrac'][i]:
+        mineps = settings['NEIMinEpsilon'][i+1]
+    
+    
+    
+    weaklines = linelist[(linelist['element']==Z) &\
+                (linelist['ion_drv']==z1) &\
+                (linelist['epsilon']<mineps) &\
+                (linelist['lambda']>const.HC_IN_KEV_A /settings['GridMaximum']) &\
+                (linelist['lambda']<const.HC_IN_KEV_A /settings['GridMinimum'])]
+    
+    for line in weaklines:
+      e = const.HC_IN_KEV_A /line['lambda']
+      ibin = numpy.where(ebins>e)[0][0] - 1
+      pseudotmp[ibin]+=line['epsilon']
+
+    igood[(linelist['element']==Z) &\
+          (linelist['ion_drv']==z1) &\
+          (linelist['epsilon']<mineps)] = False
+    
+    conttmp = contlist[z1]['rrc']+contlist[z1]['twophot']+contlist[z1]['brems']
+
+  
+    econt, contin = compress_continuum(ebins, conttmp, const.TOLERANCE, minval=1e-38)
+    
+    epseudo, pseudocont = compress_continuum(ebins, pseudotmp, const.TOLERANCE, minval=1e-38)
+    
+    cont[z1] = {}
+    cont[z1]['E_Cont'] = econt
+    cont[z1]['Cont'] = contin
+    cont[z1]['E_Pseudo'] = epseudo
+    cont[z1]['Pseudo'] = pseudocont
+    
+    
+  linelist = linelist[igood]
+
+  ret={}
+  ret['lines']=linelist
+  maxnpseudo = 0
+  maxncont = 0
+  
+  for i in cont.keys():
+    if len(cont[i]['E_Cont'])>maxncont:
+      maxncont= len(cont[i]['E_Cont'])
+    if len(cont[i]['E_Pseudo'])>maxnpseudo:
+      maxnpseudo= len(cont[i]['E_Pseudo'])
+
+  ret['cont'] = numpy.zeros(len(cont.keys()), dtype=generate_datatypes('continuum', npseudo=maxnpseudo, ncontinuum=maxncont))
+
+  for iz1, z1 in enumerate(cont.keys()):
+    ret['cont']['Z'][iz1] = Z
+    ret['cont']['rmJ'][iz1] = z1
+    ret['cont']['N_Cont'][iz1] = len(cont[z1]['E_Cont'])
+    ret['cont']['E_Cont'][iz1][:ret['cont']['N_Cont'][iz1]] = cont[z1]['E_Cont']
+    ret['cont']['Continuum'][iz1][:ret['cont']['N_Cont'][iz1]] = cont[z1]['Cont']
+    ret['cont']['N_Pseudo'][iz1] = len(cont[z1]['E_Pseudo'])
+    ret['cont']['E_Pseudo'][iz1][:ret['cont']['N_Pseudo'][iz1]] = cont[z1]['E_Pseudo']
+    ret['cont']['Pseudo'][iz1][:ret['cont']['N_Pseudo'][iz1]] = cont[z1]['Pseudo']
+  return ret
+  
+  
+  
 
 def generate_cie_outputs(settings, Z, linelist, contlist, pseudolist):
   """
@@ -1774,7 +1947,20 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
     Rate for each transition (in s-1)
   """
   Te_arr, dummy = util.make_vec(te)
+
+  lvdat = atomdb.get_data(Z, z1, 'LV', datacache=datacache, \
+                            settings = settings)
+  nlev = len(lvdat[1].data)
+  
+  diagterms = numpy.zeros(nlev)
   # get the LA data:
+  if ['AAUT_REF'] in lvdat[1].data.names:
+    has_sum_lv = True
+  else:
+    has_sum_lv = False
+
+  if has_sum_lv:
+    diagterms+= lvdat[1].data['AAUT_TOT']+lvdat[1].data['ARAD_TOT']
 
   laup = numpy.zeros(0, dtype=int)
   lalo = numpy.zeros(0, dtype=int)
@@ -1792,6 +1978,12 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
       laup[:] = ladat[1].data['Upper_Lev'][:] - 1
       lalo[:] = ladat[1].data['Lower_Lev'][:] - 1
       larate[:] = ladat[1].data['Einstein_A'][:]
+      
+      if not(has_sum_lv):
+        for i in range(len(laup)):
+          diagterms[laup[i]] +=larate[i]
+
+
       # create dummy results
 
   # get the AI data:
@@ -1810,6 +2002,10 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
       aiup[:] = aidat[1].data['Level_Init'][:] - 1
       ailo[:] = 0 # punt all of this into the ground state for maths reasons
       airate[:] = aidat[1].data['Auto_Rate'][:]
+      if not(has_sum_lv):
+        for i in range(len(aiup)):
+          diagterms[aiup[i]] +=airate[i]
+
 
   # get the EC data:
 
@@ -1841,8 +2037,8 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
       deltaearr = lvdat[1].data['ENERGY'][ecdat[1].data['upper_lev']-1]-\
                   lvdat[1].data['ENERGY'][ecdat[1].data['lower_lev']-1]
   
-      for i in range(len(ecdat[1].data)):
   
+      for i in range(len(ecdat[1].data)):
         # check if we need to swap things
         if deltaearr[i] >=0:
           degl = deglarr[i]
@@ -1891,6 +2087,9 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
       ecrate = numpy.append(ecrate, decrate)
 
     # create dummy results
+      if not(has_sum_lv):
+        for i in range(len(ecup)):
+          diagterms[ecup[i]] +=ecrate[i]
 
 
   # get the PC data:
@@ -1952,6 +2151,9 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
       pclo = numpy.append(pclo, dpclo)
       pcrate = numpy.append(pcrate, dpcrate)
 
+      if not(has_sum_lv):
+        for i in range(len(pcup)):
+          diagterms[pcup[i]] +=pcrate[i]
 
   # get the IR data for colln ionization:
   irup = numpy.zeros(0, dtype=int)
@@ -2005,12 +2207,22 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
       irup = irup[:iir]
       irlo = irlo[:iir]
       irrate = irrate[:iir]
+#      for i in range(len(irup)):
+#        print "IR %i %i = %e"%(irup[i], irlo[i], irrate[i])
+      if not(has_sum_lv):
+        for i in range(len(irup)):
+          diagterms[irup[i]] +=irrate[i]
 
 
   
   up_out = numpy.append(laup, numpy.append(aiup, numpy.append(ecup, numpy.append(pcup, irup))))
   lo_out = numpy.append(lalo, numpy.append(ailo, numpy.append(eclo, numpy.append(pclo, irlo))))
   rate_out = numpy.append(larate, numpy.append(airate, numpy.append(ecrate, numpy.append(pcrate, irrate))))
+
+  up_out = numpy.append(up_out, numpy.arange(nlev, dtype=int))
+  lo_out = numpy.append(lo_out, numpy.arange(nlev, dtype=int))
+  rate_out = numpy.append(rate_out, diagterms*-1)
+  
   
   return up_out, lo_out, rate_out
 
@@ -2195,6 +2407,13 @@ def solve_level_pop(init,final,rates,settings):
       if matrixA[i,i] >= 0:
         matrixA[i,i]=-1e10
     
+#    a = {}
+#    a['A'] = matrixA
+#    a['B'] = matrixB
+#    pickle.dump(a, open('dump_a.pkl','wb'))
+    
+    
+    
     try:
       popn = numpy.linalg.solve(matrixA, matrixB)
     except numpy.linalg.linalg.LinAlgError:
@@ -2204,11 +2423,11 @@ def solve_level_pop(init,final,rates,settings):
   else:
     # add into sparse solver
 
-    tmp={}
-    tmp['init'] = init
-    tmp['final'] = final
-    tmp['rate'] = rates
-    pickle.dump(tmp, open('dump_tmp.pkl','wb'))
+#    tmp={}
+#    tmp['init'] = init
+#    tmp['final'] = final
+#    tmp['rate'] = rates
+#    pickle.dump(tmp, open('dump_tmp.pkl','wb'))
 
 
     matrixA={}
@@ -2583,13 +2802,18 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
   
   # so recombrate has all the influxes
     matrixB = recombrate
-    print "Sum recomb rates in level>1:", sum(matrixB[1:])
+#    print "Sum recomb rates in level>1:", sum(matrixB[1:])
     
-    ladat = atomdb.get_data(Z, z1, 'LA', settings=settings, datacache=datacache)
+    
+    
     matrixA = {}
-    matrixA['init'] = numpy.array(ladat[1].data['upper_lev'], dtype=int)-1
-    matrixA['final'] = numpy.array(ladat[1].data['lower_lev'], dtype=int)-1
-    matrixA['rate'] = numpy.array(ladat[1].data['einstein_a'], dtype=float)
+    matrixA['init'], matrixA['final'], matrixA['rate']=\
+    gather_rates(Z, z1, T, dens, datacache=datacache, settings=settings,\
+                 do_la=True, do_ai=False, do_ec=False, do_pc=False,\
+                 do_ir=False)
+#    matrixA['init'] = numpy.array(ladat[1].data['upper_lev'], dtype=int)-1
+#    matrixA['final'] = numpy.array(ladat[1].data['lower_lev'], dtype=int)-1
+#    matrixA['rate'] = numpy.array(ladat[1].data['einstein_a'], dtype=float)
 
     ### FIXME HERE
 
@@ -2598,9 +2822,9 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
     
     # append extras onto matrixA:
     
-    matrixA['final'] = numpy.append(matrixA['final'],matrixA['init'])
-    matrixA['init'] = numpy.append(matrixA['init'],matrixA['init'])
-    matrixA['rate'] = numpy.append(matrixA['rate'],-1*matrixA['rate'])
+#    matrixA['final'] = numpy.append(matrixA['final'],matrixA['init'])
+#    matrixA['init'] = numpy.append(matrixA['init'],matrixA['init'])
+#    matrixA['rate'] = numpy.append(matrixA['rate'],-1*matrixA['rate'])
     
     # remove all matrix A from and to level 0
     i = matrixA['final']>0
@@ -2680,14 +2904,14 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
     ladat = atomdb.get_data(Z, z1, 'LA', settings=settings, datacache=datacache)
 #    print "max(la['upper_lev']): ",max(ladat[1].data['upper_lev'])
 
-    for la in ladat[1].data:
-      try:
-        matrixA[la['lower_lev']-1, la['upper_lev']-1]+=la['einstein_a']
-        matrixA[la['upper_lev']-1, la['upper_lev']-1]-=la['einstein_a']
-      except IndexError:
-        print la['upper_lev'], matrixA.shape
-        raise
-    #ladat.close()      
+    matrixA_in = {}
+    matrixA_in['init'], matrixA_in['final'], matrixA_in['rate']=\
+    gather_rates(Z, z1, T, dens, datacache=datacache, settings=settings,\
+                 do_la=True, do_ai=False, do_ec=False, do_pc=False,\
+                 do_ir=False)
+
+    for i in range(len(matrixA_in['init'])):
+      matrixA[matrixA_in['final'][i], matrixA_in['init'][i]]+=matrixA_in['rate'][i]
 
     # solve unless matrixB ==0
     if sum(matrixB[1:])>0:
@@ -2832,7 +3056,7 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
                                      lvdatap1=lvdat, ionpot=ionpot)
         ionizrateir[ir['level_final']-1] += levpop[ir['level_init']-1]*\
                                        ionrate
-  print 
+#  print 
   ionizrate=ionizrateir+ionizrateai
 
   matrixB = ionizrate
@@ -2863,7 +3087,7 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
     
     for i in range(len(matrixA_in['init'])):
       matrixA[matrixA_in['final'][i], matrixA_in['init'][i]] += matrixA_in['rate'][i]
-      matrixA[matrixA_in['init'][i], matrixA_in['init'][i]] -= matrixA_in['rate'][i]
+#      matrixA[matrixA_in['init'][i], matrixA_in['init'][i]] -= matrixA_in['rate'][i]
 
     # popn conservation
     matrixB[0] = 1.0
@@ -2877,7 +3101,7 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
 
     popn = numpy.zeros(nlev)
     try:
-      popn[1:] = numpy.linalg.solve(matrixA[1:,1:], matrixB[1:])
+      popn[1:] = numpy.linalg.solve(matrixA[1:,1:], matrixB[1:]*-1)
     except numpy.linalg.linalg.LinAlgError:
       "EEK ERROR!"
       raise
@@ -2906,9 +3130,9 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
     
     
     # add in the reverse processes
-    matrixA['init'] = numpy.append(matrixA['init'], matrixA['init'])
-    matrixA['final'] = numpy.append(matrixA['final'], matrixA['init'])
-    matrixA['rate'] = numpy.append(matrixA['rate'], -1*matrixA['rate'])
+#    matrixA['init'] = numpy.append(matrixA['init'], matrixA['init'])
+#    matrixA['final'] = numpy.append(matrixA['final'], matrixA['init'])
+#    matrixA['rate'] = numpy.append(matrixA['rate'], -1*matrixA['rate'])
     
     # remove ground level
     i = matrixA_in['init']>1
@@ -2927,11 +3151,11 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
                            (matrixA['final'],matrixA['init'])), \
                            shape=(nlev-1,nlev-1)).tocsr()
 
-    levpop_this = numpy.zeros(len(matrixB))
-    levpop_this[1:] = spsolve(A, matrixB[1:])
+    popn = numpy.zeros(len(matrixB))
+    popn[1:] = spsolve(A, matrixB[1:])
     #print levpop_this
     #zzz=raw_input('argh')
-  return levpop_this
+  return popn
   
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
@@ -3001,9 +3225,11 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
 
   ## FIXME CUTOFF FOR MIN IONPOP
   if ionfrac[z1_drv-1] < const.MIN_IONPOP:
-    
+    print "OMITTING Z=%i, z1=%i as ionfrac %e is below threshold of %e"%\
+           (Z, z1_drv, ionfrac[z1_drv-1], const.MIN_IONPOP)
     return  linelist, continuum, pseudo
-
+  print "NOT OMITTING Z=%i, z1=%i as ionfrac %e is above threshold of %e"%\
+           (Z, z1_drv, ionfrac[z1_drv-1], const.MIN_IONPOP)
 
   # set up the datacache
 
@@ -3043,15 +3269,20 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
 #      print i, lev_pop[i]
     lev_pop *= abund*ionfrac[z1-1]
     for i in range(len(lev_pop)):
-      print i, lev_pop[i]
+      print i, lev_pop[i], lev_pop[i]/(abund*ionfrac[z1-1])
     
-    linelist_exc,  continuum['twophot'] = do_lines(Z, z1, lev_pop, dens, datacache=datacache, settings=settings)
+    linelist_exc,  continuum['twophot'] = do_lines(Z, z1, lev_pop, dens, datacache=datacache, settings=settings, z1_drv_in=z1_drv)
   
+    print "Excitation Z=%i z1=%i z1_drv=%i created %i lines"%(Z, z1, z1_drv, len(linelist_exc))
   # remove this as this conversion now done to lev_pop before calling do_lines
     #linelist_exc['epsilon']*=ionfrac[z1-1]*abund
     #continuum['twophot']*=ionfrac[z1-1]*abund
   else:
     lev_pop=numpy.ones(1, dtype=float)*abund*ionfrac[z1-1]
+    print "lev_pop Z=%i, z1=%i,z1_drv=%i, abund*ionfrac=%e, sum(pop)=%e: (ZEROS)"%(Z,z1, z1, abund*ionfrac[z1-1], sum(lev_pop)*abund*ionfrac[z1-1])
+    for i in range(len(lev_pop)):
+       print i, lev_pop[i]
+    
   # calculate some continuum processes: brems
   
   if settings['Bremsstrahlung'] ==True:
@@ -3062,8 +3293,8 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
     continuum['brems']=numpy.zeros(len(ebins)-1, dtype=float)
 
   # now look at the neighbouring ions
-  z1_drv=z1*1
-  if z1>2:
+#  z1_drv=z1*1
+  if z1_drv>1:
     z1=z1_drv-1
     # do the DR satellite lines
     if settings['DRSatellite']:
@@ -3098,19 +3329,19 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
     
     
     if sum(tmpdrlevrates) + sum(tmprrlevrates)>0:
+      print "initial_lev_pop", lev_pop
       levpop_recomb=calc_recomb_popn(lev_pop, Z, z1,\
                                       z1_drv, te, dens, drlevrates,\
                                       rrlevrates,\
                                       datacache=datacache, settings=settings)
+      print "final_lev_pop", lev_pop
                                       
-      print "levpop_recomb Z=%i, z1=%i,z1_drv=%i:"%(Z,z1, z1_drv)
-      for i in range(len(levpop_recomb)):
-        print i, levpop_recomb[i]
       #zzz=raw_input()
       linelist_rec, tmptwophot = \
                do_lines(Z, z1, levpop_recomb , dens, datacache=datacache, settings=settings, z1_drv_in=z1_drv)
       continuum['twophot']+= tmptwophot
       
+      print "linelist_rec Z=%i, z1=%i,z1_drv=%i, nlines=%i:"%(Z,z1, z1_drv, len(linelist_rec))
       
 
   # now do the ionizing cases
@@ -3118,7 +3349,7 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
   if z1_drv < Z:
     z1=z1_drv+1
     lev_pop_parent = lev_pop*1.0
-    
+    print "Sum lev_pop_parent[1:] = "%sum(lev_pop_parent[1:])
     while (sum(lev_pop_parent[1:]) > 1e-40) &\
           (z1 <= Z):
       
@@ -3131,14 +3362,13 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
       lev_pop=calc_ioniz_popn(lev_pop_parent, Z, z1, z1_drv, te, dens, \
                              settings=settings, datacache=datacache, \
                              do_xi=do_xi)
-
-#      print "levpop_ionized Z=%i, z1=%i,z1_drv=%i:"%(Z,z1, z1_drv)
-#      for i in range(len(lev_pop)):
-#       print i, lev_pop[i]
+      
       lev_pop[lev_pop<const.MIN_LEVPOP] = 0.0
       if sum(lev_pop[1:]) > 0:
         linelist_ion_tmp, tmptwophot = \
                do_lines(Z, z1, lev_pop, dens, datacache=datacache, settings=settings,   z1_drv_in=z1_drv)
+        print "linelist_ion Z=%i, z1=%i,z1_drv=%i, nlines=%i:"%(Z,z1, z1_drv, len(linelist_ion_tmp))
+
         linelist_ion = numpy.append(linelist_ion, linelist_ion_tmp)
         continuum['twophot']+=tmptwophot
 
@@ -3178,7 +3408,18 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
 #  fname = 'dump_%i_%i.pkl'%(Z,z1_drv)
 #  pickle.dump(ret, open(fname, 'wb'))
 #  print "wrote %s"%(fname)
-  
+  if settings['WriteIon']==True:
+    ret = {}
+    ret['lines'] = linelist
+    ret['continuum'] = linelist
+    ret['pseudocont'] = linelist
+    ret['ionfrac'] = linelist
+    ret['te'] = te
+    ret['dens'] = dens
+    ret['settings'] = settings
+    ret['abund'] = abund
+    fname = settings['WriteIonFname']+'.pkl'
+    pickle.dump(ret, open(fname, 'wb'))
   return linelist, continuum, pseudocont
 
 #-----------------------------------------------------------------------
@@ -3269,3 +3510,66 @@ def compress_continuum(xin, yin, tolerance, minval = 0.0):
     
   
   return xout, yout
+
+
+def wrap_ion_directly(fname, ind, Z, z1):
+  # read in the file
+  settings = parse_par_file(fname)
+
+
+
+  te = make_vector(settings['LinearTemp'], \
+                   settings['TempStart'], \
+                   settings['TempStep'], \
+                   settings['NumTemp'])
+
+  if settings['TempUnits']=='keV':
+    te /= pyatomdb.atomdb.KBOLTZ
+
+
+  dens = make_vector(settings['LinearDens'], \
+                     settings['DensStart'], \
+                     settings['DensStep'], \
+                     settings['NumDens'])
+
+  ite = ind /len(dens)
+  idens = ind%len(dens)
+  print ite, idens
+  Te = te[ite]
+  Dens = dens[idens]
+
+  if settings['Ionization']=='NEI':
+    z1list = range(1, Z+2)
+    ionfrac = numpy.ones(len(z1list), dtype=float)
+
+  elif settings['Ionization']=='CIE':
+    z1list = range(1, Z+2)
+
+    # time to calculate the ionization balance
+    if settings['UseIonBalanceTable']:
+      # read the ionization balance table
+      ionfrac = atomdb.get_ionfrac(os.path.expandvars(settings['IonBalanceTable']), Z, te)
+    else:
+      # calculate the ionization balance
+      ionftmp = calc_full_ionbal(te, 1e14, Te_init=te, Zlist=[Z], extrap=True)
+      ionfrac = ionftmp[Z]
+
+  else:
+    print "ERROR: settings['Ionization'] must be CIE or NEI, not %s"%(settings['Ionization'])
+
+
+  abundfile = atomdb.get_filemap_file('abund',\
+                                      Z,\
+                                      False,\
+                                      fmapfile=settings['FileMap'],\
+                                      atomdbroot=os.path.expandvars('$ATOMDB'),\
+                                      misc=True)
+
+  abundances = atomdb.get_abundance(abundfile, settings['Abundances'])
+  abund=abundances[Z]
+
+  # update the output filename
+  settings['WriteIonFname'] +="Z_%i_z1_%i_iT_%iiN_%i"%(Z,z1,ite,idens)
+  
+  
+  x=run_apec_ion(settings, Te, Dens, Z, z1, ionfrac, abund)
