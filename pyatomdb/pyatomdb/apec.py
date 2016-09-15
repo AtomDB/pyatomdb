@@ -64,7 +64,7 @@ def calc_full_ionbal(Te, tau=1e14, init_pop=False, Te_init=False, Zlist=False, t
           (teunits)
 
   # input checking
-  if Te_init != False:
+  if not util.keyword_check(Te_init):
     if teunit.lower() == 'kev':
       kT_init = Te_init*1.0
     elif teunit.lower() == 'ev':
@@ -77,7 +77,8 @@ def calc_full_ionbal(Te, tau=1e14, init_pop=False, Te_init=False, Zlist=False, t
   if not Zlist:
     Zlist = range(1,29)
 
-  if (not Te_init) & (not init_pop) & (not cie):
+  if (not util.keyword_check(Te_init)) & (not util.keyword_check(init_pop)) &\
+     (not util.keyword_check(cie)):
     print "Warning: you have not specified an initial temperature or "+\
           "ion population: assuming everything is neutral"
     init_pop={}
@@ -86,7 +87,7 @@ def calc_full_ionbal(Te, tau=1e14, init_pop=False, Te_init=False, Zlist=False, t
       init_pop[Z][0] = 1.0
 
 
-  if (Te_init!=False) & (init_pop!=False):
+  if (util.keyword_check(Te_init)!=False) & (util.keyword_check(init_pop)!=False):
     print "Warning: you have specified both an initial temperature and "+\
           "ion population: using ion population"
 
@@ -100,9 +101,12 @@ def calc_full_ionbal(Te, tau=1e14, init_pop=False, Te_init=False, Zlist=False, t
       if cie:
         kT_init=kT
       for z1 in range(1,Z+1):
-        ionrate[z1-1], recrate[z1-1] = \
+        tmp = \
           atomdb.get_ionrec_rate(kT_init, False,  Te_unit='keV', \
                      Z=Z, z1=z1, datacache=datacache, extrap=extrap)
+        print tmp
+        
+        ionrate[z1-1], recrate[z1-1]=tmp
       # now solve
       init_pop[Z] = solve_ionbal(ionrate, recrate)
 
@@ -1639,17 +1643,17 @@ def run_apec_element(settings, te, dens, Z):
 
   
   z1_drv_list = numpy.arange(1,Z+2, dtype=int)
-#  for z1_drv in range(1, Z+2):
-#    
-#    tmplinelist, tmpcontinuum, tmppseudocont = run_apec_ion(settings, te, dens, Z, z1_drv, ionfrac, abund)
-#    linelist = numpy.append(linelist, tmplinelist)
-#    contlist[z1_drv] = tmpcontinuum
-#    pseudolist[z1_drv] = tmppseudocont
-  out = Parallel(n_jobs=4, max_nbytes=1e2)(delayed(run_apec_ion)(settings, te, dens,Z,z1_drv,ionfrac,abund) for z1_drv in range(1,Z+2))
-  for ii,i in enumerate(out):
-    linelist = numpy.append(linelist, i[0])
-    contlist[ii+1] = i[1]
-    pseudolist[ii+1] = i[2]
+  for z1_drv in range(1, Z+2):
+    
+    tmplinelist, tmpcontinuum, tmppseudocont = run_apec_ion(settings, te, dens, Z, z1_drv, ionfrac, abund)
+    linelist = numpy.append(linelist, tmplinelist)
+    contlist[z1_drv] = tmpcontinuum
+    pseudolist[z1_drv] = tmppseudocont
+#  out = Parallel(n_jobs=4, max_nbytes=1e2)(delayed(run_apec_ion)(settings, te, dens,Z,z1_drv,ionfrac,abund) for z1_drv in range(1,Z+2))
+  #for ii,i in enumerate(out):
+    #linelist = numpy.append(linelist, i[0])
+    #contlist[ii+1] = i[1]
+    #pseudolist[ii+1] = i[2]
 
   # now merge these together.
   if settings['Ionization']=='CIE':
@@ -3513,6 +3517,7 @@ def compress_continuum(xin, yin, tolerance, minval = 0.0):
 
 
 def wrap_ion_directly(fname, ind, Z, z1):
+  import time
   # read in the file
   settings = parse_par_file(fname)
 
@@ -3551,7 +3556,7 @@ def wrap_ion_directly(fname, ind, Z, z1):
       ionfrac = atomdb.get_ionfrac(os.path.expandvars(settings['IonBalanceTable']), Z, te)
     else:
       # calculate the ionization balance
-      ionftmp = calc_full_ionbal(te, 1e14, Te_init=te, Zlist=[Z], extrap=True)
+      ionftmp = calc_full_ionbal(Te, 1e14, Te_init=Te, Zlist=[Z], extrap=True)
       ionfrac = ionftmp[Z]
 
   else:
@@ -3569,7 +3574,17 @@ def wrap_ion_directly(fname, ind, Z, z1):
   abund=abundances[Z]
 
   # update the output filename
-  settings['WriteIonFname'] +="Z_%i_z1_%i_iT_%iiN_%i"%(Z,z1,ite,idens)
-  
+  settings['WriteIonFname'] ="Z_%i_z1_%i_iT_%iiN_%i.pkl"%(Z,z1,ite,idens)
+  settings['HDUIndex'] = ind
+  settings['Te_used'] = Te
+  settings['Ne_used'] = Dens
   
   x=run_apec_ion(settings, Te, Dens, Z, z1, ionfrac, abund)
+  
+  ret = {}
+  ret['settings'] = settings
+  ret['data'] = x
+  fname = settings['OutputFileStem']+'_'+settings['WriteIonFname']
+  pickle.dump(ret, open(fname,'wb'))
+  print "wrote file %s"%(fname)
+  print "Finished cleanly at %s"%(time.asctime())
