@@ -2178,42 +2178,42 @@ def calc_ionrec_ci(cidat, Te, extrap=False, ionpot=False):
 #    return ci
 
   # See Arnaud \& Rothenflug, 1985 A&ASS 60, 425
+  if len(ici) > 0:
+    if (cidat['par_type'] == const.CI_YOUNGER):
+      T_eV = 1.e3*const.KBOLTZ*Te[ici]
+      x = cidat['ionrec_par'][0][ici]/T_eV
+      i = numpy.where(x <=30.0)[0]
+      if len(i) > 0:
+        f1_val = f1_fcn(x[i])
+        ci[ici[i]] = (numpy.exp(-x[i])/x[i])*\
+              ( cidat['ionrec_par'][1]*( 1 - x[i]*f1_val ) +
+                cidat['ionrec_par'][2]*( 1 + x[i] - x[i]*(x[i]+2)*f1_val )+
+                cidat['ionrec_par'][3]*f1_val +
+                cidat['ionrec_par'][4]*x[i]*f2_fcn(x[i]) )
 
-  if (cidat['par_type'] == const.CI_YOUNGER):
-    T_eV = 1.e3*const.KBOLTZ*Te[ici]
-    x = cidat['ionrec_par'][0][ici]/T_eV
-    i = numpy.where(x <=30.0)[0]
-    if len(i) > 0:
-      f1_val = f1_fcn(x[i])
-      ci[ici[i]] = (numpy.exp(-x[i])/x[i])*\
-            ( cidat['ionrec_par'][1]*( 1 - x[i]*f1_val ) +
-              cidat['ionrec_par'][2]*( 1 + x[i] - x[i]*(x[i]+2)*f1_val )+
-              cidat['ionrec_par'][3]*f1_val +
-              cidat['ionrec_par'][4]*x[i]*f2_fcn(x[i]) )
-
-    ci[ici] *= 6.69e-07/(T_eV*numpy.sqrt(T_eV))
+      ci[ici] *= 6.69e-07/(T_eV*numpy.sqrt(T_eV))
 
 
-  elif (((cidat['par_type'] >= const.INTERP_IONREC_RATE_COEFF) &
-         (cidat['par_type'] <= const.INTERP_IONREC_RATE_COEFF + const.MAX_IONREC))|
-        ((cidat['par_type'] >= const.INTERP_IONREC_RATE_OPEN) &
-         (cidat['par_type'] <= const.INTERP_IONREC_RATE_OPEN + const.MAX_IONREC))|
-        ((cidat['par_type'] >= const.INTERP_IONREC_RATE_INC_MIN) &
-         (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MIN + const.MAX_IONREC))|
-        ((cidat['par_type'] >= const.INTERP_IONREC_RATE_INC_MAX) &
-         (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MAX + const.MAX_IONREC))):
+    elif (((cidat['par_type'] >= const.INTERP_IONREC_RATE_COEFF) &
+           (cidat['par_type'] <= const.INTERP_IONREC_RATE_COEFF + const.MAX_IONREC))|
+          ((cidat['par_type'] >= const.INTERP_IONREC_RATE_OPEN) &
+           (cidat['par_type'] <= const.INTERP_IONREC_RATE_OPEN + const.MAX_IONREC))|
+          ((cidat['par_type'] >= const.INTERP_IONREC_RATE_INC_MIN) &
+           (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MIN + const.MAX_IONREC))|
+          ((cidat['par_type'] >= const.INTERP_IONREC_RATE_INC_MAX) &
+           (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MAX + const.MAX_IONREC))):
 
-    ci[ici] = interpolate_ionrec_rate(cidat,Te[ici])
+      ci[ici] = interpolate_ionrec_rate(cidat,Te[ici])
 
-  elif ((cidat['par_type']> const.CI_DERE) &\
-        (cidat['par_type']<= const.CI_DERE+20)):
-    npts = cidat['par_type']-const.CI_DERE
-    ci[ici] = calc_ci_dere(Te[ici], ionpot, cidat['Temperature'][:npts], \
-                           cidat['ionrec_par'][:npts])
+    elif ((cidat['par_type']> const.CI_DERE) &\
+          (cidat['par_type']<= const.CI_DERE+20)):
+      npts = cidat['par_type']-const.CI_DERE
+      ci[ici] = calc_ci_dere(Te[ici], ionpot, cidat['Temperature'][:npts], \
+                             cidat['ionrec_par'][:npts])
     
     
-  else:
-    print "Unknown CI type: %i"%(cidat['par_type'])
+    else:
+      print "Unknown CI type: %i"%(cidat['par_type'])
 
 
   # now see if extrappolation is required:
@@ -2301,7 +2301,7 @@ def calc_ci_dere(Te, ionpot, Tscal, Upsscal):
   """
   from scipy import interpolate
   from scipy.special import exp1  
-
+  
   tin, wasvec = util.make_vec(Te)
   tinscal = tin*const.KBOLTZ*1000/ionpot
 
@@ -2310,6 +2310,7 @@ def calc_ci_dere(Te, ionpot, Tscal, Upsscal):
   xin = (1 - numpy.log10(f) / numpy.log10(tinscal+f))
   xdat = Tscal
   ydat = Upsscal
+
   tck = interpolate.splrep(xdat,ydat)
   yout = interpolate.splev(xin,tck)
   R = tinscal**(-0.5) * ionpot**(-1.5) * exp1(1/tinscal)*yout
@@ -2477,31 +2478,31 @@ def calc_ionrec_dr(cidat, Te, extrap=False):
   dr[:] = numpy.nan
   dr[idr] = 0.0
 
+  if len(idr) > 0:
+    # Mazzotta
+    if (cidat['par_type'] == const.DR_MAZZOTTA):
+      T_eV = 1.e3*const.KBOLTZ*Te[idr]
+      dr[idr] = (cidat['par_type'][0]/(T_eV**1.5))  * \
+           (cidat['par_type'][5]*numpy.exp(-cidat['par_type'][1]/T_eV) +\
+            cidat['par_type'][6]*numpy.exp(-cidat['par_type'][2]/T_eV) +\
+            cidat['par_type'][7]*numpy.exp(-cidat['par_type'][3]/T_eV) +\
+            cidat['par_type'][8]*numpy.exp(-cidat['par_type'][4]/T_eV))
+  
+    elif (cidat['par_type'] == const.DR_BADNELL):
+      dr[idr] = dr_badnell(Te[idr], cidat['ionrec_par'])
+  
+    elif (((cidat['par_type'] >= const.INTERP_IONREC_RATE_COEFF) &
+         (cidat['par_type'] <= const.INTERP_IONREC_RATE_COEFF + const.MAX_IONREC))|
+        ((cidat['par_type'] >= const.INTERP_IONREC_RATE_OPEN) &
+         (cidat['par_type'] <= const.INTERP_IONREC_RATE_OPEN + const.MAX_IONREC))|
+        ((cidat['par_type'] >= const.INTERP_IONREC_RATE_INC_MIN) &
+         (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MIN + const.MAX_IONREC))|
+        ((cidat['par_type'] >= const.INTERP_IONREC_RATE_INC_MAX) &
+         (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MAX + const.MAX_IONREC))):
+      dr[idr] = interpolate_ionrec_rate(cidat,Te[idr])
 
-  # Mazzotta
-  if (cidat['par_type'] == const.DR_MAZZOTTA):
-    T_eV = 1.e3*const.KBOLTZ*Te[idr]
-    dr[idr] = (cidat['par_type'][0]/(T_eV**1.5))  * \
-         (cidat['par_type'][5]*numpy.exp(-cidat['par_type'][1]/T_eV) +\
-          cidat['par_type'][6]*numpy.exp(-cidat['par_type'][2]/T_eV) +\
-          cidat['par_type'][7]*numpy.exp(-cidat['par_type'][3]/T_eV) +\
-          cidat['par_type'][8]*numpy.exp(-cidat['par_type'][4]/T_eV))
-
-  elif (cidat['par_type'] == const.DR_BADNELL):
-    dr[idr] = dr_badnell(Te[idr], cidat['ionrec_par'])
-
-  elif (((cidat['par_type'] >= const.INTERP_IONREC_RATE_COEFF) &
-       (cidat['par_type'] <= const.INTERP_IONREC_RATE_COEFF + const.MAX_IONREC))|
-      ((cidat['par_type'] >= const.INTERP_IONREC_RATE_OPEN) &
-       (cidat['par_type'] <= const.INTERP_IONREC_RATE_OPEN + const.MAX_IONREC))|
-      ((cidat['par_type'] >= const.INTERP_IONREC_RATE_INC_MIN) &
-       (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MIN + const.MAX_IONREC))|
-      ((cidat['par_type'] >= const.INTERP_IONREC_RATE_INC_MAX) &
-       (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MAX + const.MAX_IONREC))):
-    dr[idr] = interpolate_ionrec_rate(cidat,Te[idr])
-
-  else:
-    print "calc_ionrec_rate: DR Recombination type %i not recognized" %(cidat['par_type'])
+    else:
+      print "calc_ionrec_rate: DR Recombination type %i not recognized" %(cidat['par_type'])
 
   # now extrappolate if required
   if extrap:
@@ -3269,7 +3270,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
 
   elif dtype=='RR':
     cidat = colldata[1].data[index]
-    rr = calc_ionrec_rr(cidat,Te, extrap=force_extrap)
+    rr = calc_ionrec_rr(cidat,Te_arr, extrap=force_extrap)
     if sum(numpy.isnan(rr))>0:
       if not silent:
         print "calc_ionrec_rate: RR(%10s -> %10s): Te out of range min->max=%e->%e:"%\
@@ -3291,7 +3292,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
 
   elif dtype=='XR':
     cidat = colldata[1].data[index]
-    xr = calc_ionrec_rr(cidat,Te, extrap=force_extrap)
+    xr = calc_ionrec_rr(cidat,Te_arr, extrap=force_extrap)
     if sum(numpy.isnan(xr))>0:
       if not silent:
 
@@ -3350,7 +3351,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                          delta_E/1e3, Te_arr, Ztmp, degl, degu)
 
     else:
-      xi = calc_ionrec_ci(cidat,Te, extrap=force_extrap)
+      xi = calc_ionrec_ci(cidat,Te_arr, extrap=force_extrap)
       if (xi < 0.0):
         print "calc_ionrec_rate: CI(%10s -> %10s,T=%9.3e) = %8g"%\
                   (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\

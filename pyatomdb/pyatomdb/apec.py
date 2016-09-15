@@ -3353,7 +3353,7 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
   if z1_drv < Z:
     z1=z1_drv+1
     lev_pop_parent = lev_pop*1.0
-    print "Sum lev_pop_parent[1:] = "%sum(lev_pop_parent[1:])
+    print "Sum lev_pop_parent[1:] = %e"%(sum(lev_pop_parent[1:]))
     while (sum(lev_pop_parent[1:]) > 1e-40) &\
           (z1 <= Z):
       
