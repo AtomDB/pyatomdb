@@ -117,104 +117,104 @@ def extract_n(conf_str):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 
-def read_filemap(filemap=False, atomdbroot=False):
-  """
-  Reads AtomDB filemap data into dictionary
+#def read_filemap(filemap=False, atomdbroot=False):
+  #"""
+  #Reads AtomDB filemap data into dictionary
 
-  Parameters
-  ----------
-  filemap : str
-    Name of filemap file to read. If zero length, use "$ATOMDB/filemap"
-  atomdbroot : str
-    Replace any $ATOMDB in the file names with this. If not provided,
-    use "ATOMDB" environment variable instead
+  #Parameters
+  #----------
+  #filemap : str
+    #Name of filemap file to read. If zero length, use "$ATOMDB/filemap"
+  #atomdbroot : str
+    #Replace any $ATOMDB in the file names with this. If not provided,
+    #use "ATOMDB" environment variable instead
 
-  Returns
-  -------
-    dict
-      dictionary listing all the filenames for each different datatype.
-      Files separated into "misctypes" for abundance and bremsstrahlung files,
-      and 'ionfiles', which are then split by element, ion, and datatype, e.g.
-      ret['ionfiles'][6][5]['lv'] contains the energy level (lv) data for
-      carbon V.
-  """
+  #Returns
+  #-------
+    #dict
+      #dictionary listing all the filenames for each different datatype.
+      #Files separated into "misctypes" for abundance and bremsstrahlung files,
+      #and 'ionfiles', which are then split by element, ion, and datatype, e.g.
+      #ret['ionfiles'][6][5]['lv'] contains the energy level (lv) data for
+      #carbon V.
+  #"""
 
-  if not(atomdbroot):
-    try:
-      atomdbroot = os.environ['ATOMDB']
-    except KeyError:
-      print '*** ERROR: atomdbroot not set, use environment variable ATOMDB or '+\
-          'pass atomdbroot to read_filemap'
-      return False
+  #if not(atomdbroot):
+    #try:
+      #atomdbroot = os.environ['ATOMDB']
+    #except KeyError:
+      #print '*** ERROR: atomdbroot not set, use environment variable ATOMDB or '+\
+          #'pass atomdbroot to read_filemap'
+      #return False
 
-  if not(filemap):
-    filemap = atomdbroot+'/filemap'
-  if not os.path.exists(filemap):
-    print "*** ERROR: Filemap %s does not exist, cannot fetch file" %(filemap)
-    return False
+  #if not(filemap):
+    #filemap = atomdbroot+'/filemap'
+  #if not os.path.exists(filemap):
+    #print "*** ERROR: Filemap %s does not exist, cannot fetch file" %(filemap)
+    #return False
 
-  f = open(filemap,'r')
+  #f = open(filemap,'r')
 
-  filedtype = numpy.dtype({'names':['Z','z1','ec','lv','ir','pc','dr',\
-                                    'la','em','pi','ai'],\
-                           'formats':[int, int, '|S160','|S160','|S160',\
-                                      '|S160','|S160','|S160','|S160',\
-                                      '|S160','|S160','|S160']})
+  #filedtype = numpy.dtype({'names':['Z','z1','ec','lv','ir','pc','dr',\
+                                    #'la','em','pi','ai'],\
+                           #'formats':[int, int, '|S160','|S160','|S160',\
+                                      #'|S160','|S160','|S160','|S160',\
+                                      #'|S160','|S160','|S160']})
 
-  miscdtype = numpy.dtype({'names':['misc_type','file'],\
-                           'formats':[int, '|S160']})
+  #miscdtype = numpy.dtype({'names':['misc_type','file'],\
+                           #'formats':[int, '|S160']})
 
-  ret = {}
-  ret['ionfiles'] = numpy.zeros(0, dtype=filedtype)
-  ret['miscfiles'] = numpy.zeros(0, dtype=miscdtype)
+  #ret = {}
+  #ret['ionfiles'] = numpy.zeros(0, dtype=filedtype)
+  #ret['miscfiles'] = numpy.zeros(0, dtype=miscdtype)
 
 
-  for i in f:
-    splt = i.split()
-    fname = re.sub('\$ATOMDB',atomdbroot,splt[3])
-    Z_tmp = int(splt[1])
-    z1_tmp = int(splt[2])
+  #for i in f:
+    #splt = i.split()
+    #fname = re.sub('\$ATOMDB',atomdbroot,splt[3])
+    #Z_tmp = int(splt[1])
+    #z1_tmp = int(splt[2])
 
-    if Z_tmp < 1:
-      # in this case, we have a "misc" datatype, not corresponding to a particular ion
-      misc_type = int(splt[0])
-      misc_file = fname
-      ret['miscfiles'] = numpy.append(ret['miscfiles'], numpy.array((misc_type, misc_file),\
-                                                                    dtype=miscdtype))
+    #if Z_tmp < 1:
+      ## in this case, we have a "misc" datatype, not corresponding to a particular ion
+      #misc_type = int(splt[0])
+      #misc_file = fname
+      #ret['miscfiles'] = numpy.append(ret['miscfiles'], numpy.array((misc_type, misc_file),\
+                                                                    #dtype=miscdtype))
 
-    else:
-      j = numpy.where((ret['ionfiles']['Z']==Z_tmp) & \
-                      (ret['ionfiles']['z1']==z1_tmp))[0]
-      if len(j)==0:
-        j = len(ret['ionfiles'])
+    #else:
+      #j = numpy.where((ret['ionfiles']['Z']==Z_tmp) & \
+                      #(ret['ionfiles']['z1']==z1_tmp))[0]
+      #if len(j)==0:
+        #j = len(ret['ionfiles'])
 
-        ret['ionfiles'] = numpy.append(ret['ionfiles'], numpy.zeros(1,\
-                                                                    dtype=filedtype))
-        ret['ionfiles']['Z'][j]=Z_tmp
-        ret['ionfiles']['z1'][j]=z1_tmp
-      else:
-        j = j[0]
+        #ret['ionfiles'] = numpy.append(ret['ionfiles'], numpy.zeros(1,\
+                                                                    #dtype=filedtype))
+        #ret['ionfiles']['Z'][j]=Z_tmp
+        #ret['ionfiles']['z1'][j]=z1_tmp
+      #else:
+        #j = j[0]
 
-      if int(splt[0]) == 1:
-        ret['ionfiles']['ir'][j] = fname
-      if int(splt[0]) == 2:
-        ret['ionfiles']['lv'][j] = fname
-      if int(splt[0]) == 3:
-        ret['ionfiles']['la'][j] = fname
-      if int(splt[0]) == 4:
-        ret['ionfiles']['ec'][j] = fname
-      if int(splt[0]) == 5:
-        ret['ionfiles']['pc'][j] = fname
-      if int(splt[0]) == 6:
-        ret['ionfiles']['dr'][j] = fname
-      if int(splt[0]) == 7:
-        ret['ionfiles']['em'][j] = fname
-      if int(splt[0]) == 8:
-        ret['ionfiles']['pi'][j] = fname
-      if int(splt[0]) == 9:
-        ret['ionfiles']['ai'][j] = fname
-#      if int(splt[0]) == 10:
-#        cilist[j] = fname
+      #if int(splt[0]) == 1:
+        #ret['ionfiles']['ir'][j] = fname
+      #if int(splt[0]) == 2:
+        #ret['ionfiles']['lv'][j] = fname
+      #if int(splt[0]) == 3:
+        #ret['ionfiles']['la'][j] = fname
+      #if int(splt[0]) == 4:
+        #ret['ionfiles']['ec'][j] = fname
+      #if int(splt[0]) == 5:
+        #ret['ionfiles']['pc'][j] = fname
+      #if int(splt[0]) == 6:
+        #ret['ionfiles']['dr'][j] = fname
+      #if int(splt[0]) == 7:
+        #ret['ionfiles']['em'][j] = fname
+      #if int(splt[0]) == 8:
+        #ret['ionfiles']['pi'][j] = fname
+      #if int(splt[0]) == 9:
+        #ret['ionfiles']['ai'][j] = fname
+##      if int(splt[0]) == 10:
+##        cilist[j] = fname
 
 
 #  ret={}
@@ -438,18 +438,121 @@ def f2_fcn(x):
 
 
 def dr_mazzotta(Te, c):
-  KBOLTZ = 8.617385e-8
-  T_eV = 1.e3*KBOLTZ*Te
+  T_eV = 1.e3*const.KBOLTZ*Te
   dr = (c[0]/(T_eV**1.5))*(c[5]*numpy.exp(-c[1]/T_eV) +\
                                c[6]*numpy.exp(-c[2]/T_eV) +\
                                c[7]*numpy.exp(-c[3]/T_eV) +\
                                c[8]*numpy.exp(-c[4]/T_eV))
   return dr
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 
+
+def dr_badnell(Te, c):
+  """
+  Convert data from Badnell constants into a DR Rate
+  
+  Parameters
+  ----------
+  Te : float or array(float)
+    Electron temperature[s] in K
+  
+  c : array
+    Constants from DR rates. Stored as alternating pairs in AtomDB, so 
+    c1,e1,c2,e2,c3,e3 etc in the IONREC_PAR column
+    
+  Returns
+  -------
+  float
+    DR rate in cm^3 s-1
+  
+  References
+  ----------
+  See http://amdpp.phys.strath.ac.uk/tamoc/DATA/DR/
+  """  
+  
+  Te_in, wasvec = util.make_vec(Te)
+  
+  ret = numpy.zeros(len(Te_in))
+  for i in range(len(c)/2):
+    if c[2*i] != 0.0:
+      print "i=%i, C=%e, E=%e, -E/T=%e"%(i,c[2*i], c[2*i+1], -c[2*i+1]/Te_in[0]),
+      ret += c[2*i] * numpy.exp(-c[2*i+1]/Te_in)
+      print "calc[0] = %e"%(c[2*i] * numpy.exp(-c[2*i+1]/Te_in[0]))
+  ret *= Te_in**-1.5
+  
+
+      
+  print "c = ", c
+  
+  for i in range(len(Te_in)):
+    print "dr_badnell at Te=%e: %e"%(Te_in[i], ret[i])
+    
+    
+  if wasvec==False:
+    ret=ret[0]
+  
+  
+  return ret
+  
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
+
+def rr_badnell(Te, c):
+  """
+  Convert data from Badnell constants into a RR Rate
+  
+  Parameters
+  ----------
+  Te : float or array(float)
+    Electron temperature[s] in K
+  
+  c : array
+    Constants from DR rates. Stored as alternating pairs in AtomDB, so 
+    c1,e1,c2,e2,c3,e3 etc in the IONREC_PAR column
+    
+  Returns
+  -------
+  float
+    RR rate in cm^3 s-1
+  
+  References
+  ----------
+  See http://amdpp.phys.strath.ac.uk/tamoc/DATA/RR/
+  """  
+  
+  Te_in, wasvec = util.make_vec(Te)
+  
+  ret = numpy.zeros(len(Te_in))
+  
+  A = c[0]
+  B = c[1]
+  T0 = c[2]
+  T1=c[3]
+  C = c[4]
+  T2 = c[5]
+  
+  if C != 0:
+    B += C*numpy.exp(-T2/Te_in)
+  
+  ret = A/ ((Te_in/T0)**0.5*\
+            (1+(Te_in/T0)**0.5)**(1-B) *\
+            (1+(Te_in/T1)**0.5)**(1+B))
+  
+  if wasvec==False:
+    ret=ret[0]
+  
+  return ret
+
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+
+
+
 def addline(xbins, yvals, wv, amp, dx):
 
   # create the cdf
@@ -2058,7 +2161,7 @@ def interpolate_ionrec_rate(cidat,Te, force_extrap=False):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 
-def calc_ionrec_ci(cidat, Te, extrap=False):
+def calc_ionrec_ci(cidat, Te, extrap=False, ionpot=False):
   from scipy import interpolate
   ci = numpy.zeros(len(Te), dtype=float)
   ci[(Te< cidat['min_temp']) | \
@@ -2090,6 +2193,7 @@ def calc_ionrec_ci(cidat, Te, extrap=False):
 
     ci[ici] *= 6.69e-07/(T_eV*numpy.sqrt(T_eV))
 
+
   elif (((cidat['par_type'] >= const.INTERP_IONREC_RATE_COEFF) &
          (cidat['par_type'] <= const.INTERP_IONREC_RATE_COEFF + const.MAX_IONREC))|
         ((cidat['par_type'] >= const.INTERP_IONREC_RATE_OPEN) &
@@ -2101,6 +2205,13 @@ def calc_ionrec_ci(cidat, Te, extrap=False):
 
     ci[ici] = interpolate_ionrec_rate(cidat,Te[ici])
 
+  elif ((cidat['par_type']> const.CI_DERE) &\
+        (cidat['par_type']<= const.CI_DERE+20)):
+    npts = cidat['par_type']-const.CI_DERE
+    ci[ici] = calc_ci_dere(Te[ici], ionpot, cidat['Temperature'][:npts], \
+                           cidat['ionrec_par'][:npts])
+    
+    
   else:
     print "Unknown CI type: %i"%(cidat['par_type'])
 
@@ -2113,7 +2224,8 @@ def calc_ionrec_ci(cidat, Te, extrap=False):
     if len(ilow) > 0:
       # calculate the value at Te_min
       Te_min = numpy.array([cidat['min_temp']])
-      cimin = calc_ionrec_ci(cidat, Te_min)
+      
+      cimin = calc_ionrec_ci(cidat, Te_min, ionpot=ionpot)
       # if log of this is < 46.0, this is a small number, just repeat this
       if numpy.log(cimin[0])<46.0:
         ci[ilow]=cimin
@@ -2122,7 +2234,8 @@ def calc_ionrec_ci(cidat, Te, extrap=False):
       # and use to construct a good second derivative.
       else:
         tetmp = numpy.logspace(numpy.log10(Te_min), numpy.log10(Te_min)+1,4)
-        citmp=calc_ionrec_ci(cidat, tetmp)
+        
+        citmp=calc_ionrec_ci(cidat, tetmp, ionpot=ionpot)
 
         tetmpl = numpy.log(tetmp)
         citmpl = numpy.log(citmp)
@@ -2151,13 +2264,60 @@ def calc_ionrec_ci(cidat, Te, extrap=False):
     ihigh = numpy.where(Te>cidat['max_temp'])[0]
     if len(ihigh) > 0:
       Te_max = numpy.array([cidat['max_temp']])
-      cimax = calc_ionrec_ci(cidat, Te_max)
+      cimax = calc_ionrec_ci(cidat, Te_max, ionpot=ionpot)
       ci[ihigh]=cimax[0]*(Te_max[0]/Te[ihigh])**0.5
 
 
 
   return ci
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
+def calc_ci_dere(Te, ionpot, Tscal, Upsscal):
+
+  """
+  Calculate the collisional ionization rates using the Dere 2007 method
+  
+  Parameters
+  ----------
+  Te : float or array(float)
+    Electron temperature (K)
+  ionpot : float
+    Ionization potential (eV)
+  Tscal : array(float)
+    scaled temperatures
+  Upsscal : array(float)
+    scaled upsilons
+  
+  Returns
+  -------
+  float or array(float)
+    Ionization rate in cm^3 s^-1
+  
+  References
+  ----------
+  2007A&A...466..771D
+  """
+  from scipy import interpolate
+  from scipy.special import exp1  
+
+  tin, wasvec = util.make_vec(Te)
+  tinscal = tin*const.KBOLTZ*1000/ionpot
+
+  f = 2.0
+  
+  xin = (1 - numpy.log10(f) / numpy.log10(tinscal+f))
+  xdat = Tscal
+  ydat = Upsscal
+  tck = interpolate.splrep(xdat,ydat)
+  yout = interpolate.splev(xin,tck)
+  R = tinscal**(-0.5) * ionpot**(-1.5) * exp1(1/tinscal)*yout
+  
+  if not wasvec:
+    R=R[0]
+  return R
+  
 
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -2195,6 +2355,9 @@ def calc_ionrec_rr(cidat, Te, extrap=False):
     rr[irr] = cidat['ionrec_par'][0]*\
           (Te[irr]/1.e4)**(-1*(cidat['ionrec_par'][1]+\
                           cidat['ionrec_par'][2]*numpy.log10(Te[irr]/1.e4)))
+  # Badnell
+  elif (cidat['par_type'] == const.RR_BADNELL):
+    rr[irr] = rr_badnell(Te[irr],cidat['ionrec_par'])
 
 
   # Now handle 4 different interpolation cases. */
@@ -2288,11 +2451,26 @@ def calc_ionrec_rr(cidat, Te, extrap=False):
 def calc_ionrec_dr(cidat, Te, extrap=False):
   from scipy import interpolate
 
-#  if ((Te < cidat['min_temp']) |(Te > cidat['max_temp'])):
-#    print " DR data is invalid at this temperature, Te=%e, Em_min = %e, Te_max=%e" %\
-#         (Te, cidat['min_temp'],cidat['max_temp'])
-#    dr = 0.0
-#    return dr
+  """
+  Calculate the DR rate at temperature Te for a transition cidat
+  
+  Parameters
+  ----------
+  
+  cidat: array
+    A line from the IR file with the data on the transition to be calcualted
+  Te: array(float)
+    Electron temperature of interest (in K)
+  extrap : bool
+    Whether to perform extrappolation or not
+  
+  
+  Returns
+  -------
+  float
+    The DR rate in cm^3 s^-1
+  """
+  
   dr = numpy.zeros(len(Te))
   # set values outside range to NAN
   idr = numpy.where((Te >= cidat['min_temp']) & (Te <= cidat['max_temp']))[0]
@@ -2308,6 +2486,9 @@ def calc_ionrec_dr(cidat, Te, extrap=False):
           cidat['par_type'][6]*numpy.exp(-cidat['par_type'][2]/T_eV) +\
           cidat['par_type'][7]*numpy.exp(-cidat['par_type'][3]/T_eV) +\
           cidat['par_type'][8]*numpy.exp(-cidat['par_type'][4]/T_eV))
+
+  elif (cidat['par_type'] == const.DR_BADNELL):
+    dr[idr] = dr_badnell(Te[idr], cidat['ionrec_par'])
 
   elif (((cidat['par_type'] >= const.INTERP_IONREC_RATE_COEFF) &
        (cidat['par_type'] <= const.INTERP_IONREC_RATE_COEFF + const.MAX_IONREC))|
@@ -2984,8 +3165,8 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
   elif dtype=='CI':
     cidat = colldata[1].data[index]
 
-    if ((cidat['par_type']>900) & \
-        (cidat['par_type']<=920)):
+    if ((cidat['par_type']>const.INTERP_I_UPSILON) & \
+        (cidat['par_type']<=const.INTERP_I_UPSILON+20)):
 
 
 
@@ -3019,7 +3200,10 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                                  cidat['ionrec_par'],\
                                  delta_E/1e3, Te_arr, Ztmp, degl, degu)
 
-
+    elif ((cidat['par_type']>const.CI_DERE) &\
+          (cidat['par_type']<=const.CI_DERE+20)):
+      ionpot = float(colldata[1].header['IP_DERE'])
+      ci = calc_ionrec_ci(cidat, Te_arr, extrap=force_extrap, ionpot=ionpot)
     else:
       ci = calc_ionrec_ci(cidat,Te_arr, extrap=force_extrap)
       if sum(numpy.isnan(ci))>0:
@@ -3062,7 +3246,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
     return ea
   elif dtype=='DR':
     cidat = colldata[1].data[index]
-    dr = calc_ionrec_dr(cidat,Te, extrap=force_extrap)
+    dr = calc_ionrec_dr(cidat,Te_arr, extrap=force_extrap)
     if sum(numpy.isnan(dr))>0:
       if not silent:
 

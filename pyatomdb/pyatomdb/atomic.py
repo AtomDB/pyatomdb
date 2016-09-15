@@ -15,7 +15,7 @@ import re, numpy
 #
 #  Decription:  Codes for simple atomic data related tasks
 #
-#  Module contents (and 1 line description: see individual modules for more):
+#  Module contcents (and 1 line description: see individual modules for more):
 #
 #     z0toelsymb
 #          Converts z0 to element symbol (eg 6 -> C)
@@ -724,7 +724,10 @@ def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
       for i in range(len(occup)):
         if ((occup[i] == 0) &(occup.sum() < nel)):
   #        print "arse",occup.sum()+4*lnext+2, nel
-          if (occup.sum()+4*lnext+2 <= nel):
+          if (nel-occup.sum()==6) &\
+             (4*lnext+2 != 6):
+            pass
+          elif (occup.sum()+4*lnext+2 <= nel):
   #          print "PING:"
             occup[i] = occup[i] + 4*lnext+2
   #          print occup

@@ -9,7 +9,7 @@ Adam Foster July 17th 2015
 import numpy, os, errno, hashlib
 import requests, urllib, time, subprocess, shutil, wget, glob
 import datetime
-import const, atomic
+import const, atomic, atomdb
 from StringIO import StringIO
 import ftplib
 try:
@@ -1903,3 +1903,62 @@ def keyword_check(keyword):
     return False
   else:
     return True  
+
+
+
+
+
+def write_develop_data(data, filemapfile, Z, z1, ftype, folder, froot):
+  import string
+  
+  """
+  Write the data to the next version of the file. Update the filemap.
+  
+  """
+  
+  # ok. This is hard.
+  
+  # 1 create a new filename
+  #
+  # filename is of type: "folder/APED/elsymb/elsymb_z1/elsymb_z1_ftype_froot_ITERATION.fits"
+  # iteration will be 1 2 3 4 5 etc
+  elsymb = atomic.Ztoelsymb(Z)
+  fname1 = '%s/APED/%s/%s_%i/%s_%i_%s_%s'%\
+           (folder, elsymb.lower(), elsymb.lower(),z1,elsymb.lower(),z1,ftype,froot)
+
+  isunique=False
+  i=1
+  flocation =string.join(fname1.split('/')[:-1],'/')
+  
+  if not os.path.isdir(flocation):
+    mkdir_p(flocation)
+  
+  while not isunique:
+    fname = "%s_%i.fits"%(fname1, i)
+    
+    if not os.path.exists(fname):
+      isunique=True
+    else:
+      i+=1
+  # ok, we have a unique file
+  
+  # check we can update the filemap
+  ret = atomdb.read_filemap(filemap=filemapfile)
+  
+  j = numpy.where((ret['Z']==Z) & \
+                  (ret['z1']==z1))[0]
+  if len(j)==0:
+    print "Hmm... this data doesn't exist?"
+    
+  else:
+    ret[ftype.lower()][j[0]] = fname
+    atomdb.write_filemap(ret, filemapfile)
+    
+    data.writeto(fname)
+
+          
+  
+  
+  
+  
+  
