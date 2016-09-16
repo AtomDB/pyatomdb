@@ -3139,7 +3139,8 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
 #    matrixA['rate'] = numpy.append(matrixA['rate'], -1*matrixA['rate'])
     
     # remove ground level
-    i = matrixA_in['init']>1
+    i = (matrixA_in['init']>1) & (matrixA_in['final']>1)
+    
     matrixA['init'] = matrixA_in['init'][i]
     matrixA['final'] = matrixA_in['final'][i]
     matrixA['rate'] = matrixA_in['rate'][i]
