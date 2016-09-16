@@ -3228,7 +3228,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
 
   elif dtype=='EA':
     cidat = colldata[1].data[index]
-    ea = calc_ionrec_ea(cidat,Te, extrap=force_extrap)
+    ea = calc_ionrec_ea(cidat,Te_arr, extrap=force_extrap)
     if sum(numpy.isnan(ea))>0:
       if not silent:
         print "calc_ionrec_rate: EA(%10s -> %10s): Te out of range min->max=%e->%e:"%\
