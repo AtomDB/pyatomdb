@@ -3570,7 +3570,8 @@ def wrap_ion_directly(fname, ind, Z, z1):
                                       atomdbroot=os.path.expandvars('$ATOMDB'),\
                                       misc=True)
 
-  abundances = atomdb.get_abundance(abundfile, settings['Abundances'])
+  #abundances = atomdb.get_abundance(abundfile, settings['Abundances'])
+  abundances = atomdb.get_abundance()
   abund=abundances[Z]
 
   # update the output filename
