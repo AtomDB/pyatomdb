@@ -2782,7 +2782,7 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
   # sort the levels
     aidat = atomdb.get_data(Z,z1,'AI', settings=settings, datacache=datacache)
     if aidat:
-      ailev = numpy.array(arflib.unique(aidat[1].data['level_init']))-1
+      ailev = numpy.array(util.unique(aidat[1].data['level_init']))-1
       nailev = len(ailev)
       isbound = numpy.ones(nlev, dtype=bool)
       isbound[ailev]=False
@@ -3076,6 +3076,11 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
    gather_rates(Z, z1, T, Ne, datacache=datacache, settings=settings,\
                  do_la=True, do_ai=True, do_ec=False, do_pc=False,\
                  do_ir=False)
+#  tmp = {}
+#  tmp['A']=matrixA_in
+#  tmp['B']=matrixB
+#  pickle.dump(tmp, open('tmp_%i_%i_%i.pkl'%(Z,z1_drv,z1),'wb'))
+
 #  print "Z = %i, z1 = %i, z1_drv = %i"%(Z, z1, z1_drv)
 #  print "MatrixB"
   
@@ -3085,7 +3090,7 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
   
   
   
-  if nlev <= const.NLEV_NOSPARSE:
+  if (nlev <= const.NLEV_NOSPARSE):
     # convert to a regular solver
     matrixA = numpy.zeros([nlev,nlev], dtype=float)
     
@@ -3139,7 +3144,7 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
 #    matrixA['rate'] = numpy.append(matrixA['rate'], -1*matrixA['rate'])
     
     # remove ground level
-    i = (matrixA_in['init']>1) & (matrixA_in['final']>1)
+    i = (matrixA_in['init']>0) & (matrixA_in['final']>0)
     
     matrixA['init'] = matrixA_in['init'][i]
     matrixA['final'] = matrixA_in['final'][i]
