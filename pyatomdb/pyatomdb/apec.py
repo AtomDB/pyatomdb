@@ -3303,6 +3303,7 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
     continuum['brems']=numpy.zeros(len(ebins)-1, dtype=float)
 
   # now look at the neighbouring ions
+  datacache={}
 #  z1_drv=z1*1
   if z1_drv>1:
     z1=z1_drv-1
@@ -3357,6 +3358,7 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
   # now do the ionizing cases
   linelist_ion = numpy.zeros(0,dtype= generate_datatypes('linetype'))
   if z1_drv < Z:
+    datacache={}
     z1=z1_drv+1
     lev_pop_parent = lev_pop*1.0
     print "Sum lev_pop_parent[1:] = %e"%(sum(lev_pop_parent[1:]))
