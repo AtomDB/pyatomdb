@@ -3854,7 +3854,11 @@ def wrap_run_apec_element(settings, te, dens, Z, ite, idens):
     setpicklefname = "Z_%i_z1_%i_iT_%iiN_%i.pkl"%(Z,z1_drv,ite,idens)
     print "loading %s"%(setpicklefname)
     if not os.path.exists('%s/%s'%(settings['OutputFileStem'], setpicklefname)):
-      contlist[z1_drv]=numpy.zeros(settings['NumGrid'], dtype=float)
+      contlist[z1_drv]={}
+      contlist[z1_drv]['rrc']=numpy.zeros(settings['NumGrid'], dtype=float)
+      contlist[z1_drv]['twophot']=numpy.zeros(settings['NumGrid'], dtype=float)
+      contlist[z1_drv]['brems']=numpy.zeros(settings['NumGrid'], dtype=float)
+    
       pseudolist[z1_drv] = numpy.zeros(settings['NumGrid'], dtype=float)
     else:
       dat= pickle.load(open('%s/%s'%(settings['OutputFileStem'], setpicklefname),'rb'))    
