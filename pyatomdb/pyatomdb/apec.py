@@ -3850,8 +3850,8 @@ def wrap_run_apec_element(settings, te, dens, Z, ite, idens):
   ebins = numpy.linspace(0.01,100,100001)
   ecent = (ebins[1:]+ebins[:-1])/2
 
-  for z1 in range(1,Z+2):
-    setpicklefname = "Z_%i_z1_%i_iT_%iiN_%i.pkl"%(Z,z1,ite,idens)
+  for z1_drv in range(1,Z+2):
+    setpicklefname = "Z_%i_z1_%i_iT_%iiN_%i.pkl"%(Z,z1_drv,ite,idens)
     print "loading %s"%(setpicklefname)
     if not os.path.exists('%s/%s'%(settings['OutputFileStem'], setpicklefname)):
       contlist[z1_drv]=numpy.zeros(settings['NumGrid'], dtype=float)
