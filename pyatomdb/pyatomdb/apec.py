@@ -1341,9 +1341,13 @@ def run_apec(fname):
                              'IN EQUILIBRIUM')
       tot_emiss = calc_total_coco(cocodata, settings)
       
-      CHDUdat.header['TOT_COCO']=(tot_emiss,\
-                             'Total Emission (erg cm^3 s^-1)')
-
+      if settings['Ionization']=='CIE':
+        CHDUdat.header['TOT_COCO']=(tot_emiss,\
+                               'Total Emission (erg cm^3 s^-1)')
+      else:
+        CHDUdat.header['TOT_COCO']=(0.0,\
+                               'Total Emission (erg cm^3 s^-1)')
+        
       seccHDUdat['kT'][iseccHDUdat]=te*const.KBOLTZ
       seccHDUdat['EDensity'][iseccHDUdat]= dens
       seccHDUdat['Time'][iseccHDUdat]= 0.0
@@ -1485,6 +1489,12 @@ def continuum_append(a,b):
   return c
 
 def create_lhdu_cie(linedata):
+
+  # sort the data
+  linedata.sort(order=['lambda'])[::-1]
+  linedata.sort(order=['element','ion'], kind='mergesort')
+  
+
   
   cols = []
   cols.append(pyfits.Column(name='Lambda', format='1E', unit="A", array=linedata['lambda']))
@@ -1498,9 +1508,15 @@ def create_lhdu_cie(linedata):
   
   coldefs = pyfits.ColDefs(cols)
   tbhdu = pyfits.BinTableHDU.from_columns(coldefs)
+  print "Created a linelist HDU with %i lines"%(len(tbhdu.data))
   return tbhdu
 
 def create_lhdu_nei(linedata):
+
+  # sort the data
+  linedata.sort(order=['lambda'])[::-1]
+  linedata.sort(order=['element','ion'], kind='mergesort')
+
   
   cols = []
   cols.append(pyfits.Column(name='Lambda', format='1E', unit="A", array=linedata['lambda']))
@@ -1623,25 +1639,16 @@ def run_apec_element(settings, te, dens, Z):
   abundances = atomdb.get_abundance(abundfile, settings['Abundances'])
   abund=abundances[Z]
 
-
-  print "Ionfrac", ionfrac
-  print "Abund", abund
-  
-
   # create placeholders for all the data
   
   linelist = numpy.zeros(0, dtype=generate_datatypes('linetype'))
   contlist = {}
   pseudolist = {}
-
-
-
   
   # now go through each ion and assemble the data
   ebins = numpy.linspace(0.01,100,100001)
   ecent = (ebins[1:]+ebins[:-1])/2
 
-  
   z1_drv_list = numpy.arange(1,Z+2, dtype=int)
   for z1_drv in range(1, Z+2):
     
@@ -1752,8 +1759,11 @@ def generate_nei_outputs(settings, Z, linelist, contlist, pseudolist, ionfrac_ne
     cont[z1]['Cont'] = contin
     cont[z1]['E_Pseudo'] = epseudo
     cont[z1]['Pseudo'] = pseudocont
-    
-    
+  
+  igood[(linelist['lambda']<const.HC_IN_KEV_A /settings['GridMaximum']) |\
+        (linelist['lambda']>const.HC_IN_KEV_A /settings['GridMinimum'])] = False
+         
+  
   linelist = linelist[igood]
 
   ret={}
@@ -3670,7 +3680,7 @@ def wrap_run_apec(fname):
         # append this data to the output
         linedata = numpy.append(linedata, dat['lines'])
         cocodata = continuum_append(cocodata, dat['cont'])
-
+        print "Z=%i, nlines=%i"%(Z, len(dat['lines']))
 
       
       # now make an HDU for all of this
@@ -3678,6 +3688,7 @@ def wrap_run_apec(fname):
         LHDUdat = create_lhdu_cie(linedata)
       elif settings['Ionization']=='NEI':
         LHDUdat = create_lhdu_nei(linedata)
+        
       # now update the headers
       iseclHDUdat=iDens+iTe*settings['NumDens']
       LHDUdat.header['EXTNAME']=("EMISSIVITY","name of this binary table extension")
@@ -3750,8 +3761,12 @@ def wrap_run_apec(fname):
                              'IN EQUILIBRIUM')
       tot_emiss = calc_total_coco(cocodata, settings)
       
-      CHDUdat.header['TOT_COCO']=(tot_emiss,\
-                             'Total Emission (erg cm^3 s^-1)')
+      if  settings['Ionization']=='CIE':
+        CHDUdat.header['TOT_COCO']=(tot_emiss,\
+                               'Total Emission (erg cm^3 s^-1)')
+      else:
+        CHDUdat.header['TOT_COCO']=(0.0,\
+                               'Total Emission (erg cm^3 s^-1)')
 
       seccHDUdat['kT'][iseccHDUdat]=te*const.KBOLTZ
       seccHDUdat['EDensity'][iseccHDUdat]= dens
@@ -3761,15 +3776,6 @@ def wrap_run_apec(fname):
       seccHDUdat['NPseudo'][iseccHDUdat]= max(cocodata['N_Pseudo'])
       
       chdulist.append(CHDUdat)
-
-
-
-
-
-
-
-
-
 
     # make secHDUdat into a fits table
   seclHDU = create_lparamhdu_cie(seclHDUdat)
@@ -3796,18 +3802,22 @@ def wrap_run_apec(fname):
   lhdulist.insert(0,PrilHDU)
   lhdulist.insert(1,seclHDU)
   tmplhdulist = pyfits.HDUList(lhdulist)
-  tmplhdulist.writeto('%s_line.fits'%(fileroot), clobber=True, checksum=True)
-
 
   PricHDU = pyfits.PrimaryHDU()
   chdulist.insert(0,PricHDU)
   chdulist.insert(1,seccHDU)
   tmpchdulist = pyfits.HDUList(chdulist)
+
+  # now add header blurb
+  generate_apec_headerblurb(settings, tmplhdulist, tmpchdulist)
+
+  # write out results
+  tmplhdulist.writeto('%s_line.fits'%(fileroot), clobber=True, checksum=True)
+
   if settings['Ionization']=='CIE':
     tmpchdulist.writeto('%s_coco.fits'%(fileroot), clobber=True, checksum=True)
   elif settings['Ionization']=='NEI':
     tmpchdulist.writeto('%s_comp.fits'%(fileroot), clobber=True, checksum=True)
-
 
 
 
@@ -3877,3 +3887,163 @@ def wrap_run_apec_element(settings, te, dens, Z, ite, idens):
     ionfrac_nei = ionftmp[Z]
     neiout = generate_nei_outputs(settings, Z, linelist, contlist, pseudolist, ionfrac_nei)
     return neiout
+
+def generate_apec_headerblurb(settings, linehdulist, cocohdulist):
+  """
+  Generate all the headers for an apec run, and apply them to the HDUlist.
+  
+  Parameters
+  ----------
+  
+  settings: dict
+    The output of read_apec_parfile
+  hdulist : list or array of fits HDUs
+    The hdus to have headings added.
+  
+  Returns
+  -------
+  None
+  """
+  
+#  import subprocess
+#  label = subprocess.check_output(["git","describe"])
+  hl = linehdulist[0].header
+  hc = cocohdulist[0].header
+  
+  hl.add_comment("FITS (Flexible Image Transport System) format is defined in 'Astronomy")
+  hl.add_comment("and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H")
+  hl.append(("CONTENT",'SPECTRUM','Emission Line Project output'),end=True)
+  hl.append(("FILENAME",'original','Parent File'),end=True)
+  hl.append(("ORIGIN",'APEC','origin of FITS file'),end=True)
+  hl.append(("HDUVERS1",'1.0.0','version of format'),end=True)
+
+
+  hc.add_comment("FITS (Flexible Image Transport System) format is defined in 'Astronomy")
+  hc.add_comment("and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H")
+  hc.append(("CONTENT",'SPECTRUM','Emission Line Project output'),end=True)
+  hc.append(("FILENAME",'original','Parent File'),end=True)
+  hc.append(("ORIGIN",'APEC','origin of FITS file'),end=True)
+  hc.append(("HDUVERS1",'1.0.0','version of format'),end=True)
+
+  
+  fmap = atomdb.read_filemap(settings['FileMap'])
+  ftype_comments={}
+  ftype_comments['ir']='ionization/recombination'
+  ftype_comments['lv']='energy levels'
+  ftype_comments['la']='emission lines'
+  ftype_comments['ec']='electron collisions'
+  ftype_comments['pc']='proton collisions'
+  ftype_comments['dr']='dielectronic satellites'
+  ftype_comments['pi']='photoionization data'
+  ftype_comments['ai']='autoionization data'
+  
+  
+  for Z in settings['Zlist']:
+    for z1 in range(1, Z+1):
+      i = numpy.where((fmap['Z']==Z) & (fmap['z1']==z1))[0]
+      if len(i)==0: continue
+      i = i[0]
+      for ftype in ['ir','lv','la','ec','pc','dr','ci','ai','em','pi']:
+        if fmap[ftype][i]=='': continue
+        if not os.path.exists(fmap[ftype][i]):
+          a=atomdb.get_data(Z,z1,ftype)
+        datsum=pyfits.getval(fmap[ftype][i], 'DATASUM', 1)
+        s='CS%s%02i%02i'%(ftype.upper(), Z,z1)
+        c='Checksum for %s: %s'%(atomic.spectroscopic_name(Z,z1),\
+                                 ftype_comments[ftype])
+        hl.append((s,datsum,c),end=True)
+        hc.append((s,datsum,c),end=True)
+
+  hl.add_comment("*** BEGIN INITIALIZATION VALUES ***", after=len(hl)-1)
+  hl.add_comment("Input Files",after=len(hl)-1)
+  hl.append(('SIONBAL',settings['IonBalanceTable'],'Ionization bal'),end=True)
+  hl.append(('SFILEMAP',settings['FileMap'], 'Filemap file name'), end=True)
+  hl.append(('SABUND_SOURCE',settings['Abundances'], 'Abundance source'), end=True)
+  hl.add_comment('Output Files',after=len(hl)-1)
+  hl.append(('OUTPUT_LINE','','Output line list file'), end=True)
+  hl.append(('SMODELFILE',settings['OutputFileStem'],'Output file head'), end=True)
+  hl.append(('OUTPUT_COCO','','Output compressed continuum file'), end=True)
+  hl.append(('SMODELFILE',settings['OutputFileStem'],'Output file head'), end=True)
+  hl.append(('SMODELNAME',settings['OutputFileStem'],'XSPEC Model Name'), end=True)
+
+  hc.add_comment("*** BEGIN INITIALIZATION VALUES ***",after=len(hl)-1)
+  hc.add_comment("Input Files",after=len(hl)-1)
+  hc.append(('SIONBAL',settings['IonBalanceTable'],'Ionization bal'),end=True)
+  hc.append(('SFILEMAP',settings['FileMap'], 'Filemap file name'), end=True)
+  hc.append(('SABUND_SOURCE',settings['Abundances'], 'Abundance source'), end=True)
+  hc.add_comment('Output Files',after=len(hl)-1)
+  hc.append(('OUTPUT_LINE','','Output line list file'), end=True)
+  hc.append(('SMODELFILE',settings['OutputFileStem'],'Output file head'), end=True)
+  hc.append(('OUTPUT_COCO','','Output compressed continuum file'), end=True)
+  hc.append(('SMODELFILE',settings['OutputFileStem'],'Output file head'), end=True)
+  hc.append(('SMODELNAME',settings['OutputFileStem'],'XSPEC Model Name'), end=True)
+
+  hl.add_comment("Physical Processes",after=len(hl)-1)
+  hl.append(('DO_RRC',settings['RRC'],'Include Radiative Recombination Continuum'), end=True)
+  hl.append(('DO_SATEL',settings['DRSatellite'],'Include Dielectronic Satellite Lines'), end=True)
+  hl.append(('DO_LINES',settings['EmissionLines'],'Include Emission Lines'), end=True)
+  hl.append(('DO_TWOPH',settings['TwoPhoton'],'Two Photon Continuum'), end=True)
+  hl.append(('DO_BREMS',settings['Bremsstrahlung'],'Include Bremsstrahlung Continuum'), end=True)
+  hl.append(('SBREMS_TYPE', settings['BremsType'], 'Bremsstrahlung type'), end=True)
+
+  hc.add_comment("Physical Processes",after=len(hl)-1)
+  hc.append(('DO_RRC',settings['RRC'],'Include Radiative Recombination Continuum'), end=True)
+  hc.append(('DO_SATEL',settings['DRSatellite'],'Include Dielectronic Satellite Lines'), end=True)
+  hc.append(('DO_LINES',settings['EmissionLines'],'Include Emission Lines'), end=True)
+  hc.append(('DO_TWOPH',settings['TwoPhoton'],'Two Photon Continuum'), end=True)
+  hc.append(('DO_BREMS',settings['Bremsstrahlung'],'Include Bremsstrahlung Continuum'), end=True)
+  hc.append(('SBREMS_TYPE', settings['BremsType'], 'Bremsstrahlung type'), end=True)
+
+
+  hl.add_comment('Spectral Binning',after=len(hl)-1)
+  hl.append(('BIN_LIN_ENERGY', settings['LinearGrid'],'Linear energy spacing'), end=True)
+  hl.append(('INUM_E',settings['NumGrid'],'Number of energy bins'), end=True)
+  hl.append(('DE_START', settings['GridMinimum'],'Starting energy bin'),end=True)
+  hl.append(('DE_END', settings['GridMaximum'],'Final energy bin'),end=True)
+  hl.append(('DMIN_EPSILON', settings['MinEpsilon'],'[ph cm^3/s] Minimum output line emissivity'),end=True)
+
+
+  hc.add_comment('Spectral Binning',after=len(hl)-1)
+  hc.append(('BIN_LIN_ENERGY', settings['LinearGrid'],'Linear energy spacing'), end=True)
+  hc.append(('INUM_E',settings['NumGrid'],'Number of energy bins'), end=True)
+  hc.append(('DE_START', settings['GridMinimum'],'Starting energy bin'),end=True)
+  hc.append(('DE_END', settings['GridMaximum'],'Final energy bin'),end=True)
+  hc.append(('DMIN_EPSILON', settings['MinEpsilon'],'[ph cm^3/s] Minimum output line emissivity'),end=True)
+
+  logdens =True
+  if settings['LinearDens']:
+    logdens=False
+
+  logtemp =True
+  if settings['LinearTemp']:
+    logtemp=False
+
+  hl.add_comment('Physical Parameters',after=len(hl)-1)
+  hl.append(('LOG_DENS', logdens, 'Logarithmic density spacing'), end=True)
+  hl.append(('INUM_DENSITIES', settings['NumDens'], 'Number of densities'), end=True)
+  hl.append(('DDENSITY_START',settings['DensStart'],'Starting density'),end=True)
+  hl.append(('DDENSITY_STEP', settings['DensStep'],'Density step size'), end=True)
+  hl.append(('LOG_TEMP', logtemp, 'Logarithmic temperature spacing'), end=True)
+  hl.append(('INUM_TEMP',settings['NumTemp'],'Number of temperatures'), end=True)
+  hl.append(('DTEMP_START',settings['TempStart'],'Starting temperature'), end=True)
+  hl.append(('DTEMP_STEP', settings['TempStep'], 'Temperature step size'), end=True)
+  hl.add_comment('Atoms Included',after=len(hl)-1)
+  for Z in settings['Zlist']:
+    hl.append(('SATOM',atomic.Ztoelsymb(Z), 'Element name'), end=True)
+  hl.add_comment('*** END INITIALIZATION VALUES ***',after=len(hl)-1)
+  
+  hc.add_comment('Physical Parameters',after=len(hl)-1)
+  hc.append(('LOG_DENS', logdens, 'Logarithmic density spacing'), end=True)
+  hc.append(('INUM_DENSITIES', settings['NumDens'], 'Number of densities'), end=True)
+  hc.append(('DDENSITY_START',settings['DensStart'],'Starting density'),end=True)
+  hc.append(('DDENSITY_STEP', settings['DensStep'],'Density step size'), end=True)
+  hc.append(('LOG_TEMP', logtemp, 'Logarithmic temperature spacing'), end=True)
+  hc.append(('INUM_TEMP',settings['NumTemp'],'Number of temperatures'), end=True)
+  hc.append(('DTEMP_START',settings['TempStart'],'Starting temperature'), end=True)
+  hc.append(('DTEMP_STEP', settings['TempStep'], 'Temperature step size'), end=True)
+  hc.add_comment('Atoms Included',after=len(hl)-1)
+  for Z in settings['Zlist']:
+    hc.append(('SATOM',atomic.Ztoelsymb(Z), 'Element name'), end=True)
+  hc.add_comment('*** END INITIALIZATION VALUES ***',after=len(hl)-1)
+  
+    
