@@ -1237,7 +1237,7 @@ def run_apec(fname):
                      settings['NumTemp'])[iTe]
 
     if settings['TempUnits']=='keV':
-      te /= pyatomdb.atomdb.KBOLTZ
+      te /= const.KBOLTZ
 
 
     for iDens in range(settings['NumDens']):
@@ -3861,9 +3861,10 @@ def wrap_run_apec_element(settings, te, dens, Z, ite, idens):
   ecent = (ebins[1:]+ebins[:-1])/2
 
   for z1_drv in range(1,Z+2):
-    setpicklefname = "Z_%i_z1_%i_iT_%iiN_%i.pkl"%(Z,z1_drv,ite,idens)
+    setpicklefname = "%s_Z_%i_z1_%i_iT_%iiN_%i.pkl"%(settings['OutputFileStem'],Z,z1_drv,ite,idens)
     print "loading %s"%(setpicklefname)
-    if not os.path.exists('%s/%s'%(settings['OutputFileStem'], setpicklefname)):
+    if not os.path.exists(setpicklefname):
+      print "Warning: no such file: %s"%(setpicklefname)
       contlist[z1_drv]={}
       contlist[z1_drv]['rrc']=numpy.zeros(settings['NumGrid'], dtype=float)
       contlist[z1_drv]['twophot']=numpy.zeros(settings['NumGrid'], dtype=float)
@@ -3871,7 +3872,7 @@ def wrap_run_apec_element(settings, te, dens, Z, ite, idens):
     
       pseudolist[z1_drv] = numpy.zeros(settings['NumGrid'], dtype=float)
     else:
-      dat= pickle.load(open('%s/%s'%(settings['OutputFileStem'], setpicklefname),'rb'))    
+      dat= pickle.load(open(setpicklefname,'rb'))    
       tmplinelist, tmpcontinuum, tmppseudocont = dat['data']
       linelist = numpy.append(linelist, tmplinelist)
       contlist[z1_drv] = tmpcontinuum
