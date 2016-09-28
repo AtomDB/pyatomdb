@@ -2410,16 +2410,19 @@ def solve_level_pop(init,final,rates,settings):
     
     for i in range(len(init)):
       matrixA[final[i], init[i]] += rates[i]
-      matrixA[init[i], init[i]] -= rates[i]
+      #matrixA[init[i], init[i]] -= rates[i]
 
     # popn conservation
     matrixB[0] = 1.0
     matrixA[0,:] = 1.0
 
+
+        
     # bug-u-fix
     for i in range(1, len(matrixB)):
       if matrixA[i,i] >= 0:
         matrixA[i,i]=-1e10
+        print "Tieing level %i to ground with rate 1e10"%(i) 
     
 #    a = {}
 #    a['A'] = matrixA
@@ -2465,11 +2468,18 @@ def solve_level_pop(init,final,rates,settings):
                                  numpy.ones(nlev, dtype=float))
 
     
+    
 
     A = sparse.coo_matrix((matrixA['rate'],\
                           (matrixA['final'],matrixA['init'])), \
                           shape=(nlev,nlev)).tocsr()
     
+    hasdat = numpy.zeros(len(matrixB), dtype=bool)
+    for i in range(len(hasdat)):
+      if A[i,i]>=0.0
+         A[i,i] = -1e10
+         print "Tieing level %i to ground with rate 1e10"%(i) 
+
     matrixB[0] = 1.0
     tmp={}
     #tmp['A'] = matrixA
@@ -3097,7 +3107,23 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
 #  for i in range(len(matrixB)):
 #    print i, matrixB[i]
     
-  
+  # fix the rates
+  hasdat = numpy.zeros(len(matrixB), dtype=bool)
+  for i in range(len(matrixA_in['init'])):
+    if matrixA_in['init'][i]==matrixA_in['final'][i]:
+      if matrixA_in['rate'][i] >=0.0:
+        matrixA_in['rate'][i] -=1e10
+        print "Tieing level %i to ground with rate 1e10"%(i) 
++#  j = numpy.where(hasdat==False)[0]
++#  if len(j) > 0:
++#    tmpinit=j
++#    tmpfinal=j
++#    tmprate = numpy.zeros(len(j))
++#    tmprate[:]=-1e-10
++#    matrixA_in['init'] = numpy.append(matrixA_in['init'], tmpinit)
++#    matrixA_in['final'] = numpy.append(matrixA_in['final'], tmpfinal)
++#    matrixA_in['rate'] = numpy.append(matrixA_in['rate'], tmprate)
+ 
   
   
   if (nlev <= const.NLEV_NOSPARSE):
