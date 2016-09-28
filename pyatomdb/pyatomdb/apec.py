@@ -3114,15 +3114,15 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
       if matrixA_in['rate'][i] >=0.0:
         matrixA_in['rate'][i] -=1e10
         print "Tieing level %i to ground with rate 1e10"%(i) 
-+#  j = numpy.where(hasdat==False)[0]
-+#  if len(j) > 0:
-+#    tmpinit=j
-+#    tmpfinal=j
-+#    tmprate = numpy.zeros(len(j))
-+#    tmprate[:]=-1e-10
-+#    matrixA_in['init'] = numpy.append(matrixA_in['init'], tmpinit)
-+#    matrixA_in['final'] = numpy.append(matrixA_in['final'], tmpfinal)
-+#    matrixA_in['rate'] = numpy.append(matrixA_in['rate'], tmprate)
+#  j = numpy.where(hasdat==False)[0]
+#  if len(j) > 0:
+#    tmpinit=j
+#    tmpfinal=j
+#    tmprate = numpy.zeros(len(j))
+#    tmprate[:]=-1e-10
+#    matrixA_in['init'] = numpy.append(matrixA_in['init'], tmpinit)
+#    matrixA_in['final'] = numpy.append(matrixA_in['final'], tmpfinal)
+#    matrixA_in['rate'] = numpy.append(matrixA_in['rate'], tmprate)
  
   
   
