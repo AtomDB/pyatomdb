@@ -2476,7 +2476,7 @@ def solve_level_pop(init,final,rates,settings):
     
     hasdat = numpy.zeros(len(matrixB), dtype=bool)
     for i in range(len(hasdat)):
-      if A[i,i]>=0.0
+      if A[i,i]>=0.0:
          A[i,i] = -1e10
          print "Tieing level %i to ground with rate 1e10"%(i) 
 
