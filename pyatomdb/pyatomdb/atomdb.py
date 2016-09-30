@@ -478,19 +478,9 @@ def dr_badnell(Te, c):
   ret = numpy.zeros(len(Te_in))
   for i in range(len(c)/2):
     if c[2*i] != 0.0:
-      print "i=%i, C=%e, E=%e, -E/T=%e"%(i,c[2*i], c[2*i+1], -c[2*i+1]/Te_in[0]),
       ret += c[2*i] * numpy.exp(-c[2*i+1]/Te_in)
-      print "calc[0] = %e"%(c[2*i] * numpy.exp(-c[2*i+1]/Te_in[0]))
   ret *= Te_in**-1.5
   
-
-      
-  print "c = ", c
-  
-  for i in range(len(Te_in)):
-    print "dr_badnell at Te=%e: %e"%(Te_in[i], ret[i])
-    
-    
   if wasvec==False:
     ret=ret[0]
   
