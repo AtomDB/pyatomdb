@@ -3904,7 +3904,7 @@ def wrap_run_apec_element(settings, te, dens, Z, ite, idens):
       nlines = len(tmplinelist)
       print nlines
       
-      ngoodlines = sum(numpy.isfinite(tmplinelist['Epsilon']))
+      ngoodlines = sum(numpy.isfinite(tmplinelist['epsilon']))
       if nlines != ngoodlines:
         print "Bad lines found in %s"%(setpicklefname)
       linelist = numpy.append(linelist, tmplinelist)
