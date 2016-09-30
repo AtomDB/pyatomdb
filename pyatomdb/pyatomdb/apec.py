@@ -1793,7 +1793,7 @@ def generate_nei_outputs(settings, Z, linelist, contlist, pseudolist, ionfrac_ne
     ret['cont']['E_Pseudo'][iz1][:ret['cont']['N_Pseudo'][iz1]] = cont[z1]['E_Pseudo']
     ret['cont']['Pseudo'][iz1][:ret['cont']['N_Pseudo'][iz1]] = cont[z1]['Pseudo']
     
-  return "returning ret['lines'] with length %i"%(len(ret['lines']))
+  print "returning ret['lines'] with length %i"%(len(ret['lines']))
   return ret
   
   
