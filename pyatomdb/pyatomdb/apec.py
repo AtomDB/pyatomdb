@@ -3710,6 +3710,7 @@ def wrap_run_apec(fname):
         print "Calling run_apec_element for Z=%i Te=%e dens=%e at %s"%(Z, te, dens, time.asctime())
         dat = wrap_run_apec_element(settings, te, dens, Z,iTe,iDens)
         # append this data to the output
+        pickle.dump(dat, open('dump_%i.pkl'%(Z),'wb'))
         linedata = numpy.append(linedata, dat['lines'])
         cocodata = continuum_append(cocodata, dat['cont'])
         print "Z=%i, nlines=%i"%(Z, len(dat['lines']))
