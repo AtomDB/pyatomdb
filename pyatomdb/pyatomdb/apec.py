@@ -1514,7 +1514,8 @@ def create_lhdu_cie(linedata):
 def create_lhdu_nei(linedata):
 
   # sort the data
-  linedata.sort(order=['lambda'])[::-1]
+  linedata.sort(order=['lambda'])
+  linedata = linedata[::-1]
   linedata.sort(order=['element','ion'], kind='mergesort')
 
   
@@ -1791,6 +1792,8 @@ def generate_nei_outputs(settings, Z, linelist, contlist, pseudolist, ionfrac_ne
     ret['cont']['N_Pseudo'][iz1] = len(cont[z1]['E_Pseudo'])
     ret['cont']['E_Pseudo'][iz1][:ret['cont']['N_Pseudo'][iz1]] = cont[z1]['E_Pseudo']
     ret['cont']['Pseudo'][iz1][:ret['cont']['N_Pseudo'][iz1]] = cont[z1]['Pseudo']
+    
+  return "returning ret['lines'] with length %i"%(len(ret['lines']))
   return ret
   
   
