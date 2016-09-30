@@ -1719,6 +1719,7 @@ def generate_nei_outputs(settings, Z, linelist, contlist, pseudolist, ionfrac_ne
   cont = {}  
   # now do some weak line filtering
   igood = numpy.ones(len(linelist), dtype=bool)
+  print "initially we have %i lines for Z =%i"%(len(linelist), Z)
   for z1 in range(1, Z+2):
     ionfrac = ionfrac_nei[z1-1]
     mineps = settings['NEIMinEpsilon'][0]
@@ -1729,7 +1730,7 @@ def generate_nei_outputs(settings, Z, linelist, contlist, pseudolist, ionfrac_ne
     for i in range(len(settings['NEIMinFrac'])):
       if ionfrac < settings['NEIMinFrac'][i]:
         mineps = settings['NEIMinEpsilon'][i+1]
-    
+    print "z1 = %i. Ionfrac = %e. mineps = %e"%(z1,ionfrac, mineps)
     
     
     weaklines = linelist[(linelist['element']==Z) &\
@@ -1737,6 +1738,7 @@ def generate_nei_outputs(settings, Z, linelist, contlist, pseudolist, ionfrac_ne
                 (linelist['epsilon']<mineps) &\
                 (linelist['lambda']>const.HC_IN_KEV_A /settings['GridMaximum']) &\
                 (linelist['lambda']<const.HC_IN_KEV_A /settings['GridMinimum'])]
+    print "identified %i weak lines"%(len(weaklines))
     
     for line in weaklines:
       e = const.HC_IN_KEV_A /line['lambda']
@@ -1746,7 +1748,7 @@ def generate_nei_outputs(settings, Z, linelist, contlist, pseudolist, ionfrac_ne
     igood[(linelist['element']==Z) &\
           (linelist['ion_drv']==z1) &\
           (linelist['epsilon']<mineps)] = False
-    
+    print "Filtered by mineps %e: from %i to %i lines"%(mineps, len(igood), sum(igood))
     conttmp = contlist[z1]['rrc']+contlist[z1]['twophot']+contlist[z1]['brems']
 
   
@@ -1763,7 +1765,8 @@ def generate_nei_outputs(settings, Z, linelist, contlist, pseudolist, ionfrac_ne
   igood[(linelist['lambda']<const.HC_IN_KEV_A /settings['GridMaximum']) |\
         (linelist['lambda']>const.HC_IN_KEV_A /settings['GridMinimum'])] = False
          
-  
+  print "Filtering lines on wavelength: keeping %i of %i lines"%\
+        (sum(igood), len(igood))
   linelist = linelist[igood]
 
   ret={}
@@ -3713,6 +3716,7 @@ def wrap_run_apec(fname):
       if settings['Ionization']=='CIE':
         LHDUdat = create_lhdu_cie(linedata)
       elif settings['Ionization']=='NEI':
+        pickle.dump(linedata,open('argh.pkl','wb'))
         LHDUdat = create_lhdu_nei(linedata)
         
       # now update the headers
