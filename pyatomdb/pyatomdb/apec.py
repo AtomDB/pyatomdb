@@ -64,7 +64,7 @@ def calc_full_ionbal(Te, tau=1e14, init_pop=False, Te_init=False, Zlist=False, t
           (teunits)
 
   # input checking
-  if not util.keyword_check(Te_init):
+  if util.keyword_check(Te_init):
     if teunit.lower() == 'kev':
       kT_init = Te_init*1.0
     elif teunit.lower() == 'ev':
@@ -74,6 +74,7 @@ def calc_full_ionbal(Te, tau=1e14, init_pop=False, Te_init=False, Zlist=False, t
     else:
       print "*** ERROR: unknown teunit %s, Must be keV or K. Exiting ***"%\
             (teunits)
+            
   if not Zlist:
     Zlist = range(1,29)
 
@@ -104,12 +105,13 @@ def calc_full_ionbal(Te, tau=1e14, init_pop=False, Te_init=False, Zlist=False, t
         tmp = \
           atomdb.get_ionrec_rate(kT_init, False,  Te_unit='keV', \
                      Z=Z, z1=z1, datacache=datacache, extrap=extrap)
-        print tmp
+        
         
         ionrate[z1-1], recrate[z1-1]=tmp
       # now solve
+      
       init_pop[Z] = solve_ionbal(ionrate, recrate)
-
+      print "initial pop: ", init_pop
   if cie:
     return init_pop
 
@@ -263,8 +265,6 @@ def solve_ionbal(ionrate, recrate, init_pop=False, tau=False):
 
   # return the data
   return Ion_pop
-
-
 
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
@@ -3900,8 +3900,21 @@ def wrap_run_apec_element(settings, te, dens, Z, ite, idens):
     else:
       dat= pickle.load(open(setpicklefname,'rb'))    
       tmplinelist, tmpcontinuum, tmppseudocont = dat['data']
+      # check for NAN
+      nlines = len(tmplinelist)
+      ngoodlines = sum(numpy.isfinite(tmplinelist['Epsilon']))
+      if nlines != ngoodlines:
+        print "Bad lines found in %s"%(setpicklefname)
       linelist = numpy.append(linelist, tmplinelist)
+      for key in tmpcontinuum.keys():
+        tmpncont = len(tmpcontinuum[key])
+        if tmpncont != numpy.isfinite(tmpcontinuum[key]):
+          print "Bad continuum found in %s %s"%(key, setpicklefname)
       contlist[z1_drv] = tmpcontinuum
+
+      tmpncont = len(tmppseudocont)
+      if tmpncont != numpy.isfinite(tmppseudocont):
+        print "Bad pseudocont found in %s"%( setpicklefname)
       pseudolist[z1_drv] = tmppseudocont
 
   # now merge these together.
