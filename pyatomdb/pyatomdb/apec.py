@@ -3902,18 +3902,25 @@ def wrap_run_apec_element(settings, te, dens, Z, ite, idens):
       tmplinelist, tmpcontinuum, tmppseudocont = dat['data']
       # check for NAN
       nlines = len(tmplinelist)
+      print nlines
+      
       ngoodlines = sum(numpy.isfinite(tmplinelist['Epsilon']))
       if nlines != ngoodlines:
         print "Bad lines found in %s"%(setpicklefname)
       linelist = numpy.append(linelist, tmplinelist)
       for key in tmpcontinuum.keys():
         tmpncont = len(tmpcontinuum[key])
-        if tmpncont != numpy.isfinite(tmpcontinuum[key]):
-          print "Bad continuum found in %s %s"%(key, setpicklefname)
+        if tmpncont != sum(numpy.isfinite(tmpcontinuum[key])):
+          print "Bad continuum found in %s %s"%(key, setpicklefname),
+          if key=='rrc':
+            tmpcontinuum['rrc'][numpy.isnan(tmpcontinuum['rrc'])]=0.0
+            print "FIXED",
+          print ""
+            
       contlist[z1_drv] = tmpcontinuum
 
       tmpncont = len(tmppseudocont)
-      if tmpncont != numpy.isfinite(tmppseudocont):
+      if tmpncont != sum(numpy.isfinite(tmppseudocont)):
         print "Bad pseudocont found in %s"%( setpicklefname)
       pseudolist[z1_drv] = tmppseudocont
 

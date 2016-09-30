@@ -4526,7 +4526,13 @@ def rrc_ph_value(E, Z, z1, rrc_ph_factor, IonE, kT, levdat, \
     isiter=False
     E = numpy.array([E])
 
-  igood = numpy.where((-(E - IonE)/kT)>const.MIN_RRC_EXPONENT)[0]
+  igood = numpy.where(((-(E - IonE)/kT)>const.MIN_RRC_EXPONENT)&\
+                       ((-(E - IonE)/kT)<const.MAX_RRC_EXPONENT))[0]
+  
+  ifinite = numpy.isfinite(E[igood]**2*numpy.exp(-(E[igood] - IonE)/kT))
+  #print kT
+  if sum(ifinite)!=len(igood):
+    print "found %i not finite indices!"%(len(igood)-sum(ifinite))
   if levdat['PHOT_TYPE']==const.HYDROGENIC:
     levdat['PHOT_PAR'][0] = levdat['n_quan']
     levdat['PHOT_PAR'][1] = levdat['l_quan']
@@ -4674,7 +4680,6 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
 
   elif pi_type==const.XSTAR:
     # now look into type of xstardata
-
     if not xstardata:
       # get the data
       pidat = get_data(Z, z1, 'PI', settings=settings, datacache=datacache)
