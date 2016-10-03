@@ -3579,7 +3579,7 @@ def wrap_ion_directly(fname, ind, Z, z1):
                    settings['NumTemp'])
 
   if settings['TempUnits']=='keV':
-    te /= pyatomdb.atomdb.KBOLTZ
+    te /= const.KBOLTZ
 
 
   dens = make_vector(settings['LinearDens'], \
@@ -3688,7 +3688,7 @@ def wrap_run_apec(fname):
                      settings['NumTemp'])[iTe]
 
     if settings['TempUnits']=='keV':
-      te /= pyatomdb.atomdb.KBOLTZ
+      te /= const.KBOLTZ
 
 
     for iDens in range(settings['NumDens']):
