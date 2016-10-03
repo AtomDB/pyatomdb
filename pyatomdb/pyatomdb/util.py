@@ -1318,7 +1318,7 @@ def write_la_file(fname, dat, clobber=False):
           comment='Emission line tables', before="TTYPE1")
   hdu1.header.update('ELEMENT', dat['Z'],
           comment='Numer of protons in element', before="TTYPE1")
-  hdu1.header.update('ION_STAT', dat['z1'],
+  hdu1.header.update('ION_STAT', dat['z1']-1,
           comment='ion state (0 = neutral)', before="TTYPE1")
   hdu1.header.update('ION_NAME', atomic.spectroscopic_name(dat['Z'],dat['z1']),
           comment='Ion Name', before="TTYPE1")
@@ -1447,7 +1447,7 @@ def write_ai_file(fname, dat, clobber=False):
           comment='Autoionization data tables', before="TTYPE1")
   hdu1.header.update('ELEMENT', dat['Z'],
           comment='Numer of protons in element', before="TTYPE1")
-  hdu1.header.update('ION_STAT', dat['z1'],
+  hdu1.header.update('ION_STAT', dat['z1']-1,
           comment='ion state (0 = neutral)', before="TTYPE1")
   hdu1.header.update('ION_NAME', atomic.spectroscopic_name(dat['Z'],dat['z1']),
           comment='Ion Name', before="TTYPE1")
@@ -1834,7 +1834,7 @@ def write_ir_file(fname, dat, clobber=False):
           comment='Ionization/Recombinatoin rates', before="TTYPE1")
   hdu1.header.update('ELEMENT', dat['Z'],
           comment='Numer of protons in element', before="TTYPE1")
-  hdu1.header.update('ION_STAT', dat['z1'],
+  hdu1.header.update('ION_STAT', dat['z1']-1,
           comment='ion state (0 = neutral)', before="TTYPE1")
   hdu1.header.update('ION_NAME', atomic.spectroscopic_name(dat['Z'],dat['z1']),
           comment='Ion Name', before="TTYPE1")
@@ -1956,9 +1956,215 @@ def write_develop_data(data, filemapfile, Z, z1, ftype, folder, froot):
     
     data.writeto(fname)
 
-          
+
+def generate_xspec_ionbal_files(Z, filesuffix):
+  """
+  Generate the eigen files that XSPEC uses to calculate the ionizatoin
+  balances
+  
+  Parameters
+  ----------
+  Z : int
+    atomic number of element
+  filesuffix : string
+    the filename will be eigenELSYMB_filesuffix.fits
+  
+  Returns
+  -------
+   none
+   
+  """
+  import scipy.linalg
+  # get the ion & rec rates
+
+  Telist = numpy.logspace(4,9,1251)
+  
+  ionlist = numpy.zeros([len(Telist), Z])
+  reclist = numpy.zeros([len(Telist), Z])
+  
+  # outputs:
+  feqb = numpy.zeros([len(Telist),Z+1])
+  vl_out = numpy.zeros([len(Telist),Z**2])
+  vr_out = numpy.zeros([len(Telist),Z**2])
+  eig_out = numpy.zeros([len(Telist),Z])
+  
+  
+  for z1 in range(1,Z+1):
+    iontmp, rectmp = atomdb.get_ionrec_rate(Telist, False, Z=Z, z1=z1, extrap=True)
+    ionlist[:,z1-1] = iontmp
+    reclist[:,z1-1] = rectmp
+
+
+  for ite in range(len(Telist)):
+    Te = Telist[ite]
+    ion = ionlist[ite,:]
+    rec = reclist[ite,:]
+  
+
+    b = numpy.zeros(Z+1, dtype=numpy.float32)
+    a = numpy.zeros((Z+1,Z+1), dtype=numpy.float32)
+
+
+    for iZ in range(0,Z):
+      a[iZ,iZ] -= (ion[iZ])
+      a[iZ+1,iZ] += (ion[iZ])
+
+      a[iZ,iZ+1] += (rec[iZ])
+      a[iZ+1,iZ+1] -= (rec[iZ])
+
+    # conservation of population
+    for iZ in range(0,Z+1):
+      a[0,iZ]=1.0
+    b[0]=1.0
+
+    c = numpy.linalg.solve(a,b)
+    c[0] = 1-sum(c[1:])
+    c[c<1e-10]=0.0
+    feqb[ite] = c
+
+    ZZ=len(ion)+1
+    ndim=ZZ
+    AA = numpy.zeros((ndim-1,ndim-1), dtype=numpy.float32)
+    # populate with stuff
+
+    for iCol in range(ndim-1):
+      for iRow in range(ndim-1):
+
+        if (iRow==0):
+          if (iCol==0):
+            if (Z>2):
+              AA[0,iCol] = -(ion[0] + ion[1] + rec[0])
+            else:
+              AA[0,iCol] = -(ion[0] + rec[0])
+
+  
+          if (iCol==1): AA[0,iCol] = rec[1] - ion[0]
+          if (iCol>1):
+            AA[0,iCol] = -ion[0]
+        else:
+          if (iRow==iCol+1):  AA[iRow,iCol]= ion[iRow]
+          if (iRow==iCol):
+            if (iRow+2<ndim):
+
+              AA[iRow,iCol]=-(ion[iRow+1]+rec[iRow])
+            else:
+              AA[iRow,iCol]=-rec[iRow]
+
+
+          if (iRow==iCol-1):
+             AA[iRow,iCol]= rec[iRow+1]
+
+
+    wr_la,wi_la,vl_la,vr_la, info=scipy.linalg.lapack.dgeev(AA)
+
+    leftevec = numpy.zeros(Z**2)
+    rightevec = numpy.zeros(Z**2)
+  
+  # The value VL in which is stored is not actually the left eigenvecotr,
+  # but is instead the inverse of vr.
+  
+    vl = numpy.matrix(vr_la)**-1
+  
+
+    for i in range(Z):
+      for j in range(Z):
+        leftevec[i*Z+j] = vl[i,j]
+        rightevec[i*Z+j] = vr_la[j,i]
+
+    vr_out[ite] = rightevec
+    vl_out[ite] = leftevec
+    eig_out[ite] = wr_la
+  
+
+  hdu0 = pyfits.PrimaryHDU()
+  now = datetime.datetime.utcnow()
+
+  hdu0.header.update('DATE', now.strftime('%d/%m/%y'))
+  hdu0.header.update('FILENAME', "Python routine")
+  hdu0.header.update('ORIGIN', "ATOMDB",comment=os.environ['USER']+", AtomDB project")
+  
+  #secondary HDU, hdu1:
+  hdu1 = pyfits.new_table(pyfits.ColDefs(
+        [pyfits.Column(name='FEQB',
+           format='%iD'%(Z+1),
+           array=feqb),
+         pyfits.Column(name='EIG',
+           format='%iD'%(Z),
+           array=eig_out),
+         pyfits.Column(name='VR',
+           format='%iD'%(Z**2),
+           array=vr_out),
+         pyfits.Column(name='VL',
+           format='%iD'%(Z**2),
+           array=vl_out)] ))
+  
+  hdulist = pyfits.HDUList([hdu0,hdu1])
+  hdulist[1].header['EXTNAME']='EIGEN'
+  
+  fname = 'eigen%s_%s.fits'%(atomic.Ztoelsymb(Z).lower(), filesuffix)
+  hdulist.writeto(fname, checksum=True, clobber=True)
+
+
+def make_release_filetree(filemapfile_in, filemapfile_out, replace_source, destination, versionname):
+  """
+  Take an existing filemap, copy the files to the atomdbftp folder as required.
+  
+  Parameters
+  ----------
+  filemapfile : string
+    The filemap file for the new release
+  replace_source : string
+    All new files are in this directory
+  destination : string
+    The folder to store the files in
+  versionname : string
+    The version string for the new files (e.g. 3_0_4)
+  
+  Returns
+  -------
+  None
+  
+  Notes
+  -----
+  This code searches for any files which don't have $ATOMDB in the filename
+  and assumes they are new.
+  
+  It updates the file name to be $ATOMDB/elname/elname_ion/elname_ion_FTYPE_versionname.fits
+  
+  Versionname will have its last number stsripped and replaced with "a".
+  So 3_0_4_2 becomes 3_0_4_a. This reflects that 4-number versions are for revisions of a file
+  under development, while 3 number + letter are for released data.
+  
+  And then copies it to the destination folder, compressing it with gzip.
+  """
+  import re
+  fmap = atomdb.read_filemap(filemapfile_in, atomdbroot='XXX')
+  for i in range(len(fmap['Z'])):
+    for key in ['em','ci','pi','la','ai','ir','ec','lv','pc','dr']:
+      if fmap[key][i] =='': continue
+      if replace_source in fmap[key][i]:
+        fin = fmap[key][i]
+        fmapf = re.sub(replace_source, 'XXX', fin)
+        fmapf = re.sub('%s[^ \t\r\n\v\f]*.fits'%(key.upper()),\
+                '%s_v%s_a.fits'%(key.upper(), versionname),fmapf)
+
+        fout = re.sub('XXX',destination, fmapf)
+        
+        tmp = open(fin, 'rb')
+        tmpd = tmp.read()
+        tmpo = gzip.open(fout+'.gz', 'wb')
+        tmpo.write(tmpd)
+        tmp.close()
+        
+        fmap[key][i] = fmapf
+        print "update %s to %s to %s"%(fin, fmapf, fout)
+#      else:
+        # check if the file exists
+#        if '
+  atomdb.write_filemap(fmap, filemapfile_out, atomdbroot='XXX')
   
   
   
+    
   
   
