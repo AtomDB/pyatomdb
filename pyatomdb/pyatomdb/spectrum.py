@@ -858,8 +858,9 @@ def list_nei_lines(specrange, Te, tau, Te_init=1e4,  lldat=False, linefile=False
                                  Te_init=kT_init, teunit='keV', Zlist=Zlist)
 
   # multiply everything by the appropriate ionization fraction
+  print llist.dtype
   for il in llist:
-    il['Epsilon'] *= ionbal[il['Elem_drv']][il['Ion_drv']-1]
+    il['Epsilon'] *= ionbal[il['Element_drv']][il['Ion_drv']-1]
     
   # filter again based on new epsilon values
   llist=llist[llist['Epsilon']>minepsilon]
