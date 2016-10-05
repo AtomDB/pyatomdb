@@ -481,6 +481,7 @@ def dr_badnell(Te, c):
       ret += c[2*i] * numpy.exp(-c[2*i+1]/Te_in)
   ret *= Te_in**-1.5
   
+    
   if wasvec==False:
     ret=ret[0]
   
@@ -2780,7 +2781,6 @@ def get_ionrec_rate(Te_in, irdat_in, lvdat_in=False, Te_unit='K', \
     return -1
 
   if (z1>=0) &( Z>=0):
-    print z1, Z
     lvdatp1 = get_data(Z,z1+1, 'LV',settings=settings, datacache=datacache)
   elif isinstance(lvdatp1_in, basestring):
     #string (assumed filename)
@@ -4089,7 +4089,7 @@ def get_data(Z, z1, ftype, datacache=False, \
        *           'HBREMS' - Hummer bremstrahlung coefficients
        *           'RBREMS' - relativistic bremstrahlung coefficitients
        *           'IONBAL' - ionization balance tables
-       
+       *           'EIGEN'  - eigenvalue files
        
   filemap : string
     The filemap to use, if you do not want to use the default one.
@@ -4207,12 +4207,25 @@ def get_data(Z, z1, ftype, datacache=False, \
           # This is expected if it's an ionbal file
           
           if ftype.lower()=='ionbal':
-            print "HELLO"
-            fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v2.0.2_ionbal.fits'
+            # conversion here:
+            curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
+
+            if curversion in ['2.0.0', '2.0.1', '2.0.2','3.0.0','3.0.1','3.0.2','3.0.3']:
+              fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v2.0.2_ionbal.fits'
+            elif curversion in ['3.0.4']:
+              fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.4_ionbal.fits'
+          elif ftype.lower()=='eigen':
+            # conversion here:
+            curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
+
+            if curversion in ['2.0.0', '2.0.1', '2.0.2','3.0.0','3.0.1','3.0.2','3.0.3']:
+              fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.fits'%(atomic.Ztoelsymb(Z).lower())
+            elif curversion in ['3.0.4']:
+              fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.4.fits'%(atomic.Ztoelsymb(Z).lower())
           else:
             datacache['data']['misc'][ftype.upper()] = False
 
-        else:
+        if fname!='':
         # Try and open the files in the following order:
         # (1) filename
         # (2) filename+'.gz'
@@ -4237,6 +4250,7 @@ def get_data(Z, z1, ftype, datacache=False, \
                   print "Error trying to open file %s. Not found locally or on"%(fname)+\
                       " server."
                   d=False
+#          datacache['data']['misc'][ftype.upper()] = False
 
 
 
@@ -4294,8 +4308,9 @@ def get_data(Z, z1, ftype, datacache=False, \
     if settings:
       if settings['filemap']:
         fmapfile = settings['filemap']
-      if settings['atomdbroot']:
-        atomdbroot = settings['atomdbroot']
+      if 'atomdbroot' in settings.keys():
+        if settings['atomdbroot']:
+          atomdbroot = settings['atomdbroot']
 
     if ismisc:
 
@@ -4308,8 +4323,32 @@ def get_data(Z, z1, ftype, datacache=False, \
                              atomdbroot=atomdbroot)
 
 
+
+
+
+
+
+#    if ftype.lower()=='ionbal':
+#      fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v2.0.2_ionbal.fits'
+
     if ftype.lower()=='ionbal':
-      fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v2.0.2_ionbal.fits'
+      # conversion here:
+      curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
+
+      if curversion in ['2.0.0', '2.0.1', '2.0.2','3.0.0','3.0.1','3.0.2','3.0.3']:
+        fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v2.0.2_ionbal.fits'
+      elif curversion in ['3.0.4']:
+        fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.4_ionbal.fits'
+
+    elif ftype.lower()=='eigen':
+      # conversion here:
+      curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
+
+      if curversion in ['2.0.0', '2.0.1', '2.0.2','3.0.0','3.0.1','3.0.2','3.0.3']:
+        fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.fits'%(atomic.Ztoelsymb(Z).lower())
+      elif curversion in ['3.0.4']:
+        fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.4.fits'%(atomic.Ztoelsymb(Z).lower())
+
 
     if fname=='':
           # This is expected if it's an ionbal file
@@ -5019,6 +5058,9 @@ def interpol_huntd(x, y, z):
 
   return f
 
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 
 def get_oscillator_strength(Z, z1, upperlev, lowerlev, datacache=False):

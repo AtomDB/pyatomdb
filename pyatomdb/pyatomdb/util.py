@@ -23,7 +23,7 @@ except:
 #
 #  Python Module
 #
-#  Name:        arflib.py
+#  Name:        util.py
 #
 #  Decription:  Python codes that I use.
 #
@@ -37,30 +37,7 @@ except:
 #
 ################################################################################
 
-
-#*******************************************************************************
-#
-#  Routine fig
-#
-#  Differentiates vector y wrt x
-#
-#  input: x,y, lowend=1, highend=1
-#
-#   x - numpy.array of x values
-#   y - numpy.array of y values
-#   lowend - 0,1,2: 0 set dy/dx=0 at low end
-#                   1 set d2y/dx2=0 at low end
-#                   2 set d3y/dx3=0 at low end
-#   highend - 0,1,2: 0 set dy/dx=0 at high end
-#                   1 set d2y/dx2=0 at high end
-#                   2 set d3y/dx3=0 at high end
-#
-#  returns: numpy array of derivatives
-#
-#  First Version:
-#       Adam Foster, 28-Jul-2009
-#
-#*******************************************************************************
+#-------------------------------------------------------------------------------
 
 def figcoords(lowxpix, lowypix, highxpix, highypix, 
                   lowxval, lowyval, highxval, highyval, 
@@ -94,6 +71,7 @@ def figcoords(lowxpix, lowypix, highxpix, highypix,
     yout = 10**yout
   return xout, yout
 
+#-------------------------------------------------------------------------------
 
 def unique(s):
      """Return a list of the elements in s, but without duplicates.
@@ -180,16 +158,30 @@ def unique(s):
              u.append(x)
      return u
      
-     
+#-------------------------------------------------------------------------------
 
 def mkdir_p(path):
-    try:
-        os.makedirs(path)
-    except OSError as exc: # Python >2.5
-        if exc.errno == errno.EEXIST:
-            pass
-        else: raise
+  """
+  Create a directory. If it already exists, do nothing.
+  
+  Parameters
+  ----------
+  path : string
+    The directory to make
+  
+  Returns
+  -------
+  none
+  """
+  
+  try:
+    os.makedirs(path)
+  except OSError as exc: # Python >2.5
+    if exc.errno == errno.EEXIST:
+      pass
+    else: raise
 
+#-------------------------------------------------------------------------------
 
 def question(question, default, multichoice  = []):
   """
@@ -235,6 +227,7 @@ def question(question, default, multichoice  = []):
       ans = default
   return ans
 
+#-------------------------------------------------------------------------------
 
 def record_upload(fname):
   """
@@ -272,6 +265,7 @@ def record_upload(fname):
                       data = postform)
   return
     
+#-------------------------------------------------------------------------------
 
 def md5Checksum(filePath):
   """
@@ -302,7 +296,7 @@ def md5Checksum(filePath):
       m.update(data)
   return m.hexdigest()
 
-
+#-------------------------------------------------------------------------------
 
 def download_atomdb_emissivity_files(adbroot, userid, version):
   """
@@ -386,7 +380,7 @@ def download_atomdb_emissivity_files(adbroot, userid, version):
     
   print "...done"
     
-    
+#-------------------------------------------------------------------------------
     
 def download_atomdb_nei_emissivity_files(adbroot, userid, version):
   """
@@ -469,7 +463,7 @@ def download_atomdb_nei_emissivity_files(adbroot, userid, version):
     
   print "... done"
   
-            
+#-------------------------------------------------------------------------------
 
 def load_user_prefs(adbroot="$ATOMDB"):
   """
@@ -508,6 +502,7 @@ def load_user_prefs(adbroot="$ATOMDB"):
           ret[ls[0].strip()]=ls[1].strip()
   return ret    
 
+#-------------------------------------------------------------------------------
 
 def write_user_prefs(prefs, adbroot="$ATOMDB"):
     """
@@ -542,6 +537,8 @@ def write_user_prefs(prefs, adbroot="$ATOMDB"):
       l.write("%s = %s\n" %(i,prefs[i]))
     l.close()
     return
+
+#-------------------------------------------------------------------------------
 
 def initialize():
   """
@@ -640,8 +637,8 @@ def initialize():
     
     if get_new_nei_files=='y':
       download_atomdb_nei_emissivity_files(adbroot, userid, version)
-      
 
+#-------------------------------------------------------------------------------
 
 def check_version():
   """
@@ -697,11 +694,7 @@ def check_version():
   userprefs['LASTVERSIONCHECK'] = time.time()
   write_user_prefs(userprefs)
 
-
-
-
-
-
+#-------------------------------------------------------------------------------
 
 def switch_version(version):
   """
@@ -833,16 +826,6 @@ def switch_version(version):
         subprocess.call(["tar", "-xvjf", "%s"%(fname)])
 
       print "...done"
-
-
-
-
-
-
-
-
-
-
     os.chdir(os.path.expandvars(re.sub('VERSION',version, "$ATOMDB/tmp/atomdb_vVERSION")))
 
 
@@ -905,6 +888,7 @@ def switch_version(version):
     a.close()
   os.chdir(startdir)
 
+#-------------------------------------------------------------------------------
 
 def make_vec(d):
   """
@@ -934,7 +918,7 @@ def make_vec(d):
     
   return d,isvec
 
-
+#-------------------------------------------------------------------------------
 
 def write_lv_file(fname, dat, clobber=False):
   """
@@ -1177,9 +1161,7 @@ def write_lv_file(fname, dat, clobber=False):
 
   print "file written: "+fname
 
-
-
-
+#-------------------------------------------------------------------------------
 
 def write_la_file(fname, dat, clobber=False):
   """
@@ -1351,9 +1333,7 @@ def write_la_file(fname, dat, clobber=False):
 
   print "file written: "+fname
 
-
-
-
+#-------------------------------------------------------------------------------
 
 def write_ai_file(fname, dat, clobber=False):
   """
@@ -1483,7 +1463,7 @@ def write_ai_file(fname, dat, clobber=False):
 
   print "file written: "+fname
 
-
+#-------------------------------------------------------------------------------
 
 def write_ec_file(fname, dat, clobber=False):
   """
@@ -1658,6 +1638,7 @@ def write_ec_file(fname, dat, clobber=False):
     hdulist.writeto(fname, clobber=clobber)
   print "file written: "+fname
 
+#-------------------------------------------------------------------------------
 
 def write_ir_file(fname, dat, clobber=False):
   """
@@ -1904,9 +1885,7 @@ def keyword_check(keyword):
   else:
     return True  
 
-
-
-
+#-------------------------------------------------------------------------------
 
 def write_develop_data(data, filemapfile, Z, z1, ftype, folder, froot):
   import string
@@ -1956,8 +1935,9 @@ def write_develop_data(data, filemapfile, Z, z1, ftype, folder, froot):
     
     data.writeto(fname)
 
+#-------------------------------------------------------------------------------
 
-def generate_xspec_ionbal_files(Z, filesuffix):
+def generate_xspec_ionbal_files(Z, filesuffix, settings = False):
   """
   Generate the eigen files that XSPEC uses to calculate the ionizatoin
   balances
@@ -1968,6 +1948,14 @@ def generate_xspec_ionbal_files(Z, filesuffix):
     atomic number of element
   filesuffix : string
     the filename will be eigenELSYMB_filesuffix.fits
+  settings : dict
+    This will let you override some standard inputs for get_data:
+
+    * settings['filemap']: the filemap to use if you do not want to use
+      the default $ATOMDB/filemap
+
+    * settings['atomdbroot']: If you have files in non-standard locations
+      you can replace $ATOMDB with this value
   
   Returns
   -------
@@ -1990,7 +1978,8 @@ def generate_xspec_ionbal_files(Z, filesuffix):
   
   
   for z1 in range(1,Z+1):
-    iontmp, rectmp = atomdb.get_ionrec_rate(Telist, False, Z=Z, z1=z1, extrap=True)
+    iontmp, rectmp = atomdb.get_ionrec_rate(Telist, False, Z=Z, z1=z1, extrap=True,
+                                            settings=settings)
     ionlist[:,z1-1] = iontmp
     reclist[:,z1-1] = rectmp
 
@@ -2104,17 +2093,21 @@ def generate_xspec_ionbal_files(Z, filesuffix):
   fname = 'eigen%s_%s.fits'%(atomic.Ztoelsymb(Z).lower(), filesuffix)
   hdulist.writeto(fname, checksum=True, clobber=True)
 
+#-------------------------------------------------------------------------------
 
-def make_release_filetree(filemapfile_in, filemapfile_out, replace_source, destination, versionname):
+def make_release_filetree(filemapfile_in, filemapfile_out, \
+                          replace_source, destination, versionname):
   """
   Take an existing filemap, copy the files to the atomdbftp folder as required.
   
   Parameters
   ----------
-  filemapfile : string
-    The filemap file for the new release
+  filemapfile_in : string
+    The existing filemap file for the new release
+  filemapfile_out : string
+    The filename for the produced filemap
   replace_source : string
-    All new files are in this directory
+    All new files are in this directory.
   destination : string
     The folder to store the files in
   versionname : string
@@ -2137,7 +2130,7 @@ def make_release_filetree(filemapfile_in, filemapfile_out, replace_source, desti
   
   And then copies it to the destination folder, compressing it with gzip.
   """
-  import re
+  import re, gzip
   fmap = atomdb.read_filemap(filemapfile_in, atomdbroot='XXX')
   for i in range(len(fmap['Z'])):
     for key in ['em','ci','pi','la','ai','ir','ec','lv','pc','dr']:
@@ -2152,19 +2145,674 @@ def make_release_filetree(filemapfile_in, filemapfile_out, replace_source, desti
         
         tmp = open(fin, 'rb')
         tmpd = tmp.read()
+        print "writing %s ..."%(fout+'.gz'),
         tmpo = gzip.open(fout+'.gz', 'wb')
         tmpo.write(tmpd)
         tmp.close()
+        print "done"
         
         fmap[key][i] = fmapf
-        print "update %s to %s to %s"%(fin, fmapf, fout)
-#      else:
-        # check if the file exists
-#        if '
+
   atomdb.write_filemap(fmap, filemapfile_out, atomdbroot='XXX')
+  print "Wrote filemap %s"%(filemapfile_out)
+
+#-------------------------------------------------------------------------------
+
+def make_linelist(linefile, outfile):
+  """
+  Create atomdb linelist file from line.fits file
+  
+  Parameters
+  ----------
+  
+  linefile : string
+    The filename of the line file
+  outfile : string
+    The output filename of the string
+  
+  Returns
+  -------
+  none
+  
+  """
+  
+  # open the line file
+  d = pyfits.open(linefile)
+
+  # get temperature units
+
+  tunit = d[1].header['TUNIT1']
+
+  # get temperatures
+
+  te = d[1].data.field('kT')
+
+  if tunit.lower()=='kev':
+    te = te /const.KBOLTZ
+
+  nte = len(te)
+
+  linedattype = numpy.dtype({'names':['Lambda',\
+                                      'Lambda_Err',\
+                                      'LambdaTh',\
+                                      'dLambdaTh',\
+                                      'Element',\
+                                      'Ion',\
+                                      'UpperLev',\
+                                      'LowerLev',\
+                                      'Arraysize',\
+                                      'PeakIndex',\
+                                      'Temperature',\
+                                      'Density',\
+                                      'Emissivity',\
+                                      'Emissivity_Err'],\
+                             'formats':[numpy.float,\
+                                        numpy.float,\
+                                        numpy.float,\
+                                        numpy.float,\
+                                        numpy.int,\
+                                        numpy.int,\
+                                        numpy.int,\
+                                        numpy.int,\
+                                        numpy.int,\
+                                        numpy.int,\
+                                        (numpy.float,51),\
+                                        (numpy.float,51),\
+                                        (numpy.float,51),\
+                                        (numpy.float,51)]})
+   
+  tmpdattype =  numpy.dtype({'names':['Lambda',\
+                                      'Lambda_Err',\
+                                      'LambdaTh'],\
+                             'formats':[numpy.float,\
+                                        numpy.float,\
+                                        numpy.float]})
+   
+  # master data
+  ldat_all = numpy.zeros(0, dtype=linedattype)
+
+  for z0 in range(1,31):
+    # go by element
+    print "Starting Element %s"%(atomic.z0toelsymb(z0))
+    ldat_list = {}
+    ildat_list = {}
+    for z1 in range(1,z0+1):
+      ldat_list[z1] = numpy.zeros(1000,dtype=linedattype)
+      ildat_list[z1] = 0
+    
+    tstart = time.time()
+    for it in range(0,nte):
+      i = it + 2
+      print "it = %i, nlines = %i"%(it, len(ldat_list))
+      dens = d[i].header['density']
+      # filter the data by element
+      delem = d[i].data[d[i].data['element']==z0]
+      if len(delem)==0: continue
+      
+      for il in delem:
+        z1 = il['Ion']
+        ildat = ildat_list[z1]
+        imatch = numpy.where((ldat_list[z1]['UpperLev']==il['UpperLev']) &\
+                             (ldat_list[z1]['LowerLev']==il['LowerLev']))[0]
+        if len(imatch)==0:
+          # no match - new line!
+#          tmpkT = numpy.zeros(51, dtype=numpy.float)
+#          tmpkT[0] = te[it]
+#          tmpNe = numpy.zeros(51, dtype=numpy.float)
+#          tmpNe[0] = dens
+#          tmpEmis = numpy.zeros(51, dtype=numpy.float)
+#          tmpEmis[0] = il['Epsilon']
+#          tmpEmiserr = numpy.zeros(51, dtype=numpy.float)
+#          tmpEmiserr[:] = numpy.nan
+#          tmp0 = numpy.float(0)
+
+
+#          z = numpy.zeros(1,dtype=linedattype)
+ #         z['Lambda'] =  il['Lambda']
+#          z['Lambda_Err'] = il['Lambda_Err']
+#          z['Element'] = il['Element']
+#          z['Ion'] = il['Ion']
+#          z['UpperLev'] = il['UpperLev']
+#          z['LowerLev'] = il['LowerLev']
+#          z['Arraysize'] = 1
+#          z['Temperature'] = tmpkT
+#          z['Density'] = tmpNe
+#          z['Emissivity'] = tmpEmis
+#          z['Emissivity_Err'] = tmpEmiserr
+          
+          
+          ldat_list[z1]['Lambda'][ildat] = il['Lambda']
+          ldat_list[z1]['Lambda_Err'][ildat] = il['Lambda_Err']
+          ldat_list[z1]['Element'][ildat] = il['Element']
+          ldat_list[z1]['Ion'][ildat] = il['Ion']
+          ldat_list[z1]['UpperLev'][ildat] = il['UpperLev']
+          ldat_list[z1]['LowerLev'][ildat] = il['LowerLev']
+          ldat_list[z1]['Arraysize'][ildat] = 1
+          ldat_list[z1]['Temperature'][ildat][0] = d[i].header['temperature']
+          ldat_list[z1]['Density'][ildat][0] = dens
+          ldat_list[z1]['Emissivity'][ildat][0]  = il['Epsilon']
+          ldat_list[z1]['Emissivity_Err'][ildat][:]  = numpy.nan
+
+          ildat_list[z1]+=1
+          
+          if ildat_list[z1] == len(ldat_list[z1]):
+            ldat_list[z1] = numpy.append(ldat_list[z1], numpy.zeros(1000, dtype=linedattype))
+          
+        else:
+          # update existing line
+          imatch = imatch[0]
+          ind = ldat_list[z1]['Arraysize'][imatch]
+          ldat_list[z1]['Temperature'][imatch][ind] = d[i].header['temperature']
+          ldat_list[z1]['Density'][imatch][ind] = dens
+          ldat_list[z1]['Emissivity'][imatch][ind] = il['Epsilon']
+          ldat_list[z1]['Arraysize'][imatch] += 1
+    
+    for z1 in ldat_list.keys():
+      ldat_list[z1] = ldat_list[z1][:ildat_list[z1]]
+      ldat_all = numpy.append(ldat_all, ldat_list[z1])
+    tend = time.time()
+    tdiff = tend-tstart
+    print 'Element %s took %d min %d sec'%(atomic.z0toelsymb(z0),\
+                                           int(tdiff)/60, int(tdiff)%60)
+
+  # now go through and sort out the peaks
+  for line in ldat_all:
+    line['PeakIndex'] = numpy.argmax(line['Emissivity'])+1
+  
+  # get number of points
+  maxpoints = numpy.max(ldat_all['Arraysize'])
+  hdu1dat = {}
+  hdu1dat['lambda']      = ldat_all['Lambda']
+  hdu1dat['lambda_err']  = ldat_all['Lambda_Err']
+  hdu1dat['lambdath']    = ldat_all['LambdaTh']
+  hdu1dat['dlambdath']   = ldat_all['dLambdaTh']
+  hdu1dat['element']     = ldat_all['Element']
+  hdu1dat['ion']         = ldat_all['Ion']
+  hdu1dat['upperlev']    = ldat_all['UpperLev']
+  hdu1dat['lowerlev']    = ldat_all['LowerLev']
+  hdu1dat['arraysize']   = ldat_all['Arraysize']
+  hdu1dat['peakindex']   = ldat_all['PeakIndex']
+  hdu1dat['temperature'] = ldat_all['Temperature'][:,:maxpoints]
+  hdu1dat['density']     = ldat_all['Density'][:,:maxpoints]
+  hdu1dat['emissivity']  = ldat_all['Emissivity'][:,:maxpoints]
+  hdu1dat['emissivity_err']= ldat_all['Emissivity_Err'][:,:maxpoints]
+  
+
+  hdu2dat = {}
+  hdu2dat['lambda']    =  hdu1dat['lambda']
+  hdu2dat['lambda_err']=  hdu1dat['lambda_err']
+  hdu2dat['lambdath']  =  hdu1dat['lambdath']
+  hdu2dat['dlambdath'] =  hdu1dat['dlambdath']
+  hdu2dat['element']   =  hdu1dat['element']
+  hdu2dat['ion']       =  hdu1dat['ion']
+  hdu2dat['upperlev']  =  hdu1dat['upperlev']
+  hdu2dat['lowerlev']  =  hdu1dat['lowerlev']
+  hdu2dat['peakemissivity'] = numpy.zeros(len(hdu2dat['lambda']), dtype = float)
+  hdu2dat['peakemissivityerr'] = numpy.zeros(len(hdu2dat['lambda']), dtype = float)
+  hdu2dat['peaktemperature'] = numpy.zeros(len(hdu2dat['lambda']), dtype = float)
+  hdu2dat['peakdensity'] = numpy.zeros(len(hdu2dat['lambda']), dtype = float)
+
+  for i in range(len(hdu2dat['lambda'])):
+    hdu2dat['peakemissivity'][i] = hdu1dat['emissivity'][i,hdu1dat['peakindex'][i]-1]
+    hdu2dat['peakemissivityerr'][i] = hdu1dat['emissivity_err'][i,hdu1dat['peakindex'][i]-1]
+    hdu2dat['peaktemperature'][i] = hdu1dat['temperature'][i,hdu1dat['peakindex'][i]-1]
+    hdu2dat['peakdensity'][i] = hdu1dat['density'][i,hdu1dat['peakindex'][i]-1]
+
+
+
+
+  # start generation of new HDU:
+
+  #primary HDU, hdu0
+  hdu0 = pyfits.PrimaryHDU()
+  now = datetime.datetime.utcnow()
+
+  hdu0.header['DATE']= now.strftime('%d/%m/%y')
+  hdu0.header['CONTENT']= ("Emissivity", "Line emission output")
+  hdu0.header['FILENAME']= (linefile, 'Parent File')
+  hdu0.header['ORIGIN']= ("ATOMDB",os.environ['USER']+", AtomDB project")
+  hdu0.header['HDUCLASS']= ("EMISSIVITY","Line Emission Output")
+  hdu0.header['HDUCLAS1']= ("SHORT_LINE","Line Emission Output")
+  hdu0.header['HDUVERS']= ("1.0.0","Version of datafile")
+
+
+  #secondary HDU, hdu1:
+  hdu1 = pyfits.BinTableHDU.from_columns(pyfits.ColDefs(
+        [pyfits.Column(name='Lambda',
+           format='1E',
+           unit='Angstrom',
+           array=hdu1dat['lambda']),
+         pyfits.Column(name='Lambda_Err',
+           format='1E',
+           unit='Angstrom',
+           array=hdu1dat['lambda_err']),
+         pyfits.Column(name='LambdaTh',
+           format='1E',
+           unit='Angstrom',
+           array=hdu1dat['lambdath']),
+         pyfits.Column(name='dLambdaTh',
+           format='1E',
+           unit='Angstrom',
+           array=hdu1dat['dlambdath']),
+         pyfits.Column(name='Element',
+           format='1J',
+           array=hdu1dat['element']),
+         pyfits.Column(name='Ion',
+           format='1J',
+           array=hdu1dat['ion']),
+         pyfits.Column(name='UpperLev',
+           format='1J',
+           array=hdu1dat['upperlev']),
+         pyfits.Column(name='LowerLev',
+           format='1J',
+           array=hdu1dat['lowerlev']),
+         pyfits.Column(name='ArraySize',
+           format='1J',
+           array=hdu1dat['arraysize']),
+         pyfits.Column(name='PeakIndex',
+           format='1J',
+           array=hdu1dat['peakindex']),
+         pyfits.Column(name='Temperature',
+           format=repr(numpy.max(hdu1dat['arraysize']))+'E',
+                             unit='K',
+           array=hdu1dat['temperature']),
+         pyfits.Column(name='Density',
+           format=repr(numpy.max(hdu1dat['arraysize']))+'E',
+                             unit='cm**-3',
+           array=hdu1dat['density']),
+         pyfits.Column(name='Emissivity',
+           format=repr(numpy.max(hdu1dat['arraysize']))+'E',
+                             unit='photons cm**3 s**-1',
+           array=hdu1dat['emissivity']),
+         pyfits.Column(name='Emissivity_Err',
+           format=repr(numpy.max(hdu1dat['arraysize']))+'E',
+                             unit='photons cm**3 s**-1',
+           array=hdu1dat['emissivity_err'])]
+         ))
+
+
+  hdu1.header['XTENSION']=(hdu1.header['XTENSION'],\
+                           'Written by '+os.environ['USER']+\
+                           now.strftime('%a %Y-%m-%d %H:%M:%S')+ 'UTC')
+  hdu1.header['EXTNAME']='EMISSIVITY'
+  hdu1.header['HDUNAME']=('EMISSIVITY','Spectral emission data')
+  hdu1.header['HDUCLASS']=('CXC', 'Spectral data')
+  hdu1.header['HDUCLAS1']=('PARAMETERS','Line Emissivity per Ion')
+  hdu1.header['LOG_TEMP']=(1,'Temperature Space: 1 if log, 0 if linear')
+  hdu1.header['NUM_TEMP']=(nte,'Number of temperatures in grid')
+  hdu1.header['TEMPSTEP']= (d[0].header['dtemp_step'],\
+                            'Temperature step size, in K or dex')
+  hdu1.header['TEMPSTRT'] = (d[0].header['dtemp_start'],\
+                              'Starting temperature, in K or logK')
+  hdu1.header['HDUVERS1'] = ('1.0.0','version of format')
+
+
+
+
+
+
+
+  #tertiary HDU, hdu2:
+  hdu2 = pyfits.BinTableHDU.from_columns(pyfits.ColDefs(
+        [pyfits.Column(name='Lambda',
+           format='1E',
+           unit='Angstrom',
+           array=hdu2dat['lambda']),
+         pyfits.Column(name='Lambda_Err',
+           format='1E',
+           unit='Angstrom',
+           array=hdu2dat['lambda_err']),
+         pyfits.Column(name='LambdaTh',
+           format='1E',
+           unit='Angstrom',
+           array=hdu2dat['lambdath']),
+         pyfits.Column(name='dLambdaTh',
+           format='1E',
+           unit='Angstrom',
+           array=hdu2dat['dlambdath']),
+         pyfits.Column(name='Element',
+           format='1J',
+           array=hdu2dat['element']),
+         pyfits.Column(name='Ion',
+           format='1J',
+           array=hdu2dat['ion']),
+         pyfits.Column(name='UpperLev',
+           format='1J',
+           array=hdu2dat['upperlev']),
+         pyfits.Column(name='LowerLev',
+           format='1J',
+           array=hdu2dat['lowerlev']),
+         pyfits.Column(name='PeakEmissivity',
+           format='1E',
+                             unit='photons cm**3 s**-1',
+           array=hdu2dat['peakemissivity']),
+         pyfits.Column(name='PeakEmissivityErr',
+           format='1E',
+                             unit='photons cm**3 s**-1',
+           array=hdu2dat['peakemissivityerr']),
+         pyfits.Column(name='PeakTemperature',
+           format='1E',
+                             unit='K',
+           array=hdu2dat['peaktemperature']),
+         pyfits.Column(name='PeakDensity',
+           format='1E',
+                             unit='cm**-3',
+           array=hdu2dat['peakdensity'])]
+         ))
+
+
+  hdu2.header['XTENSION']  =(hdu2.header['XTENSION'],\
+                             'Written by '+os.environ['USER']+\
+                             now.strftime('%a %Y-%m-%d %H:%M:%S')+ 'UTC')
+  hdu2.header['EXTNAME']= 'PEAKEMIS'
+  hdu2.header['HDUNAME']= ('PEAKEMIS', 'Spectral emission data')
+  hdu2.header['HDUCLASS']= ('CXC', 'Spectral data')
+  hdu2.header['HDUCLAS1']=('PARAMETERS','Line Emissivity per Ion')
+  hdu2.header['HDUVERS1']=( '1.0.0','version of format')
+
+
+
+  # combine hdus
+
+  hdulist = pyfits.HDUList([hdu0,hdu1, hdu2])
+
+  # write out file (overwrite any existing file)
+  try:
+    os.remove(outfile)
+  except OSError:
+    pass
+
+  hdulist.writeto(outfile, checksum=True)
+
+  print "file written: "+outfile
+
+#-------------------------------------------------------------------------------
+
+def write_ionbal_file(Te, dens, ionpop, filename, Te_linear = False, dens_linear=False):
+  """
+  Create ionization balance file
+  
+  Inputs
+  ------
+  Te : array(float)
+    temperatures (in K)
+  dens : array(float)
+    electron densities (in cm^-3)
+  ionpop : dict of arrays
+    one entry for each element:
+    ionpop[2] = numpy.array(nion,nte, ndens)
+  filename : str
+    filename to write to
+  Te_linear : bool
+    if true, temperature grid is linear
+  dens_linear : bool
+    if true, density grid is linear
+    
+  """
+
+  # get list of elements
+  Zlist = unique(ionpop.keys())
+  Zlist.sort()
+
+  # ok, have a sorted list of elements
+  n = len(Te)*len(dens)
+  Z_element = numpy.zeros([n,len(Zlist)], dtype=int)
+  Z_el1 = numpy.array(Zlist)
+  nZ = len(Zlist) + sum(Zlist)
+  X_ionpot = numpy.zeros([n, nZ], dtype=float)
+  for i in range(n):
+    Z_element[i,:] =Z_el1
+  
+  iZ = 0
+  for Z in Zlist:
+    X_ionpot[:,iZ:iZ+Z+1] = ionpop[Z]
+    iZ+=Z+1
+  
+  # OK, done!
+  Te_vec = numpy.zeros(n)
+  Ne_vec = numpy.zeros(n)
+  
+  for i in range(len(dens)):
+    for j in range(len(Te)):
+      Te_vec[i*len(Te)+j] = Te[j]
+      Ne_vec[i*len(Te)+j] = dens[i]
+      
   
   
+#  hdu1 = pyfits.TableHDU.from_columns(pyfits.ColDefs(
+#        [pyfits.Column(name='TEMPERATURE',
+#           format='1E',
+#           unit='K',
+#           array=Te_vec),
+#         pyfits.Column(name='DENSITY',
+#           format='1E',
+#           unit='cm**-3',
+#           array=Ne_vec),
+#         pyfits.Column(name='Z_ELEMENT',
+#           format='%iI'%(len(Zlist)),
+#           array=Z_element),
+#         pyfits.Column(name='X_IONPOP',
+#           format='%iE'%(nZ),
+#           array=X_ionpot)]))
+
   
+  hdu1 = pyfits.BinTableHDU.from_columns(pyfits.ColDefs(
+        [pyfits.Column(name='TEMPERATURE',
+           format='1E',
+           unit='K',
+           array=Te_vec),
+         pyfits.Column(name='DENSITY',
+           format='1E',
+           unit='cm**-3',
+           array=Ne_vec),
+         pyfits.Column(name='Z_ELEMENT',
+           format='%iI'%(len(Zlist)),
+           array=Z_element),
+         pyfits.Column(name='X_IONPOP',
+           format='%iE'%(nZ),
+           array=X_ionpot)]))
+  hdu1.header['EXTNAME'] = ('ION_BAL', 'Ionization Balance table')
+  hdu1.header['HDUCLASS'] = ('ION_BAL', 'Ionization Balance table')
+  hdu1.header['HDUVERS1'] = ('1.0.0', 'Version of datafile')
+  if Te_linear:
+    tfirst = Te[0]
+    tdelta = (Te[-1]-Te[0])/(len(Te)-1)
+  else:
+    tfirst = numpy.log10(Te[0])
+    tdelta = (numpy.log10(Te[-1])-numpy.log10(Te[0]))/(len(Te)-1)
+
+  if dens_linear:
+    nfirst = dens[0]
+    if len(dens)==1:
+      ndelta = 0.0
+    else:
+      ndelta = (dens[-1]-dens[0])/(len(dens)-1)
+  else:
+    nfirst = numpy.log10(dens[0])
+    ndelta = (numpy.log10(dens[-1])-numpy.log10(dens[0]))/(len(dens)-1)
     
   
+  hdu1.header['T_FIRST'] = (tfirst, '[K] First temperature')
+  hdu1.header['T_DELTA'] = (tdelta, '[K] Delta temperature')
+  hdu1.header['T_LINEAR'] = (Te_linear, 'Linear (or log) temperature spacing')
+  hdu1.header['T_NUMBER'] = (len(Te), 'Number of temperature grid points')
+  hdu1.header['N_FIRST'] = (nfirst, '[cm**(-3)] First density')
+  hdu1.header['N_DELTA'] = (ndelta, '[cm**(-3)] Delta density')
+  hdu1.header['N_LINEAR'] = (dens_linear, 'Linear (or log) density spacing')
+  hdu1.header['N_NUMBER'] = (len(dens), 'Number of density grid points')
   
+  hdu1.header['N_ELEMEN'] = (len(Zlist), 'Number of elements')
+  hdu1.header['N_IONS'] = (nZ, 'Total number of ion stages')
+  
+  #primary HDU, hdu0
+  hdu0 = pyfits.PrimaryHDU()
+  now = datetime.datetime.utcnow()
+  hdu0.header['DATE']= now.strftime('%d/%m/%y')
+
+  hdulist = pyfits.HDUList([hdu0,hdu1])
+  
+  hdulist.writeto(filename, checksum=True)
+
+
+#-------------------------------------------------------------------------------
+def make_release_tarballs(ciefileroot, neifileroot, filemap, versionname, releasenotes):
+  """
+  Create tarball for exmissivity files for a new release.
+  
+  Parameters
+  ----------
+  ciefileroot : string
+    The path to the CIE line and coco files, with the _line.fits and _coco.fits
+    ommitted.
+  neifileroot : string
+    The path to the NEI line and coco files, with the _line.fits and _coco.fits
+    ommitted.
+  filemap : string
+    The filemap file
+  versionname : string
+    The version string for the new files (e.g. 3.0.4).
+  releasenotes : string
+    The file name for the release notes.
+  
+  Returns
+  -------
+  None
+  """
+
+  import re, gzip, os, shutil, tarfile
+  mkdir_p('tmp')
+  outdir = 'tmp/atomdb_v%s'%(versionname)
+  mkdir_p(outdir)
+
+  shutil.copy2(ciefileroot+'_coco.fits',outdir+'/apec_v%s_coco.fits'%(versionname))
+  shutil.copy2(ciefileroot+'_line.fits',outdir+'/apec_v%s_line.fits'%(versionname))
+  shutil.copy2(filemap,outdir+'/filemap_v%s'%(versionname))
+  shutil.copy2(releasenotes,outdir+'/Release_Notes.txt')
+  f=open(outdir+'/VERSION', 'w')
+  f.write("%s\n"%(versionname))
+  f.close()
+
+  # make the linelist
+  make_linelist(outdir+'/apec_v%s_line.fits'%(versionname), outdir+'/apec_v%s_linelist.fits'%(versionname))
+
+  mycwd = os.getcwd()
+  os.chdir(outdir)
+
+  # make links
+  os.symlink('apec_v%s_coco.fits'%(versionname), 'apec_v%s_coco.fits')
+  os.symlink('apec_v%s_line.fits'%(versionname), 'apec_v%s_line.fits')
+  os.symlink('apec_v%s_linelist.fits'%(versionname), 'apec_v%s_linelist.fits')
+  os.symlink('filemap_v%s'%(versionname), 'filemap')
+
+  # compress
+  os.chdir('..')
+  tar = tarfile.open(name='%s/atomdb_v%s.tar.bz2'%(mycwd,versionname), mode='w:bz2')
+  tar.add('atomdb_v%s'%(versionname))
+  tar.close()
+
+  # make a directory for the nei stuff
+  os.chdir(mycwd)
+  mkdir_p('tmp/nei')
+  outdir = 'tmp/nei/atomdb_v%s'%(versionname)
+  mkdir_p(outdir)
+
+  shutil.copy2(neifileroot+'_comp.fits',outdir+'/apec_v%s_nei_comp.fits'%(versionname))
+  shutil.copy2(neifileroot+'_line.fits',outdir+'/apec_v%s_nei_line.fits'%(versionname))
+  shutil.copy2(filemap,outdir+'/filemap_v%s'%(versionname))
+  shutil.copy2(releasenotes,outdir+'/%s'%(releasenotes))
+  f=open(outdir+'/VERSION', 'w')
+  f.write("%s\n"%(versionname))
+  f.close()
+
+  os.chdir(outdir)
+
+  # make links
+  os.symlink('apec_v%s_coco.fits'%(versionname), 'apec_v%s_coco.fits')
+  os.symlink('apec_v%s_line.fits'%(versionname), 'apec_v%s_line.fits')
+  os.symlink('apec_v%s_linelist.fits'%(versionname), 'apec_v%s_linelist.fits')
+  os.symlink('filemap_v%s'%(versionname), 'filemap')
+
+  # compress
+  os.chdir('..')
+  tar = tarfile.open(name='%s/atomdb_v%s_nei.tar.bz2'%(mycwd,versionname), mode='w:bz2')
+  tar.add('atomdb_v%s'%(versionname))
+  tar.close()
+
+  print "Tarballs written"
+
+
+
+def generate_equilibrium_ionbal_files(filename, settings = False):
+  """
+  Generate the eigen files that XSPEC uses to calculate the ionizatoin
+  balances
+  
+  Parameters
+  ----------
+  filename : string
+    file to write
+  settings : dict
+    This will let you override some standard inputs for get_data:
+
+    * settings['filemap']: the filemap to use if you do not want to use
+      the default $ATOMDB/filemap
+
+    * settings['atomdbroot']: If you have files in non-standard locations
+      you can replace $ATOMDB with this value
+  
+  Returns
+  -------
+   none
+   
+  """
+
+  # get the ion & rec rates
+
+  Telist = numpy.logspace(4,9,501)
+  Nelist = numpy.array([1.0])
+  ionbal = {}
+  for Z in range(1,31):
+    print Z
+    ionlist = numpy.zeros([len(Telist), Z])
+    reclist = numpy.zeros([len(Telist), Z])
+  
+  # outputs:
+    feqb = numpy.zeros([len(Telist),Z+1])
+  
+  
+    for z1 in range(1,Z+1):
+      iontmp, rectmp = atomdb.get_ionrec_rate(Telist, False, Z=Z, z1=z1, extrap=True,
+                                              settings=settings)
+      ionlist[:,z1-1] = iontmp
+      reclist[:,z1-1] = rectmp
+
+
+    for ite in range(len(Telist)):
+      Te = Telist[ite]
+      ion = ionlist[ite,:]
+      rec = reclist[ite,:]
+  
+
+      b = numpy.zeros(Z+1, dtype=numpy.float32)
+      a = numpy.zeros((Z+1,Z+1), dtype=numpy.float32)
+
+ 
+      for iZ in range(0,Z):
+        a[iZ,iZ] -= (ion[iZ])
+        a[iZ+1,iZ] += (ion[iZ])
+
+        a[iZ,iZ+1] += (rec[iZ])
+        a[iZ+1,iZ+1] -= (rec[iZ])
+
+    # conservation of population
+      for iZ in range(0,Z+1):
+        a[0,iZ]=1.0
+      b[0]=1.0
+
+      c = numpy.linalg.solve(a,b)
+      c[0] = 1-sum(c[1:])
+      c[c<1e-10]=0.0
+      feqb[ite] = c
+    ionbal[Z] = feqb
+  
+  write_ionbal_file(Telist, Nelist, ionbal, filename, Te_linear = False, dens_linear=True)

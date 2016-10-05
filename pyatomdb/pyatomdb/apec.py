@@ -1491,7 +1491,6 @@ def continuum_append(a,b):
 def create_lhdu_cie(linedata):
 
   # sort the data
-#  print linedata
   linedata.sort(order=['lambda'])
   linedata = linedata[::-1]
   linedata.sort(order=['element','ion'], kind='mergesort')
@@ -4104,3 +4103,131 @@ def generate_apec_headerblurb(settings, linehdulist, cocohdulist):
   hc.add_comment('*** END INITIALIZATION VALUES ***',after=len(hl)-1)
   
     
+
+
+def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
+                       teunit='K', \
+                       filename=False):
+  """
+  Solve the ionization balance for a range of ions using the eigenvector
+  approach and files as distributed in XSPEC.
+
+  Parameters
+  ----------
+  Z : int
+    atomic number of element
+  Te : float
+    electron temperature, default in K
+  init_pop : float array
+    initial population of ions for non-equlibrium calculations. Will be renormalised to 1.
+  tau : float
+    N_e * t for the non-equilibrium ioniziation
+  Te_init : float
+    initial ionization balance temperature, same units as Te
+  teunit : {'K' , 'keV'}
+    units of temperatures (default K)
+  filename : string
+    Can optionally point directly to the file in question, i.e. to look at older data
+    look at $HEADAS/../spectral/modelData/eigenELSYMB_v3.0.fits.
+    If not set, download from AtomDB FTP site.
+
+  Returns
+  -------
+  final_pop : float array
+    final populations.
+
+  """
+#
+#  Version 0.1 Initial Release
+#  Adam Foster 16th September 2015
+#
+  # first, calculate the equilibrium solution
+
+#  if (init_pop==False) & (tau==False): do_equilib=True
+
+  init_pop_set = util.keyword_check(init_pop)
+  tau_set = util.keyword_check(tau)
+  Te_init_set = util.keyword_check(Te_init)
+  
+  if (not tau_set):
+    # we need to do equilbirum
+    do_equilib = True
+    Te_equilib = Te
+  else:
+    if (not init_pop_set):
+    # we need to do equilbirum
+      do_equilib = True
+      Te_equilib = Te_init
+      if not Te_init_set:
+        print "ERROR: need to specift Te_init or init_pop for NEI calculation"
+        return
+    else:
+      do_equilib=False
+  if (not tau_set):
+    do_nei=False
+  else:
+      do_nei=True
+  
+  if util.keyword_check(filename):
+    # we have a filename specified!
+    fname = os.path.expandvars(fname)
+    if not os.path.isfile(fname):
+      print "Specified file %s does not exist. Exiting"%(fname)
+      return
+    d = pyfits.open(fname)
+  else:
+    d = atomdb.get_data(Z, False, 'eigen')
+
+  telist = numpy.logspace(4,9,1251)
+  
+  if do_equilib:
+    itelist = numpy.argsort((telist-Te_equilib)**2)
+    ite = [min(itelist[:2]), max(itelist[:2])]
+    Tdiff = telist[ite[1]] - telist[ite[0]]
+    if Tdiff > 0.0:
+      factorlow = (telist[ite[1]]-Te_equilib)/Tdiff
+      factorhigh = (Te_equilib-telist[ite[0]])/Tdiff
+      equilib = factorlow * d['EIGEN'].data['FEQB'][ite[0]]+\
+                factorhigh * d['EIGEN'].data['FEQB'][ite[1]]
+    else:
+      equilib = d['EIGEN'].data['FEQB'][ite[0]]
+      
+  
+  if do_nei:
+    if (not init_pop_set):
+      init_pop = equilib
+    
+    Tindex = numpy.argmin((telist-Te)**2)
+    
+    lefteigenvec = numpy.zeros([Z,Z], dtype=float)
+    righteigenvec = numpy.zeros([Z,Z], dtype=float)
+    for i in range(Z):
+      for j in range(Z):
+        lefteigenvec[i,j] = d['EIGEN'].data['VL'][Tindex][i*Z+j]
+        righteigenvec[i,j] = d['EIGEN'].data['VR'][Tindex][i*Z+j]
+        
+    delt = 1.0/(len(telist)-1.0)
+    work = numpy.zeros(Z, dtype=float)
+    work = init_pop[1:] - d['EIGEN'].data['FEQB'][Tindex][1:]
+    fspec = numpy.zeros(Z)
+    for i in range(Z):
+      for j in range(Z):
+        fspec[i] +=lefteigenvec[i][j] * work[j]
+    
+    fspectmp = numpy.matrix(lefteigenvec) * numpy.matrix(work).transpose()
+    worktmp = fspectmp *numpy.exp(d['EIGEN'].data['EIG'][Tindex] * delt * tau)
+
+    frac = numpy.zeros(Z+1)
+    for i in range(Z):
+      for j in range(Z):
+        frac[i+1] += worktmp[j,0]*righteigenvec[j][i]
+      frac[i+1] += d['EIGEN'].data['FEQB'][Tindex][i+1]
+    
+    frac[frac<0.0] = 0.0
+      
+    if sum(frac)< 1.0:
+      frac[0] = 1.0-sum(frac)
+    print "frac:",frac
+    
+  return
+  
