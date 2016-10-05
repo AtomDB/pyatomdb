@@ -1491,7 +1491,9 @@ def continuum_append(a,b):
 def create_lhdu_cie(linedata):
 
   # sort the data
-  linedata.sort(order=['lambda'])[::-1]
+#  print linedata
+  linedata.sort(order=['lambda'])
+  linedata = linedata[::-1]
   linedata.sort(order=['element','ion'], kind='mergesort')
   
 
