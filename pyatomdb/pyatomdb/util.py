@@ -2532,8 +2532,8 @@ def write_ionbal_file(Te, dens, ionpop, filename, Te_linear = False, dens_linear
   """
   Create ionization balance file
   
-  Inputs
-  ------
+  Parameters
+  ----------
   Te : array(float)
     temperatures (in K)
   dens : array(float)
@@ -2655,7 +2655,8 @@ def write_ionbal_file(Te, dens, ionpop, filename, Te_linear = False, dens_linear
 
 
 #-------------------------------------------------------------------------------
-def make_release_tarballs(ciefileroot, neifileroot, filemap, versionname, releasenotes):
+def make_release_tarballs(ciefileroot, neifileroot, filemap, versionname, \
+                          releasenotes, makelinelist=False):
   """
   Create tarball for exmissivity files for a new release.
   
@@ -2673,7 +2674,9 @@ def make_release_tarballs(ciefileroot, neifileroot, filemap, versionname, releas
     The version string for the new files (e.g. 3.0.4).
   releasenotes : string
     The file name for the release notes.
-  
+  makelinelist : bool
+    Remake the line list from the line file. If not specified, assumes linelist
+    file already exists.
   Returns
   -------
   None
@@ -2693,15 +2696,16 @@ def make_release_tarballs(ciefileroot, neifileroot, filemap, versionname, releas
   f.close()
 
   # make the linelist
-  make_linelist(outdir+'/apec_v%s_line.fits'%(versionname), outdir+'/apec_v%s_linelist.fits'%(versionname))
+  if makelinelist:
+    make_linelist(outdir+'/apec_v%s_line.fits'%(versionname), outdir+'/apec_v%s_linelist.fits'%(versionname))
 
   mycwd = os.getcwd()
   os.chdir(outdir)
 
   # make links
-  os.symlink('apec_v%s_coco.fits'%(versionname), 'apec_v%s_coco.fits')
-  os.symlink('apec_v%s_line.fits'%(versionname), 'apec_v%s_line.fits')
-  os.symlink('apec_v%s_linelist.fits'%(versionname), 'apec_v%s_linelist.fits')
+  os.symlink('apec_v%s_coco.fits'%(versionname), 'apec_coco.fits')
+  os.symlink('apec_v%s_line.fits'%(versionname), 'apec_line.fits')
+  os.symlink('apec_v%s_linelist.fits'%(versionname), 'apec_linelist.fits')
   os.symlink('filemap_v%s'%(versionname), 'filemap')
 
   # compress
@@ -2719,7 +2723,7 @@ def make_release_tarballs(ciefileroot, neifileroot, filemap, versionname, releas
   shutil.copy2(neifileroot+'_comp.fits',outdir+'/apec_v%s_nei_comp.fits'%(versionname))
   shutil.copy2(neifileroot+'_line.fits',outdir+'/apec_v%s_nei_line.fits'%(versionname))
   shutil.copy2(filemap,outdir+'/filemap_v%s'%(versionname))
-  shutil.copy2(releasenotes,outdir+'/%s'%(releasenotes))
+  shutil.copy2(releasenotes,outdir+'/Release_Notes.txt')
   f=open(outdir+'/VERSION', 'w')
   f.write("%s\n"%(versionname))
   f.close()
@@ -2727,9 +2731,9 @@ def make_release_tarballs(ciefileroot, neifileroot, filemap, versionname, releas
   os.chdir(outdir)
 
   # make links
-  os.symlink('apec_v%s_coco.fits'%(versionname), 'apec_v%s_coco.fits')
-  os.symlink('apec_v%s_line.fits'%(versionname), 'apec_v%s_line.fits')
-  os.symlink('apec_v%s_linelist.fits'%(versionname), 'apec_v%s_linelist.fits')
+  os.symlink('apec_v%s_nei_comp.fits'%(versionname), 'apec_nei_comp.fits')
+  os.symlink('apec_v%s_nei_line.fits'%(versionname), 'apec_nei_line.fits')
+  #os.symlink('apec_v%s_linelist.fits'%(versionname), 'apec_v%s_linelist.fits')
   os.symlink('filemap_v%s'%(versionname), 'filemap')
 
   # compress
