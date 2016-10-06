@@ -16,7 +16,7 @@ from joblib import Parallel, delayed
 import pylab
 
 def calc_full_ionbal(Te, tau=1e14, init_pop=False, Te_init=False, Zlist=False, teunit='K',\
-                    extrap=False, cie=True):
+                    extrap=False, cie=True, settings=False):
   """
   Calculate the ionization balance for all the elements in Zlist.
 
@@ -104,7 +104,8 @@ def calc_full_ionbal(Te, tau=1e14, init_pop=False, Te_init=False, Zlist=False, t
       for z1 in range(1,Z+1):
         tmp = \
           atomdb.get_ionrec_rate(kT_init, False,  Te_unit='keV', \
-                     Z=Z, z1=z1, datacache=datacache, extrap=extrap)
+                     Z=Z, z1=z1, datacache=datacache, extrap=extrap,\
+                     settings=settings)
         
         
         ionrate[z1-1], recrate[z1-1]=tmp
@@ -2379,8 +2380,8 @@ def solve_level_pop(init,final,rates,settings):
   """
   Solve the level population
   
-  Parameter
-  ---------
+  Parameters
+  ----------
   init : array(int)
     The initial level for each transition
   final : array(int)
@@ -3223,29 +3224,24 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
   ----------
   settings: dictionary
     The settings read from the apec.par file by parse_par_file
-
   te: float
     The electron temperature (K)
-
   dens: float
     The electron density (cm^-3)
-
   Z: int
     The nuclear charge of the element
-  
   z1: int
     The ion charge +1 of the ion
-    
   ionfrac: float
     The fractional abundance of this ion (between 0 and 1)
-  
   abund: float
     The elemental abundance of the element (normalized to H)
 
   Returns
   -------
   dat : dictionary
-    containing:
+    containing::
+    
     linelist : numpy array
       List of line details and emissivities
     continuum : array
@@ -3711,7 +3707,7 @@ def wrap_run_apec(fname):
         print "Calling run_apec_element for Z=%i Te=%e dens=%e at %s"%(Z, te, dens, time.asctime())
         dat = wrap_run_apec_element(settings, te, dens, Z,iTe,iDens)
         # append this data to the output
-        pickle.dump(dat, open('dump_%i.pkl'%(Z),'wb'))
+        #pickle.dump(dat, open('dump_%i.pkl'%(Z),'wb'))
         linedata = numpy.append(linedata, dat['lines'])
         cocodata = continuum_append(cocodata, dat['cont'])
         print "Z=%i, nlines=%i"%(Z, len(dat['lines']))
@@ -3921,9 +3917,8 @@ def wrap_run_apec_element(settings, te, dens, Z, ite, idens):
         tmpncont = len(tmpcontinuum[key])
         if tmpncont != sum(numpy.isfinite(tmpcontinuum[key])):
           print "Bad continuum found in %s %s"%(key, setpicklefname),
-          if key=='rrc':
-            tmpcontinuum['rrc'][numpy.isnan(tmpcontinuum['rrc'])]=0.0
-            print "FIXED",
+#          if key=='rrc':
+#            tmpcontinuum['rrc'][numpy.isnan(tmpcontinuum['rrc'])]=0.0
           print ""
             
       contlist[z1_drv] = tmpcontinuum
