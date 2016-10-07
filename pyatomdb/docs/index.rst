@@ -111,7 +111,7 @@ or for csh, add this to your .cshrc or .cshrc.login::
 If you run the following code, PyAtomDB will download the files you need to get started::
 
   import pyatomdb
-  pyatomdb.util.initalize()
+  pyatomdb.util.initialize()
 
 This will prompt you for an install location (defaulting to `$ATOMDB`)and whether to download the emissivity files. It is suggested that you say yes. It will also ask if you mind sharing anonymous download information with us. We would appreciate it if you say yes, but it is not necessary for the functioning of the software.
 

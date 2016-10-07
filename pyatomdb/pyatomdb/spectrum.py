@@ -112,7 +112,8 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
   lldat = ldat[index].data
   ccdat = cdat[index].data
   
-  if not elements:
+  
+  if not util.keyword_check(elements):
     Zl = util.unique(lldat['element'])
     Zc = util.unique(ccdat['Z'])
     Zlist = util.unique(numpy.append(Zl,Zc))
@@ -120,7 +121,7 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
   else:
     Zlist = elements
   
-  if not abund:
+  if not util.keyword_check(abund):
     abund= numpy.ones(len(Zlist))
 
   lspectrum = numpy.zeros(len(bins)-1, dtype=float)
@@ -129,7 +130,7 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
   for iZ, Z in enumerate(Zlist):
     # ADD  LINES
     lspectrum += add_lines(Z, abund[iZ], lldat, ebins, broadening=broadening, broadenunits=broadenunits)
-    
+    #print Z, abund[iZ]
   for iZ, Z in enumerate(Zlist):
     # ADD  CONTINUUM
     cspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
@@ -857,8 +858,9 @@ def list_nei_lines(specrange, Te, tau, Te_init=1e4,  lldat=False, linefile=False
                                  Te_init=kT_init, teunit='keV', Zlist=Zlist)
 
   # multiply everything by the appropriate ionization fraction
+  print llist.dtype
   for il in llist:
-    il['Epsilon'] *= ionbal[il['Elem_drv']][il['Ion_drv']-1]
+    il['Epsilon'] *= ionbal[il['Element_drv']][il['Ion_drv']-1]
     
   # filter again based on new epsilon values
   llist=llist[llist['Epsilon']>minepsilon]
@@ -1207,7 +1209,7 @@ def broaden_continuum(bins, spectrum, binunits = 'keV', \
           (binunits)
 
   if angstrom:
-    bins = HC_IN_KEV_A/bins[::-1]
+    bins = const.HC_IN_KEV_A/bins[::-1]
   
   # broadening
   if broadening:
@@ -1255,8 +1257,15 @@ def apply_response(spectrum, rmf, arf=False):
   Returns
   -------
   array(float)
+    energy grid (keV) for returned spectrum
+  array(float)
     spectrum folded through the response
   """
+#
+# Update 2016-05-25
+#
+# Changed to return the energy grid and the spectrum, as apparently in some
+# instruments these are not the same as the input energy grid.
 
   if arf:
     if type(arf)==str:
@@ -1270,7 +1279,6 @@ def apply_response(spectrum, rmf, arf=False):
   else:
     res = spectrum*1.0
   
-  ret = numpy.zeros(len(res), dtype=float)
   
   if type(rmf)==str:
     rmfdat = pyfits.open(rmf)
@@ -1280,18 +1288,47 @@ def apply_response(spectrum, rmf, arf=False):
     print "ERROR: unknown rmf type, %s"%(repr(type(rmf)))
     return
   
-  for ibin, i in enumerate(rmfdat['MATRIX'].data):
+  ebins = rmfdat['EBOUNDS'].data['E_MIN']
+  ebins = numpy.append(ebins, rmfdat['EBOUNDS'].data['E_MAX'][-1])
+
+  ret = numpy.zeros(len(ebins)-1, dtype=float)
+
+  try:
+    k=rmfdat.index_of('MATRIX')
+    matrixname = 'MATRIX'
+  except KeyError:
+    try:
+      k=rmfdat.index_of('SPECRESP MATRIX')
+      matrixname = 'SPECRESP MATRIX'
+    except KeyError:
+      print "Cannot find index for matrix in this data"
+      raise
+    
+  for ibin, i in enumerate(rmfdat[matrixname].data):
     if res[ibin]==0.0: continue
     lobound = 0
-    for j in range(len(i['F_CHAN'])):
-      ilo = i['F_CHAN'][j]
+    
+    fchan = i['F_CHAN']
+    nchan = i['N_CHAN']
+    
+    if numpy.isscalar(fchan):
+      fchan = numpy.array([fchan])
+      
+    if numpy.isscalar(nchan):
+      nchan = numpy.array([nchan])
+    
+    for j in range(len(fchan)):
+      ilo = fchan[j]
       if ilo < 0: continue
       
-      ihi = i['F_CHAN'][j] + i['N_CHAN'][j]
+      ihi = fchan[j] + nchan[j]
   
-      ret[ilo:ihi] += res[ibin]*i['MATRIX'][lobound:lobound+i['N_CHAN'][j]]
-      lobound += i['N_CHAN'][j]
-  return ret
+      ret[ilo:ihi] += res[ibin]*i['MATRIX'][lobound:lobound+nchan[j]]
+      lobound += nchan[j]
+
+#  print spectrum[:100]
+#  print ret[:100]
+  return ebins, ret
 
 
 def get_response_ebins(rmf):
@@ -1306,8 +1343,16 @@ def get_response_ebins(rmf):
   Returns
   -------
   array(float)
-    energy bins used. nbins+1 length, with the last item being the final bin
+    input energy bins used. nbins+1 length, with the last item being the final bin
+    This is the array on which the input spectrum should be calculated
   """
+  #
+  # Update 2016-05-25
+  #
+  # Changed return to be the MATRIX, not EBOUNDS
+  # In many instruments these are the same grids, but not all.
+  
+  
   if type(rmf)==str:
     rmfdat = pyfits.open(rmf)
   elif type(rmf) == pyfits.hdu.hdulist.HDUList:
@@ -1315,6 +1360,76 @@ def get_response_ebins(rmf):
   else:
     print "ERROR: unknown rmf type, %s"%(repr(type(rmf)))
     return
-  ret = rmfdat['EBOUNDS'].data['E_MIN']
-  ret = numpy.append(ret, rmfdat['EBOUNDS'].data['E_MAX'][-1])
+#  ret = rmfdat['EBOUNDS'].data['E_MIN']
+#  ret = numpy.append(ret, rmfdat['EBOUNDS'].data['E_MAX'][-1])
+  try:
+    k=rmfdat.index_of('MATRIX')
+    matrixname = 'MATRIX'
+  except KeyError:
+    try:
+      k=rmfdat.index_of('SPECRESP MATRIX')
+      matrixname = 'SPECRESP MATRIX'
+    except KeyError:
+      print "Cannot find index for matrix in this data"
+      raise
+
+
+  ret = rmfdat[matrixname].data['ENERG_LO']
+  ret = numpy.append(ret, rmfdat[matrixname].data['ENERG_HI'][-1])
+
   return ret
+
+
+def get_effective_area(rmf, arf=False):
+  """
+  Get the effective area of a response file
+  
+  Parameters
+  ----------
+  rmf : string or pyfits.hdu.hdulist.HDUList
+    The filename of the rmf or the opened rmf file
+  arf : string or pyfits.hdu.hdulist.HDUList
+    The filename of the arf or the opened arf file
+  Returns
+  -------
+  array(float)
+    energy grid (keV) for returned response
+  array(float)
+    effective area for the returned response
+  """
+#
+# Update 2016-05-25
+#
+# Changed to return the energy grid and the spectrum, as apparently in some
+# instruments these are not the same as the input energy grid.
+  
+  if arf:
+    if type(arf)==str:
+      arfdat = pyfits.open(arf)
+    elif type(arf) == pyfits.hdu.hdulist.HDUList:
+      arfdat = arf
+    else:
+      print "ERROR: unknown arf type, %s"%(repr(type(arf)))
+      return
+    arfarea = arfdat['SPECRESP'].data['SPECRESP']
+  else:
+    arfarea = 1.0
+  
+  
+  if type(rmf)==str:
+    rmfdat = pyfits.open(rmf)
+  elif type(rmf) == pyfits.hdu.hdulist.HDUList:
+    rmfdat = rmf
+  else:
+    print "ERROR: unknown rmf type, %s"%(repr(type(rmf)))
+    return
+  
+  ebins = get_response_ebins(rmf)
+  
+  area = numpy.zeros(len(ebins)-1, dtype=float)
+  
+  for ibin, i in enumerate(rmfdat['MATRIX'].data):
+    area[ibin] = sum(i['MATRIX'])
+
+  area *= arfarea
+  return ebins, area

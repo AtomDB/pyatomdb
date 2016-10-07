@@ -117,104 +117,104 @@ def extract_n(conf_str):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 
-def read_filemap(filemap=False, atomdbroot=False):
-  """
-  Reads AtomDB filemap data into dictionary
+#def read_filemap(filemap=False, atomdbroot=False):
+  #"""
+  #Reads AtomDB filemap data into dictionary
 
-  Parameters
-  ----------
-  filemap : str
-    Name of filemap file to read. If zero length, use "$ATOMDB/filemap"
-  atomdbroot : str
-    Replace any $ATOMDB in the file names with this. If not provided,
-    use "ATOMDB" environment variable instead
+  #Parameters
+  #----------
+  #filemap : str
+    #Name of filemap file to read. If zero length, use "$ATOMDB/filemap"
+  #atomdbroot : str
+    #Replace any $ATOMDB in the file names with this. If not provided,
+    #use "ATOMDB" environment variable instead
 
-  Returns
-  -------
-    dict
-      dictionary listing all the filenames for each different datatype.
-      Files separated into "misctypes" for abundance and bremsstrahlung files,
-      and 'ionfiles', which are then split by element, ion, and datatype, e.g.
-      ret['ionfiles'][6][5]['lv'] contains the energy level (lv) data for
-      carbon V.
-  """
+  #Returns
+  #-------
+    #dict
+      #dictionary listing all the filenames for each different datatype.
+      #Files separated into "misctypes" for abundance and bremsstrahlung files,
+      #and 'ionfiles', which are then split by element, ion, and datatype, e.g.
+      #ret['ionfiles'][6][5]['lv'] contains the energy level (lv) data for
+      #carbon V.
+  #"""
 
-  if not(atomdbroot):
-    try:
-      atomdbroot = os.environ['ATOMDB']
-    except KeyError:
-      print '*** ERROR: atomdbroot not set, use environment variable ATOMDB or '+\
-          'pass atomdbroot to read_filemap'
-      return False
+  #if not(atomdbroot):
+    #try:
+      #atomdbroot = os.environ['ATOMDB']
+    #except KeyError:
+      #print '*** ERROR: atomdbroot not set, use environment variable ATOMDB or '+\
+          #'pass atomdbroot to read_filemap'
+      #return False
 
-  if not(filemap):
-    filemap = atomdbroot+'/filemap'
-  if not os.path.exists(filemap):
-    print "*** ERROR: Filemap %s does not exist, cannot fetch file" %(filemap)
-    return False
+  #if not(filemap):
+    #filemap = atomdbroot+'/filemap'
+  #if not os.path.exists(filemap):
+    #print "*** ERROR: Filemap %s does not exist, cannot fetch file" %(filemap)
+    #return False
 
-  f = open(filemap,'r')
+  #f = open(filemap,'r')
 
-  filedtype = numpy.dtype({'names':['Z','z1','ec','lv','ir','pc','dr',\
-                                    'la','em','pi','ai'],\
-                           'formats':[int, int, '|S160','|S160','|S160',\
-                                      '|S160','|S160','|S160','|S160',\
-                                      '|S160','|S160','|S160']})
+  #filedtype = numpy.dtype({'names':['Z','z1','ec','lv','ir','pc','dr',\
+                                    #'la','em','pi','ai'],\
+                           #'formats':[int, int, '|S160','|S160','|S160',\
+                                      #'|S160','|S160','|S160','|S160',\
+                                      #'|S160','|S160','|S160']})
 
-  miscdtype = numpy.dtype({'names':['misc_type','file'],\
-                           'formats':[int, '|S160']})
+  #miscdtype = numpy.dtype({'names':['misc_type','file'],\
+                           #'formats':[int, '|S160']})
 
-  ret = {}
-  ret['ionfiles'] = numpy.zeros(0, dtype=filedtype)
-  ret['miscfiles'] = numpy.zeros(0, dtype=miscdtype)
+  #ret = {}
+  #ret['ionfiles'] = numpy.zeros(0, dtype=filedtype)
+  #ret['miscfiles'] = numpy.zeros(0, dtype=miscdtype)
 
 
-  for i in f:
-    splt = i.split()
-    fname = re.sub('\$ATOMDB',atomdbroot,splt[3])
-    Z_tmp = int(splt[1])
-    z1_tmp = int(splt[2])
+  #for i in f:
+    #splt = i.split()
+    #fname = re.sub('\$ATOMDB',atomdbroot,splt[3])
+    #Z_tmp = int(splt[1])
+    #z1_tmp = int(splt[2])
 
-    if Z_tmp < 1:
-      # in this case, we have a "misc" datatype, not corresponding to a particular ion
-      misc_type = int(splt[0])
-      misc_file = fname
-      ret['miscfiles'] = numpy.append(ret['miscfiles'], numpy.array((misc_type, misc_file),\
-                                                                    dtype=miscdtype))
+    #if Z_tmp < 1:
+      ## in this case, we have a "misc" datatype, not corresponding to a particular ion
+      #misc_type = int(splt[0])
+      #misc_file = fname
+      #ret['miscfiles'] = numpy.append(ret['miscfiles'], numpy.array((misc_type, misc_file),\
+                                                                    #dtype=miscdtype))
 
-    else:
-      j = numpy.where((ret['ionfiles']['Z']==Z_tmp) & \
-                      (ret['ionfiles']['z1']==z1_tmp))[0]
-      if len(j)==0:
-        j = len(ret['ionfiles'])
+    #else:
+      #j = numpy.where((ret['ionfiles']['Z']==Z_tmp) & \
+                      #(ret['ionfiles']['z1']==z1_tmp))[0]
+      #if len(j)==0:
+        #j = len(ret['ionfiles'])
 
-        ret['ionfiles'] = numpy.append(ret['ionfiles'], numpy.zeros(1,\
-                                                                    dtype=filedtype))
-        ret['ionfiles']['Z'][j]=Z_tmp
-        ret['ionfiles']['z1'][j]=z1_tmp
-      else:
-        j = j[0]
+        #ret['ionfiles'] = numpy.append(ret['ionfiles'], numpy.zeros(1,\
+                                                                    #dtype=filedtype))
+        #ret['ionfiles']['Z'][j]=Z_tmp
+        #ret['ionfiles']['z1'][j]=z1_tmp
+      #else:
+        #j = j[0]
 
-      if int(splt[0]) == 1:
-        ret['ionfiles']['ir'][j] = fname
-      if int(splt[0]) == 2:
-        ret['ionfiles']['lv'][j] = fname
-      if int(splt[0]) == 3:
-        ret['ionfiles']['la'][j] = fname
-      if int(splt[0]) == 4:
-        ret['ionfiles']['ec'][j] = fname
-      if int(splt[0]) == 5:
-        ret['ionfiles']['pc'][j] = fname
-      if int(splt[0]) == 6:
-        ret['ionfiles']['dr'][j] = fname
-      if int(splt[0]) == 7:
-        ret['ionfiles']['em'][j] = fname
-      if int(splt[0]) == 8:
-        ret['ionfiles']['pi'][j] = fname
-      if int(splt[0]) == 9:
-        ret['ionfiles']['ai'][j] = fname
-#      if int(splt[0]) == 10:
-#        cilist[j] = fname
+      #if int(splt[0]) == 1:
+        #ret['ionfiles']['ir'][j] = fname
+      #if int(splt[0]) == 2:
+        #ret['ionfiles']['lv'][j] = fname
+      #if int(splt[0]) == 3:
+        #ret['ionfiles']['la'][j] = fname
+      #if int(splt[0]) == 4:
+        #ret['ionfiles']['ec'][j] = fname
+      #if int(splt[0]) == 5:
+        #ret['ionfiles']['pc'][j] = fname
+      #if int(splt[0]) == 6:
+        #ret['ionfiles']['dr'][j] = fname
+      #if int(splt[0]) == 7:
+        #ret['ionfiles']['em'][j] = fname
+      #if int(splt[0]) == 8:
+        #ret['ionfiles']['pi'][j] = fname
+      #if int(splt[0]) == 9:
+        #ret['ionfiles']['ai'][j] = fname
+##      if int(splt[0]) == 10:
+##        cilist[j] = fname
 
 
 #  ret={}
@@ -438,18 +438,112 @@ def f2_fcn(x):
 
 
 def dr_mazzotta(Te, c):
-  KBOLTZ = 8.617385e-8
-  T_eV = 1.e3*KBOLTZ*Te
+  T_eV = 1.e3*const.KBOLTZ*Te
   dr = (c[0]/(T_eV**1.5))*(c[5]*numpy.exp(-c[1]/T_eV) +\
                                c[6]*numpy.exp(-c[2]/T_eV) +\
                                c[7]*numpy.exp(-c[3]/T_eV) +\
                                c[8]*numpy.exp(-c[4]/T_eV))
   return dr
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 
+
+def dr_badnell(Te, c):
+  """
+  Convert data from Badnell constants into a DR Rate
+  
+  Parameters
+  ----------
+  Te : float or array(float)
+    Electron temperature[s] in K
+  
+  c : array
+    Constants from DR rates. Stored as alternating pairs in AtomDB, so 
+    c1,e1,c2,e2,c3,e3 etc in the IONREC_PAR column
+    
+  Returns
+  -------
+  float
+    DR rate in cm^3 s-1
+  
+  References
+  ----------
+  See http://amdpp.phys.strath.ac.uk/tamoc/DATA/DR/
+  """  
+  
+  Te_in, wasvec = util.make_vec(Te)
+  
+  ret = numpy.zeros(len(Te_in))
+  for i in range(len(c)/2):
+    if c[2*i] != 0.0:
+      ret += c[2*i] * numpy.exp(-c[2*i+1]/Te_in)
+  ret *= Te_in**-1.5
+  
+    
+  if wasvec==False:
+    ret=ret[0]
+  
+  
+  return ret
+  
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
+
+def rr_badnell(Te, c):
+  """
+  Convert data from Badnell constants into a RR Rate
+  
+  Parameters
+  ----------
+  Te : float or array(float)
+    Electron temperature[s] in K
+  
+  c : array
+    Constants from DR rates. Stored as alternating pairs in AtomDB, so 
+    c1,e1,c2,e2,c3,e3 etc in the IONREC_PAR column
+    
+  Returns
+  -------
+  float
+    RR rate in cm^3 s-1
+  
+  References
+  ----------
+  See http://amdpp.phys.strath.ac.uk/tamoc/DATA/RR/
+  """  
+  
+  Te_in, wasvec = util.make_vec(Te)
+  
+  ret = numpy.zeros(len(Te_in))
+  
+  A = c[0]
+  B = c[1]
+  T0 = c[2]
+  T1=c[3]
+  C = c[4]
+  T2 = c[5]
+  
+  if C != 0:
+    B += C*numpy.exp(-T2/Te_in)
+  
+  ret = A/ ((Te_in/T0)**0.5*\
+            (1+(Te_in/T0)**0.5)**(1-B) *\
+            (1+(Te_in/T1)**0.5)**(1+B))
+  
+  if wasvec==False:
+    ret=ret[0]
+  
+  return ret
+
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+
+
+
 def addline(xbins, yvals, wv, amp, dx):
 
   # create the cdf
@@ -544,9 +638,10 @@ def get_ionbal(ionbalfile, element, ion=-1):
 
 
 
-  a=pyfits.open(ionbalfile)
-
+  a=get_data(1,1,'IONBAL')
 #  find data type
+  for i in a[1].header:
+    print i
   if a[1].header['HDUCLASS']=='ION_BAL':
 
     # find index for correct ion
@@ -1205,15 +1300,15 @@ def get_bt_approx(om, Tin, Tout, uplev, lolev, levdat,ladat):
     Aval = ladat[1].data['einstein_a'][i[0]]
 
   # find the type:
-  bttype = get_burgess_tully_transition_type(levdat[1].data[lolev],\
-                                             levdat[1].data[uplev],\
+  bttype = get_burgess_tully_transition_type(levdat[1].data[lolev-1],\
+                                             levdat[1].data[uplev-1],\
                                              Aval)
 
 
     # do the extrappolation etc
   btval = get_burgess_tully_extrap(bttype, \
-                                   levdat[1].data[lolev], \
-                                   levdat[1].data[uplev], \
+                                   levdat[1].data[lolev-1], \
+                                   levdat[1].data[uplev-1], \
                                    Aval, \
                                    Tin, \
                                    om, \
@@ -1671,6 +1766,7 @@ def calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
                                  bounds_error=False, \
                                  fill_value=fill_value)
 
+      # this is for values outside the range
       for iit in it:
         if T[iit] in Tarr[:N_interp]:
           rate_coeff[iit]=om[Tarr[:N_interp]==T[iit]]
@@ -2056,7 +2152,7 @@ def interpolate_ionrec_rate(cidat,Te, force_extrap=False):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 
-def calc_ionrec_ci(cidat, Te, extrap=False):
+def calc_ionrec_ci(cidat, Te, extrap=False, ionpot=False):
   from scipy import interpolate
   ci = numpy.zeros(len(Te), dtype=float)
   ci[(Te< cidat['min_temp']) | \
@@ -2073,34 +2169,42 @@ def calc_ionrec_ci(cidat, Te, extrap=False):
 #    return ci
 
   # See Arnaud \& Rothenflug, 1985 A&ASS 60, 425
+  if len(ici) > 0:
+    if (cidat['par_type'] == const.CI_YOUNGER):
+      T_eV = 1.e3*const.KBOLTZ*Te[ici]
+      x = cidat['ionrec_par'][0][ici]/T_eV
+      i = numpy.where(x <=30.0)[0]
+      if len(i) > 0:
+        f1_val = f1_fcn(x[i])
+        ci[ici[i]] = (numpy.exp(-x[i])/x[i])*\
+              ( cidat['ionrec_par'][1]*( 1 - x[i]*f1_val ) +
+                cidat['ionrec_par'][2]*( 1 + x[i] - x[i]*(x[i]+2)*f1_val )+
+                cidat['ionrec_par'][3]*f1_val +
+                cidat['ionrec_par'][4]*x[i]*f2_fcn(x[i]) )
 
-  if (cidat['par_type'] == const.CI_YOUNGER):
-    T_eV = 1.e3*const.KBOLTZ*Te[ici]
-    x = cidat['ionrec_par'][0][ici]/T_eV
-    i = numpy.where(x <=30.0)[0]
-    if len(i) > 0:
-      f1_val = f1_fcn(x[i])
-      ci[ici[i]] = (numpy.exp(-x[i])/x[i])*\
-            ( cidat['ionrec_par'][1]*( 1 - x[i]*f1_val ) +
-              cidat['ionrec_par'][2]*( 1 + x[i] - x[i]*(x[i]+2)*f1_val )+
-              cidat['ionrec_par'][3]*f1_val +
-              cidat['ionrec_par'][4]*x[i]*f2_fcn(x[i]) )
+      ci[ici] *= 6.69e-07/(T_eV*numpy.sqrt(T_eV))
 
-    ci[ici] *= 6.69e-07/(T_eV*numpy.sqrt(T_eV))
 
-  elif (((cidat['par_type'] >= const.INTERP_IONREC_RATE_COEFF) &
-         (cidat['par_type'] <= const.INTERP_IONREC_RATE_COEFF + const.MAX_IONREC))|
-        ((cidat['par_type'] >= const.INTERP_IONREC_RATE_OPEN) &
-         (cidat['par_type'] <= const.INTERP_IONREC_RATE_OPEN + const.MAX_IONREC))|
-        ((cidat['par_type'] >= const.INTERP_IONREC_RATE_INC_MIN) &
-         (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MIN + const.MAX_IONREC))|
-        ((cidat['par_type'] >= const.INTERP_IONREC_RATE_INC_MAX) &
-         (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MAX + const.MAX_IONREC))):
+    elif (((cidat['par_type'] >= const.INTERP_IONREC_RATE_COEFF) &
+           (cidat['par_type'] <= const.INTERP_IONREC_RATE_COEFF + const.MAX_IONREC))|
+          ((cidat['par_type'] >= const.INTERP_IONREC_RATE_OPEN) &
+           (cidat['par_type'] <= const.INTERP_IONREC_RATE_OPEN + const.MAX_IONREC))|
+          ((cidat['par_type'] >= const.INTERP_IONREC_RATE_INC_MIN) &
+           (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MIN + const.MAX_IONREC))|
+          ((cidat['par_type'] >= const.INTERP_IONREC_RATE_INC_MAX) &
+           (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MAX + const.MAX_IONREC))):
 
-    ci[ici] = interpolate_ionrec_rate(cidat,Te[ici])
+      ci[ici] = interpolate_ionrec_rate(cidat,Te[ici])
 
-  else:
-    print "Unknown CI type: %i"%(cidat['par_type'])
+    elif ((cidat['par_type']> const.CI_DERE) &\
+          (cidat['par_type']<= const.CI_DERE+20)):
+      npts = cidat['par_type']-const.CI_DERE
+      ci[ici] = calc_ci_dere(Te[ici], ionpot, cidat['Temperature'][:npts], \
+                             cidat['ionrec_par'][:npts])
+    
+    
+    else:
+      print "Unknown CI type: %i"%(cidat['par_type'])
 
 
   # now see if extrappolation is required:
@@ -2111,7 +2215,8 @@ def calc_ionrec_ci(cidat, Te, extrap=False):
     if len(ilow) > 0:
       # calculate the value at Te_min
       Te_min = numpy.array([cidat['min_temp']])
-      cimin = calc_ionrec_ci(cidat, Te_min)
+      
+      cimin = calc_ionrec_ci(cidat, Te_min, ionpot=ionpot)
       # if log of this is < 46.0, this is a small number, just repeat this
       if numpy.log(cimin[0])<46.0:
         ci[ilow]=cimin
@@ -2120,7 +2225,8 @@ def calc_ionrec_ci(cidat, Te, extrap=False):
       # and use to construct a good second derivative.
       else:
         tetmp = numpy.logspace(numpy.log10(Te_min), numpy.log10(Te_min)+1,4)
-        citmp=calc_ionrec_ci(cidat, tetmp)
+        
+        citmp=calc_ionrec_ci(cidat, tetmp, ionpot=ionpot)
 
         tetmpl = numpy.log(tetmp)
         citmpl = numpy.log(citmp)
@@ -2149,13 +2255,61 @@ def calc_ionrec_ci(cidat, Te, extrap=False):
     ihigh = numpy.where(Te>cidat['max_temp'])[0]
     if len(ihigh) > 0:
       Te_max = numpy.array([cidat['max_temp']])
-      cimax = calc_ionrec_ci(cidat, Te_max)
+      cimax = calc_ionrec_ci(cidat, Te_max, ionpot=ionpot)
       ci[ihigh]=cimax[0]*(Te_max[0]/Te[ihigh])**0.5
 
 
 
   return ci
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
+def calc_ci_dere(Te, ionpot, Tscal, Upsscal):
+
+  """
+  Calculate the collisional ionization rates using the Dere 2007 method
+  
+  Parameters
+  ----------
+  Te : float or array(float)
+    Electron temperature (K)
+  ionpot : float
+    Ionization potential (eV)
+  Tscal : array(float)
+    scaled temperatures
+  Upsscal : array(float)
+    scaled upsilons
+  
+  Returns
+  -------
+  float or array(float)
+    Ionization rate in cm^3 s^-1
+  
+  References
+  ----------
+  2007A&A...466..771D
+  """
+  from scipy import interpolate
+  from scipy.special import exp1  
+  
+  tin, wasvec = util.make_vec(Te)
+  tinscal = tin*const.KBOLTZ*1000/ionpot
+
+  f = 2.0
+  
+  xin = (1 - numpy.log10(f) / numpy.log10(tinscal+f))
+  xdat = Tscal
+  ydat = Upsscal
+
+  tck = interpolate.splrep(xdat,ydat)
+  yout = interpolate.splev(xin,tck)
+  R = tinscal**(-0.5) * ionpot**(-1.5) * exp1(1/tinscal)*yout
+  
+  if not wasvec:
+    R=R[0]
+  return R
+  
 
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -2193,6 +2347,9 @@ def calc_ionrec_rr(cidat, Te, extrap=False):
     rr[irr] = cidat['ionrec_par'][0]*\
           (Te[irr]/1.e4)**(-1*(cidat['ionrec_par'][1]+\
                           cidat['ionrec_par'][2]*numpy.log10(Te[irr]/1.e4)))
+  # Badnell
+  elif (cidat['par_type'] == const.RR_BADNELL):
+    rr[irr] = rr_badnell(Te[irr],cidat['ionrec_par'])
 
 
   # Now handle 4 different interpolation cases. */
@@ -2242,6 +2399,7 @@ def calc_ionrec_rr(cidat, Te, extrap=False):
                b * numpy.log(Te[ilow])**2 +\
                c * numpy.log(Te[ilow]) +\
                d
+        
         rr[ilow]=cinew
 
 
@@ -2285,39 +2443,57 @@ def calc_ionrec_rr(cidat, Te, extrap=False):
 def calc_ionrec_dr(cidat, Te, extrap=False):
   from scipy import interpolate
 
-#  if ((Te < cidat['min_temp']) |(Te > cidat['max_temp'])):
-#    print " DR data is invalid at this temperature, Te=%e, Em_min = %e, Te_max=%e" %\
-#         (Te, cidat['min_temp'],cidat['max_temp'])
-#    dr = 0.0
-#    return dr
+  """
+  Calculate the DR rate at temperature Te for a transition cidat
+  
+  Parameters
+  ----------
+  
+  cidat: array
+    A line from the IR file with the data on the transition to be calcualted
+  Te: array(float)
+    Electron temperature of interest (in K)
+  extrap : bool
+    Whether to perform extrappolation or not
+  
+  
+  Returns
+  -------
+  float
+    The DR rate in cm^3 s^-1
+  """
+  
   dr = numpy.zeros(len(Te))
   # set values outside range to NAN
   idr = numpy.where((Te >= cidat['min_temp']) & (Te <= cidat['max_temp']))[0]
   dr[:] = numpy.nan
   dr[idr] = 0.0
 
+  if len(idr) > 0:
+    # Mazzotta
+    if (cidat['par_type'] == const.DR_MAZZOTTA):
+      T_eV = 1.e3*const.KBOLTZ*Te[idr]
+      dr[idr] = (cidat['par_type'][0]/(T_eV**1.5))  * \
+           (cidat['par_type'][5]*numpy.exp(-cidat['par_type'][1]/T_eV) +\
+            cidat['par_type'][6]*numpy.exp(-cidat['par_type'][2]/T_eV) +\
+            cidat['par_type'][7]*numpy.exp(-cidat['par_type'][3]/T_eV) +\
+            cidat['par_type'][8]*numpy.exp(-cidat['par_type'][4]/T_eV))
+  
+    elif (cidat['par_type'] == const.DR_BADNELL):
+      dr[idr] = dr_badnell(Te[idr], cidat['ionrec_par'])
+  
+    elif (((cidat['par_type'] >= const.INTERP_IONREC_RATE_COEFF) &
+         (cidat['par_type'] <= const.INTERP_IONREC_RATE_COEFF + const.MAX_IONREC))|
+        ((cidat['par_type'] >= const.INTERP_IONREC_RATE_OPEN) &
+         (cidat['par_type'] <= const.INTERP_IONREC_RATE_OPEN + const.MAX_IONREC))|
+        ((cidat['par_type'] >= const.INTERP_IONREC_RATE_INC_MIN) &
+         (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MIN + const.MAX_IONREC))|
+        ((cidat['par_type'] >= const.INTERP_IONREC_RATE_INC_MAX) &
+         (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MAX + const.MAX_IONREC))):
+      dr[idr] = interpolate_ionrec_rate(cidat,Te[idr])
 
-  # Mazzotta
-  if (cidat['par_type'] == const.DR_MAZZOTTA):
-    T_eV = 1.e3*const.KBOLTZ*Te[idr]
-    dr[idr] = (cidat['par_type'][0]/(T_eV**1.5))  * \
-         (cidat['par_type'][5]*numpy.exp(-cidat['par_type'][1]/T_eV) +\
-          cidat['par_type'][6]*numpy.exp(-cidat['par_type'][2]/T_eV) +\
-          cidat['par_type'][7]*numpy.exp(-cidat['par_type'][3]/T_eV) +\
-          cidat['par_type'][8]*numpy.exp(-cidat['par_type'][4]/T_eV))
-
-  elif (((cidat['par_type'] >= const.INTERP_IONREC_RATE_COEFF) &
-       (cidat['par_type'] <= const.INTERP_IONREC_RATE_COEFF + const.MAX_IONREC))|
-      ((cidat['par_type'] >= const.INTERP_IONREC_RATE_OPEN) &
-       (cidat['par_type'] <= const.INTERP_IONREC_RATE_OPEN + const.MAX_IONREC))|
-      ((cidat['par_type'] >= const.INTERP_IONREC_RATE_INC_MIN) &
-       (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MIN + const.MAX_IONREC))|
-      ((cidat['par_type'] >= const.INTERP_IONREC_RATE_INC_MAX) &
-       (cidat['par_type'] <= const.INTERP_IONREC_RATE_INC_MAX + const.MAX_IONREC))):
-    dr[idr] = interpolate_ionrec_rate(cidat,Te[idr])
-
-  else:
-    print "calc_ionrec_rate: DR Recombination type %i not recognized" %(cidat['par_type'])
+    else:
+      print "calc_ionrec_rate: DR Recombination type %i not recognized" %(cidat['par_type'])
 
   # now extrappolate if required
   if extrap:
@@ -2649,7 +2825,6 @@ def get_ionrec_rate(Te_in, irdat_in, lvdat_in=False, Te_unit='K', \
 
   idr = numpy.where(irdat[1].data['TR_TYPE']=='DR')[0]
   for i in idr:
-
     tmp=get_maxwell_rate(Te, irdat, i, lvdat, Te_unit='K', \
                          lvdatap1=lvdatp1, ionpot = False,\
                          force_extrap=extrap)
@@ -2673,7 +2848,7 @@ def get_ionrec_rate(Te_in, irdat_in, lvdat_in=False, Te_unit='K', \
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
-def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
+def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                      lvdatap1=False, ionpot = False, \
                      force_extrap=False, silent=True,\
                      finallev=False, initlev=False,\
@@ -2981,8 +3156,8 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
   elif dtype=='CI':
     cidat = colldata[1].data[index]
 
-    if ((cidat['par_type']>900) & \
-        (cidat['par_type']<=920)):
+    if ((cidat['par_type']>const.INTERP_I_UPSILON) & \
+        (cidat['par_type']<=const.INTERP_I_UPSILON+20)):
 
 
 
@@ -3016,7 +3191,10 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
                                  cidat['ionrec_par'],\
                                  delta_E/1e3, Te_arr, Ztmp, degl, degu)
 
-
+    elif ((cidat['par_type']>const.CI_DERE) &\
+          (cidat['par_type']<=const.CI_DERE+20)):
+      ionpot = float(colldata[1].header['IP_DERE'])
+      ci = calc_ionrec_ci(cidat, Te_arr, extrap=force_extrap, ionpot=ionpot)
     else:
       ci = calc_ionrec_ci(cidat,Te_arr, extrap=force_extrap)
       if sum(numpy.isnan(ci))>0:
@@ -3040,7 +3218,7 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
 
   elif dtype=='EA':
     cidat = colldata[1].data[index]
-    ea = calc_ionrec_ea(cidat,Te, extrap=force_extrap)
+    ea = calc_ionrec_ea(cidat,Te_arr, extrap=force_extrap)
     if sum(numpy.isnan(ea))>0:
       if not silent:
         print "calc_ionrec_rate: EA(%10s -> %10s): Te out of range min->max=%e->%e:"%\
@@ -3059,7 +3237,7 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
     return ea
   elif dtype=='DR':
     cidat = colldata[1].data[index]
-    dr = calc_ionrec_dr(cidat,Te, extrap=force_extrap)
+    dr = calc_ionrec_dr(cidat,Te_arr, extrap=force_extrap)
     if sum(numpy.isnan(dr))>0:
       if not silent:
 
@@ -3082,7 +3260,7 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
 
   elif dtype=='RR':
     cidat = colldata[1].data[index]
-    rr = calc_ionrec_rr(cidat,Te, extrap=force_extrap)
+    rr = calc_ionrec_rr(cidat,Te_arr, extrap=force_extrap)
     if sum(numpy.isnan(rr))>0:
       if not silent:
         print "calc_ionrec_rate: RR(%10s -> %10s): Te out of range min->max=%e->%e:"%\
@@ -3104,7 +3282,7 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
 
   elif dtype=='XR':
     cidat = colldata[1].data[index]
-    xr = calc_ionrec_rr(cidat,Te, extrap=force_extrap)
+    xr = calc_ionrec_rr(cidat,Te_arr, extrap=force_extrap)
     if sum(numpy.isnan(xr))>0:
       if not silent:
 
@@ -3163,7 +3341,7 @@ def get_maxwell_rate(Te, colldata, index, lvdata, Te_unit='K', \
                          delta_E/1e3, Te_arr, Ztmp, degl, degu)
 
     else:
-      xi = calc_ionrec_ci(cidat,Te, extrap=force_extrap)
+      xi = calc_ionrec_ci(cidat,Te_arr, extrap=force_extrap)
       if (xi < 0.0):
         print "calc_ionrec_rate: CI(%10s -> %10s,T=%9.3e) = %8g"%\
                   (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
@@ -3214,8 +3392,10 @@ def sigma_hydrogenic(Z, N,L,  Ein):
 #  zzz=raw_input()
   Eelec = (E - chi)/RYDBERG
   sigma = numpy.zeros(len(E), dtype=float)
-
+  if N>5:
+    return sigma
   iE = numpy.where(Eelec > 0)[0]
+
   if len(iE > 0):
 
     eta = Z/numpy.sqrt(Eelec[iE])
@@ -3224,18 +3404,18 @@ def sigma_hydrogenic(Z, N,L,  Ein):
 #    print 'eta', eta
     # Exponential term
     expterm = numpy.exp(-4*eta*numpy.arctan(1./rho)) / (1-numpy.exp(-2*numpy.pi*eta))
-
     # Common Factorial
     commfact1 = 1.
     commfact2 = 1.
+    
     if (n+l >= 2*l+2):
-      for iFact in range(2*l+3, n+2):
+      for iFact in range(2*l+3, n+l+1):
         commfact1 *= iFact
     else:
       for iFact in range(n+l+1, 2*l+3):
         commfact2 *= iFact
 
-    for iFact in range(2,2*l+3):
+    for iFact in range(2,2*l+2):
       commfact2 *= iFact
     for iFact in range(2,n-l):
       commfact2 *= iFact
@@ -3249,14 +3429,17 @@ def sigma_hydrogenic(Z, N,L,  Ein):
     rhoterm = (rho**(2*l+4.))/ ((1+rho*rho)**(2.*n))
 
   # G terms
+
     Gterm_p1 = (l+1-n)*G_hyd(l+1, n-l-1, eta, rho) +\
     ((l+1+n)/(1+rho*rho))*G_hyd(l+1, n-l, eta, rho)
-
+    
     if (l!=0):
       Gterm_m1 = G_hyd(l, n-l-1, eta, rho) - \
         G_hyd(l, n-l+1, eta, rho)/((1.+rho*rho)**2)
     else:
       Gterm_m1 = 0.
+
+    
 
     sigma_p1 = (coeff/E[iE])*((2)**(4*l+6.)/3.)*(lp1*lp1/(2*l+1.))*\
                (commfact1/commfact2)*(prodterm/(lp1*lp1+eta*eta))*\
@@ -3271,6 +3454,8 @@ def sigma_hydrogenic(Z, N,L,  Ein):
         (Gterm_m1*Gterm_m1/(Gterm_p1*Gterm_p1))*sigma_p1
 
     sigma[iE] = sigma_m1 + sigma_p1
+#    for i in range(len(iE)):
+#      print "%6i %e %e %e %e"%(iE,Ein[iE[i]], sigma[iE[i]], sigma_m1, sigma_p1)
   return sigma
 
 #-------------------------------------------------------------------------------
@@ -3285,7 +3470,7 @@ def G_hyd(l,m, eta, rho):
   B_s = B_hyd(2*m, l, m, eta)
   result = B_s
 
-  for s in range(2*m-1,0,-1):
+  for s in range(2*m-1,-1,-1):
     B_s = B_hyd(s, l, m, eta)
     result = result*rho + B_s
 
@@ -3390,6 +3575,11 @@ def calc_rrc(Z, z1, eedges, Te, lev, xstardat=False, \
       if plvdat:
         ginit = 1.0* plvdat[1].data['lev_deg'][0]
     gratio = gfin/ginit
+    if ldat['n_quan']>5:
+      if returntotal:
+        return rrc, 0.0
+      else:
+        return rrc
   elif ldat['PHOT_TYPE']==const.CLARK:
     I_e = ldat['phot_par'][1]
     gfin = 1.0 * ldat['lev_deg']
@@ -3451,6 +3641,7 @@ def calc_rrc(Z, z1, eedges, Te, lev, xstardat=False, \
   emission_edges = rrc_ph_value(eedges, Z, z1,  rrc_ph_factor, I_e, \
                                 kT, ldat, xstardat, xstarlevfinal)
 
+  
   edgebin = numpy.argmin(eedges>I_e)-1
 
   if edgebin > -1:
@@ -3461,6 +3652,8 @@ def calc_rrc(Z, z1, eedges, Te, lev, xstardat=False, \
                             args=(Z, z1, rrc_ph_factor, I_e, kT, ldat,
                                   xstardat, xstarlevfinal), limit=100000)
   rrc[edgebin+1:] = (emission_edges[edgebin+1:-1]+emission_edges[edgebin+2:])/2.0
+
+
 
   if returntotal:
     return rrc, rr_lev_pop
@@ -3485,7 +3678,7 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
   z1_drv : int
     recombining ion charge+1
   T : float
-    temperautre (keV)
+    temperautre (K)
   ebins : array(float)
     energy bins (in keV) on which to caclulate the spectrum
   abund : float
@@ -3498,6 +3691,8 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
   -------
   array(float)
     RRC in photons cm^3 s^-1 bin^-1, in an array of length(ebins)-1
+  array(float)
+    Recombination rates into the excited levels, in s-1
   """
 #
 #  Version 0.1 Initial Release
@@ -3516,6 +3711,8 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
   tot_rec_rate = 0.0
   rrc = numpy.zeros(len(ebins)-1, dtype=float)
   LevelRecombRate = numpy.zeros(nlev, dtype=float)
+  LevelRecombRate2 = numpy.zeros(nlev, dtype=float)
+  binwidth = ebins[1:]-ebins[:-1]
 
   for iLev in range(nlev):
 
@@ -3533,7 +3730,7 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
         sigma_coeff=numpy.zeros(2, dtype=float)
         sigma_coeff[0] = finlev['n_quan']
         sigma_coeff[1] = finlev['l_quan']
-
+        
       else:
         continue
     elif finlev['phot_type']==const.CLARK:
@@ -3549,10 +3746,11 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
     elif finlev['phot_type']==const.VERNER:
       I_e = finlev['phot_par'][0]
       lev_deg = finlev['lev_deg']
-      if ((hasparent) & (len(initlevels[1].data)>0)):
-        parent_lev_deg = initlevels[1].data['lev_deg'][0]*1.0
-      else:
-        parent_lev_deg=1.0
+      hasinitlevels =  util.keyword_check(initlevels)
+      parent_lev_deg=1.0
+      if hasinitlevels:
+        if ((hasparent) & (len(initlevels[1].data)>0)):
+          parent_lev_deg = initlevels[1].data['lev_deg'][0]*1.0
       sig_type = const.VERNER
       sigma_coeff = finlev['phot_par']
 
@@ -3585,13 +3783,19 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
           continue
         g_ratio = sigma_coeff['g_ratio']
 
-        tmprrc = calc_rrc(Z, z1, ebins, T, iLev+1, xstardat=sigma_coeff, \
-              settings=settings, datacache=datacache)
+        tmprrc,total = calc_rrc(Z, z1, ebins, T, iLev+1, xstardat=sigma_coeff, \
+              settings=settings, datacache=datacache, returntotal=True)
 
-        tmprrc *= abund*ion_pop
+        tmprrc *= abund*ion_pop*binwidth
+#        print "Calculated RRC for Z %i  z1 %i  iLev %i"%\
+#              (Z, z1, iLev)
+#        for i in range(len(tmprrc)):
+#          print ebins[i],ebins[i+1], tmprrc[i]      
+#        print "ENDCalculated RRC for Z %i  z1 %i  iLev %i"%\
+#              (Z, z1, iLev)
         rr_lev_rate = sum(tmprrc)
-        LevelRecombRate[iLev] = rr_lev_rate
-        tot_rec_rate += rr_lev_rate
+        LevelRecombRate[iLev] += total*abund*ion_pop
+        tot_rec_rate += total*abund*ion_pop
         rrc += tmprrc
     else:
 
@@ -3601,18 +3805,30 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
 
     if ((finlev['phot_type'] != const.NO_PHOT) &\
         (finlev['phot_type'] != const.XSTAR)):
-      tmprrc = calc_rrc(Z, z1, ebins, T, iLev+1, \
-              settings=settings, datacache=datacache)
-      tmprrc *= abund*ion_pop
+      tmprrc, total = calc_rrc(Z, z1, ebins, T, iLev+1, \
+              settings=settings, datacache=datacache, returntotal=True)
+      tmprrc *= abund*ion_pop*binwidth
+      
       rr_lev_rate = sum(tmprrc)
+#      print "Calculated RRC for Z %i  z1 %i  iLev %i"%\
+#            (Z, z1, iLev)
+#      for i in range(len(tmprrc)):
+#        print ebins[i],ebins[i+1], tmprrc[i]      
+#      print "ENDCalculated RRC for Z %i  z1 %i  iLev %i"%\
+#            (Z, z1, iLev)
 
-      LevelRecombRate[iLev] += rr_lev_rate
-      tot_rec_rate += rr_lev_rate
+      LevelRecombRate[iLev] += total*abund*ion_pop
+      
+      tot_rec_rate += total*abund*ion_pop
+      
       rrc += tmprrc
 #      for i in xrange(len(tmprrc)):
         #print "%e %e %e" %(ebins[i], ebins[i+1], tmprrc[i])
       #print "phot_type= %i"%(finlev['phot_type'])
       #print finlev
+#  for i in range(len(LevelRecombRate)):
+#      print "%i %e %e %e"%(i+1, LevelRecombRate[i], LevelRecombRate2[i], LevelRecombRate[i]/ LevelRecombRate2[i])
+#  zzz=raw_input('argh')
   return rrc, LevelRecombRate
 
 #-------------------------------------------------------------------------------
@@ -3872,7 +4088,8 @@ def get_data(Z, z1, ftype, datacache=False, \
        *           'ABUND' - abundance tables
        *           'HBREMS' - Hummer bremstrahlung coefficients
        *           'RBREMS' - relativistic bremstrahlung coefficitients
-       
+       *           'IONBAL' - ionization balance tables
+       *           'EIGEN'  - eigenvalue files
        
   filemap : string
     The filemap to use, if you do not want to use the default one.
@@ -3941,7 +4158,7 @@ def get_data(Z, z1, ftype, datacache=False, \
   # or abundance related file, not an ion-specific file.
   
   ismisc = False
-  if ftype.lower() in ['abund','hbrems','rbrems']:
+  if ftype.lower() in ['abund','hbrems','rbrems','ionbal']:
     ismisc = True
   
 
@@ -3987,9 +4204,28 @@ def get_data(Z, z1, ftype, datacache=False, \
 
         if fname=='':
         # no data exists
-          datacache['data']['misc'][ftype.upper()] = False
+          # This is expected if it's an ionbal file
+          
+          if ftype.lower()=='ionbal':
+            # conversion here:
+            curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
 
-        else:
+            if curversion in ['2.0.0', '2.0.1', '2.0.2','3.0.0','3.0.1','3.0.2','3.0.3']:
+              fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v2.0.2_ionbal.fits'
+            elif curversion in ['3.0.4']:
+              fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.4_ionbal.fits'
+          elif ftype.lower()=='eigen':
+            # conversion here:
+            curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
+
+            if curversion in ['2.0.0', '2.0.1', '2.0.2','3.0.0','3.0.1','3.0.2','3.0.3']:
+              fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.fits'%(atomic.Ztoelsymb(Z).lower())
+            elif curversion in ['3.0.4']:
+              fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.4.fits'%(atomic.Ztoelsymb(Z).lower())
+          else:
+            datacache['data']['misc'][ftype.upper()] = False
+
+        if fname!='':
         # Try and open the files in the following order:
         # (1) filename
         # (2) filename+'.gz'
@@ -4007,13 +4243,14 @@ def get_data(Z, z1, ftype, datacache=False, \
                 url = re.sub(os.path.expandvars(atomdbroot),\
                              'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
                 try:
-                  d = pyfits.open(url)
+                  d = pyfits.open(url, cache=False)
                   didurl=True
                   util.record_upload(re.sub(os.path.expandvars(atomdbroot),'',fname))
                 except urllib2.URLError:
                   print "Error trying to open file %s. Not found locally or on"%(fname)+\
                       " server."
                   d=False
+#          datacache['data']['misc'][ftype.upper()] = False
 
 
 
@@ -4035,6 +4272,8 @@ def get_data(Z, z1, ftype, datacache=False, \
 
         if fname=='':
         # no data exists
+
+          
           datacache['data'][Z][z1][ftype.upper()] = False
 
         else:
@@ -4055,7 +4294,7 @@ def get_data(Z, z1, ftype, datacache=False, \
                 url = re.sub(os.path.expandvars(atomdbroot),\
                              'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
                 try:
-                  d = pyfits.open(url)
+                  d = pyfits.open(url, cache=False)
                   didurl=True
                   util.record_upload(re.sub(os.path.expandvars(atomdbroot),'',fname))
                 except urllib2.URLError:
@@ -4069,8 +4308,9 @@ def get_data(Z, z1, ftype, datacache=False, \
     if settings:
       if settings['filemap']:
         fmapfile = settings['filemap']
-      if settings['atomdbroot']:
-        atomdbroot = settings['atomdbroot']
+      if 'atomdbroot' in settings.keys():
+        if settings['atomdbroot']:
+          atomdbroot = settings['atomdbroot']
 
     if ismisc:
 
@@ -4082,7 +4322,36 @@ def get_data(Z, z1, ftype, datacache=False, \
                              quiet=True, fmapfile=fmapfile,\
                              atomdbroot=atomdbroot)
 
+
+
+
+
+
+
+#    if ftype.lower()=='ionbal':
+#      fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v2.0.2_ionbal.fits'
+
+    if ftype.lower()=='ionbal':
+      # conversion here:
+      curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
+
+      if curversion in ['2.0.0', '2.0.1', '2.0.2','3.0.0','3.0.1','3.0.2','3.0.3']:
+        fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v2.0.2_ionbal.fits'
+      elif curversion in ['3.0.4']:
+        fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.4_ionbal.fits'
+
+    elif ftype.lower()=='eigen':
+      # conversion here:
+      curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
+
+      if curversion in ['2.0.0', '2.0.1', '2.0.2','3.0.0','3.0.1','3.0.2','3.0.3']:
+        fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.fits'%(atomic.Ztoelsymb(Z).lower())
+      elif curversion in ['3.0.4']:
+        fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.4.fits'%(atomic.Ztoelsymb(Z).lower())
+
+
     if fname=='':
+          # This is expected if it's an ionbal file
       pass
     else:
         # Try and open the files in the following order:
@@ -4102,7 +4371,7 @@ def get_data(Z, z1, ftype, datacache=False, \
                          'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
             print "trying URL %s"%(url)
             try:
-              d = pyfits.open(url)
+              d = pyfits.open(url, cache=False)
               didurl=True
               util.record_upload(re.sub(os.path.expandvars(atomdbroot),'',fname))
             except urllib2.URLError:
@@ -4296,11 +4565,18 @@ def rrc_ph_value(E, Z, z1, rrc_ph_factor, IonE, kT, levdat, \
     isiter=False
     E = numpy.array([E])
 
-  igood = numpy.where((-(E - IonE)/kT)>const.MIN_RRC_EXPONENT)[0]
+  igood = numpy.where(((-(E - IonE)/kT)>const.MIN_RRC_EXPONENT)&\
+                       ((-(E - IonE)/kT)<const.MAX_RRC_EXPONENT))[0]
+  
+  ifinite = numpy.isfinite(E[igood]**2*numpy.exp(-(E[igood] - IonE)/kT))
+  #print kT
+  if sum(ifinite)!=len(igood):
+    print "found %i not finite indices!"%(len(igood)-sum(ifinite))
   if levdat['PHOT_TYPE']==const.HYDROGENIC:
     levdat['PHOT_PAR'][0] = levdat['n_quan']
     levdat['PHOT_PAR'][1] = levdat['l_quan']
-    
+    if levdat['PHOT_PAR'][0]>5:
+      return  numpy.zeros(len(E))
   result = numpy.zeros(len(E))
   result[igood] = rrc_ph_factor*sigma_photoion(E[igood],
                                                Z,\
@@ -4443,7 +4719,6 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
 
   elif pi_type==const.XSTAR:
     # now look into type of xstardata
-
     if not xstardata:
       # get the data
       pidat = get_data(Z, z1, 'PI', settings=settings, datacache=datacache)
@@ -4486,7 +4761,11 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
                                 sig_coeffts['nq'],\
                                 sig_coeffts['lq'],\
                                 Evec)
-
+#      print "Zel=%i, n=%i, l=%i"%(sig_coeffts['Zel'],\
+#                                sig_coeffts['nq'],\
+#                                sig_coeffts['lq'])
+#      for i in range(len(Evec)):
+#        print "%6i, %e %e"%(i, Evec[i], result[i])
 
   elif pi_type == const.CLARK:
     iE = numpy.where(E > sig_coeffts['I_e'])[0]
@@ -4569,7 +4848,117 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
          #ret[i] = ea
 
     #return ret
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
 
+  
+#-----------------------------------------------------------------------
+def A_twoph(A,E0,E):
+  """
+  Convert the A value into energy distribution for 2-photon transitions
+  
+  Parameters
+  ----------
+  A : float
+    Einstein A for transition
+  E0 : float
+    Energy in keV of transition
+  E : array(float)
+    Energies of each bin to output continuum at (keV)
+  Returns
+  -------
+  array(float)
+    Distribution of transtion rate amongst bins E (s^-1)
+  
+  References
+  ----------
+  From Nussbaumer & Schmutz, 1984, A+A, 138,495 
+  Z is the element, and E is the energy of the bin, in keV 
+  y is unitless, and is equal to nu/nu0 = lambda0/lambda, where 
+  lambda0 = 1215.7 A for hydrogen--the base wavelength of the 2s->1s 
+  transition.  This fit is accurate to better than 0.6% for 
+  0.01 < y < 0.99 
+
+  The A_norm is the A value for neutral hydrogen for this transition. 
+  For other transitions, we renormalize to the appropriate A value. 
+
+  This routine is used for BOTH hydrogenic and He-like two-photon 
+  distributions.  This is justified using the result of 
+  Derevianko & Johnson, 1997, Phys Rev A, 56, 1288 who show in 
+  Figures 5 and 2 of that paper that the difference is everywhere 
+  less than 10% between these two for Z=6-28 -- it is about 5% or so. 
+  """
+  
+  C     = 202.0 #s^-1
+  alpha = 0.88
+  beta  = 1.53
+  gamma = 0.80
+  A_norm= 8.2249 #s^-1
+  
+  
+  y = E/E0
+  i = numpy.where((y>0) & (y<1))[0]
+  
+  result = numpy.zeros(len(E), dtype=float)
+
+  x = y[i]*(1-y[i])
+  
+  z = (4*x)**gamma
+  
+  result[i] = C*(x*(1-z) + alpha* (x**beta)*z)
+  
+  result *= (A/A_norm)  # Also need R_Z/R_H, but even for Z=26, this is 
+                         # only 1.0005, so we'll ignore it. 
+                         
+  return result   # in s^-1 
+  
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+
+def calc_two_phot(wavelength, einstein_a, lev_pop, ebins):
+  """
+  Calculate two photon spectrum
+  
+  Parameters
+  ----------
+  wavelength : float
+    Wavelength of the transition (Angstroms)
+  einstein_a : float
+    The Einstein_A paramater for the transition
+  lev_pop : float
+    The level population for the upper level
+  ebins : array(float)
+    The bin edges for the spectrum (in keV)
+    
+  Returns
+  -------
+  array(float)
+    The flux in photons cm-3 s-1 bin-1
+    array is one element shorter than ebins.
+  """
+  emission = numpy.zeros(len(ebins)-1, dtype=float)
+  E = (ebins[1:]+ebins[:-1])/2.0
+  E0 = const.HC_IN_KEV_A/wavelength
+  dE= ebins[1:]-ebins[:-1]
+  A_E=A_twoph(einstein_a,E0,E)
+    
+#    emission = ldat['lev_pop']*(E/E0)*A_E*dE*const.ERG_KEV
+  emission = lev_pop*(E/E0)*A_E*dE*const.ERG_KEV
+  emission[E>=E0]=0.0
+    # at this point, emission is in erg cm^3/s/bin
+    
+    # convert to photons cm^3/s/bin
+  emission/= (const.ERG_KEV*E)
+  
+#  print "A=%e, E0=%e, lev_pop=%e, wavelength=%e"%(einstein_a, E0, lev_pop, wavelength)
+  
+  i = numpy.where(E<E0)[0]
+#  for ii in i:
+#    print "iBin: %i E: %e A_E: %e Emiss: %e"%(ii, E[ii], A_E[ii], emission[ii])
+#  print "ENDtwo_photon"
+  return emission
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -4669,5 +5058,77 @@ def interpol_huntd(x, y, z):
 
   return f
 
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 
+def get_oscillator_strength(Z, z1, upperlev, lowerlev, datacache=False):
+
+
+  """
+  Get the oscillator strength f_{ij} of a transition
+
+  Parameters
+  ----------
+  Z : int
+    The atomic number of the element
+  z1 : int
+    The ion charge + 1 of the ion
+  upperlev : int
+    The upper level, indexed from 1
+  lowerlev : int
+    The lower level, indexed from 1
+  datacache : dict
+    Used for caching the data. See description in get_data
+
+  Returns
+  -------
+  float
+    The oscillator strength. Returns 0 if transition not found.
+    If transition is not found but the inverse transition is present the
+    oscillator strength is calculated for this instead.
+
+  """
+#
+# Version 0.1 Initial Release
+# Adam Foster 28 Jul 2016
+#
+
+
+  lvdat = get_data(Z, z1, 'LV', datacache=datacache)
+  ladat = get_data(Z, z1, 'LA', datacache=datacache)
+  
+  # get the various things
+  
+  i = numpy.where((ladat[1].data['upper_lev']==upperlev) &\
+                  (ladat[1].data['lower_lev']==lowerlev))[0]
+
+  if len(i) ==0:
+    i = numpy.where((ladat[1].data['upper_lev']==lowerlev) &\
+                    (ladat[1].data['lower_lev']==upperlev))[0]
+
+    if len(i) > 0:
+      print "WARNING: no transition information found for transition %i->%i"%\
+       (upperlev, lowerlev),
+      print " but found data for reverse transition. Using this instead."
+      up = lowerlev
+      lo = upperlev
+    else:
+      print "WARNING: no transition information found for transition %i->%i"%\
+       (upperlev, lowerlev),
+      return 0.0
+  else:
+    up = upperlev
+    lo = lowerlev
+  
+  i = i[0]
+  Aji = ladat[1].data['einstein_a'][i]
+  g_j = lvdat[1].data['lev_deg'][up-1]
+  g_i = lvdat[1].data['lev_deg'][lo-1]
+  lam = ladat[1].data['wavelen'][i]
+  
+  
+  f_ij = Aji * (g_j*1.0/g_i) * (lam**2/6.6702e15)
+  
+  return f_ij

@@ -67,4 +67,5 @@ Added ability to apply RMF and ARF to spectra in spectrum module
 Fixed hydrogenic RRC calculation
 
 0.0.1.7
-May 23rd 2016: Bugfix: update switch_version to get NEI files too.
+October 07th 2016: Bugfixes! Also:
+APEC now included in apec.py. Can create a full apec run from a par file.
