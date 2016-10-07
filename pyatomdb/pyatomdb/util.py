@@ -780,6 +780,9 @@ def switch_version(version):
       
      
     print "Attempting to download %s to %s"%('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile)
+    
+    if os.path.isfile(localfile):
+      os.remove(localfile)
     # get the file
     try:
       wget.download('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile)
@@ -797,7 +800,7 @@ def switch_version(version):
       subprocess.call(["tar", "-xvjf", "%s"%(fname)])
 
     print "...done"
-
+    wget.urllib.urlcleanup()
 
     if version[0] =='3':
       fname = re.sub('VERSION',version,'atomdb_vVERSION_nei.tar.bz2')
@@ -810,6 +813,9 @@ def switch_version(version):
      
       print "Attempting to download %s to %s"%('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile)
     # get the file
+      if os.path.isfile(localfile):
+        os.remove(localfile)
+
       try:
         wget.download('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile)
       except IOError:
