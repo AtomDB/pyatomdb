@@ -3973,7 +3973,7 @@ def wrap_run_apec_element(settings, te, dens, Z, ite, idens, writepickle=False, 
 
 
 
-def run_wrap_run_apec(fname, Z, iTe, idens):
+def run_wrap_run_apec(fname, Z, iTe, iDens):
   """
   After running the APEC code ion by ion, use this to combine into 
   FITS files.
@@ -3986,7 +3986,7 @@ def run_wrap_run_apec(fname, Z, iTe, idens):
     The atomic numbers
   iTe: int
     The temperature index
-  idens: int
+  iDens: int
     The density index
     
   Returns
