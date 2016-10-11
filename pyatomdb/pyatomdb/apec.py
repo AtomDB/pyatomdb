@@ -3953,16 +3953,18 @@ def wrap_run_apec_element(settings, te, dens, Z, ite, idens, writepickle=False, 
     
     cieout = generate_cie_outputs(settings, Z, linelist, contlist, pseudolist)
     if writepickle:
-      setpicklefname = "%s_Z_%i_elem_iT_%iiN_%i.pkl"%(settings['OutputFileStem'],Z,z1_drv,ite,idens)
+      setpicklefname = "%s_Z_%i_elem_iT_%iiN_%i.pkl"%(settings['OutputFileStem'],Z,ite,idens)
       pickle.dump(cieout, open(setpicklefname,'wb'))
+      print "wrote %s"%(setpicklefname)
     return cieout
   elif settings['Ionization']=='NEI':
     ionftmp= calc_full_ionbal(te, 1e14, Te_init=te, Zlist=[Z], extrap=True)
     ionfrac_nei = ionftmp[Z]
     neiout = generate_nei_outputs(settings, Z, linelist, contlist, pseudolist, ionfrac_nei)
     if writepickle:
-      setpicklefname = "%s_Z_%i_elem_iT_%iiN_%i.pkl"%(settings['OutputFileStem'],Z,z1_drv,ite,idens)
+      setpicklefname = "%s_Z_%i_elem_iT_%iiN_%i.pkl"%(settings['OutputFileStem'],Z,ite,idens)
       pickle.dump(neiout, open(setpicklefname,'wb'))
+      print "wrote %s"%(setpicklefname)
     return neiout
 
 
@@ -4015,35 +4017,32 @@ def run_wrap_run_apec(fname, Z, iTe, idens):
                           dtype=generate_datatypes('cocoparams'))
   
   
-  for iTe in range(settings['NumTemp']):
+  te = make_vector(settings['LinearTemp'], \
+                   settings['TempStart'], \
+                   settings['TempStep'], \
+                   settings['NumTemp'])[iTe]
 
-    te = make_vector(settings['LinearTemp'], \
-                     settings['TempStart'], \
-                     settings['TempStep'], \
-                     settings['NumTemp'])[iTe]
-
-    if settings['TempUnits']=='keV':
-      te /= const.KBOLTZ
+  if settings['TempUnits']=='keV':
+    te /= const.KBOLTZ
 
 
-    for iDens in range(settings['NumDens']):
-      dens = make_vector(settings['LinearDens'], \
-                         settings['DensStart'], \
-                         settings['DensStep'], \
-                         settings['NumDens'])[iDens]
+  dens = make_vector(settings['LinearDens'], \
+                     settings['DensStart'], \
+                     settings['DensStep'], \
+                     settings['NumDens'])[iDens]
 
-      # AT THIS POINT, GENERATE SHELL WHICH WILL GO IN THE HDU OF CHOICE
+  # AT THIS POINT, GENERATE SHELL WHICH WILL GO IN THE HDU OF CHOICE
       
-      if settings['Ionization']=='CIE':
-        linedata = numpy.zeros(0,dtype=generate_datatypes('linelist_cie'))
-        cocodata = numpy.zeros(0,dtype=generate_datatypes('continuum', ncontinuum=0, npseudo=0))
-      if settings['Ionization']=='NEI':
-        linedata = numpy.zeros(0,dtype=generate_datatypes('linetype'))
-        cocodata = numpy.zeros(0,dtype=generate_datatypes('continuum', ncontinuum=0, npseudo=0))
+  if settings['Ionization']=='CIE':
+    linedata = numpy.zeros(0,dtype=generate_datatypes('linelist_cie'))
+    cocodata = numpy.zeros(0,dtype=generate_datatypes('continuum', ncontinuum=0, npseudo=0))
+  if settings['Ionization']=='NEI':
+    linedata = numpy.zeros(0,dtype=generate_datatypes('linetype'))
+    cocodata = numpy.zeros(0,dtype=generate_datatypes('continuum', ncontinuum=0, npseudo=0))
 
-      print "Calling run_apec_element for Z=%i Te=%e dens=%e at %s"%(Z, te, dens, time.asctime())
-      dat = wrap_run_apec_element(settings, te, dens, Z,iTe,iDens, writepickle=True)
-      print "Done safely"
+  print "Calling run_apec_element for Z=%i Te=%e dens=%e at %s"%(Z, te, dens, time.asctime())
+  dat = wrap_run_apec_element(settings, te, dens, Z,iTe,iDens, writepickle=True)
+  print "Done safely"
 
 #-------------------------------------------------------------------------------
 
