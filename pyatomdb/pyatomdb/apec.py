@@ -3642,7 +3642,7 @@ def wrap_ion_directly(fname, ind, Z, z1):
 
 
 
-def wrap_run_apec(fname, readpickle=False, Zlist=[]):
+def wrap_run_apec(fname, readpickle=False):
   """
   After running the APEC code ion by ion, use this to combine into 
   FITS files.
@@ -3655,9 +3655,6 @@ def wrap_run_apec(fname, readpickle=False, Zlist=[]):
   readpickle : bool
     Load apec results by element from pickle files, instead of regenerating
 
-  Zlist: list of int
-    The atomic numbers to be run. By default, does all the elements in
-    settings['Zlist']
   Returns
   -------
   None
@@ -3900,6 +3897,13 @@ def wrap_run_apec_element(settings, te, dens, Z, ite, idens, writepickle=False, 
   -------
   None
   """
+
+  if readpickle:
+      setpicklefname = "%s_Z_%i_elem_iT_%iiN_%i.pkl"%(settings['OutputFileStem'],Z,ite,idens)
+      ret = pickle.load(open(setpicklefname,'rb'))
+      print "read %s"%(setpicklefname)
+      return ret
+
   linelist = numpy.zeros(0, dtype=generate_datatypes('linetype'))
   contlist = {}
   pseudolist = {}
