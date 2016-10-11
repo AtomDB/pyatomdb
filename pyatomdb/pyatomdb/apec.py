@@ -3642,7 +3642,7 @@ def wrap_ion_directly(fname, ind, Z, z1):
 
 
 
-def wrap_run_apec(fname):
+def wrap_run_apec(fname, readpickle=False, Zlist=[]):
   """
   After running the APEC code ion by ion, use this to combine into 
   FITS files.
@@ -3651,7 +3651,13 @@ def wrap_run_apec(fname):
   ----------
   fname : string
     file name
+  
+  readpickle : bool
+    Load apec results by element from pickle files, instead of regenerating
 
+  Zlist: list of int
+    The atomic numbers to be run. By default, does all the elements in
+    settings['Zlist']
   Returns
   -------
   None
@@ -3667,7 +3673,9 @@ def wrap_run_apec(fname):
   # we will transfer this to a "Zlist" parameter, in the form of
   # nuclear charges
 
-  Zlist = settings['Zlist']
+  if len(Zlist)==0:
+    Zlist = settings['Zlist']
+
   print "I will be running Z=", Zlist
   # run for each element, temperature, density
   
@@ -3708,7 +3716,7 @@ def wrap_run_apec(fname):
 
       for Z in Zlist:
         print "Calling run_apec_element for Z=%i Te=%e dens=%e at %s"%(Z, te, dens, time.asctime())
-        dat = wrap_run_apec_element(settings, te, dens, Z,iTe,iDens)
+        dat = wrap_run_apec_element(settings, te, dens, Z,iTe,iDens, readpickle=readpickle)
         # append this data to the output
         #pickle.dump(dat, open('dump_%i.pkl'%(Z),'wb'))
         linedata = numpy.append(linedata, dat['lines'])
@@ -3855,7 +3863,7 @@ def wrap_run_apec(fname):
 
 
 
-def wrap_run_apec_element(settings, te, dens, Z, ite, idens):
+def wrap_run_apec_element(settings, te, dens, Z, ite, idens, writepickle=False, readpickle=False):
   """
   Combine wrap_run_apec_ion results for an element
 
@@ -3878,6 +3886,15 @@ def wrap_run_apec_element(settings, te, dens, Z, ite, idens):
   
   idens: int
     The density index
+
+  writepickle: bool
+    Dump data into a pickle file. Useful for rapidly combining data
+    after runs.
+
+  readpickle: bool
+    Read data from a pickle file. Useful for rapidly combining data
+    after runs. Usually the result of a previous call using
+    writepickle=True
 
   Returns
   -------
@@ -3935,12 +3952,100 @@ def wrap_run_apec_element(settings, te, dens, Z, ite, idens):
   if settings['Ionization']=='CIE':
     
     cieout = generate_cie_outputs(settings, Z, linelist, contlist, pseudolist)
+    if writepickle:
+      setpicklefname = "%s_Z_%i_elem_iT_%iiN_%i.pkl"%(settings['OutputFileStem'],Z,z1_drv,ite,idens)
+      pickle.dump(cieout, open(setpicklefname,'wb'))
     return cieout
   elif settings['Ionization']=='NEI':
     ionftmp= calc_full_ionbal(te, 1e14, Te_init=te, Zlist=[Z], extrap=True)
     ionfrac_nei = ionftmp[Z]
     neiout = generate_nei_outputs(settings, Z, linelist, contlist, pseudolist, ionfrac_nei)
+    if writepickle:
+      setpicklefname = "%s_Z_%i_elem_iT_%iiN_%i.pkl"%(settings['OutputFileStem'],Z,z1_drv,ite,idens)
+      pickle.dump(neiout, open(setpicklefname,'wb'))
     return neiout
+
+
+
+#-------------------------------------------------------------------------------
+
+
+
+def run_wrap_run_apec(fname, Z, iTe, idens):
+  """
+  After running the APEC code ion by ion, use this to combine into 
+  FITS files.
+
+  Parameters
+  ----------
+  fname : string
+    file name of par file
+  Z: int
+    The atomic numbers
+  iTe: int
+    The temperature index
+  idens: int
+    The density index
+    
+  Returns
+  -------
+  None
+
+  """
+
+  # get the input settings
+  settings = parse_par_file(fname)
+
+  # need to parse the IncAtoms parameter - this defines which atoms
+  # we will include
+  #
+  # we will transfer this to a "Zlist" parameter, in the form of
+  # nuclear charges
+
+
+  print "I will be running Z=", Z
+  # run for each element, temperature, density
+  
+  lhdulist = []
+  chdulist = []
+  
+  seclHDUdat = numpy.zeros(settings['NumTemp']*settings['NumDens'], \
+                          dtype=generate_datatypes('lineparams'))
+  seccHDUdat = numpy.zeros(settings['NumTemp']*settings['NumDens'], \
+                          dtype=generate_datatypes('cocoparams'))
+  
+  
+  for iTe in range(settings['NumTemp']):
+
+    te = make_vector(settings['LinearTemp'], \
+                     settings['TempStart'], \
+                     settings['TempStep'], \
+                     settings['NumTemp'])[iTe]
+
+    if settings['TempUnits']=='keV':
+      te /= const.KBOLTZ
+
+
+    for iDens in range(settings['NumDens']):
+      dens = make_vector(settings['LinearDens'], \
+                         settings['DensStart'], \
+                         settings['DensStep'], \
+                         settings['NumDens'])[iDens]
+
+      # AT THIS POINT, GENERATE SHELL WHICH WILL GO IN THE HDU OF CHOICE
+      
+      if settings['Ionization']=='CIE':
+        linedata = numpy.zeros(0,dtype=generate_datatypes('linelist_cie'))
+        cocodata = numpy.zeros(0,dtype=generate_datatypes('continuum', ncontinuum=0, npseudo=0))
+      if settings['Ionization']=='NEI':
+        linedata = numpy.zeros(0,dtype=generate_datatypes('linetype'))
+        cocodata = numpy.zeros(0,dtype=generate_datatypes('continuum', ncontinuum=0, npseudo=0))
+
+      print "Calling run_apec_element for Z=%i Te=%e dens=%e at %s"%(Z, te, dens, time.asctime())
+      dat = wrap_run_apec_element(settings, te, dens, Z,iTe,iDens, writepickle=True)
+      print "Done safely"
+
+#-------------------------------------------------------------------------------
 
 def generate_apec_headerblurb(settings, linehdulist, cocohdulist):
   """
