@@ -2109,9 +2109,9 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
       ecrate = numpy.append(ecrate, decrate)
 
     # create dummy results
-      if not(has_sum_lv):
-        for i in range(len(ecup)):
-          diagterms[ecup[i]] +=ecrate[i]
+#      if not(has_sum_lv):
+      for i in range(len(ecup)):
+        diagterms[ecup[i]] +=ecrate[i]
 
 
   # get the PC data:
@@ -2173,9 +2173,9 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
       pclo = numpy.append(pclo, dpclo)
       pcrate = numpy.append(pcrate, dpcrate)
 
-      if not(has_sum_lv):
-        for i in range(len(pcup)):
-          diagterms[pcup[i]] +=pcrate[i]
+#      if not(has_sum_lv):
+      for i in range(len(pcup)):
+        diagterms[pcup[i]] +=pcrate[i]
 
   # get the IR data for colln ionization:
   irup = numpy.zeros(0, dtype=int)
@@ -2231,9 +2231,9 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
       irrate = irrate[:iir]
 #      for i in range(len(irup)):
 #        print "IR %i %i = %e"%(irup[i], irlo[i], irrate[i])
-      if not(has_sum_lv):
-        for i in range(len(irup)):
-          diagterms[irup[i]] +=irrate[i]
+#      if not(has_sum_lv):
+      for i in range(len(irup)):
+        diagterms[irup[i]] +=irrate[i]
 
 
   
@@ -2430,7 +2430,7 @@ def solve_level_pop(init,final,rates,settings):
     for i in range(1, len(matrixB)):
       if matrixA[i,i] >= 0:
         matrixA[i,i]=-1e10
-        print "Tieing level %i to ground with rate 1e10"%(i) 
+        print "ATieing level %i to ground with rate 1e10"%(i) 
     
 #    a = {}
 #    a['A'] = matrixA
@@ -2457,9 +2457,12 @@ def solve_level_pop(init,final,rates,settings):
 
     matrixA={}
     matrixB = numpy.zeros(nlev, dtype=float)
-    matrixA['init'] = numpy.append(init, init)
-    matrixA['final'] = numpy.append(final, init)
-    matrixA['rate'] = numpy.append(rates, -1.0*rates)
+#    matrixA['init'] = numpy.append(init, init)
+#    matrixA['final'] = numpy.append(final, init)
+#    matrixA['rate'] = numpy.append(rates, -1.0*rates)
+    matrixA['init'] = init
+    matrixA['final'] = final
+    matrixA['rate'] = rates
     
     # filter for the ground state levels
     i = matrixA['final']>0
@@ -2483,10 +2486,10 @@ def solve_level_pop(init,final,rates,settings):
                           shape=(nlev,nlev)).tocsr()
     
     hasdat = numpy.zeros(len(matrixB), dtype=bool)
-    for i in range(len(hasdat)):
+    for i in range(1,len(hasdat)):
       if A[i,i]>=0.0:
          A[i,i] = -1e10
-         print "Tieing level %i to ground with rate 1e10"%(i) 
+         print "BTieing level %i to ground with rate 1e10"%(i) 
 
     matrixB[0] = 1.0
     tmp={}
@@ -3121,7 +3124,7 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
     if matrixA_in['init'][i]==matrixA_in['final'][i]:
       if matrixA_in['rate'][i] >=0.0:
         matrixA_in['rate'][i] -=1e10
-        print "Tieing level %i to ground with rate 1e10"%(i) 
+        print "CTieing level %i to ground with rate 1e10"%(i) 
 #  j = numpy.where(hasdat==False)[0]
 #  if len(j) > 0:
 #    tmpinit=j
