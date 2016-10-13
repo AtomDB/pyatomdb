@@ -15,7 +15,7 @@
 import sys
 import os
 import shlex
-import pyatomdb
+
 
 def get_version(relpath):
     """read version info from file without importing it"""
