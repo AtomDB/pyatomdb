@@ -1,5 +1,17 @@
 from setuptools import setup, Extension
 
+def get_version(relpath):
+    """read version info from file without importing it"""
+    from os.path import dirname, join
+    for line in open(join(dirname(__file__), relpath)):
+        if '__version__' in line:
+            if '"' in line:
+                # __version__ = "0.9"
+                return line.split('"')[1]
+            elif "'" in line:
+                return line.split("'")[1]
+
+
 readme = open('README.txt', 'r')
 README_TEXT = readme.read()
 readme.close()
@@ -9,8 +21,10 @@ linapprox =  Extension('linear_approx',\
                                         ('MINOR_VERSION','0')],\
                        sources=['linear_approx.c'])
 
+
+
 setup(name='pyatomdb',
-      version='0.0.1.8',
+      version=get_version('pyatomdb/__init.py__'),
       description='AtomDB python library. This is a very early development version.',
       url='http://www.atomdb.org',
       author='Adam Foster',
