@@ -31,7 +31,7 @@ def write_filemap(d, filemap, atomdbroot=''):
 
   Parameters
   ----------
-  d : str
+  d : dict
     Dictionary with filemap data in it. Structure defined as return value from
     read_filemap.
   filemap : str
