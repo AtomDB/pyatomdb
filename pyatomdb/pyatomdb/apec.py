@@ -3242,13 +3242,14 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
 
   Returns
   -------
-  dat : dictionary
-    containing::
-    
-    linelist : numpy array
-      List of line details and emissivities
-    continuum : array
-      Continuum emission in photons bin-1 s-1
+  linelist : numpy array
+    List of line details and emissivities
+  continuum : array
+    Continuum emission in photons bin-1 s-1.
+    This is a 3-item dict, with "rrc", "twophot", "brems" entries
+    for each continuum source
+  pseudocont : array
+    Pseudo Continuum emission in photons bin-1 s-1
   """
 
   # get the data.
@@ -3465,9 +3466,9 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
   if settings['WriteIon']==True:
     ret = {}
     ret['lines'] = linelist
-    ret['continuum'] = linelist
-    ret['pseudocont'] = linelist
-    ret['ionfrac'] = linelist
+    ret['continuum'] = continuum
+    ret['pseudocont'] = pseudocont
+    ret['ionfrac'] = ionfrac
     ret['te'] = te
     ret['dens'] = dens
     ret['settings'] = settings

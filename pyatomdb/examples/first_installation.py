@@ -25,5 +25,9 @@ pyatomdb.util.initialize()
 # take a few minutes, depending on your internet connection.
 
 print "Install complete!"
+
 #and that's it!
+
+# If you want to switch versions of atomdb (in this case to 3.0.2) later, call:
+# pyatomdb.util.switch_version('3.0.2')
 
