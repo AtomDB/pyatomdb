@@ -24,7 +24,7 @@ linapprox =  Extension('linear_approx',\
 
 
 setup(name='pyatomdb',
-      version=get_version('pyatomdb/__init.py__'),
+      version=get_version('pyatomdb/__init__.py'),
       description='AtomDB python library. This is a very early development version.',
       url='http://www.atomdb.org',
       author='Adam Foster',
