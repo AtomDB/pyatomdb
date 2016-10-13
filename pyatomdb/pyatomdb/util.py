@@ -800,7 +800,7 @@ def switch_version(version):
       subprocess.call(["tar", "-xvjf", "%s"%(fname)])
 
     print "...done"
-    wget.urllib.urlcleanup()
+    urllib.urlcleanup()
 
     if version[0] =='3':
       fname = re.sub('VERSION',version,'atomdb_vVERSION_nei.tar.bz2')
@@ -833,6 +833,7 @@ def switch_version(version):
 
     os.chdir(os.path.expandvars(re.sub('VERSION',version, "$ATOMDB/tmp/atomdb_vVERSION")))
 
+    urllib.urlcleanup()
 
     for ifile in glob.glob('*%s*'%(version)):
       
