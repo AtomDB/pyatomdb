@@ -2497,14 +2497,34 @@ def solve_level_pop(init,final,rates,settings):
     #tmp['B'] = matrixB
 #    pickle.dump(tmp, open('dump_tmp.pkl','wb'))
     popn = spsolve(A, matrixB)
-    # check the solution
-#    soln = numpy.allclose(numpy.dot(A, popn), matrixB)
-#    if soln==False:
-#      print "ERROR Solving population matrix!"
-#    for i in range(len(popn)):
-      #print i, popn[i]
-    #print popn
-    #zzz=raw_input('mycheck1')  
+
+    # sparse solver sometimes returns small negative pop. set to 0.
+    
+    popn[popn<0] = 0.0
+    # check for low population levels which are not
+    # correctly handled by the sparse solver
+    # anything under 1e-28 is suspect.
+
+    tocheck = numpy.where((popn>= 0) &\
+                          (popn<= 1e-28))[0]
+    if len(tocheck) > 0:
+      for i in tocheck:
+        itot_in = numpy.where((matrixA['init']==0) &\
+                              (matrixA['final']==i))[0]
+
+        itot_out = numpy.where((matrixA['init']==i) &\
+                               (matrixA['final']==i))[0]
+
+        tot_in = -sum(matrixA['rate'][itot_in])
+        tot_out = sum(matrixA['rate'][itot_out])
+        p =tot_in/tot_out
+
+        if (popn[i] < 1e-30):
+          if tot_in < 1e-21:
+            popn[i] = p
+        elif (popn[i] < 1e-28):
+          if (tot_in < 1e-30):
+            popn[i] = p
   
   return popn
 
