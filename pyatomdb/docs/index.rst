@@ -56,7 +56,7 @@ License
 
 Pyatomdb is released under the Smithsonian License:
 
-Copyright 2015 Smithsonian Institution. Permission is granted to use, copy, 
+Copyright 2015-16 Smithsonian Institution. Permission is granted to use, copy, 
 modify, and distribute this software and its documentation for educational,
 research and non-profit purposes, without fee and without a signed
 licensing agreement, provided that this notice, including the following
