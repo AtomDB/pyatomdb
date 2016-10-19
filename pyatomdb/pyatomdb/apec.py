@@ -3670,8 +3670,8 @@ def wrap_run_apec(fname, readpickle=False):
   # we will transfer this to a "Zlist" parameter, in the form of
   # nuclear charges
 
-  if len(Zlist)==0:
-    Zlist = settings['Zlist']
+#  if len(Zlist)==0:
+  Zlist = settings['Zlist']
 
   print "I will be running Z=", Zlist
   # run for each element, temperature, density
@@ -3725,7 +3725,7 @@ def wrap_run_apec(fname, readpickle=False):
       if settings['Ionization']=='CIE':
         LHDUdat = create_lhdu_cie(linedata)
       elif settings['Ionization']=='NEI':
-        pickle.dump(linedata,open('argh.pkl','wb'))
+#        pickle.dump(linedata,open('argh.pkl','wb'))
         LHDUdat = create_lhdu_nei(linedata)
         
       # now update the headers
