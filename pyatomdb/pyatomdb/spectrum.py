@@ -172,12 +172,14 @@ def make_ion_spectrum(bins, index, Z,z1, linefile="$ATOMDB/apec_nei_line.fits",\
        Element of spectrum (e.g. 6 for carbon)
   z1 : int
        Ion charge +1 for the spectrum (e.g. 3 for C III)
-  linefile : str
+  linefile : str or HDUList
        The file containing all the line emission. Defaults to \
-       "$ATOMDB/apec_line.fits"
-  cocofile : str
+       "$ATOMDB/apec_line.fits". Can also pass in the opened file, \
+       i.e. "linefile = pyatomdb.pyfits.open('apec_nei_line.fits')"
+  cocofile : str or HDUList
        The file containing all the continuum emission. Defaults to \
-       "$ATOMDB/apec_coco.fits"
+       "$ATOMDB/apec_coco.fits". Can also pass in the opened file, \
+       i.e. "cocofile = pyatomdb.pyfits.open('apec_nei_comp.fits')"
   binunits : {'keV','A'}
        The energy units for bins. "keV" or "A". Default keV.
   broadening : float
@@ -236,24 +238,43 @@ def make_ion_spectrum(bins, index, Z,z1, linefile="$ATOMDB/apec_nei_line.fits",\
           (binunits)
 
   # check the files exist
-  if ((linefile == "$ATOMDB/apec_nei_line.fits") & (nei==False)):
-    linefile = "$ATOMDB/apec_line.fits"
-  if ((cocofile == "$ATOMDB/apec_nei_comp.fits") & (nei==False)):
-    cocofile = "$ATOMDB/apec_coco.fits"
-    print "Warning: you have specified a collisional ionization equilibrium plasma. Switching emissivity files to %s and %s"%\
-         (linefile, cocofile)  
-  lfile = os.path.expandvars(linefile)
-  cfile = os.path.expandvars(cocofile)
-  if not os.path.isfile(lfile):
-    print "*** ERROR: no such file %s. Exiting ***" %(lfile)
-    return -1
-  if not os.path.isfile(cfile):
-    print "*** ERROR: no such file %s. Exiting ***" %(cfile)
-    return -1
+  # first, check if the line file is set
+  if util.keyword_check(linefile):
+    # ok, we should do something with this
+    # if it is a string, look for the file name
+    if isinstance(linefile, basestring):
+      if ((linefile == "$ATOMDB/apec_nei_line.fits") & (nei==False)):
+        linefile = "$ATOMDB/apec_line.fits"
+      lfile = os.path.expandvars(linefile)
+      if not os.path.isfile(lfile):
+        print "*** ERROR: no such file %s. Exiting ***" %(lfile)
+        return -1
+      ldat = pyfits.open(lfile)
+    elif isinstance(linefile, pyfits.hdu.hdulist.HDUList):
+      # no need to do anything, file is already open
+      ldat = linefile
+    else:
+      print "Unknown data type for linefile. Please pass a string or an HDUList"
+      return -1
+   
+  if util.keyword_check(cocofile):
+    if isinstance(cocofile, basestring):
+      if ((cocofile == "$ATOMDB/apec_nei_comp.fits") & (nei==False)):
+        cocofile = "$ATOMDB/apec_coco.fits"
+      cfile = os.path.expandvars(cocofile)
+      if not os.path.isfile(cfile):
+        print "*** ERROR: no such file %s. Exiting ***" %(cfile)
+        return -1
+      cdat = pyfits.open(cfile)
+    elif isinstance(cocofile, pyfits.hdu.hdulist.HDUList):
+      # no need to do anything, file is already open
+      cdat = cocofile
+    else:
+      print "Unknown data type for cocofile. Please pass a string or an HDUList"
+      return
+ 
+ 
   
-  # open the files
-  ldat = pyfits.open(lfile)
-  cdat = pyfits.open(cfile)
       
   # get the index
   if ((index < 2) | (index > len(ldat))):
