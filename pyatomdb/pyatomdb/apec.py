@@ -3230,6 +3230,42 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
 
     popn = numpy.zeros(len(matrixB))
     popn[1:] = spsolve(A, matrixB[1:])
+    
+    popn_bak = popn*1.0
+
+    popn[popn<0] = 0.0
+    # check for low population levels which are not
+    # correctly handled by the sparse solver
+    # anything under 1e-28 is suspect.
+
+    tocheck = numpy.where((popn>= 1e-40) &\
+                          (popn<= 1e-28))[0]
+    
+    if len(tocheck) > 0:
+      for i in tocheck:
+        # lowest lying levels are generally OK.
+        if i < 100: continue
+        tot_in = matrixB[i-1]
+
+        itot_out = numpy.where((matrixA['init']==i) &\
+                               (matrixA['final']==i))[0]
+
+        #tot_in = -sum(matrixA['rate'][itot_in])
+        tot_out = sum(matrixA['rate'][itot_out])
+        p =tot_in/tot_out
+
+        if (popn[i] < 1e-30):
+          if tot_in < 1e-21:
+            popn[i] = p
+        elif (popn[i] < 1e-28):
+          if (tot_in < 1e-30):
+            popn[i] = p
+  
+  
+  
+    print "level population for Z=%i, z1=%i, z1_drv=%i"%(Z,z1,z1_drv)
+    for i in range(len(popn)):
+      print "%6i %e %e"%(i, popn[i], popn_bak[i])
     #print levpop_this
     #zzz=raw_input('argh')
   return popn
