@@ -21,7 +21,8 @@ import atomic, util, const, atomdb, apec
 def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
                   cocofile="$ATOMDB/apec_coco.fits",\
                   binunits='keV', broadening=False, broadenunits='keV', \
-                  elements=False, abund=False, dummyfirst=False):
+                  elements=False, abund=False, dummyfirst=False,\
+                  dolines = True, docont=True, dopseudo=True):
 
   r"""
   make_spectrum is the most generic "make me a spectrum" routine.
@@ -59,6 +60,12 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
   dummyfirst : bool
        If true, add a "0" to the beginning of the return array so it is of the 
        same length as bins (can be useful for plotting results)
+  dolines : bool
+       Include lines in the spectrum
+  docont : bool
+       Include the continuum in the spectrum
+  dopseudo : bool
+       Include the pseudocontinuum in the spectrum.
   
   Returns
   -------
@@ -90,19 +97,58 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
     print "*** ERROR: unknown binning unit %s, Must be keV or A. Exiting ***"%\
           (binunits)
 
-  # check the files exist
-  lfile = os.path.expandvars(linefile)
-  cfile = os.path.expandvars(cocofile)
-  if not os.path.isfile(lfile):
-    print "*** ERROR: no such file %s. Exiting ***" %(lfile)
-    return -1
-  if not os.path.isfile(cfile):
-    print "*** ERROR: no such file %s. Exiting ***" %(cfile)
-    return -1
+
+
+
+
+  if util.keyword_check(linefile):
+    # ok, we should do something with this
+    # if it is a string, look for the file name
+    if isinstance(linefile, basestring):
+      lfile = os.path.expandvars(linefile)
+      if not os.path.isfile(lfile):
+        print "*** ERROR: no such file %s. Exiting ***" %(lfile)
+        return -1
+      ldat = pyfits.open(lfile)
+    elif isinstance(linefile, pyfits.hdu.hdulist.HDUList):
+      # no need to do anything, file is already open
+      ldat = linefile
+    else:
+      print "Unknown data type for linefile. Please pass a string or an HDUList"
+      return -1
+   
+  if util.keyword_check(cocofile):
+    if isinstance(cocofile, basestring):
+      cfile = os.path.expandvars(cocofile)
+      if not os.path.isfile(cfile):
+        print "*** ERROR: no such file %s. Exiting ***" %(cfile)
+        return -1
+      cdat = pyfits.open(cfile)
+    elif isinstance(cocofile, pyfits.hdu.hdulist.HDUList):
+      # no need to do anything, file is already open
+      cdat = cocofile
+    else:
+      print "Unknown data type for cocofile. Please pass a string or an HDUList"
+      return
+ 
+ 
+ 
+
+
+
+
+#  lfile = os.path.expandvars(linefile)
+#  cfile = os.path.expandvars(cocofile)
+#  if not os.path.isfile(lfile):
+#    print "*** ERROR: no such file %s. Exiting ***" %(lfile)
+#    return -1
+#  if not os.path.isfile(cfile):
+#    print "*** ERROR: no such file %s. Exiting ***" %(cfile)
+#    return -1
   
   # open the files
-  ldat = pyfits.open(lfile)
-  cdat = pyfits.open(cfile)
+#  ldat = pyfits.open(lfile)
+#  cdat = pyfits.open(cfile)
       
   # get the index
   if ((index < 2) | (index > len(ldat))):
@@ -126,15 +172,18 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
 
   lspectrum = numpy.zeros(len(bins)-1, dtype=float)
   cspectrum = numpy.zeros(len(bins)-1, dtype=float)
+
+  if dolines:  
+    for iZ, Z in enumerate(Zlist):
+      # ADD  LINES
+      lspectrum += add_lines(Z, abund[iZ], lldat, ebins, broadening=broadening, broadenunits=broadenunits)
   
-  for iZ, Z in enumerate(Zlist):
-    # ADD  LINES
-    lspectrum += add_lines(Z, abund[iZ], lldat, ebins, broadening=broadening, broadenunits=broadenunits)
-    #print Z, abund[iZ]
-  for iZ, Z in enumerate(Zlist):
+  if docont | dopseudo:
+    for iZ, Z in enumerate(Zlist):
     # ADD  CONTINUUM
-    cspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
-                                         binunits=binunits)*abund[iZ]
+      cspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
+                                           binunits=binunits, no_coco=-docont,\
+                                           no_pseudo=-dopseudo)*abund[iZ]
   
   # broaden the continuum if required:
   if broadening:
