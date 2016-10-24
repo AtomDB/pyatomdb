@@ -2063,7 +2063,9 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
       deltaearr = lvdat[1].data['ENERGY'][ecdat[1].data['upper_lev']-1]-\
                   lvdat[1].data['ENERGY'][ecdat[1].data['lower_lev']-1]
   
-  
+      ladat = atomdb.get_data(Z, z1, 'LA', datacache=datacache, \
+                            settings = settings)
+                            
       for i in range(len(ecdat[1].data)):
         # check if we need to swap things
         if deltaearr[i] >=0:
@@ -2079,8 +2081,7 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
           deltaearr[i] *= -1
           
         
-        ladat = atomdb.get_data(Z, z1, 'LA', datacache=datacache, \
-                            settings = settings)
+        
 
         exc,dex, tmp = atomdb.calc_maxwell_rates(ecdat[1].data['coeff_type'][i],\
                                      ecdat[1].data['min_temp'][i],\
@@ -2468,8 +2469,8 @@ def solve_level_pop(init,final,rates,settings):
   init=init[k]
   final=final[k]
   
-  print "first test"
- # for i in range(len(final)):
+#  print "first test"
+#  for i in range(len(final)):
 #    if final[i] == init[i]: print init[i],final[i], rates[i]
 #  print "end first test"
     
@@ -2489,7 +2490,7 @@ def solve_level_pop(init,final,rates,settings):
   final=final[irate]
   rates=rates[irate]
   nlev = max([max(init), max(final)])+1
-#  print "nlev = %i, nlev_old =%i"%(nlev, nlev_old)
+  print "nlev = %i, nlev_old =%i"%(nlev, nlev_old)
 #  print "second test"
 #  for i in range(len(final)):
 #    if final[i] == init[i]: print init[i],rates[i]
@@ -2563,8 +2564,7 @@ def solve_level_pop(init,final,rates,settings):
 
     
     maxlev = max(matrixA['final'][matrixA['rate']>1e-40])
-    
-    print "maxlev:", maxlev
+    k = numpy.where(matrixA['rate']<1e-40)[0]
 
     # filter for the ground state levels
     
@@ -2580,22 +2580,24 @@ def solve_level_pop(init,final,rates,settings):
     matrixA['rate'] = matrixA['rate'][i]
     
 
-
-#    matrixA['final'] = numpy.append(matrixA['final'], \
-#                                 numpy.zeros(nlev, dtype=int))
-#    matrixA['init'] = numpy.append(matrixA['init'], \
-#                                 numpy.arange(nlev, dtype=int))
-#    matrixA['rate'] = numpy.append(matrixA['rate'], \
-#                                 numpy.ones(nlev, dtype=float))
-
+    matrixA['final'] = numpy.append(matrixA['final'], \
+                                 numpy.zeros(maxlev, dtype=int))
+    matrixA['init'] = numpy.append(matrixA['init'], \
+                                 numpy.arange(maxlev, dtype=int))
+    matrixA['rate'] = numpy.append(matrixA['rate'], \
+                                 numpy.ones(maxlev, dtype=float))
 #    A = sparse.coo_matrix((matrixA['rate'],\
 #                          (matrixA['final'],matrixA['init'])), \
-#                          shape=(nlev,nlev)).tocsr()
+#                          shape=(maxlev+1,maxlev+1)).tocsr()
+
     A = numpy.zeros([maxlev+1,maxlev+1])
-    print "A.shape", A.shape, " maxlev", maxlev
-    for i in range(len(matrixA['init'])):
-      A[matrixA['final'][i], matrixA['init'][i]] += matrixA['rate'][i]
-      if matrixA['final'][i] == matrixA['init'][i]: print matrixA['init'][i],matrixA['rate'][i]
+    for i in range(len(matrixA['final'])):
+      A[matrixA['final'][i], matrixA['init'][i]]+=matrixA['rate'][i]
+      
+#    print "A.shape", A.shape, " maxlev", maxlev
+#    for i in range(len(matrixA['init'])):
+#      A[matrixA['final'][i], matrixA['init'][i]] += matrixA['rate'][i]
+#      if matrixA['final'][i] == matrixA['init'][i]: print matrixA['init'][i],matrixA['rate'][i]
       
     matrixB[0] = 1.0
     A[0,:] = 1.0
@@ -2612,9 +2614,11 @@ def solve_level_pop(init,final,rates,settings):
     #tmp['B'] = matrixB
 #    pickle.dump(tmp, open('dump_tmp.pkl','wb'))
     popn = numpy.zeros(nlev_old)
-    
+    matrixA=0
     popn[:maxlev+1] = numpy.linalg.solve(A, matrixB[:maxlev+1])
-
+#    popn[:maxlev+1] = spsolve(A, matrixB[:maxlev+1])
+    
+    
     # sparse solver sometimes returns small negative pop. set to 0.
     
     popn[popn<0] = 0.0
@@ -2965,7 +2969,7 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
   Tarr, dummy = util.make_vec(T)
   
   if nlev > const.NLEV_NOSPARSE:
-    
+    print "using sparse solver for recomb"
   
   # sort the levels
     aidat = atomdb.get_data(Z,z1,'AI', settings=settings, datacache=datacache)
@@ -2990,11 +2994,15 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
       # check we have the right data types
       if ir['TR_TYPE'] in ['RR','DR','XR']:
         recrate = atomdb.get_maxwell_rate(Tarr, irdat, iir, lvdat)*dens
-        recombrate[ir['level_final']-1] += recrate*levpop[ir['level_init']-1]
+        if not (numpy.isfinite(recrate)):
+          print "iir=%i, recrate is not finite!"%(iir)
+        else:
+          recombrate[ir['level_final']-1] += recrate*levpop[ir['level_init']-1]
   
     maxlev = numpy.where(recombrate > 0)[0]
     if len(maxlev) == 0:  # so recombrate has all the influxes
-      print "FUCK ME"
+      return numpy.zeros(nlev)
+    maxlev=maxlev[-1]
     matrixB = recombrate
 #    print "Sum recomb rates in level>1:", sum(matrixB[1:])
     
@@ -3013,7 +3021,9 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
 
     matrixB *= -1 
     nlev = len(matrixB)
-    
+#    print "recombination rates"
+#    for i in range(len(matrixB)):
+#      print i, matrixB[i]
     
 
       # no recombination to speak of. Return zeros
@@ -3025,7 +3035,7 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
 #    matrixA['rate'] = numpy.append(matrixA['rate'],-1*matrixA['rate'])
     
     # remove all matrix A from and to level 0
-    i = matrixA['final']>0
+    i = (matrixA['final']>0) & (matrixA['init']>0)
     matrixA['final'] = matrixA['final'][i]
     matrixA['init'] = matrixA['init'][i]
     matrixA['rate'] = matrixA['rate'][i]
@@ -3045,23 +3055,27 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
 #                           (matrixA['final'],matrixA['init'])), \
 #                           shape=(nlev-1,nlev-1)).tocsr()
     A  = numpy.zeros([maxlev,maxlev])
-    for i in range(maxlev):
+    for i in range(len(matrixA['final'])):
       A[matrixA['final'][i], matrixA['init'][i]]+=matrixA['rate'][i]
       
 #    A = numpy.linalg.solve((matrixA['rate'],\
 #                           (matrixA['final'],matrixA['init'])), \
 #                           shape=(nlev-1,nlev-1)).tocsr()
+    
 
     levpop_this = numpy.zeros(len(matrixB))
 #    for i in numpy.where(matrixB != 0)[0]:
 #      print i, matrixB[i]
     if sum(matrixB[1:] < 0):
-      levpop_this[1:] = spsolve(A, matrixB[1:])
+      levpop_this[1:maxlev+1] = numpy.linalg.solve(A, matrixB[1:maxlev+1])
 
 
 
 #    levpop_this = calc_cascade(recombrate, Z, z1, isbound, sortdat, T, settings, noauto=True)
   else:
+
+    print "using regular solver for recomb"
+
     rrrecombrate = numpy.zeros(nlev, dtype=float)
     drrecombrate = numpy.zeros(nlev, dtype=float)
     irdat = atomdb.get_data(Z, z1, 'IR', settings=settings, datacache=datacache)
@@ -3130,8 +3144,10 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
       levpop_this = numpy.zeros(nlev)
     
     
-
-  
+  print "level population for recombination into Z=%i, z1=%i, z1_drv=%i"%\
+        (Z, z1, z1_drv)
+  for i in range(len(levpop_this)):
+    print i, levpop_this[i]
   return levpop_this
   
 #-----------------------------------------------------------------------
@@ -3221,6 +3237,7 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
   import scipy.sparse as sparse
   from scipy.sparse.linalg import spsolve
 
+  print "Starting calc_ioniz_popn at %s"%(time.asctime())
   lvdat = atomdb.get_data(Z,z1,'LV', settings=settings, datacache=datacache)
   
   # if we have no lv data, ignore.
@@ -3233,33 +3250,47 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
   aidat = atomdb.get_data(Z, z1-1, 'AI', settings=settings, datacache=datacache)
   ionizrateai=numpy.zeros(nlev, dtype=float)
   ionizrateir=numpy.zeros(nlev, dtype=float)
+
+  print "Starting calc_ioniz_popn aidat loop at %s"%(time.asctime())
   if aidat:
     for ai in aidat[1].data:
       ionizrateai[ai['level_final']-1] += levpop[ai['level_init']-1]*\
                                      ai['auto_rate']
   
     #aidat.close()
+  print "Finished calc_ioniz_popn aidat loop at %s"%(time.asctime())
 
 
+  print "Starting calc_ioniz_popn xidat loop at %s"%(time.asctime())
   if do_xi:
 
     irdat = atomdb.get_data(Z, z1-1, 'IR', settings=settings, datacache=datacache)
     ionpot = float(irdat[1].header['ionpot'])
     if z1 >1:
       lvdatm1 = atomdb.get_data(Z, z1-1, 'LV', settings=settings, datacache=datacache)
-  # go through each excitation, have fun
-  
+  # go through each excitation, have fun                                        
+
     for iir, ir in enumerate(irdat[1].data):
       if ir['TR_TYPE'] in ['XI']:
-        Te =  numpy.array([T])
-        
+	Te =  numpy.array([T])
         ionrate=atomdb.get_maxwell_rate(Te, irdat, iir, lvdatm1, \
                                      lvdatap1=lvdat, ionpot=ionpot)
         ionizrateir[ir['level_final']-1] += levpop[ir['level_init']-1]*\
                                        ionrate
-#  print 
-  ionizrate=ionizrateir+ionizrateai
 
+
+#get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
+#                     lvdatap1=False, ionpot = False, \
+#                     force_extrap=False, silent=True,\
+#                     finallev=False, initlev=False,\
+#                     Z=-1, z1=-1, dtype=False, exconly=False,\
+#                     datacache=False, settings=False):
+#  print 
+  print "Finished calc_ioniz_popn xidat loop at %s"%(time.asctime())
+  
+  ionizrate=ionizrateir+ionizrateai
+#  for i in range(len(ionizrate)):
+#    print i ,ionizrate[i]
   matrixB = ionizrate
 
   # save some time if there is nothing to ionize.
@@ -3273,15 +3304,15 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
     print "No significant ionization found"
     popn = numpy.zeros(len(matrixB))
     return popn
-  
-  
+  maxlev=maxlev[-1]
+  print "maxlev=", maxlev
   matrixA_in={}
   matrixA_in['init'], matrixA_in['final'], matrixA_in['rate'] = \
    gather_rates(Z, z1, T, Ne, datacache=datacache, settings=settings,\
                  do_la=True, do_ai=True, do_ec=False, do_pc=False,\
                  do_ir=False)
 
-  i = (matrixA_in['init']<maxlev) & (matrixA_in['final']<maxlev)
+  i = (matrixA_in['init']<=maxlev) & (matrixA_in['final']<=maxlev)
   matrixA_in['init']=matrixA_in['init'][i]
   matrixA_in['final']=matrixA_in['final'][i]
   matrixA_in['rate']=matrixA_in['rate'][i]
@@ -3306,15 +3337,16 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
   
   if (maxlev <= const.NLEV_NOSPARSE):
     # convert to a regular solver
-    matrixA = numpy.zeros([maxlev,maxlev], dtype=float)
+    print "regular solver"
+    matrixA = numpy.zeros([maxlev+1,maxlev+1], dtype=float)
     
     for i in range(len(matrixA_in['init'])):
       matrixA[matrixA_in['final'][i], matrixA_in['init'][i]] += matrixA_in['rate'][i]
 #      matrixA[matrixA_in['init'][i], matrixA_in['init'][i]] -= matrixA_in['rate'][i]
 
     # popn conservation
-    matrixB[0] = 1.0
-    matrixA[0,:] = 1.0
+#    matrixB[0] = 1.0
+#    matrixA[0,:] = 1.0
 
     # bug-u-fix
     for i in range(1, maxlev):
@@ -3323,9 +3355,11 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
         print "FIXING matrixA[%i,%i] = -1.0"%(i,i)
 
     popn = numpy.zeros(nlev)
-    print "matrixA shape", matrixA.shape, ' maxlev', maxlev
+    
+    matrixB*=-1
+    
     try:
-      popn[1:maxlev] = numpy.linalg.solve(matrixA[1:maxlev,1:maxlev], matrixB[1:maxlev]*-1)
+      popn[1:maxlev] = numpy.linalg.solve(matrixA[1:maxlev,1:maxlev], matrixB[1:maxlev])
     except numpy.linalg.linalg.LinAlgError:
       "EEK ERROR!"
       raise
@@ -3366,19 +3400,27 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
     matrixA['final'] = matrixA_in['final'][i]
     matrixA['rate'] = matrixA_in['rate'][i]
     
+    i = (matrixA['init']<=maxlev+1) & (matrixA['final']<=maxlev+1)
+    
+    matrixA['init'] = matrixA['init'][i]
+    matrixA['final'] = matrixA['final'][i]
+    matrixA['rate'] = matrixA['rate'][i]
+
     
     # subtract 1 from the levels
     matrixA['init']-=1
     matrixA['final']-=1
     
-    
-         
-    A = sparse.coo_matrix((matrixA['rate'],\
-                           (matrixA['final'],matrixA['init'])), \
-                           shape=(nlev-1,nlev-1)).tocsr()
+#    A = sparse.coo_matrix((matrixA['rate'],\
+#                           (matrixA['final'],matrixA['init'])), \
+#                           shape=(maxlev,maxlev)).tocsr()
+    A = numpy.zeros([maxlev, maxlev])
+    for i in range(len(matrixA['final'])):
+      A[matrixA['final'][i], matrixA['init'][i]]+=matrixA['rate'][i]    
 
     popn = numpy.zeros(len(matrixB))
-    popn[1:] = spsolve(A, matrixB[1:])
+#    popn[1:maxlev+1] = spsolve(A, matrixB[1:maxlev+1])
+    popn[1:maxlev+1] = numpy.linalg.solve(A, matrixB[1:maxlev+1])
     
     popn_bak = popn*1.0
 
@@ -3387,36 +3429,34 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
     # correctly handled by the sparse solver
     # anything under 1e-28 is suspect.
 
-    tocheck = numpy.where((popn>= 1e-40) &\
-                          (popn<= 1e-28))[0]
-    
-    if len(tocheck) > 0:
-      for i in tocheck:
-        # lowest lying levels are generally OK.
-        if i < 100: continue
-        tot_in = matrixB[i-1]
-
-        itot_out = numpy.where((matrixA['init']==i) &\
-                               (matrixA['final']==i))[0]
-
-        #tot_in = -sum(matrixA['rate'][itot_in])
-        tot_out = sum(matrixA['rate'][itot_out])
-        p =tot_in/tot_out
-
-        if (popn[i] < 1e-30):
-          if tot_in < 1e-21:
-            popn[i] = p
-        elif (popn[i] < 1e-28):
-          if (tot_in < 1e-30):
-            popn[i] = p
-  
-  
-  
-    print "level population for Z=%i, z1=%i, z1_drv=%i"%(Z,z1,z1_drv)
-    for i in range(len(popn)):
-      print "%6i %e %e"%(i, popn[i], popn_bak[i])
-    #print levpop_this
-    #zzz=raw_input('argh')
+#    tocheck = numpy.where((popn>= 1e-40) &\
+#                          (popn<= 1e-28))[0]
+#    
+#    if len(tocheck) > 0:
+#      for i in tocheck:
+#        # lowest lying levels are generally OK.
+#        if i < 100: continue
+#        tot_in = matrixB[i-1]
+#
+#        itot_out = numpy.where((matrixA['init']==i) &\
+#                               (matrixA['final']==i))[0]
+#
+#        #tot_in = -sum(matrixA['rate'][itot_in])
+#        tot_out = sum(matrixA['rate'][itot_out])
+#        p =tot_in/tot_out
+#
+#        if (popn[i] < 1e-30):
+#          if tot_in < 1e-21:
+#            popn[i] = p
+#        elif (popn[i] < 1e-28):
+#          if (tot_in < 1e-30):
+#            popn[i] = p
+#  
+#  
+#  
+  print "level population for Z=%i, z1=%i, z1_drv=%i"%(Z,z1,z1_drv)
+  for i in range(len(popn)):
+    print "%6i %e"%(i, popn[i])
   return popn
   
 #-----------------------------------------------------------------------
@@ -3529,7 +3569,7 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
 #      print i, lev_pop[i]
     lev_pop *= abund*ionfrac[z1-1]
     for i in range(len(lev_pop)):
-      print i, lev_pop[i], lev_pop[i]/(abund*ionfrac[z1-1])
+      print i, lev_pop[i]
     
     print "calling do_lines from run_apec_ion"
     linelist_exc,  continuum['twophot'] = do_lines(Z, z1, lev_pop, dens, datacache=datacache, settings=settings, z1_drv_in=z1_drv)
