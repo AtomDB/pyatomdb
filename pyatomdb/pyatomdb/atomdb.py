@@ -1325,7 +1325,8 @@ def calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
                        om, dE, T, Z, degl, degu, quiet=False, \
                        levdat=False, ladat=False, \
                        lolev=False, uplev=False, \
-                       force_extrap=False, did_extrap=False):
+                       force_extrap=False, did_extrap=False, \
+                       datacache=False):
 
   from scipy.special import expn
   from scipy import interpolate
@@ -3308,7 +3309,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
 #        print lvdata
         
       if not(lvdatap1):
-        lvdatap1 = get_data(Z,z1+1,'LV', settings=settings, datacache=catacache)
+        lvdatap1 = get_data(Z,z1+1,'LV', settings=settings, datacache=datacache)
 
       if (lvdata[1].header['ion_stat']+1 != cidat['ion_init']):
         print "ERROR: lvdata and cidat not for matching ions!"
