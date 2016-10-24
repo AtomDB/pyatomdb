@@ -1833,7 +1833,7 @@ def generate_cie_outputs(settings, Z, linelist, contlist, pseudolist):
   linelist.sort(order=['element','ion','upperlev','lowerlev'])
   igood = numpy.ones(len(linelist), dtype=bool)
 
-#  pickle.dump(linelist, open('whole_linedebugZ%i.pkl'%(Z), 'wb'))
+#  pickle.dump(linelist, open('whole_linedebugZ%i.'%(Z), 'wb'))
   
   for i in range(1,len(linelist)):
     if ((linelist['element'][i]==linelist['element'][i-1]) &\
@@ -1969,18 +1969,18 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
     Rate for each transition (in s-1)
   """
   Te_arr, dummy = util.make_vec(te)
-
+  print "Starting Gather Rates Z=%i, z1=%iat %s"%(Z, z1,time.asctime())
   lvdat = atomdb.get_data(Z, z1, 'LV', datacache=datacache, \
                             settings = settings)
   nlev = len(lvdat[1].data)
   
   diagterms = numpy.zeros(nlev)
   # get the LA data:
-  if ['AAUT_REF'] in lvdat[1].data.names:
+  if 'AAUT_TOT' in lvdat[1].data.names:
     has_sum_lv = True
   else:
     has_sum_lv = False
-
+  print "has_sum_lv is ", has_sum_lv
   if has_sum_lv:
     diagterms+= lvdat[1].data['AAUT_TOT']+lvdat[1].data['ARAD_TOT']
 
@@ -1989,21 +1989,23 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
   larate = numpy.zeros(0, dtype=float)
 
   if do_la:
+    print "Starting Gather Rates do_la at %s"%(time.asctime())
+    t1=time.time()
     ladat = atomdb.get_data(Z, z1, 'LA', datacache=datacache, \
                             settings = settings)
 
     if ladat != False:
-      laup = numpy.zeros(len(ladat[1].data), dtype=int)
-      lalo = numpy.zeros(len(ladat[1].data), dtype=int)
-      larate = numpy.zeros(len(ladat[1].data), dtype=float)
 
-      laup[:] = ladat[1].data['Upper_Lev'][:] - 1
-      lalo[:] = ladat[1].data['Lower_Lev'][:] - 1
-      larate[:] = ladat[1].data['Einstein_A'][:]
+      laup = ladat[1].data['Upper_Lev'] - 1
+      lalo = ladat[1].data['Lower_Lev'] - 1
+      larate = ladat[1].data['Einstein_A']
       
       if not(has_sum_lv):
+#        diagterms[laup] +=larate
         for i in range(len(laup)):
           diagterms[laup[i]] +=larate[i]
+    t2 = time.time()
+    print "Finished Gather Rates do_la at %s: took %f seconds"%(time.asctime(),t2-t1)
 
 
       # create dummy results
@@ -2014,20 +2016,20 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
   airate = numpy.zeros(0, dtype=float)
 
   if do_ai:
+    print "Starting Gather Rates do_ai at %s"%(time.asctime())
+    t1=time.time()
     aidat = atomdb.get_data(Z, z1, 'AI', datacache=datacache, \
                             settings = settings)
     if aidat != False:
-      aiup = numpy.zeros(len(aidat[1].data), dtype=int)
+      aiup = aidat[1].data['Level_Init'][:] - 1
       ailo = numpy.zeros(len(aidat[1].data), dtype=int)
-      airate = numpy.zeros(len(aidat[1].data), dtype=float)
+      airate = aidat[1].data['Auto_Rate']
 
-      aiup[:] = aidat[1].data['Level_Init'][:] - 1
-      ailo[:] = 0 # punt all of this into the ground state for maths reasons
-      airate[:] = aidat[1].data['Auto_Rate'][:]
       if not(has_sum_lv):
-        for i in range(len(aiup)):
+        for i in range(len(laup)):
           diagterms[aiup[i]] +=airate[i]
-
+    t2=time.time()
+    print "Finished Gather Rates do_ai at %s: took %f seconds"%(time.asctime(),t2-t1)
 
   # get the EC data:
 
@@ -2036,6 +2038,8 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
   ecrate = numpy.zeros(0, dtype=float)
 
   if do_ec:
+    print "Starting Gather Rates do_ec at %s"%(time.asctime())
+    t1 = time.time()
     ecdat = atomdb.get_data(Z, z1, 'EC', datacache=datacache, \
                             settings = settings)
     if ecdat != False:
@@ -2112,7 +2116,8 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
 #      if not(has_sum_lv):
       for i in range(len(ecup)):
         diagterms[ecup[i]] +=ecrate[i]
-
+    t2 = time.time()
+    print "Finished Gather Rates do_ec at %s: took %f seconds"%(time.asctime(),t2-t1)
 
   # get the PC data:
   pcup = numpy.zeros(0, dtype=int)
@@ -2120,6 +2125,8 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
   pcrate = numpy.zeros(0, dtype=float)
 
   if do_pc:
+    print "Starting Gather Rates do_pc at %s"%(time.asctime())
+    t1 = time.time()
     pcdat = atomdb.get_data(Z, z1, 'PC', datacache=datacache, \
                             settings = settings)
     if pcdat != False:
@@ -2176,12 +2183,17 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
 #      if not(has_sum_lv):
       for i in range(len(pcup)):
         diagterms[pcup[i]] +=pcrate[i]
+    t2=time.time()
+    print "Finished Gather Rates do_pc at %s: took %f seconds"%(time.asctime(),t2-t1)
 
   # get the IR data for colln ionization:
   irup = numpy.zeros(0, dtype=int)
   irlo = numpy.zeros(0, dtype=int)
   irrate = numpy.zeros(0, dtype=float)
   if do_ir:
+    print "Starting Gather Rates do_ir at %s"%(time.asctime())
+    t1 = time.time()
+    
     irdat = atomdb.get_data(Z, z1, 'IR', datacache=datacache, \
                             settings = settings)
     if irdat != False:
@@ -2234,9 +2246,42 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
 #      if not(has_sum_lv):
       for i in range(len(irup)):
         diagterms[irup[i]] +=irrate[i]
+    t2=time.time()
+    print "Finished Gather Rates do_ir at %s: took %f seconds"%(time.asctime(),t2-t1)
 
 
+  print "Gather Rates: Starting combining rates into arrays at %s"%(time.asctime())
+  tmp={}
+  tmp['up']={}
+  tmp['lo']={}
+  tmp['rate']={}
+  tmp['up']['ec'] = ecup
+  tmp['lo']['ec'] = eclo
+  tmp['rate']['ec'] = ecrate
+
+  tmp['up']['pc'] = pcup
+  tmp['lo']['pc'] = pclo
+  tmp['rate']['pc'] = pcrate
   
+  tmp['up']['ir'] = irup
+  tmp['lo']['ir'] = irlo
+  tmp['rate']['ir'] = irrate
+
+  tmp['up']['ai'] = aiup
+  tmp['lo']['ai'] = ailo
+  tmp['rate']['ai'] = airate
+
+  tmp['up']['la'] = laup
+  tmp['lo']['la'] = lalo
+  tmp['rate']['la'] = larate
+
+  tmp['up']['diag'] = numpy.arange(nlev, dtype=int)
+  tmp['lo']['diag'] = numpy.arange(nlev, dtype=int)
+  tmp['rate']['diag'] = diagterms*-1
+
+#  pickle.dump(tmp, open('tmp_gather_%i_%i.pkl'%(Z,z1),'wb'))
+
+  t1=time.time()
   up_out = numpy.append(laup, numpy.append(aiup, numpy.append(ecup, numpy.append(pcup, irup))))
   lo_out = numpy.append(lalo, numpy.append(ailo, numpy.append(eclo, numpy.append(pclo, irlo))))
   rate_out = numpy.append(larate, numpy.append(airate, numpy.append(ecrate, numpy.append(pcrate, irrate))))
@@ -2244,8 +2289,10 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
   up_out = numpy.append(up_out, numpy.arange(nlev, dtype=int))
   lo_out = numpy.append(lo_out, numpy.arange(nlev, dtype=int))
   rate_out = numpy.append(rate_out, diagterms*-1)
+  t2=time.time()
+  print "Gather Rates: Finished combining rates into arrays at %s: took %f seconds"%(time.asctime(), t2-t1)
   
-  
+  print "Finished Gather Rates at %s"%(time.asctime())
   return up_out, lo_out, rate_out
 
 #-----------------------------------------------------------------------
@@ -2386,7 +2433,7 @@ def solve_level_pop(init,final,rates,settings):
     The initial level for each transition
   final : array(int)
     The initial level for each transition
-  rate : array(float)
+  rates : array(float)
     The rate for each transition
     
   settings: dictionary
@@ -2400,61 +2447,111 @@ def solve_level_pop(init,final,rates,settings):
 
   import scipy.sparse as sparse
   from scipy.sparse.linalg import spsolve
-  #stuff = {}
-  #stuff['init'] = init
-  #stuff['final'] = final
-  #stuff['rates'] = rates
+#  stuff = {}
+#  stuff['init'] = init
+#  stuff['final'] = final
+#  stuff['rates'] = rates
   
 #  pickle.dump(stuff, open('tmpA.pkl','wb'))
+  
 #  pickle.dump(stuff, open('tmpB.pkl','wb'))
 #  zzz=raw_input()
   # creat the arrays
   nlev = max([max(init), max(final)])+1
+#--  print "Starting Solve Level Pop at %s"%(time.asctime())
+  tstart = time.time()
+  k=numpy.where((final==0) & (init==0))[0]
+  if len(k)==1:
+    rates[k[0]] = 0.0
+  k=numpy.isfinite(rates)
+  rates=rates[k]
+  init=init[k]
+  final=final[k]
+  
+  print "first test"
+ # for i in range(len(final)):
+#    if final[i] == init[i]: print init[i],final[i], rates[i]
+#  print "end first test"
+    
+  nlev_old = max([max(init), max(final)])+1
+  irate = numpy.where(rates>1e-40)[0]
+
+#  print irate
+
+  nlev = max([max(init[irate]), max(final[irate])])
+#  print "nlev =", nlev
+  
+  irate = numpy.where((init<=nlev) & (final<=nlev))[0]
+#  print "keeping %i of %i rates"%(len(irate), len(init))
+#  print len(irate), irate[-1]
+  
+  init=init[irate]
+  final=final[irate]
+  rates=rates[irate]
+  nlev = max([max(init), max(final)])+1
+#  print "nlev = %i, nlev_old =%i"%(nlev, nlev_old)
+#  print "second test"
+#  for i in range(len(final)):
+#    if final[i] == init[i]: print init[i],rates[i]
+#  print "end second test"
+  
 
   if nlev <= const.NLEV_NOSPARSE:
+    print "Using regular solver."
+    print "Starting generation of matrixA at %s"%(time.asctime())
+    t1=time.time()
     # convert to a regular solver
     matrixA = numpy.zeros([nlev,nlev], dtype=float)
     matrixB = numpy.zeros([nlev], dtype=float)
     
+    t0 = time.time()
+    t1=time.time()
+    
     for i in range(len(init)):
       matrixA[final[i], init[i]] += rates[i]
-      #matrixA[init[i], init[i]] -= rates[i]
+    t2 = time.time()
+    print "time differences: %f vs %f seconds"%(t1-t0, t2-t1)
+    
 
     # popn conservation
     matrixB[0] = 1.0
     matrixA[0,:] = 1.0
-
-
+    
+    print "Starting check of diagonal terms at %s"%(time.asctime())
         
     # bug-u-fix
     for i in range(1, len(matrixB)):
       if matrixA[i,i] >= 0:
         matrixA[i,i]=-1e10
         print "ATieing level %i to ground with rate 1e10"%(i) 
+    print "Finished check of diagonal terms at %s"%(time.asctime())
     
 #    a = {}
 #    a['A'] = matrixA
 #    a['B'] = matrixB
-#    pickle.dump(a, open('dump_a.pkl','wb'))
+#    fname='dump_matrixa_1.pkl'
+#    ifile = 1
+#    while os.path.isfile(fname):
+#      ifile +=1
+#      fname = 'dump_matrixa_%i.pkl'%(ifile)
+      
+#    pickle.dump(a, open(fname,'wb'))
+#    print "Wrote %s"%(fname)
+#    print "a['A'].shape", a['A'].shape
+    t2=time.time()
+    print "Finished generation of matrixA at %s: took %f seconds"%(time.asctime(), t2-t1)
     
-    
-    
+    print "Starting calling solver at %s"%(time.asctime())
     try:
       popn = numpy.linalg.solve(matrixA, matrixB)
     except numpy.linalg.linalg.LinAlgError:
       raise
-
+    t3 = time.time()
+    print "Finished calling solver at %s: took %f seconds"%(time.asctime(), t3-t2)
 
   else:
-    # add into sparse solver
 
-#    tmp={}
-#    tmp['init'] = init
-#    tmp['final'] = final
-#    tmp['rate'] = rates
-#    pickle.dump(tmp, open('dump_tmp.pkl','wb'))
-
-
+    print "using sparse solver"
     matrixA={}
     matrixB = numpy.zeros(nlev, dtype=float)
 #    matrixA['init'] = numpy.append(init, init)
@@ -2463,40 +2560,60 @@ def solve_level_pop(init,final,rates,settings):
     matrixA['init'] = init
     matrixA['final'] = final
     matrixA['rate'] = rates
+
     
+    maxlev = max(matrixA['final'][matrixA['rate']>1e-40])
+    
+    print "maxlev:", maxlev
+
     # filter for the ground state levels
+    
     i = matrixA['final']>0
     matrixA['final'] = matrixA['final'][i]
     matrixA['init'] = matrixA['init'][i]
     matrixA['rate'] = matrixA['rate'][i]
     # add in continuity eqn
 
-    matrixA['final'] = numpy.append(matrixA['final'], \
-                                 numpy.zeros(nlev, dtype=int))
-    matrixA['init'] = numpy.append(matrixA['init'], \
-                                 numpy.arange(nlev, dtype=int))
-    matrixA['rate'] = numpy.append(matrixA['rate'], \
-                                 numpy.ones(nlev, dtype=float))
-
-    
+    i = (matrixA['final']<=maxlev) & (matrixA['init']<=maxlev)
+    matrixA['final'] = matrixA['final'][i]
+    matrixA['init'] = matrixA['init'][i]
+    matrixA['rate'] = matrixA['rate'][i]
     
 
-    A = sparse.coo_matrix((matrixA['rate'],\
-                          (matrixA['final'],matrixA['init'])), \
-                          shape=(nlev,nlev)).tocsr()
-    
+
+#    matrixA['final'] = numpy.append(matrixA['final'], \
+#                                 numpy.zeros(nlev, dtype=int))
+#    matrixA['init'] = numpy.append(matrixA['init'], \
+#                                 numpy.arange(nlev, dtype=int))
+#    matrixA['rate'] = numpy.append(matrixA['rate'], \
+#                                 numpy.ones(nlev, dtype=float))
+
+#    A = sparse.coo_matrix((matrixA['rate'],\
+#                          (matrixA['final'],matrixA['init'])), \
+#                          shape=(nlev,nlev)).tocsr()
+    A = numpy.zeros([maxlev+1,maxlev+1])
+    print "A.shape", A.shape, " maxlev", maxlev
+    for i in range(len(matrixA['init'])):
+      A[matrixA['final'][i], matrixA['init'][i]] += matrixA['rate'][i]
+      if matrixA['final'][i] == matrixA['init'][i]: print matrixA['init'][i],matrixA['rate'][i]
+      
+    matrixB[0] = 1.0
+    A[0,:] = 1.0
+
     hasdat = numpy.zeros(len(matrixB), dtype=bool)
-    for i in range(1,len(hasdat)):
+    for i in range(1,maxlev+1):
       if A[i,i]>=0.0:
          A[i,i] = -1e10
          print "BTieing level %i to ground with rate 1e10"%(i) 
 
     matrixB[0] = 1.0
-    tmp={}
+#    tmp={}
     #tmp['A'] = matrixA
     #tmp['B'] = matrixB
 #    pickle.dump(tmp, open('dump_tmp.pkl','wb'))
-    popn = spsolve(A, matrixB)
+    popn = numpy.zeros(nlev_old)
+    
+    popn[:maxlev+1] = numpy.linalg.solve(A, matrixB[:maxlev+1])
 
     # sparse solver sometimes returns small negative pop. set to 0.
     
@@ -2505,27 +2622,28 @@ def solve_level_pop(init,final,rates,settings):
     # correctly handled by the sparse solver
     # anything under 1e-28 is suspect.
 
-    tocheck = numpy.where((popn>= 0) &\
-                          (popn<= 1e-28))[0]
-    if len(tocheck) > 0:
-      for i in tocheck:
-        itot_in = numpy.where((matrixA['init']==0) &\
-                              (matrixA['final']==i))[0]
-
-        itot_out = numpy.where((matrixA['init']==i) &\
-                               (matrixA['final']==i))[0]
-
-        tot_in = -sum(matrixA['rate'][itot_in])
-        tot_out = sum(matrixA['rate'][itot_out])
-        p =tot_in/tot_out
-
-        if (popn[i] < 1e-30):
-          if tot_in < 1e-21:
-            popn[i] = p
-        elif (popn[i] < 1e-28):
-          if (tot_in < 1e-30):
-            popn[i] = p
-  
+#    tocheck = numpy.where((popn>= 0) &\
+#                          (popn<= 1e-28))[0]
+#    if len(tocheck) > 0:
+#      for i in tocheck:
+#        itot_in = numpy.where((matrixA['init']==0) &\
+#                              (matrixA['final']==i))[0]
+#
+#        itot_out = numpy.where((matrixA['init']==i) &\
+#                               (matrixA['final']==i))[0]
+#
+#        tot_in = -sum(matrixA['rate'][itot_in])
+#        tot_out = sum(matrixA['rate'][itot_out])
+#        p =tot_in/tot_out
+#
+#        if (popn[i] < 1e-30):
+#          if tot_in < 1e-21:
+#            popn[i] = p
+#        elif (popn[i] < 1e-28):
+#          if (tot_in < 1e-30):
+#            popn[i] = p
+  tfinish=time.time()
+  print "Finished Solve Level Pop at %s: took %i seconds"%(time.asctime(), tfinish-tstart)
   return popn
 
 #-----------------------------------------------------------------------
@@ -2562,7 +2680,8 @@ def do_lines(Z, z1, lev_pop, N_e, datacache=False, settings=False, z1_drv_in=-1)
     The two-photon continuum on the grid specified by the settings
     If settings['TwoPhoton'] is False, then returns a grid of zeros.
   """
-  
+  print "starting do_lines at %s"%(time.asctime())
+  tstart=time.time()
   ladat = atomdb.get_data(Z,z1,'LA', datacache=datacache, settings=settings)
   lvdat = atomdb.get_data(Z,z1,'LV', datacache=datacache, settings=settings)
   ebins = make_vector_nbins(settings['LinearGrid'], \
@@ -2582,32 +2701,45 @@ def do_lines(Z, z1, lev_pop, N_e, datacache=False, settings=False, z1_drv_in=-1)
   # now do this
   linelist['epsilon'] = ladat[1].data.field('einstein_a') * \
                         lev_pop[ladat[1].data.field('upper_lev')-1]/N_e
+  linelist['lambda'] = ladat[1].data.field('wavelen')
 
 
-
-  for iline, line in enumerate(ladat[1].data):
-    if numpy.isfinite(line['wave_obs']):
-      if line['wave_obs'] > 0:
-        linelist[iline]['lambda'] = line['wave_obs']
-      else:
-        linelist[iline]['lambda'] = line['wavelen']
-      
-    else:
-      linelist[iline]['lambda'] = line['wavelen']
+  igood = numpy.isfinite(ladat[1].data['wave_obs'])
   
-  linelist['lambda_err'][:] = numpy.nan
-  linelist['epsilon_err'][:] = numpy.nan
-  linelist['element'][:] = Z
-  linelist['element_drv'][:] = Z
-  linelist['ion'][:] = z1
-  linelist['ion_drv'][:] = z1_drv
-  linelist['upperlev'][:] = ladat[1].data['upper_lev']
-  linelist['lowerlev'][:] = ladat[1].data['lower_lev']
+  if sum(igood) > 0 :
+    igood = numpy.where(igood==True)[0]
+  
+    igood = igood[numpy.where(ladat[1].data['wave_obs'][igood]>0)[0]]
+
+
+
+  if len(igood)  >0:
+    linelist[igood]['lambda']=ladat[1].data['wave_obs'][igood]
+#  for iline, line in enumerate(ladat[1].data):
+#    if numpy.isfinite(line['wave_obs']):
+#      if line['wave_obs'] > 0:
+#        linelist[iline]['lambda'] = line['wave_obs']
+#      else:
+#        linelist[iline]['lambda'] = line['wavelen']
+      
+#    else:
+#      linelist[iline]['lambda'] = line['wavelen']
+  
+  linelist['lambda_err'] = numpy.nan
+  linelist['epsilon_err'] = numpy.nan
+  linelist['element'] = Z
+  linelist['element_drv'] = Z
+  linelist['ion'] = z1
+  linelist['ion_drv']= z1_drv
+  linelist['upperlev'] = ladat[1].data['upper_lev']
+  linelist['lowerlev'] = ladat[1].data['lower_lev']
 
   # I have a linelist. Yay.
-  
+  t1=time.time()
+  print "finished making linelist at %s: took %f seconds"%(time.asctime(), t1-tstart)
+
   # now check for 2 photon transitions
-  
+  print "starting check for 2 photon transitions at %s"%(time.asctime())
   if (Z-z1==1):
     # He-like:
     nup = lvdat[1].data['n_quan'][linelist['upperlev']-1]
@@ -2681,9 +2813,14 @@ def do_lines(Z, z1, lev_pop, N_e, datacache=False, settings=False, z1_drv_in=-1)
                                      tmp2ph['einstein_a'],\
                                      tmp2ph['lev_pop'], ebins)
       goodlines[ila]=False
+  t2=time.time()
+  print "finished checking two photon transitions at %s: took %f seconds"%(time.asctime(), t2-t1)
 
   linelist = linelist[goodlines]
   
+  tfinish=time.time()
+  print "finished do_lines at %s, took %f seconds"%(time.asctime(), tfinish-tstart)
+
   return linelist, twoph
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
@@ -2855,7 +2992,9 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
         recrate = atomdb.get_maxwell_rate(Tarr, irdat, iir, lvdat)*dens
         recombrate[ir['level_final']-1] += recrate*levpop[ir['level_init']-1]
   
-  # so recombrate has all the influxes
+    maxlev = numpy.where(recombrate > 0)[0]
+    if len(maxlev) == 0:  # so recombrate has all the influxes
+      print "FUCK ME"
     matrixB = recombrate
 #    print "Sum recomb rates in level>1:", sum(matrixB[1:])
     
@@ -2875,6 +3014,10 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
     matrixB *= -1 
     nlev = len(matrixB)
     
+    
+
+      # no recombination to speak of. Return zeros
+    
     # append extras onto matrixA:
     
 #    matrixA['final'] = numpy.append(matrixA['final'],matrixA['init'])
@@ -2886,15 +3029,29 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
     matrixA['final'] = matrixA['final'][i]
     matrixA['init'] = matrixA['init'][i]
     matrixA['rate'] = matrixA['rate'][i]
+
+    # remove all matrix A from and to high levels
+    i = (matrixA['final']<maxlev+1) & (matrixA['init']<maxlev+1) 
+    matrixA['final'] = matrixA['final'][i]
+    matrixA['init'] = matrixA['init'][i]
+    matrixA['rate'] = matrixA['rate'][i]
     
     # subtract 1 from the levels
     matrixA['init']-= 1
     matrixA['final']-= 1
     
     # solve
-    A = sparse.coo_matrix((matrixA['rate'],\
-                           (matrixA['final'],matrixA['init'])), \
-                           shape=(nlev-1,nlev-1)).tocsr()
+#    A = sparse.coo_matrix((matrixA['rate'],\
+#                           (matrixA['final'],matrixA['init'])), \
+#                           shape=(nlev-1,nlev-1)).tocsr()
+    A  = numpy.zeros([maxlev,maxlev])
+    for i in range(maxlev):
+      A[matrixA['final'][i], matrixA['init'][i]]+=matrixA['rate'][i]
+      
+#    A = numpy.linalg.solve((matrixA['rate'],\
+#                           (matrixA['final'],matrixA['init'])), \
+#                           shape=(nlev-1,nlev-1)).tocsr()
+
     levpop_this = numpy.zeros(len(matrixB))
 #    for i in numpy.where(matrixB != 0)[0]:
 #      print i, matrixB[i]
@@ -2948,16 +3105,12 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
           (sumdrlevrates, sum(drrecombrate))
     print "RR: sum from PI xsections: %e, sum from IR file: %e" %\
           (sumrrlevrates, sum(rrrecombrate))
-#    for i in range(len(rrlevrates)):
-#      print "%i %e %e %e"%(i+i, rrlevrates[i], rrrecombrate[i], rrlevrates[i]/rrrecombrate[i])
-#    zzz=raw_input()
+
     matrixB = rrrecombrate+drrecombrate+tmpdrlevrates+tmprrlevrates
     matrixA = numpy.zeros([nlev,nlev],dtype=float)
-    #irdat.close()
 
-#    print "nlev", nlev
+
     ladat = atomdb.get_data(Z, z1, 'LA', settings=settings, datacache=datacache)
-#    print "max(la['upper_lev']): ",max(ladat[1].data['upper_lev'])
 
     matrixA_in = {}
     matrixA_in['init'], matrixA_in['final'], matrixA_in['rate']=\
@@ -2965,6 +3118,7 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
                  do_la=True, do_ai=False, do_ec=False, do_pc=False,\
                  do_ir=False)
 
+    datacache={}
     for i in range(len(matrixA_in['init'])):
       matrixA[matrixA_in['final'][i], matrixA_in['init'][i]]+=matrixA_in['rate'][i]
 
@@ -3020,15 +3174,7 @@ def calc_cascade_population(matrixA, matrixB):
           print ma
           print mb
           raise
-#    print 'mb'
-#    print mb
-#    tmp = open('t.pkl','w')
-#    dat = {}
-#    dat['mb']=mb
-#    dat['ma']=ma
-#    pickle.dump(dat,tmp)
-#    tmp.close()
-    
+
   #check
   soln = numpy.allclose(numpy.dot(ma, popn), mb)
   
@@ -3115,31 +3261,32 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
   ionizrate=ionizrateir+ionizrateai
 
   matrixB = ionizrate
-  
+
   # save some time if there is nothing to ionize.
+
   if sum(matrixB[1:]) ==0:
     levpop_this = numpy.zeros(len(matrixB))
     return levpop_this
  
- 
+  maxlev = numpy.where(matrixB > 1e-40)[0]
+  if len(maxlev)==0:
+    print "No significant ionization found"
+    popn = numpy.zeros(len(matrixB))
+    return popn
+  
+  
   matrixA_in={}
   matrixA_in['init'], matrixA_in['final'], matrixA_in['rate'] = \
    gather_rates(Z, z1, T, Ne, datacache=datacache, settings=settings,\
                  do_la=True, do_ai=True, do_ec=False, do_pc=False,\
                  do_ir=False)
-#  tmp = {}
-#  tmp['A']=matrixA_in
-#  tmp['B']=matrixB
-#  pickle.dump(tmp, open('tmp_%i_%i_%i.pkl'%(Z,z1_drv,z1),'wb'))
 
-#  print "Z = %i, z1 = %i, z1_drv = %i"%(Z, z1, z1_drv)
-#  print "MatrixB"
-  
-#  for i in range(len(matrixB)):
-#    print i, matrixB[i]
+  i = (matrixA_in['init']<maxlev) & (matrixA_in['final']<maxlev)
+  matrixA_in['init']=matrixA_in['init'][i]
+  matrixA_in['final']=matrixA_in['final'][i]
+  matrixA_in['rate']=matrixA_in['rate'][i]
     
   # fix the rates
-  hasdat = numpy.zeros(len(matrixB), dtype=bool)
   for i in range(len(matrixA_in['init'])):
     if matrixA_in['init'][i]==matrixA_in['final'][i]:
       if matrixA_in['rate'][i] >=0.0:
@@ -3157,9 +3304,9 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
  
   
   
-  if (nlev <= const.NLEV_NOSPARSE):
+  if (maxlev <= const.NLEV_NOSPARSE):
     # convert to a regular solver
-    matrixA = numpy.zeros([nlev,nlev], dtype=float)
+    matrixA = numpy.zeros([maxlev,maxlev], dtype=float)
     
     for i in range(len(matrixA_in['init'])):
       matrixA[matrixA_in['final'][i], matrixA_in['init'][i]] += matrixA_in['rate'][i]
@@ -3170,14 +3317,15 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
     matrixA[0,:] = 1.0
 
     # bug-u-fix
-    for i in range(1, len(matrixB)):
+    for i in range(1, maxlev):
       if matrixA[i,i] >= 0:
         matrixA[i,i]=-1e10
         print "FIXING matrixA[%i,%i] = -1.0"%(i,i)
 
     popn = numpy.zeros(nlev)
+    print "matrixA shape", matrixA.shape, ' maxlev', maxlev
     try:
-      popn[1:] = numpy.linalg.solve(matrixA[1:,1:], matrixB[1:]*-1)
+      popn[1:maxlev] = numpy.linalg.solve(matrixA[1:maxlev,1:maxlev], matrixB[1:maxlev]*-1)
     except numpy.linalg.linalg.LinAlgError:
       "EEK ERROR!"
       raise
@@ -3197,6 +3345,7 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
 
   else:
     # add into sparse solver
+    print "Using sparse solver"
     matrixA={}
     matrixB *= -1 
     nlev = len(matrixB)
@@ -3355,11 +3504,15 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
     nlev = len(lvdat[1].data)
 
     # gather all the level to level rates
-
+    print "calling gather_rates from run_apec_ion"
     up, lo, rates = gather_rates(Z, z1, te, dens, datacache=datacache, settings=settings)
-    
+    print "finished calling gather_rates from run_apec_ion"
+    # purge the datacache here, as this often requires heavy memory use
+    datacache={}
     # solve everything
+    print "calling solve_level_pop from run_apec_ion"
     lev_pop = solve_level_pop(up,lo,rates, settings)
+    print "finished calling solve_level_pop from run_apec_ion"
 
     # just in case, add zeros to lengthen the lev_pop appropriately
     if len(lev_pop) < nlev:
@@ -3369,8 +3522,6 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
     lev_pop[lev_pop<0] = 0.0  
     
   # now we have the level populations, make a line list for each ion
-  # need to make a 2 photon spectrum too
-    twoph = numpy.zeros(settings['NumGrid'], dtype=float)
     
   # scale lev_pop by the ion and element abundance.
     print "lev_pop Z=%i, z1=%i,z1_drv=%i, abund*ionfrac=%e, sum(pop)=%e:"%(Z,z1, z1, abund*ionfrac[z1-1], sum(lev_pop)*abund*ionfrac[z1-1])
@@ -3380,7 +3531,10 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
     for i in range(len(lev_pop)):
       print i, lev_pop[i], lev_pop[i]/(abund*ionfrac[z1-1])
     
+    print "calling do_lines from run_apec_ion"
     linelist_exc,  continuum['twophot'] = do_lines(Z, z1, lev_pop, dens, datacache=datacache, settings=settings, z1_drv_in=z1_drv)
+    print "finished calling do_lines from run_apec_ion"
+
   
     print "Excitation Z=%i z1=%i z1_drv=%i created %i lines"%(Z, z1, z1_drv, len(linelist_exc))
   # remove this as this conversion now done to lev_pop before calling do_lines
@@ -3395,9 +3549,12 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
   # calculate some continuum processes: brems
   
   if settings['Bremsstrahlung'] ==True:
+    print "Calling do_brems from run_apec_ion at %s"%(time.asctime())
     brems = do_brems(Z, z1, te, 1.0, settings['BremsType'], ebins)
     # scale for  ion and element abundance.
     continuum['brems']=brems*abund*ionfrac[z1-1]
+
+    print "Finished Calling do_brems from run_apec_ion at %s"%(time.asctime())
   else:
     continuum['brems']=numpy.zeros(len(ebins)-1, dtype=float)
 
@@ -3405,18 +3562,25 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
   datacache={}
 #  z1_drv=z1*1
   if z1_drv>1:
+  
     z1=z1_drv-1
+    print "Start processing Recombination from run_apec_ion at %s, Z=%i, z1=%i, z1_drv=%i"%(time.asctime(),Z,z1,z1_drv)
     # do the DR satellite lines
     if settings['DRSatellite']:
+      print "Start calc_satellte run_apec_ion at %s"%(time.asctime())
+
       linelist_dr, drlevrates = calc_satellite(Z, z1, te, datacache=datacache, settings=settings)
       linelist_dr['epsilon']*=ionfrac[z1_drv-1]*abund
       drlevrates *=ionfrac[z1_drv-1]*abund
+      print "Finished calc_satellte run_apec_ion at %s"%(time.asctime())
+
     else:
       linelist_dr = numpy.zeros(0, dtype= generate_datatypes(linetype))
       drlevrates = 0.0
 
     # Radiative Recombination
     if settings['RRC']:
+      print "Start calc_rad_rec_cont at %s"%(time.asctime())
       rrc, rrlevrates = atomdb.calc_rad_rec_cont(Z, z1, z1_drv, te, ebins, settings=settings, datacache=datacache)
       continuum['rrc'] = rrc*ionfrac[z1_drv-1]*abund    
       rrlevrates*=ionfrac[z1_drv-1]*abund
@@ -3424,6 +3588,7 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
 #      print "rrlevrates from Z=%i, z1_drv=%i to z1=%i"%(Z, z1_drv, z1)
 #      for ilev in range(len(rrlevrates)):
 #        print ilev, rrlevrates[ilev]
+      print "Finished calc_rad_rec_cont at %s"%(time.asctime())
     else:
       continuum['rrc'] = numpy.zeros(len(ebins)-1, dtype=float)
       rrlevrates=0.0
@@ -3439,19 +3604,22 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
     
     
     if sum(tmpdrlevrates) + sum(tmprrlevrates)>0:
-      print "initial_lev_pop", lev_pop
+      print "Start calc_recomb_popn at %s"%(time.asctime())
+      
       levpop_recomb=calc_recomb_popn(lev_pop, Z, z1,\
                                       z1_drv, te, dens, drlevrates,\
                                       rrlevrates,\
                                       datacache=datacache, settings=settings)
-      print "final_lev_pop", lev_pop
+      print "Finish calc_recomb_popn at %s"%(time.asctime())
                                       
       #zzz=raw_input()
+      print "Start do_lines Z=%i, z1=%i, z1_drv=%i at %s"%(Z,z1,z1_drv,time.asctime())
       linelist_rec, tmptwophot = \
                do_lines(Z, z1, levpop_recomb , dens, datacache=datacache, settings=settings, z1_drv_in=z1_drv)
       continuum['twophot']+= tmptwophot
       
       print "linelist_rec Z=%i, z1=%i,z1_drv=%i, nlines=%i:"%(Z,z1, z1_drv, len(linelist_rec))
+      print "Finish do_lines Z=%i, z1=%i, z1_drv=%i at %s"%(Z,z1,z1_drv,time.asctime())
       
 
   # now do the ionizing cases
@@ -3460,25 +3628,34 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
     datacache={}
     z1=z1_drv+1
     lev_pop_parent = lev_pop*1.0
+ 
     print "Sum lev_pop_parent[1:] = %e"%(sum(lev_pop_parent[1:]))
     while (sum(lev_pop_parent[1:]) > 1e-40) &\
           (z1 <= Z):
-      
+      print "Processing ionization into  Z=%i, z1=%i, z1_drv=%i at %s"%(Z,z1,z1_drv,time.asctime())
+     
       # do we need to include collisional ionzation here?
       # only in first ion
       if z1== z1_drv+1:
         do_xi = True
       else:
         do_xi = False
+
+      print "Calling calc_ioniz_popn at %s"%(time.asctime())
       lev_pop=calc_ioniz_popn(lev_pop_parent, Z, z1, z1_drv, te, dens, \
                              settings=settings, datacache=datacache, \
                              do_xi=do_xi)
       
+      print "Finished calc_ioniz_popn at %s"%(time.asctime())
+
       lev_pop[lev_pop<const.MIN_LEVPOP] = 0.0
       if sum(lev_pop[1:]) > 0:
+        print "Start do_lines Z=%i, z1=%i, z1_drv=%i at %s"%(Z,z1,z1_drv,time.asctime())
+
         linelist_ion_tmp, tmptwophot = \
                do_lines(Z, z1, lev_pop, dens, datacache=datacache, settings=settings,   z1_drv_in=z1_drv)
         print "linelist_ion Z=%i, z1=%i,z1_drv=%i, nlines=%i:"%(Z,z1, z1_drv, len(linelist_ion_tmp))
+        print "Finished do_lines Z=%i, z1=%i, z1_drv=%i at %s"%(Z,z1,z1_drv,time.asctime())
 
         linelist_ion = numpy.append(linelist_ion, linelist_ion_tmp)
         continuum['twophot']+=tmptwophot
@@ -3487,9 +3664,14 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
       z1+=1
 
   # generate return data
+  print "Start merging linelist at %s"%(time.asctime())
+
   linelist = numpy.append(linelist_exc, numpy.append(linelist_dr, numpy.append(linelist_ion, linelist_rec)))
+  print "Finished merging linelist at %s"%(time.asctime())
 
   # filter line list
+  print "Start filtering linelist at %s"%(time.asctime())
+
   MinEpsilon = settings['MinEpsilon']
   if settings['Ionization']=='CIE':
     MinEpsilon*=0.001
@@ -3507,6 +3689,8 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
       pseudocont[ibin]+=line['epsilon']
 
     linelist = linelist[linelist['epsilon'] > MinEpsilon]
+  print "Finish filtering linelist at %s"%(time.asctime())
+
 #  print "kept  % i strong lines"%(len(weaklines))
 
 #  ret = {}
@@ -4391,6 +4575,8 @@ def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
     if sum(frac)< 1.0:
       frac[0] = 1.0-sum(frac)
     print "frac:",frac
-    
-  return
   
+  if tau_set:
+    return frac
+  else:
+    return equilib
