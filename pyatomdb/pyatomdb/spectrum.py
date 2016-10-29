@@ -925,10 +925,10 @@ def list_nei_lines(specrange, Te, tau, Te_init=1e4,  lldat=False, linefile=False
   Zlist = util.unique(llist['Element'])
   # Calculate the ionization balance.
   ionbal = apec.calc_full_ionbal(kT, tau, \
-                                 Te_init=kT_init, teunit='keV', Zlist=Zlist)
+                                 Te_init=kT_init, teunit='keV', Zlist=Zlist,\
+                                 extrap=True)
 
   # multiply everything by the appropriate ionization fraction
-  print llist.dtype
   for il in llist:
     il['Epsilon'] *= ionbal[il['Element_drv']][il['Ion_drv']-1]
     
