@@ -4263,10 +4263,12 @@ def get_data(Z, z1, ftype, datacache=False, \
       else:
       # check for file location overrides
         if settings:
-          if settings['filemap']:
-            fmapfile = settings['filemap']
-          if settings['atomdbroot']:
-            atomdbroot = settings['atomdbroot']
+          if 'filemap' in settings.keys():
+            if settings['filemap']:
+              fmapfile = settings['filemap']
+          if 'atomdbroot' in settings.keys():    
+            if settings['atomdbroot']:
+              atomdbroot = settings['atomdbroot']
  
         fname = get_filemap_file(ftype, Z, z1, fmapfile=fmapfile,\
                                atomdbroot=atomdbroot, quiet=True)
@@ -4338,7 +4340,7 @@ def get_data(Z, z1, ftype, datacache=False, \
 
       if curversion in ['2.0.0', '2.0.1', '2.0.2','3.0.0','3.0.1','3.0.2','3.0.3']:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v2.0.2_ionbal.fits'
-      elif curversion in ['3.0.4']:
+      elif curversion in ['3.0.4','3.0.5']:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.4_ionbal.fits'
 
     elif ftype.lower()=='eigen':
@@ -4347,7 +4349,7 @@ def get_data(Z, z1, ftype, datacache=False, \
 
       if curversion in ['2.0.0', '2.0.1', '2.0.2','3.0.0','3.0.1','3.0.2','3.0.3']:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.fits'%(atomic.Ztoelsymb(Z).lower())
-      elif curversion in ['3.0.4']:
+      elif curversion in ['3.0.4','3.0.5']:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.4.fits'%(atomic.Ztoelsymb(Z).lower())
 
 
