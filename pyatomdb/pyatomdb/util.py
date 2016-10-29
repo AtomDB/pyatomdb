@@ -2826,3 +2826,137 @@ def generate_equilibrium_ionbal_files(filename, settings = False):
     ionbal[Z] = feqb
   
   write_ionbal_file(Telist, Nelist, ionbal, filename, Te_linear = False, dens_linear=True)
+
+def generate_isis_files(version='', outfile='atomdb_VERSION_isis.tar.bz2'):
+  """
+  Generate the ISIS tarball
+  
+  Parameters
+  ----------
+  version : string
+    version number to generate ISIS tarball for. Defaults to version in
+    $ATOMDB/VERSION
+  outfile : string
+    the file to be generated. Defaults to atomdb_VERSION_isis.tar.bz2
+  Returns
+  -------
+  none
+   
+  """
+  import re, tarfile
+  # get the version number
+  
+  curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
+  
+  if version == '':
+    version = curversion
+    print "Version not specified, so using version %s"%(version)
+  else:
+    if version != curversion:
+      switch_version(version)
+
+  # make folders for the data
+  mkdir_p('tmp')
+  foldername = re.sub('VERSION',version,'tmp/atomdb_vVERSION_isis')
+  
+  mkdir_p(foldername)
+  
+  linefile = os.path.expandvars('$ATOMDB/apec_linelist.fits')
+  ldat = pyfits.open(linefile)
+
+  filemap = os.path.expandvars('$ATOMDB/filemap')
+  
+  f = atomdb.read_filemap()
+  for i in range(len(f['Z'])):
+    Z = f['Z'][i]
+
+    z1 = f['z1'][i]
+    lafname = f['la'][i]
+    lvfname = f['lv'][i]
+    drfname = f['dr'][i]
+    
+    if lvfname == '': continue
+    
+    # copy across the LV & DR files if appropriate
+    lvfnameout = re.sub(os.path.expandvars('$ATOMDB'), foldername, lvfname)
+    tmp=''
+    for k in lvfnameout.split('/')[:-1]:
+      tmp+=(k)
+      mkdir_p(tmp)
+      tmp+='/'
+    if not os.path.isfile(lvfname):
+      a = atomdb.get_data(Z,z1,'LV')
+    shutil.copy2(lvfname, lvfnameout)
+     
+    if drfname != '':
+    
+    # copy across the LV & DR files if appropriate
+      drfnameout = re.sub(os.path.expandvars('$ATOMDB'), foldername, drfname)
+      if not os.path.isfile(drfname):
+        a = atomdb.get_data(Z,z1,'DR')
+      shutil.copy2(drfname, drfnameout)
+
+    # now do the hard part
+    lafnameout = re.sub(os.path.expandvars('$ATOMDB'), foldername, lafname)
+    lafnameout = re.sub('.fits', '_isis.fits', lafnameout)
+    
+    if not os.path.isfile(lafname):
+      a = atomdb.get_data(Z,z1,'LA')
+
+    ladat = pyfits.open(lafname)
+    # keep only the transitions we care about
+    k = ldat[2].data[(ldat[2].data['Element']==Z) &\
+                     (ldat[2].data['Ion']==z1)]
+    isgood = numpy.zeros(len(ladat[1].data), dtype=bool)
+    for ik in k:
+      ii = numpy.where((ladat[1].data['Upper_lev']==ik['UpperLev']) &\
+                       (ladat[1].data['Lower_lev']==ik['LowerLev']))[0]
+      if len(ii) == 0:
+        if ik['UpperLev'] < 10000:
+          print "ERROR: no match for Z=%i, z1=%i, up=%i, lo=%i"%\
+                (Z,z1,ik['UpperLev'], ik['LowerLev'])
+      else:
+        isgood[ii[0]]=True
+    
+    ladat[1].data=ladat[1].data[isgood]
+    ladat[1].header['N_LINES']=sum(isgood)
+    
+    ladat.writeto(lafnameout, checksum=True, clobber=True)
+    print "wrote %s with %i lines instead of %i"%\
+          (lafnameout, sum(isgood), len(isgood))
+
+    f['la'][i] = re.sub(foldername, \
+                        os.path.expandvars('$ATOMDB'), \
+                        lafnameout)
+
+  # now copy across the other things.
+  ionbal = atomdb.get_data(False, False, 'ionbal')
+  mkdir_p('%s/APED/ionbal'%(foldername))
+  ionbal.writeto('%s/APED/ionbal/v%s_ionbal.fits'%\
+                (foldername, version), clobber=True, checksum=True)
+
+  ionbal.writeto('%s/APED/ionbal/v%s_ionbal.fits'%\
+                (foldername, version), clobber=True, checksum=True)
+  print "Ionbal writen to %s/APED/ionbal/v%s_ionbal.fits"%\
+                (foldername, version)
+  # and the abundances
+  shutil.copytree(os.path.expandvars('$ATOMDB/APED/misc'), \
+              '%s/APED/misc'%(foldername))
+  print "Misc writen to %s/APED/misc"%(foldername)
+
+  atomdb.write_filemap(f, "%s/filemap"%(foldername))
+  print "Wrote filemap %s/filemap"%(foldername)
+
+  d = open("%s/VERSION"%(foldername),"w")
+  d.write('%s\n'%(version))
+  d.close()
+
+
+  print "Compressing..."
+  os.chdir('tmp')
+  tar = tarfile.open(name='atomdb_v%s_isis.tar.bz2'%(version), mode='w:bz2')
+  tar.add('atomdb_v%s_isis'%(version))
+  tar.close()
+  print "Done"
+  os.chdir('../')
+  
