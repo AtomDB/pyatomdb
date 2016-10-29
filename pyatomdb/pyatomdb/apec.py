@@ -2715,10 +2715,8 @@ def do_lines(Z, z1, lev_pop, N_e, datacache=False, settings=False, z1_drv_in=-1)
   
     igood = igood[numpy.where(ladat[1].data['wave_obs'][igood]>0)[0]]
 
-
-
   if len(igood)  >0:
-    linelist[igood]['lambda']=ladat[1].data['wave_obs'][igood]
+    linelist['lambda'][igood]=ladat[1].data['wave_obs'][igood]
 #  for iline, line in enumerate(ladat[1].data):
 #    if numpy.isfinite(line['wave_obs']):
 #      if line['wave_obs'] > 0:
@@ -3253,9 +3251,10 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
 
   print "Starting calc_ioniz_popn aidat loop at %s"%(time.asctime())
   if aidat:
-    for ai in aidat[1].data:
-      ionizrateai[ai['level_final']-1] += levpop[ai['level_init']-1]*\
-                                     ai['auto_rate']
+    tmp_pop = levpop[aidat[1].data['level_init']-1]
+    for iai in range(len(aidat[1].data)):
+      ionizrateai[aidat[1].data['level_final'][iai]-1] += \
+               tmp_pop[iai]*aidat[1].data['auto_rate'][iai]
   
     #aidat.close()
   print "Finished calc_ioniz_popn aidat loop at %s"%(time.asctime())
@@ -3272,7 +3271,7 @@ def calc_ioniz_popn(levpop, Z, z1, z1_drv,T, Ne, settings=False, \
 
     for iir, ir in enumerate(irdat[1].data):
       if ir['TR_TYPE'] in ['XI']:
-	Te =  numpy.array([T])
+        Te =  numpy.array([T])
         ionrate=atomdb.get_maxwell_rate(Te, irdat, iir, lvdatm1, \
                                      lvdatap1=lvdat, ionpot=ionpot)
         ionizrateir[ir['level_final']-1] += levpop[ir['level_init']-1]*\
