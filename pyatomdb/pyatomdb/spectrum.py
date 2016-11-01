@@ -196,6 +196,7 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
     return cspectrum+lspectrum
 
 
+
 def make_ion_spectrum(bins, index, Z,z1, linefile="$ATOMDB/apec_nei_line.fits",\
                   cocofile="$ATOMDB/apec_nei_comp.fits",\
                   binunits='keV', broadening=False, broadenunits='keV', \
@@ -750,7 +751,8 @@ def list_lines(specrange, lldat=False, index=False, linefile=False,\
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 def list_nei_lines(specrange, Te, tau, Te_init=1e4,  lldat=False, linefile=False,\
-              units='angstroms', teunit='K', minepsilon=1e-20):
+              units='angstroms', teunit='K', minepsilon=1e-20, \
+              datacache=False):
   """
   Gets list of the lines in a given spectral range for a given NEI plasma
   
@@ -914,24 +916,25 @@ def list_nei_lines(specrange, Te, tau, Te_init=1e4,  lldat=False, linefile=False
       llist= numpy.array(lldat[te_index].data)
 
   # get filtered line list
-  
+
   llist = llist[(llist['Lambda']>= specrange[0]) &\
                 (llist['Lambda']<= specrange[1]) &\
                 (llist['Epsilon'] >= minepsilon)]
-  
+
   # get the index
-  
+
   # get list of all the elements present
   Zlist = util.unique(llist['Element'])
   # Calculate the ionization balance.
-  ionbal = apec.calc_full_ionbal(kT, tau, \
-                                 Te_init=kT_init, teunit='keV', Zlist=Zlist,\
-                                 extrap=True)
-
+  ionbal ={}
+  for Z in Zlist:
+    ionbal[Z] = apec.solve_ionbal_eigen(Z, kT, tau, Te_init = kT_init,\
+                                        teunit='keV', datacache=datacache)
+ 
   # multiply everything by the appropriate ionization fraction
   for il in llist:
     il['Epsilon'] *= ionbal[il['Element_drv']][il['Ion_drv']-1]
-    
+
   # filter again based on new epsilon values
   llist=llist[llist['Epsilon']>minepsilon]
   print "done"
