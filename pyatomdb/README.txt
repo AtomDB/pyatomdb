@@ -72,3 +72,12 @@ May 23rd 2016: Bugfix:update switch_version to get NEI files too.
 0.0.1.8
 October 07th 2016: Bugfixes! Also:
 APEC now included in apec.py. Can create a full apec run from a par file.
+
+0.0.1.9
+October 13th 2016: Bugfixes! wget was causing problems during file download due to bugs, Now fixed
+
+0.0.2
+November 01st 2016: Removed use of sparse algebra. Wasn't accurate enough, causing issues with suprious lines in low ionization states.
+
+Implemented faster ionization balance calculations in "apec.solve_ionbal_eigen"
+

@@ -934,11 +934,16 @@ def get_abundance(abundfile=False, abundset='AG89', element=[-1],\
     special abundance file, if not using the default from filemap
   abundset : string
     Abundance set. Available:
-    * Allen: Allen,~C.~W.  ``Astrophysical Quantities'', 3rd Ed.,  1973 (London: Athlone Press)
-    * AG89: Anders,~E. \& Grevesse,~N. 1989, Geochimica et Cosmochimica Acta, 53, 197
-    * GA88: Grevesse,~N, \& Anders,~E.1988, ``Cosmic abundances of matter'',ed. C.~J.~Waddington, AIP Conference, Minneapolis, MN
-    * Feldman:  Feldman, U., Mandelbaum, P., Seely, J.L., Doschek, G.A.,Gursky H., 1992, ApJSS, 81,387
-    Defaul is AG89
+   
+    * Allen: Allen, C. W.  Astrophysical Quantities, 3rd Ed.,  1973 (London: Athlone Press)
+   
+    * AG89: Anders, E. and Grevesse, N. 1989, Geochimica et Cosmochimica Acta, 53, 197
+   
+    * GA88: Grevesse, N, and Anders, E.1988, Cosmic abundances of matter, ed. C. J. Waddington, AIP Conference, Minneapolis, MN
+   
+    * Feldman: Feldman, U., Mandelbaum, P., Seely, J.L., Doschek, G.A.,Gursky H., 1992, ApJSS, 81,387
+    
+    Default is AG89
   element : list of int
     Elements to find abundance for. If not specified, return all.
   datacache : dict
@@ -950,12 +955,13 @@ def get_abundance(abundfile=False, abundset='AG89', element=[-1],\
   -------
   dict
     abundances in dictionary, i.e :
-     {1: 1.0,
-      2: 0.097723722095581111,
-      3: 1.4454397707459272e-11,
-      4: 1.4125375446227541e-11,
-      5: 3.9810717055349735e-10,
-      6: 0.00036307805477010178,...
+    
+    {1: 1.0,\n
+     2: 0.097723722095581111,\n
+     3: 1.4454397707459272e-11,\n
+     4: 1.4125375446227541e-11,\n
+     5: 3.9810717055349735e-10,\n
+     6: 0.00036307805477010178,...\n
 
   """    
     

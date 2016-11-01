@@ -5,7 +5,7 @@ import spectrum
 import atomic
 import ctypes
 import apec
-__version__="0.0.1.9"
+__version__="0.0.2.0"
 PATH = os.path.dirname(__file__)
 liblinapprox_file = os.path.join(PATH,"../linear_approx.dylib")
 if not os.path.isfile(liblinapprox_file):
