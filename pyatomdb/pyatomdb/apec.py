@@ -4493,7 +4493,7 @@ def generate_apec_headerblurb(settings, linehdulist, cocohdulist):
 
 def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
                        teunit='K', \
-                       filename=False):
+                       filename=False, datacache=False):
   """
   Solve the ionization balance for a range of ions using the eigenvector
   approach and files as distributed in XSPEC.
@@ -4542,11 +4542,17 @@ def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
   else:
     if (not init_pop_set):
     # we need to do equilbirum
-      do_equilib = True
-      Te_equilib = Te_init
       if not Te_init_set:
-        print "ERROR: need to specift Te_init or init_pop for NEI calculation"
-        return
+        print "Warning: neither Te_init not init_pop set. Assuming ionization "+\
+              "from neutral"
+        do_equilib=False
+        init_pop = numpy.zeros(Z+1)
+        init_pop[0] = 1.0
+      else:
+        do_equilib = True
+        Te_equilib = Te_init
+        
+              
     else:
       do_equilib=False
   if (not tau_set):
@@ -4556,15 +4562,17 @@ def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
   
   if util.keyword_check(filename):
     # we have a filename specified!
-    fname = os.path.expandvars(fname)
+    fname = os.path.expandvars(filename)
     if not os.path.isfile(fname):
       print "Specified file %s does not exist. Exiting"%(fname)
       return
     d = pyfits.open(fname)
   else:
-    d = atomdb.get_data(Z, False, 'eigen')
+    d = atomdb.get_data(Z, False, 'eigen', datacache=datacache)
 
   telist = numpy.logspace(4,9,1251)
+  if teunit.lower()=='kev':
+    telist*=const.KBOLTZ
   
   if do_equilib:
     itelist = numpy.argsort((telist-Te_equilib)**2)
@@ -4578,10 +4586,12 @@ def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
     else:
       equilib = d['EIGEN'].data['FEQB'][ite[0]]
       
-  
   if do_nei:
-    if (not init_pop_set):
+    if (do_equilib):
       init_pop = equilib
+    
+    # renormalize
+    init_pop = init_pop/sum(init_pop)
     
     Tindex = numpy.argmin((telist-Te)**2)
     
@@ -4595,25 +4605,25 @@ def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
     delt = 1.0/(len(telist)-1.0)
     work = numpy.zeros(Z, dtype=float)
     work = init_pop[1:] - d['EIGEN'].data['FEQB'][Tindex][1:]
-    fspec = numpy.zeros(Z)
-    for i in range(Z):
-      for j in range(Z):
-        fspec[i] +=lefteigenvec[i][j] * work[j]
-    
+        
     fspectmp = numpy.matrix(lefteigenvec) * numpy.matrix(work).transpose()
-    worktmp = fspectmp *numpy.exp(d['EIGEN'].data['EIG'][Tindex] * delt * tau)
 
+    delt = 1.0
+
+    worktmp = numpy.zeros(Z)
+    for i in range(Z):
+      worktmp[i] = fspectmp[i]*numpy.exp(d['EIGEN'].data['EIG'][Tindex,i]*delt*tau)
+    
     frac = numpy.zeros(Z+1)
     for i in range(Z):
       for j in range(Z):
-        frac[i+1] += worktmp[j,0]*righteigenvec[j][i]
+        frac[i+1] += worktmp[j]*righteigenvec[j][i]
       frac[i+1] += d['EIGEN'].data['FEQB'][Tindex][i+1]
     
     frac[frac<0.0] = 0.0
       
     if sum(frac)< 1.0:
       frac[0] = 1.0-sum(frac)
-    print "frac:",frac
   
   if tau_set:
     return frac
