@@ -2983,7 +2983,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
       # we should have data...
       if dtype in ['CI','EA','XI']:
         colldata = get_data(Z,z1,'IR', settings=settings, datacache=datacache)
-      elif dtype in ['RR','DR','XR']:
+      elif dtype in ['RR','DR','XR','XD']:
         colldata = get_data(Z,z1-1,'IR', settings=settings, datacache=datacache)
       elif dtype == 'EC':
         colldata = get_data(Z,z1,'EC', settings=settings, datacache=datacache)
@@ -3018,7 +3018,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
   if z1<0:
     if dtype in ['EC','PC','EA','CI','XI']:
       z1 = colldata[1].header['ION_STAT']+1
-    elif dtype in ['XR','DR','RR']:
+    elif dtype in ['XR','DR','RR','XD']:
       z1 = colldata[1].header['ION_STAT']+2
   
   # Now get the correct transition
@@ -3040,7 +3040,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
     if z1<0:
       if dtype in ['EC','PC','EA','CI','XI']:
         z1 = colldata[1].header['ION_STAT']+1
-      elif dtype in ['XR','DR','RR']:
+      elif dtype in ['XR','DR','RR','XD']:
         z1 = colldata[1].header['ION_STAT']+2
 
 
@@ -3099,7 +3099,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
         else:
           index = index[0]
 
-      elif dtype in ['RR','XR','DR']:
+      elif dtype in ['RR','XR','DR','XD']:
         index = numpy.where((colldata[1].data['level_init']==initlev) &\
                             (colldata[1].data['level_final']==finallev) &\
                             (colldata[1].data['tr_type']==dtype) &\
@@ -3294,6 +3294,19 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
       if not silent:
 
         print "calc_ionrec_rate: xr(%10s -> %10s,T=%9.3e) = %8g"%\
+                  (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
+                   adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
+                   Te,xr)
+
+    return xr
+
+  elif dtype=='XD':
+    cidat = colldata[1].data[index]
+    xr = calc_ionrec_dr(cidat,Te_arr, extrap=force_extrap)
+    if sum(numpy.isnan(xr))>0:
+      if not silent:
+
+        print "calc_ionrec_rate: xd(%10s -> %10s,T=%9.3e) = %8g"%\
                   (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                    adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
                    Te,xr)
