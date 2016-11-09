@@ -3090,10 +3090,10 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
 
         if ((ir['TR_TYPE'] in ['RR','XR']) & (ir['level_final']>1)):
           haverrrate=True
-      if ir['TR_TYPE'] in ['DR']:
+      if ir['TR_TYPE'] in ['DR','XD']:
         recrate = atomdb.get_maxwell_rate(Tarr, irdat, iir, lvdat)
         drrecombrate[ir['level_final']-1] += recrate*levpop[ir['level_init']-1]*dens
-        if ((ir['TR_TYPE']=='DR') & (ir['level_final']>1)):
+        if ((ir['TR_TYPE'] in ['DR','XD']) & (ir['level_final']>1)):
           havedrrate=True
 
     if havedrrate:
