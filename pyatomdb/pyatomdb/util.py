@@ -1631,6 +1631,7 @@ def write_ir_file(fname, dat, clobber=False):
     * z1 : int : ion charge + 1
     * comments : iterable of strings : comments to append to the file
     * ionpot : float : ionization potential (eV)   
+    * ip_dere : float : ionization potential (eV)   (from dere, optional)
     * data : numpy.array : stores all the individual level data, with the following types:
 
       - element : int : Nuclear Charge
@@ -1682,79 +1683,92 @@ def write_ir_file(fname, dat, clobber=False):
   hdu0.header.update('ORIGIN', "ATOMDB",comment=os.environ['USER']+", AtomDB project")
   hdu0.header.update('HDUCLASS', "ATOMIC",comment="Atomic Data")
   hdu0.header.update('HDUCLAS1', "IONREC",comment="Ionization/Recombination rates")
-  hdu0.header.update('HDUVERS', "1.0.0",comment="Version of datafile")
+  hdu0.header.update('HDUVERS', "1.1.0",comment="Version of datafile")
 
+  keys={}
+  keylist = ['element','ion_init','ion_final','level_init','level_final','tr_index','tr_type','par_type',\
+             'min_temp','max_temp','temperature','ionrec_par','wavelen','wave_obs',\
+             'wave_err','br_ratio','br_rat_err','label','rate_ref','wave_ref',\
+             'wv_obs_ref','br_rat_ref']
+
+  for i in dat['data'].dtype.names:
+    if i.lower() in keylist:
+      keys[i.lower()] = i
+    else:
+      print "Error: didn't find key %s" %(i.lower())  
   #secondary HDU, hdu1:
+
+  print keys
   hdu1 = pyfits.new_table(pyfits.ColDefs(
         [pyfits.Column(name='ELEMENT',
            format='1J',
-           array=dat['data']['element']),
+           array=dat['data'][keys['element']]),
          pyfits.Column(name='ION_INIT',
            format='1J',
-           array=dat['data']['ion_init']),
+           array=dat['data'][keys['ion_init']]),
          pyfits.Column(name='ION_FINAL',
            format='1J',
-           array=dat['data']['ion_final']),
+           array=dat['data'][keys['ion_final']]),
          pyfits.Column(name='LEVEL_FINAL',
            format='1J',
-           array=dat['data']['level_final']),
+           array=dat['data'][keys['level_final']]),
          pyfits.Column(name='LEVEL_INIT',
            format='1J',
-           array=dat['data']['level_init']),
+           array=dat['data'][keys['level_init']]),
          pyfits.Column(name='TR_TYPE',
            format='2A',
-           array=dat['data']['tr_type']),
+           array=dat['data'][keys['tr_type']]),
          pyfits.Column(name='TR_INDEX',
            format='1J',
-           array=numpy.arange(1,len(dat['data']['tr_type'])+1)),
+           array=numpy.arange(1,len(dat['data'][keys['tr_type']])+1)),
          pyfits.Column(name='PAR_TYPE',
            format='1J',
-           array=dat['data']['par_type']),
+           array=dat['data'][keys['par_type']]),
          pyfits.Column(name='MIN_TEMP',
            format='1E',
            unit='K',
-           array=dat['data']['min_temp']),
+           array=dat['data'][keys['min_temp']]),
          pyfits.Column(name='MAX_TEMP',
            format='1E',
            unit='K',
-           array=dat['data']['max_temp']),
+           array=dat['data'][keys['max_temp']]),
          pyfits.Column(name='TEMPERATURE',
            format='20E',
            unit='K',
-           array=dat['data']['temperature']),
+           array=dat['data'][keys['temperature']]),
          pyfits.Column(name='IONREC_PAR',
            format='20E',
-           array=dat['data']['ionrec_par']),
+           array=dat['data'][keys['ionrec_par']]),
          pyfits.Column(name='WAVELEN',
            format='1E',
-           array=dat['data']['wavelen']),
+           array=dat['data'][keys['wavelen']]),
          pyfits.Column(name='WAVE_OBS',
            format='1E',
-           array=dat['data']['wave_obs']),
+           array=dat['data'][keys['wave_obs']]),
          pyfits.Column(name='WAVE_ERR',
            format='1E',
-           array=dat['data']['wave_err']),
+           array=dat['data'][keys['wave_err']]),
          pyfits.Column(name='BR_RATIO',
            format='1E',
-           array=dat['data']['br_ratio']),
+           array=dat['data'][keys['br_ratio']]),
          pyfits.Column(name='BR_RAT_ERR',
            format='1E',
-           array=dat['data']['br_rat_err']),
+           array=dat['data'][keys['br_rat_err']]),
          pyfits.Column(name='LABEL',
            format='20A',
-           array=dat['data']['label']),
+           array=dat['data'][keys['label']]),
          pyfits.Column(name='RATE_REF',
            format='20A',
-           array=dat['data']['rate_ref']),
+           array=dat['data'][keys['rate_ref']]),
          pyfits.Column(name='WAVE_REF',
            format='20A',
-           array=dat['data']['wave_ref']),
+           array=dat['data'][keys['wave_ref']]),
          pyfits.Column(name='WV_OBS_REF',
            format='20A',
-           array=dat['data']['wv_obs_ref']),
+           array=dat['data'][keys['wv_obs_ref']]),
          pyfits.Column(name='BR_RAT_REF',
            format='20A',
-           array=dat['data']['br_rat_ref'])]
+           array=dat['data'][keys['br_rat_ref']])]
          ))
 
   hdu1.header.update('XTENSION', hdu1.header['XTENSION'],
@@ -1771,7 +1785,7 @@ def write_ir_file(fname, dat, clobber=False):
           comment='ion state (0 = neutral)', before="TTYPE1")
   hdu1.header.update('ION_NAME', atomic.spectroscopic_name(dat['Z'],dat['z1']),
           comment='Ion Name', before="TTYPE1")
-  hdu1.header.update('N_ION',len(dat['data']['level_init']) ,
+  hdu1.header.update('N_ION',len(dat['data'][keys['level_init']]) ,
            comment='Number of rates', before="TTYPE1")
   hdu1.header.update('HDUVERS1', '1.0.0',
            comment='Version of datafile', before="TTYPE1")
@@ -1780,7 +1794,11 @@ def write_ir_file(fname, dat, clobber=False):
              comment='Ionization Potential (eV)', before="TTYPE1")
   else:
     print "WARNING: ionpot keyword not found in list"
-
+  if 'ip_dere' in dat.keys():
+    hdu1.header.update('IP_DERE', dat['ip_dere'],
+             comment='Ionization Potential for Dere Ionization Rates', \
+             before="TTYPE1")
+  
   if 'comments' in dat.keys():
     print 'adding comments'
     for icmt in dat['comments']:
