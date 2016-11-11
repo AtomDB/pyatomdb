@@ -1,4 +1,12 @@
 from setuptools import setup, Extension
+import os
+
+import sys
+from mock import Mock as MagicMock
+
+
+on_rtd = os.environ.get('READTHEDOCS')=='True'
+
 
 def get_version(relpath):
     """read version info from file without importing it"""
@@ -22,6 +30,21 @@ linapprox =  Extension('linear_approx',\
                        sources=['linear_approx.c'])
 
 
+
+
+if on_rtd:
+  extmos= [linapprox]
+
+  class Mock(MagicMock):
+      @classmethod
+      def __getattr__(cls, name):
+              return Mock()
+
+  MOCK_MODULES = ['liblinapprox']
+  sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+
+else:
+  extmos= [linapprox]
 
 setup(name='pyatomdb',
       version=get_version('pyatomdb/__init__.py'),
@@ -48,5 +71,5 @@ setup(name='pyatomdb',
       "wget",\
       "numpy",\
       "scipy"],
-      ext_modules = [linapprox])
+      ext_modules = extmos)
 
