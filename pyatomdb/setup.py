@@ -33,7 +33,7 @@ linapprox =  Extension('linear_approx',\
 
 
 if on_rtd:
-  extmos= [linapprox]
+  extmos= []
 
   class Mock(MagicMock):
       @classmethod
