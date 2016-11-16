@@ -76,8 +76,11 @@ APEC now included in apec.py. Can create a full apec run from a par file.
 0.0.1.9
 October 13th 2016: Bugfixes! wget was causing problems during file download due to bugs, Now fixed
 
-0.0.2
+0.0.2.0
 November 01st 2016: Removed use of sparse algebra. Wasn't accurate enough, causing issues with suprious lines in low ionization states.
 
 Implemented faster ionization balance calculations in "apec.solve_ionbal_eigen"
 
+
+0.0.2.1
+November 16th 2016: Bugfix to the level population calculation for recombination. For ions with level resolved rates and PI cross sections, we were double counting. Fixed now.
