@@ -4213,7 +4213,7 @@ def get_data(Z, z1, ftype, datacache=False, \
 
             if curversion in ['2.0.0', '2.0.1', '2.0.2','3.0.0','3.0.1','3.0.2','3.0.3']:
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v2.0.2_ionbal.fits'
-            elif curversion in ['3.0.4','3.0.5']:
+            elif curversion in ['3.0.4','3.0.5','3.0.6']:
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.4_ionbal.fits'
           elif ftype.lower()=='eigen':
             # conversion here:
@@ -4221,7 +4221,7 @@ def get_data(Z, z1, ftype, datacache=False, \
 
             if curversion in ['2.0.0', '2.0.1', '2.0.2','3.0.0','3.0.1','3.0.2','3.0.3']:
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.fits'%(atomic.Ztoelsymb(Z).lower())
-            elif curversion in ['3.0.4','3.0.5']:
+            elif curversion in ['3.0.4','3.0.5','3.0.6']:
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.4.fits'%(atomic.Ztoelsymb(Z).lower())
           else:
             datacache['data']['misc'][ftype.upper()] = False
@@ -4340,7 +4340,7 @@ def get_data(Z, z1, ftype, datacache=False, \
 
       if curversion in ['2.0.0', '2.0.1', '2.0.2','3.0.0','3.0.1','3.0.2','3.0.3']:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v2.0.2_ionbal.fits'
-      elif curversion in ['3.0.4','3.0.5']:
+      elif curversion in ['3.0.4','3.0.5','3.0.6']:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.4_ionbal.fits'
 
     elif ftype.lower()=='eigen':
@@ -4349,7 +4349,7 @@ def get_data(Z, z1, ftype, datacache=False, \
 
       if curversion in ['2.0.0', '2.0.1', '2.0.2','3.0.0','3.0.1','3.0.2','3.0.3']:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.fits'%(atomic.Ztoelsymb(Z).lower())
-      elif curversion in ['3.0.4','3.0.5']:
+      elif curversion in ['3.0.4','3.0.5','3.0.6']:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.4.fits'%(atomic.Ztoelsymb(Z).lower())
 
 
