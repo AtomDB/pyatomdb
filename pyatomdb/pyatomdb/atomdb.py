@@ -1464,7 +1464,12 @@ def calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
       upsilon = interpolate.interp1d(xs9, om[2:2+om[0]], kind='cubic',\
        bounds_error=False, fill_value=0.0)(st)
       y2 = prep_spline_atomdb(xs9, om[2:2+om[0]], 9)
-      upsilon = calc_spline_atomdb(xs9, om[2:2+om[0]], y2, 9, st)
+      stvec, isstvec = util.make_vec(st)
+      upsilon = numpy.zeros(len(stvec))
+      for ist, st in enumerate(stvec):
+        upsilon[ist] = calc_spline_atomdb(xs9, om[2:2+om[0]], y2, 9, st)
+      if isstvec==False:
+        upsilon = upsilon[0]
 
     if (coll_type == const.CHIANTI4_1):
       upsilon *= numpy.log(chi_inv + const.M_E)
@@ -4232,7 +4237,7 @@ def get_data(Z, z1, ftype, datacache=False, \
 
             if curversion in ['2.0.0', '2.0.1', '2.0.2','3.0.0','3.0.1','3.0.2','3.0.3']:
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v2.0.2_ionbal.fits'
-            elif curversion in ['3.0.4','3.0.5']:
+            elif curversion in ['3.0.4','3.0.5','3.0.6']:
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.4_ionbal.fits'
           elif ftype.lower()=='eigen':
             # conversion here:
@@ -4240,7 +4245,7 @@ def get_data(Z, z1, ftype, datacache=False, \
 
             if curversion in ['2.0.0', '2.0.1', '2.0.2','3.0.0','3.0.1','3.0.2','3.0.3']:
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.fits'%(atomic.Ztoelsymb(Z).lower())
-            elif curversion in ['3.0.4','3.0.5']:
+            elif curversion in ['3.0.4','3.0.5','3.0.6']:
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.4.fits'%(atomic.Ztoelsymb(Z).lower())
           else:
             datacache['data']['misc'][ftype.upper()] = False
@@ -4359,7 +4364,7 @@ def get_data(Z, z1, ftype, datacache=False, \
 
       if curversion in ['2.0.0', '2.0.1', '2.0.2','3.0.0','3.0.1','3.0.2','3.0.3']:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v2.0.2_ionbal.fits'
-      elif curversion in ['3.0.4','3.0.5']:
+      elif curversion in ['3.0.4','3.0.5','3.0.6']:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.4_ionbal.fits'
 
     elif ftype.lower()=='eigen':
@@ -4368,7 +4373,7 @@ def get_data(Z, z1, ftype, datacache=False, \
 
       if curversion in ['2.0.0', '2.0.1', '2.0.2','3.0.0','3.0.1','3.0.2','3.0.3']:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.fits'%(atomic.Ztoelsymb(Z).lower())
-      elif curversion in ['3.0.4','3.0.5']:
+      elif curversion in ['3.0.4','3.0.5','3.0.6']:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.4.fits'%(atomic.Ztoelsymb(Z).lower())
 
 
