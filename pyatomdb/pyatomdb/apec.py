@@ -3088,12 +3088,12 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
         
         rrrecombrate[ir['level_final']-1] += recrate*levpop[ir['level_init']-1]*dens
 
-        if ((ir['TR_TYPE']=='RR') & (ir['level_final']>1)):
+        if ((ir['TR_TYPE'] in ['RR','XR']) & (ir['level_final']>1)):
           haverrrate=True
-      if ir['TR_TYPE'] in ['DR']:
+      if ir['TR_TYPE'] in ['DR','XD']:
         recrate = atomdb.get_maxwell_rate(Tarr, irdat, iir, lvdat)
         drrecombrate[ir['level_final']-1] += recrate*levpop[ir['level_init']-1]*dens
-        if ((ir['TR_TYPE']=='DR') & (ir['level_final']>1)):
+        if ((ir['TR_TYPE'] in ['DR','XD']) & (ir['level_final']>1)):
           havedrrate=True
 
     if havedrrate:
@@ -3113,12 +3113,17 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
     else:
       sumdrlevrates = 0.0
 
-    print "DR: sum from satellite lines: %e, sum from IR file: %e" %\
+    print "DR:wvwerb sum from satellite lines: %e, sum from IR file: %e" %\
           (sumdrlevrates, sum(drrecombrate))
     print "RR: sum from PI xsections: %e, sum from IR file: %e" %\
           (sumrrlevrates, sum(rrrecombrate))
 
     matrixB = rrrecombrate+drrecombrate+tmpdrlevrates+tmprrlevrates
+    print "RATES"
+    print tmpdrlevrates, tmprrlevrates
+    for i in range(len(matrixB)):
+      print i, matrixB[i], rrrecombrate[i], drrecombrate[i]
+    print "END RATES"
     matrixA = numpy.zeros([nlev,nlev],dtype=float)
 
 
@@ -3784,7 +3789,11 @@ def compress_continuum(xin, yin, tolerance, minval = 0.0):
   
   """
   
-  from pyatomdb import liblinapprox
+  try:
+    from pyatomdb import liblinapprox
+  except OSError:
+    print "Unable to open liblinapprox. Hopefully you are on Readthedocs"
+    return
   npts = len(yin)
 
   xin_tmp = ctypes.c_double * npts

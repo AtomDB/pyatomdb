@@ -934,11 +934,16 @@ def get_abundance(abundfile=False, abundset='AG89', element=[-1],\
     special abundance file, if not using the default from filemap
   abundset : string
     Abundance set. Available:
-    * Allen: Allen,~C.~W.  ``Astrophysical Quantities'', 3rd Ed.,  1973 (London: Athlone Press)
-    * AG89: Anders,~E. \& Grevesse,~N. 1989, Geochimica et Cosmochimica Acta, 53, 197
-    * GA88: Grevesse,~N, \& Anders,~E.1988, ``Cosmic abundances of matter'',ed. C.~J.~Waddington, AIP Conference, Minneapolis, MN
-    * Feldman:  Feldman, U., Mandelbaum, P., Seely, J.L., Doschek, G.A.,Gursky H., 1992, ApJSS, 81,387
-    Defaul is AG89
+   
+    * Allen: Allen, C. W.  Astrophysical Quantities, 3rd Ed.,  1973 (London: Athlone Press)
+   
+    * AG89: Anders, E. and Grevesse, N. 1989, Geochimica et Cosmochimica Acta, 53, 197
+   
+    * GA88: Grevesse, N, and Anders, E.1988, Cosmic abundances of matter, ed. C. J. Waddington, AIP Conference, Minneapolis, MN
+   
+    * Feldman: Feldman, U., Mandelbaum, P., Seely, J.L., Doschek, G.A.,Gursky H., 1992, ApJSS, 81,387
+    
+    Default is AG89
   element : list of int
     Elements to find abundance for. If not specified, return all.
   datacache : dict
@@ -950,12 +955,13 @@ def get_abundance(abundfile=False, abundset='AG89', element=[-1],\
   -------
   dict
     abundances in dictionary, i.e :
-     {1: 1.0,
-      2: 0.097723722095581111,
-      3: 1.4454397707459272e-11,
-      4: 1.4125375446227541e-11,
-      5: 3.9810717055349735e-10,
-      6: 0.00036307805477010178,...
+    
+    {1: 1.0,\n
+     2: 0.097723722095581111,\n
+     3: 1.4454397707459272e-11,\n
+     4: 1.4125375446227541e-11,\n
+     5: 3.9810717055349735e-10,\n
+     6: 0.00036307805477010178,...\n
 
   """    
     
@@ -1458,7 +1464,12 @@ def calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
       upsilon = interpolate.interp1d(xs9, om[2:2+om[0]], kind='cubic',\
        bounds_error=False, fill_value=0.0)(st)
       y2 = prep_spline_atomdb(xs9, om[2:2+om[0]], 9)
-      upsilon = calc_spline_atomdb(xs9, om[2:2+om[0]], y2, 9, st)
+      stvec, isstvec = util.make_vec(st)
+      upsilon = numpy.zeros(len(stvec))
+      for ist, st in enumerate(stvec):
+        upsilon[ist] = calc_spline_atomdb(xs9, om[2:2+om[0]], y2, 9, st)
+      if isstvec==False:
+        upsilon = upsilon[0]
 
     if (coll_type == const.CHIANTI4_1):
       upsilon *= numpy.log(chi_inv + const.M_E)
@@ -2977,7 +2988,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
       # we should have data...
       if dtype in ['CI','EA','XI']:
         colldata = get_data(Z,z1,'IR', settings=settings, datacache=datacache)
-      elif dtype in ['RR','DR','XR']:
+      elif dtype in ['RR','DR','XR','XD']:
         colldata = get_data(Z,z1-1,'IR', settings=settings, datacache=datacache)
       elif dtype == 'EC':
         colldata = get_data(Z,z1,'EC', settings=settings, datacache=datacache)
@@ -3012,7 +3023,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
   if z1<0:
     if dtype in ['EC','PC','EA','CI','XI']:
       z1 = colldata[1].header['ION_STAT']+1
-    elif dtype in ['XR','DR','RR']:
+    elif dtype in ['XR','DR','RR','XD']:
       z1 = colldata[1].header['ION_STAT']+2
   
   # Now get the correct transition
@@ -3034,7 +3045,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
     if z1<0:
       if dtype in ['EC','PC','EA','CI','XI']:
         z1 = colldata[1].header['ION_STAT']+1
-      elif dtype in ['XR','DR','RR']:
+      elif dtype in ['XR','DR','RR','XD']:
         z1 = colldata[1].header['ION_STAT']+2
 
 
@@ -3093,7 +3104,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
         else:
           index = index[0]
 
-      elif dtype in ['RR','XR','DR']:
+      elif dtype in ['RR','XR','DR','XD']:
         index = numpy.where((colldata[1].data['level_init']==initlev) &\
                             (colldata[1].data['level_final']==finallev) &\
                             (colldata[1].data['tr_type']==dtype) &\
@@ -3288,6 +3299,19 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
       if not silent:
 
         print "calc_ionrec_rate: xr(%10s -> %10s,T=%9.3e) = %8g"%\
+                  (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
+                   adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
+                   Te,xr)
+
+    return xr
+
+  elif dtype=='XD':
+    cidat = colldata[1].data[index]
+    xr = calc_ionrec_dr(cidat,Te_arr, extrap=force_extrap)
+    if sum(numpy.isnan(xr))>0:
+      if not silent:
+
+        print "calc_ionrec_rate: xd(%10s -> %10s,T=%9.3e) = %8g"%\
                   (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                    adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
                    Te,xr)
