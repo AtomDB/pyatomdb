@@ -341,6 +341,8 @@ def download_atomdb_emissivity_files(adbroot, userid, version):
   mkdir_p(tmpdir)
   
   # get the files
+  urllib.urlcleanup()
+
   fnameout = wget.download('ftp://sao-ftp.harvard.edu/AtomDB/releases/%s'%(fname), out="%s/%s"%(tmpdir, fname))
 
   # collect user statistics if allowed.
@@ -425,6 +427,8 @@ def download_atomdb_nei_emissivity_files(adbroot, userid, version):
   mkdir_p(tmpdir)
   
   # get the files
+  urllib.urlcleanup()
+
   fnameout = wget.download('ftp://sao-ftp.harvard.edu/AtomDB/releases/%s'%(fname), out="%s/%s"%(tmpdir, fname))
 
   # collect user statistics if allowed.
@@ -656,7 +660,7 @@ def check_version():
   
   try:
     adbroot_init = os.environ['ATOMDB']
-  except keyError:
+  except KeyError:
     print "You must set the ATOMDB environment variable for this to work!"
     raise
   
