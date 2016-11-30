@@ -84,3 +84,6 @@ Implemented faster ionization balance calculations in "apec.solve_ionbal_eigen"
 
 0.0.2.1
 November 16th 2016: Bugfix to the level population calculation for recombination. For ions with level resolved rates and PI cross sections, we were double counting. Fixed now.
+
+0.0.2.2
+November 30th 2016: Bugfix to download of new files: urllib.urlcleanup now called more often.
