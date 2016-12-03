@@ -3943,6 +3943,8 @@ def read_filemap(filemap="$ATOMDB/filemap", atomdbroot="$ATOMDB"):
         j = numpy.where((numpy.array(Z)==Z_tmp) & \
                         (numpy.array(z1)==z1_tmp))[0]
 
+      j=j[0]
+      
       if int(splt[0]) == 1:
         irlist[j] = fname
       if int(splt[0]) == 2:
