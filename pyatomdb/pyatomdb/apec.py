@@ -1527,7 +1527,7 @@ def create_lhdu_nei(linedata):
   cols.append(pyfits.Column(name='Epsilon', format='1E', unit="photons cm^3 s^-1", array=linedata['epsilon']))
   cols.append(pyfits.Column(name='Epsilon_Err', format='1E', unit="photons cm^3 s^-1", array=linedata['epsilon_err']))
   cols.append(pyfits.Column(name='Element', format='1J',  array=linedata['element']))
-  cols.append(pyfits.Column(name='Element_drv', format='1J',  array=linedata['element']))
+  cols.append(pyfits.Column(name='Elem_drv', format='1J',  array=linedata['element']))
   cols.append(pyfits.Column(name='Ion', format='1J',  array=linedata['ion']))
   cols.append(pyfits.Column(name='Ion_drv', format='1J',  array=linedata['ion_drv']))
   cols.append(pyfits.Column(name='UpperLev', format='1J', array=linedata['upperlev']))
@@ -2326,7 +2326,7 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                  'epsilon_err',\
                                  'element',\
                                  'ion', \
-                                 'element_drv',\
+                                 'elem_drv',\
                                  'ion_drv', \
                                  'upperlev',\
                                  'lowerlev'],\
@@ -2366,7 +2366,7 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                  'Epsilon_Err',\
                                  'Element',\
                                  'Ion', \
-                                 'Element_Drv',\
+                                 'Elem_Drv',\
                                  'Ion_Drv', \
                                  'UpperLev',\
                                  'LowerLev'],\
@@ -2513,7 +2513,7 @@ def solve_level_pop(init,final,rates,settings):
     t2 = time.time()
     print "time differences: %f vs %f seconds"%(t1-t0, t2-t1)
     
-
+    
     # popn conservation
     matrixB[0] = 1.0
     matrixA[0,:] = 1.0
@@ -2730,7 +2730,7 @@ def do_lines(Z, z1, lev_pop, N_e, datacache=False, settings=False, z1_drv_in=-1)
   linelist['lambda_err'] = numpy.nan
   linelist['epsilon_err'] = numpy.nan
   linelist['element'] = Z
-  linelist['element_drv'] = Z
+  linelist['elem_drv'] = Z
   linelist['ion'] = z1
   linelist['ion_drv']= z1_drv
   linelist['upperlev'] = ladat[1].data['upper_lev']
@@ -2912,7 +2912,7 @@ def calc_satellite(Z, z1, T, datacache=False, settings=False):
       linelist[iline]['epsilon_err'] = numpy.nan
       linelist[iline]['element'] = Z
       linelist[iline]['ion'] = z1
-      linelist[iline]['element_drv'] = Z
+      linelist[iline]['elem_drv'] = Z
       linelist[iline]['ion_drv'] = z1_drv
       linelist[iline]['upperlev'] = lu
       linelist[iline]['lowerlev'] = ll
