@@ -973,7 +973,7 @@ def get_abundance(abundfile=False, abundset='AG89', element=[-1],\
     abunddata = pyfits.open(abundfile)
 
   if element[0]==-1:
-    element = range(1,29)
+    element = range(1,31)
 
   ind = numpy.where(abunddata[1].data.field('Source')==abundset)[0]
   if len(ind)==0:
