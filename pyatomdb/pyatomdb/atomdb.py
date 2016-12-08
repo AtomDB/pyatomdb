@@ -4252,7 +4252,7 @@ def get_data(Z, z1, ftype, datacache=False, \
             elif curversion in ['3.0.4','3.0.5','3.0.6']:
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.4.fits'%(atomic.Ztoelsymb(Z).lower())
             else:
-              fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.7_ionbal.fits'
+              fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.7.fits'%(atomic.Ztoelsymb(Z).lower())
           else:
             datacache['data']['misc'][ftype.upper()] = False
 
@@ -4384,7 +4384,7 @@ def get_data(Z, z1, ftype, datacache=False, \
       elif curversion in ['3.0.4','3.0.5','3.0.6']:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.4.fits'%(atomic.Ztoelsymb(Z).lower())
       else:
-        fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.7_ionbal.fits'
+        fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.7.fits'%(atomic.Ztoelsymb(Z).lower())
 
 
     if fname=='':
