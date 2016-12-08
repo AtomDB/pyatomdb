@@ -2750,7 +2750,6 @@ def generate_equilibrium_ionbal_files(filename, settings = False):
   Nelist = numpy.array([1.0])
   ionbal = {}
   for Z in range(1,31):
-    print Z
     ionlist = numpy.zeros([len(Telist), Z])
     reclist = numpy.zeros([len(Telist), Z])
   
