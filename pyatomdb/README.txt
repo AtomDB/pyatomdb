@@ -87,3 +87,6 @@ November 16th 2016: Bugfix to the level population calculation for recombination
 
 0.0.2.2
 November 30th 2016: Bugfix to download of new files: urllib.urlcleanup now called more often.
+
+0.0.2.3
+December 8th 2016: Updated to handle 3.0.7.
