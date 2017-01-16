@@ -90,3 +90,6 @@ November 30th 2016: Bugfix to download of new files: urllib.urlcleanup now calle
 
 0.0.2.3
 December 8th 2016: Updated to handle 3.0.7.
+
+0.0.2.4
+January 16th 2017: Bugfix for installation, include joblib as a requirement

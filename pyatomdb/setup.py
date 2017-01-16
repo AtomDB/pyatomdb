@@ -70,6 +70,7 @@ setup(name='pyatomdb',
       "requests",\
       "wget",\
       "numpy",\
-      "scipy"],
+      "scipy",\
+      "joblib"],
       ext_modules = extmos)
 
