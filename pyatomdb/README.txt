@@ -93,3 +93,6 @@ December 8th 2016: Updated to handle 3.0.7.
 
 0.0.2.4
 January 16th 2017: Bugfix for installation, include joblib as a requirement
+
+0.0.2.5
+January 17th 2017: Bugfix for installation, include mock as a requirement

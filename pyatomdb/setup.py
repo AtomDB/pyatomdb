@@ -71,6 +71,7 @@ setup(name='pyatomdb',
       "wget",\
       "numpy",\
       "scipy",\
-      "joblib"],
+      "joblib",\
+      "mock"],
       ext_modules = extmos)
 
