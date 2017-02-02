@@ -908,3 +908,51 @@ def get_maxn(cfgstr):
   maxn = max([c[0] for c in d])
 
   return maxn
+
+
+#------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+    
+def parse_eissner(cfgstr, nel=0):
+  shelllist='1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+  llist = 'spdfghiklmnoqrtuvwxyz'
+  cfg = cfgstr.strip()
+  if len(cfg)%3 == 0:
+    # find the initial split. Want configuration to start with 5 (or 6, or 7)
+    if cfg[0] in['5','6','7']:
+      pass
+    elif cfg[-1] in ['5','6','7']:
+      cfg='5'+cfg[:-1]
+    else:
+      print "Invalid configuration (1) %s" %(cfg)
+  elif len(cfg)%3 == 2:
+    if not cfg[0] in ['5','6','7']:
+      cfg = '5'+cfg
+    else:
+      print "Invalid configuration (2) %s" %(cfg)
+  elif len(cfg)%3 == 1:
+    print "Invalid configuration (3) %s" %(cfg)
+  
+  ret = ""
+  for i in range(len(cfg)/3):
+    cfgtmp = cfg[3*i:3*(i+1)]
+    nelec = int(cfgtmp[:2])-50
+    ishell = shelllist.index(cfgtmp[2])
+    
+    n=1
+    l=0
+    for ii in range(ishell):
+      if l < n-1:
+        l+=1
+      else:
+        n+=1
+        l=0
+    lsymb = llist[l]
+    ret += "%i%s%i "%(n,lsymb,nelec)
+  ret = ret[:-1]
+  
+  return ret
+    
+        
+    
