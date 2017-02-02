@@ -2940,7 +2940,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
   exc, dex = get_maxwell_rate(Te, Z=26,z1=17, index=12)
   
   (3) Get excitation rates for transitions from level 1 to 15 of FE XVII
-  exc, dex = get_maxwell_rate(Te, Z=26, z1=17, finallev=15, initlev=1)
+  exc, dex = get_maxwell_rate(Te, Z=26, z1=17, dtype='EC', finallev=15, initlev=1)
   
   """
 # Note interface update 03-Apr-2016  
