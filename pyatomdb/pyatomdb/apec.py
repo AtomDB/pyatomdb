@@ -889,13 +889,16 @@ def calc_ee_brems(E, T, N):
 
   tao = T/const.ME_KEV
   # find the length of the input
-  if isinstance(E, (collections.Sequence, numpy.ndarray)):
-    x = E/T
-    (numx,) = x.shape
-  else:
-    Earray = numpy.array([E])
-    x = Earray/T
-    numx=1
+  Earray, Eisvec =  util.make_vec(E)
+  #if isinstance(E, (collections.Sequence, numpy.ndarray)):
+  #  x = E/T
+  #  (numx,) = x.shape
+  #else:
+  #  Earray = numpy.array([E])
+
+  x = Earray/T
+  numx=len(Earray)
+  
   #print "x", x
   #print "numx:", numx
   GI = numpy.zeros((numx,))
@@ -910,7 +913,6 @@ def calc_ee_brems(E, T, N):
     ret = numpy.zeros(len(x), dtype=float)
   elif 0.05<=T<70.:
     # hmm
-    # ARF REDO
     GI=numpy.zeros(len(x))
     theta = (1/1.35) * ( numpy.log10(tao) + 2.65)
     bigx = (1/2.5) * (numpy.log10(x) + 1.50)
@@ -950,6 +952,11 @@ def calc_ee_brems(E, T, N):
           *(-1.0*Ei0)*(8./3.-4.*x/3.+x**2))
 
     ret = 1.455e-16*N**2*numpy.exp(-x)/(x*numpy.sqrt(taoIV))*GIV
+
+  if Eisvec==False:
+    # convert back from vector to scalar
+    ret = ret[0]
+  
   return ret/const.ME_KEV
 
 
@@ -2416,6 +2423,15 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
   elif dtype == 'cocoparams':
     ret = numpy.dtype({'names':['kT','EDensity','Time','NElement','NCont', 'NPseudo'],\
                        'formats':[float, float, float, int, int, int]})
+  elif dtype == 'ecdat':
+    # Electron collisional data
+    ret = numpy.dtype({'names':['lower_lev','upper_lev','coeff_type',\
+                                'min_temp','max_temp', 'temperature', \
+                                'effcollstrpar','inf_limit','reference'],\
+                       'formats':[int, int, int, \
+                                  float, float, (float,20), \
+                                  (float,20), float, '|S20']})
+
     
   else:
     print "Unknown dtype %s in generate_datatypes"%(dtype)
@@ -2847,6 +2863,8 @@ def calc_satellite(Z, z1, T, datacache=False, settings=False):
   -------
   array(linelist)
     List of DR lines
+  array(levlistin)
+    Rates into each lower level, driven by DR
   """  
   
   # recombining ion charge
