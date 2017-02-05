@@ -889,13 +889,16 @@ def calc_ee_brems(E, T, N):
 
   tao = T/const.ME_KEV
   # find the length of the input
-  if isinstance(E, (collections.Sequence, numpy.ndarray)):
-    x = E/T
-    (numx,) = x.shape
-  else:
-    Earray = numpy.array([E])
-    x = Earray/T
-    numx=1
+  Earray, Eisvec =  util.make_vec(E)
+  #if isinstance(E, (collections.Sequence, numpy.ndarray)):
+  #  x = E/T
+  #  (numx,) = x.shape
+  #else:
+  #  Earray = numpy.array([E])
+
+  x = Earray/T
+  numx=len(Earray)
+  
   #print "x", x
   #print "numx:", numx
   GI = numpy.zeros((numx,))
@@ -910,7 +913,6 @@ def calc_ee_brems(E, T, N):
     ret = numpy.zeros(len(x), dtype=float)
   elif 0.05<=T<70.:
     # hmm
-    # ARF REDO
     GI=numpy.zeros(len(x))
     theta = (1/1.35) * ( numpy.log10(tao) + 2.65)
     bigx = (1/2.5) * (numpy.log10(x) + 1.50)
@@ -950,6 +952,11 @@ def calc_ee_brems(E, T, N):
           *(-1.0*Ei0)*(8./3.-4.*x/3.+x**2))
 
     ret = 1.455e-16*N**2*numpy.exp(-x)/(x*numpy.sqrt(taoIV))*GIV
+
+  if Eisvec==False:
+    # convert back from vector to scalar
+    ret = ret[0]
+  
   return ret/const.ME_KEV
 
 
@@ -1527,7 +1534,7 @@ def create_lhdu_nei(linedata):
   cols.append(pyfits.Column(name='Epsilon', format='1E', unit="photons cm^3 s^-1", array=linedata['epsilon']))
   cols.append(pyfits.Column(name='Epsilon_Err', format='1E', unit="photons cm^3 s^-1", array=linedata['epsilon_err']))
   cols.append(pyfits.Column(name='Element', format='1J',  array=linedata['element']))
-  cols.append(pyfits.Column(name='Element_drv', format='1J',  array=linedata['element']))
+  cols.append(pyfits.Column(name='Elem_drv', format='1J',  array=linedata['element']))
   cols.append(pyfits.Column(name='Ion', format='1J',  array=linedata['ion']))
   cols.append(pyfits.Column(name='Ion_drv', format='1J',  array=linedata['ion_drv']))
   cols.append(pyfits.Column(name='UpperLev', format='1J', array=linedata['upperlev']))
@@ -2326,7 +2333,7 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                  'epsilon_err',\
                                  'element',\
                                  'ion', \
-                                 'element_drv',\
+                                 'elem_drv',\
                                  'ion_drv', \
                                  'upperlev',\
                                  'lowerlev'],\
@@ -2366,7 +2373,7 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                  'Epsilon_Err',\
                                  'Element',\
                                  'Ion', \
-                                 'Element_Drv',\
+                                 'Elem_Drv',\
                                  'Ion_Drv', \
                                  'UpperLev',\
                                  'LowerLev'],\
@@ -2416,6 +2423,15 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
   elif dtype == 'cocoparams':
     ret = numpy.dtype({'names':['kT','EDensity','Time','NElement','NCont', 'NPseudo'],\
                        'formats':[float, float, float, int, int, int]})
+  elif dtype == 'ecdat':
+    # Electron collisional data
+    ret = numpy.dtype({'names':['lower_lev','upper_lev','coeff_type',\
+                                'min_temp','max_temp', 'temperature', \
+                                'effcollstrpar','inf_limit','reference'],\
+                       'formats':[int, int, int, \
+                                  float, float, (float,20), \
+                                  (float,20), float, '|S20']})
+
     
   else:
     print "Unknown dtype %s in generate_datatypes"%(dtype)
@@ -2513,7 +2529,7 @@ def solve_level_pop(init,final,rates,settings):
     t2 = time.time()
     print "time differences: %f vs %f seconds"%(t1-t0, t2-t1)
     
-
+    
     # popn conservation
     matrixB[0] = 1.0
     matrixA[0,:] = 1.0
@@ -2730,7 +2746,7 @@ def do_lines(Z, z1, lev_pop, N_e, datacache=False, settings=False, z1_drv_in=-1)
   linelist['lambda_err'] = numpy.nan
   linelist['epsilon_err'] = numpy.nan
   linelist['element'] = Z
-  linelist['element_drv'] = Z
+  linelist['elem_drv'] = Z
   linelist['ion'] = z1
   linelist['ion_drv']= z1_drv
   linelist['upperlev'] = ladat[1].data['upper_lev']
@@ -2847,6 +2863,8 @@ def calc_satellite(Z, z1, T, datacache=False, settings=False):
   -------
   array(linelist)
     List of DR lines
+  array(levlistin)
+    Rates into each lower level, driven by DR
   """  
   
   # recombining ion charge
@@ -2912,7 +2930,7 @@ def calc_satellite(Z, z1, T, datacache=False, settings=False):
       linelist[iline]['epsilon_err'] = numpy.nan
       linelist[iline]['element'] = Z
       linelist[iline]['ion'] = z1
-      linelist[iline]['element_drv'] = Z
+      linelist[iline]['elem_drv'] = Z
       linelist[iline]['ion_drv'] = z1_drv
       linelist[iline]['upperlev'] = lu
       linelist[iline]['lowerlev'] = ll

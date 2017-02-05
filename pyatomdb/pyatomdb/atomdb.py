@@ -973,7 +973,7 @@ def get_abundance(abundfile=False, abundset='AG89', element=[-1],\
     abunddata = pyfits.open(abundfile)
 
   if element[0]==-1:
-    element = range(1,29)
+    element = range(1,31)
 
   ind = numpy.where(abunddata[1].data.field('Source')==abundset)[0]
   if len(ind)==0:
@@ -2940,7 +2940,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
   exc, dex = get_maxwell_rate(Te, Z=26,z1=17, index=12)
   
   (3) Get excitation rates for transitions from level 1 to 15 of FE XVII
-  exc, dex = get_maxwell_rate(Te, Z=26, z1=17, finallev=15, initlev=1)
+  exc, dex = get_maxwell_rate(Te, Z=26, z1=17, dtype='EC', finallev=15, initlev=1)
   
   """
 # Note interface update 03-Apr-2016  
@@ -3943,6 +3943,8 @@ def read_filemap(filemap="$ATOMDB/filemap", atomdbroot="$ATOMDB"):
         j = numpy.where((numpy.array(Z)==Z_tmp) & \
                         (numpy.array(z1)==z1_tmp))[0]
 
+      j=j[0]
+      
       if int(splt[0]) == 1:
         irlist[j] = fname
       if int(splt[0]) == 2:
@@ -4239,6 +4241,8 @@ def get_data(Z, z1, ftype, datacache=False, \
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v2.0.2_ionbal.fits'
             elif curversion in ['3.0.4','3.0.5','3.0.6']:
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.4_ionbal.fits'
+            else:
+              fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.7_ionbal.fits'
           elif ftype.lower()=='eigen':
             # conversion here:
             curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
@@ -4247,6 +4251,8 @@ def get_data(Z, z1, ftype, datacache=False, \
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.fits'%(atomic.Ztoelsymb(Z).lower())
             elif curversion in ['3.0.4','3.0.5','3.0.6']:
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.4.fits'%(atomic.Ztoelsymb(Z).lower())
+            else:
+              fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.7.fits'%(atomic.Ztoelsymb(Z).lower())
           else:
             datacache['data']['misc'][ftype.upper()] = False
 
@@ -4366,6 +4372,8 @@ def get_data(Z, z1, ftype, datacache=False, \
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v2.0.2_ionbal.fits'
       elif curversion in ['3.0.4','3.0.5','3.0.6']:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.4_ionbal.fits'
+      else:
+        fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.7_ionbal.fits'
 
     elif ftype.lower()=='eigen':
       # conversion here:
@@ -4375,6 +4383,8 @@ def get_data(Z, z1, ftype, datacache=False, \
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.fits'%(atomic.Ztoelsymb(Z).lower())
       elif curversion in ['3.0.4','3.0.5','3.0.6']:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.4.fits'%(atomic.Ztoelsymb(Z).lower())
+      else:
+        fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.7.fits'%(atomic.Ztoelsymb(Z).lower())
 
 
     if fname=='':
