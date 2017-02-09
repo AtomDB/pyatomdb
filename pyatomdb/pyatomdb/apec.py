@@ -1126,7 +1126,8 @@ def parse_par_file(fname):
   if not ('WriteIon' in data.keys()):
     data['WriteIon'] = False
 
-        
+  if 'FileMap' in data.keys():
+	data['filemap']=data['FileMap']
   return data
 
 
@@ -1639,14 +1640,7 @@ def run_apec_element(settings, te, dens, Z):
     print "ERROR: settings['Ionization'] must be CIE or NEI, not %s"%(settings['Ionization'])
 
 
-  abundfile = atomdb.get_filemap_file('abund',\
-                                      Z,\
-                                      False,\
-                                      fmapfile=settings['FileMap'],\
-                                      atomdbroot=os.path.expandvars('$ATOMDB'),\
-                                      misc=True)
-
-  abundances = atomdb.get_abundance(abundfile, settings['Abundances'])
+  abundances = atomdb.get_abundance(settings=settings)
   abund=abundances[Z]
 
   # create placeholders for all the data
