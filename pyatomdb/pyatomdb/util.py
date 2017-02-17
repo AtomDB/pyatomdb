@@ -922,11 +922,12 @@ def make_vec(d):
   isvec=True
   try:
     _ = (e for e in d)
+    vecd=d
   except TypeError:
     isvec=False
-    d= numpy.array([d])
+    vecd= numpy.array([d])
     
-  return d,isvec
+  return vecd,isvec
 
 #-------------------------------------------------------------------------------
 
@@ -1497,8 +1498,24 @@ def write_ec_file(fname, dat, clobber=False):
   hdu0 = pyfits.PrimaryHDU()
   now = datetime.datetime.utcnow()
 
+  keys={}
+  keylist =  ['upper_lev', 'lower_lev',\
+              'coeff_type','min_temp','max_temp','temperature','effcollstrpar',\
+              'inf_limit', 'reference']
+
+  for i in dat['data'].dtype.names:
+    if i.lower() in keylist:
+      keys[i.lower()] = i
+    else:
+      print "Error: didn't find key %s" %(i.lower())   
+  
+
+
+
   # get version type
   if 'inf_limit' in dat['data'].dtype.names:
+    version = '1.2.0'
+  elif 'INF_LIMIT' in dat['data'].dtype.names:
     version = '1.2.0'
   else:
     version = '1.1.0'
@@ -1510,69 +1527,70 @@ def write_ec_file(fname, dat, clobber=False):
   hdu0.header.update('HDUCLAS1', "COLL_STR",comment="e + p Collision Strengths")
   hdu0.header.update('HDUVERS', version,comment="Version of datafile")
 
+  print keys
   #secondary HDU, hdu1:
   if version == '1.2.0':
     hdu1 = pyfits.new_table(pyfits.ColDefs(
           [pyfits.Column(name='LOWER_LEV',
              format='1J',
-             array=dat['data']['lower_lev']),
+             array=dat['data'][keys['lower_lev']]),
            pyfits.Column(name='UPPER_LEV',
              format='1J',
-             array=dat['data']['upper_lev']),
+             array=dat['data'][keys['upper_lev']]),
            pyfits.Column(name='COEFF_TYPE',
              format='1J',
-             array=dat['data']['coeff_type']),
+             array=dat['data'][keys['coeff_type']]),
            pyfits.Column(name='MIN_TEMP',
              format='1E',
              unit='K',
-             array=dat['data']['min_temp']),
+             array=dat['data'][keys['min_temp']]),
            pyfits.Column(name='MAX_TEMP',
              format='1E',
              unit='K',
-             array=dat['data']['max_temp']),
+             array=dat['data'][keys['max_temp']]),
            pyfits.Column(name='TEMPERATURE',
              format='20E',
              unit='K',
-             array=dat['data']['temperature']),
+             array=dat['data'][keys['temperature']]),
            pyfits.Column(name='EFFCOLLSTRPAR',
              format='20E',
-             array=dat['data']['effcollstrpar']),
+             array=dat['data'][keys['effcollstrpar']]),
            pyfits.Column(name='INF_LIMIT',
              format='E',
-             array=dat['data']['inf_limit']),
+             array=dat['data'][keys['inf_limit']]),
            pyfits.Column(name='REFERENCE',
              format='20A',
-             array=dat['data']['reference'])]
+             array=dat['data'][keys['reference']])]
            ))
   else:
     hdu1 = pyfits.new_table(pyfits.ColDefs(
           [pyfits.Column(name='LOWER_LEV',
              format='1J',
-             array=dat['data']['lower_lev']),
+             array=dat['data'][keys['lower_lev']]),
            pyfits.Column(name='UPPER_LEV',
              format='1J',
-             array=dat['data']['upper_lev']),
+             array=dat['data'][keys['upper_lev']]),
            pyfits.Column(name='COEFF_TYPE',
              format='1J',
-             array=dat['data']['coeff_type']),
+             array=dat['data'][keys['coeff_type']]),
            pyfits.Column(name='MIN_TEMP',
              format='1E',
              unit='K',
-             array=dat['data']['min_temp']),
+             array=dat['data'][keys['min_temp']]),
            pyfits.Column(name='MAX_TEMP',
              format='1E',
              unit='K',
-             array=dat['data']['max_temp']),
+             array=dat['data'][keys['max_temp']]),
            pyfits.Column(name='TEMPERATURE',
              format='20E',
              unit='K',
-             array=dat['data']['temperature']),
+             array=dat['data'][keys['temperature']]),
            pyfits.Column(name='EFFCOLLSTRPAR',
              format='20E',
-             array=dat['data']['effcollstrpar']),
+             array=dat['data'][keys['effcollstrpar']]),
            pyfits.Column(name='REFERENCE',
              format='20A',
-             array=dat['data']['reference'])]
+             array=dat['data'][keys['reference']])]
            ))
     
   hdu1.header.update('XTENSION', hdu1.header['XTENSION'],
@@ -1589,7 +1607,7 @@ def write_ec_file(fname, dat, clobber=False):
           comment='ion state (0 = neutral)', before="TTYPE1")
   hdu1.header.update('ION_NAME', atomic.spectroscopic_name(dat['Z'], dat['z1']),
           comment='Ion Name', before="TTYPE1")
-  hdu1.header.update('N_EXCITE',len(dat['data']['upper_lev']) ,
+  hdu1.header.update('N_EXCITE',len(dat['data'][keys['upper_lev']]) ,
            comment='Number of collisional excitations', before="TTYPE1")
   hdu1.header.update('HDUVERS1', version,
            comment='Version of datafile', before="TTYPE1")
@@ -2630,7 +2648,7 @@ def write_ionbal_file(Te, dens, ionpop, filename, Te_linear = False, dens_linear
 
 #-------------------------------------------------------------------------------
 def make_release_tarballs(ciefileroot, neifileroot, filemap, versionname, \
-                          releasenotes, makelinelist=False):
+                          releasenotes, parfile, neiparfile,makelinelist=False):
   """
   Create tarball for exmissivity files for a new release.
   
@@ -2640,7 +2658,7 @@ def make_release_tarballs(ciefileroot, neifileroot, filemap, versionname, \
     The path to the CIE line and coco files, with the _line.fits and _coco.fits
     ommitted.
   neifileroot : string
-    The path to the NEI line and coco files, with the _line.fits and _coco.fits
+    The path to the NEI line and coco files, with the _line.fits and _comp.fits
     ommitted.
   filemap : string
     The filemap file
@@ -2648,9 +2666,14 @@ def make_release_tarballs(ciefileroot, neifileroot, filemap, versionname, \
     The version string for the new files (e.g. 3.0.4).
   releasenotes : string
     The file name for the release notes.
+  parfile : string
+    The parameter file used to create the data
+  neiparfile : string
+    The parameter file used to create the NEI data
   makelinelist : bool
     Remake the line list from the line file. If not specified, assumes linelist
     file already exists.
+    
   Returns
   -------
   None
@@ -2665,6 +2688,7 @@ def make_release_tarballs(ciefileroot, neifileroot, filemap, versionname, \
   shutil.copy2(ciefileroot+'_line.fits',outdir+'/apec_v%s_line.fits'%(versionname))
   shutil.copy2(filemap,outdir+'/filemap_v%s'%(versionname))
   shutil.copy2(releasenotes,outdir+'/Release_Notes.txt')
+  shutil.copy2(parfile,outdir+'/apec_v%s.par'%(versionname))
   f=open(outdir+'/VERSION', 'w')
   f.write("%s\n"%(versionname))
   f.close()
@@ -2681,6 +2705,7 @@ def make_release_tarballs(ciefileroot, neifileroot, filemap, versionname, \
   os.symlink('apec_v%s_line.fits'%(versionname), 'apec_line.fits')
   os.symlink('apec_v%s_linelist.fits'%(versionname), 'apec_linelist.fits')
   os.symlink('filemap_v%s'%(versionname), 'filemap')
+  os.symlink('apec_v%s.par'%(versionname), 'apec.par')
 
   # compress
   os.chdir('..')
@@ -2698,6 +2723,7 @@ def make_release_tarballs(ciefileroot, neifileroot, filemap, versionname, \
   shutil.copy2(neifileroot+'_line.fits',outdir+'/apec_v%s_nei_line.fits'%(versionname))
   shutil.copy2(filemap,outdir+'/filemap_v%s'%(versionname))
   shutil.copy2(releasenotes,outdir+'/Release_Notes.txt')
+  shutil.copy2(neiparfile,outdir+'/apec_v%s_nei.par'%(versionname))
   f=open(outdir+'/VERSION', 'w')
   f.write("%s\n"%(versionname))
   f.close()
@@ -2709,6 +2735,7 @@ def make_release_tarballs(ciefileroot, neifileroot, filemap, versionname, \
   os.symlink('apec_v%s_nei_line.fits'%(versionname), 'apec_nei_line.fits')
   #os.symlink('apec_v%s_linelist.fits'%(versionname), 'apec_v%s_linelist.fits')
   os.symlink('filemap_v%s'%(versionname), 'filemap')
+  os.symlink('apec_v%s_nei.par'%(versionname), 'apec_nei.par')
 
   # compress
   os.chdir('..')
@@ -2834,67 +2861,67 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_isis.tar.bz2'):
   filemap = os.path.expandvars('$ATOMDB/filemap')
   
   f = atomdb.read_filemap()
-  for i in range(len(f['Z'])):
-    Z = f['Z'][i]
+  #for i in range(len(f['Z'])):
+    #Z = f['Z'][i]
 
-    z1 = f['z1'][i]
-    lafname = f['la'][i]
-    lvfname = f['lv'][i]
-    drfname = f['dr'][i]
+    #z1 = f['z1'][i]
+    #lafname = f['la'][i]
+    #lvfname = f['lv'][i]
+    #drfname = f['dr'][i]
     
-    if lvfname == '': continue
+    #if lvfname == '': continue
     
-    # copy across the LV & DR files if appropriate
-    lvfnameout = re.sub(os.path.expandvars('$ATOMDB'), foldername, lvfname)
-    tmp=''
-    for k in lvfnameout.split('/')[:-1]:
-      tmp+=(k)
-      mkdir_p(tmp)
-      tmp+='/'
-    if not os.path.isfile(lvfname):
-      a = atomdb.get_data(Z,z1,'LV')
-    shutil.copy2(lvfname, lvfnameout)
+    ## copy across the LV & DR files if appropriate
+    #lvfnameout = re.sub(os.path.expandvars('$ATOMDB'), foldername, lvfname)
+    #tmp=''
+    #for k in lvfnameout.split('/')[:-1]:
+      #tmp+=(k)
+      #mkdir_p(tmp)
+      #tmp+='/'
+    #if not os.path.isfile(lvfname):
+      #a = atomdb.get_data(Z,z1,'LV')
+    #shutil.copy2(lvfname, lvfnameout)
      
-    if drfname != '':
+    #if drfname != '':
     
-    # copy across the LV & DR files if appropriate
-      drfnameout = re.sub(os.path.expandvars('$ATOMDB'), foldername, drfname)
-      if not os.path.isfile(drfname):
-        a = atomdb.get_data(Z,z1,'DR')
-      shutil.copy2(drfname, drfnameout)
+    ## copy across the LV & DR files if appropriate
+      #drfnameout = re.sub(os.path.expandvars('$ATOMDB'), foldername, drfname)
+      #if not os.path.isfile(drfname):
+        #a = atomdb.get_data(Z,z1,'DR')
+      #shutil.copy2(drfname, drfnameout)
 
-    # now do the hard part
-    lafnameout = re.sub(os.path.expandvars('$ATOMDB'), foldername, lafname)
-    lafnameout = re.sub('.fits', '_isis.fits', lafnameout)
+    ## now do the hard part
+    #lafnameout = re.sub(os.path.expandvars('$ATOMDB'), foldername, lafname)
+    #lafnameout = re.sub('.fits', '_isis.fits', lafnameout)
     
-    if not os.path.isfile(lafname):
-      a = atomdb.get_data(Z,z1,'LA')
+    #if not os.path.isfile(lafname):
+      #a = atomdb.get_data(Z,z1,'LA')
 
-    ladat = pyfits.open(lafname)
-    # keep only the transitions we care about
-    k = ldat[2].data[(ldat[2].data['Element']==Z) &\
-                     (ldat[2].data['Ion']==z1)]
-    isgood = numpy.zeros(len(ladat[1].data), dtype=bool)
-    for ik in k:
-      ii = numpy.where((ladat[1].data['Upper_lev']==ik['UpperLev']) &\
-                       (ladat[1].data['Lower_lev']==ik['LowerLev']))[0]
-      if len(ii) == 0:
-        if ik['UpperLev'] < 10000:
-          print "ERROR: no match for Z=%i, z1=%i, up=%i, lo=%i"%\
-                (Z,z1,ik['UpperLev'], ik['LowerLev'])
-      else:
-        isgood[ii[0]]=True
+    #ladat = pyfits.open(lafname)
+    ## keep only the transitions we care about
+    #k = ldat[2].data[(ldat[2].data['Element']==Z) &\
+                     #(ldat[2].data['Ion']==z1)]
+    #isgood = numpy.zeros(len(ladat[1].data), dtype=bool)
+    #for ik in k:
+      #ii = numpy.where((ladat[1].data['Upper_lev']==ik['UpperLev']) &\
+                       #(ladat[1].data['Lower_lev']==ik['LowerLev']))[0]
+      #if len(ii) == 0:
+        #if ik['UpperLev'] < 10000:
+          #print "ERROR: no match for Z=%i, z1=%i, up=%i, lo=%i"%\
+                #(Z,z1,ik['UpperLev'], ik['LowerLev'])
+      #else:
+        #isgood[ii[0]]=True
     
-    ladat[1].data=ladat[1].data[isgood]
-    ladat[1].header['N_LINES']=sum(isgood)
+    #ladat[1].data=ladat[1].data[isgood]
+    #ladat[1].header['N_LINES']=sum(isgood)
     
-    ladat.writeto(lafnameout, checksum=True, clobber=True)
-    print "wrote %s with %i lines instead of %i"%\
-          (lafnameout, sum(isgood), len(isgood))
+    #ladat.writeto(lafnameout, checksum=True, clobber=True)
+    #print "wrote %s with %i lines instead of %i"%\
+          #(lafnameout, sum(isgood), len(isgood))
 
-    f['la'][i] = re.sub(foldername, \
-                        os.path.expandvars('$ATOMDB'), \
-                        lafnameout)
+    #f['la'][i] = re.sub(foldername, \
+                        #os.path.expandvars('$ATOMDB'), \
+                        #lafnameout)
 
   # now copy across the other things.
   ionbal = atomdb.get_data(False, False, 'ionbal')
@@ -2927,3 +2954,102 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_isis.tar.bz2'):
   print "Done"
   os.chdir('../')
   
+
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+
+def generate_web_fitsfiles(version='', outdir=''):
+  """
+  Split the linelist files into many small files and make an index for them
+  
+  Parameters
+  ----------
+  version : string
+    version number to generate this for. Defaults to version in
+    $ATOMDB/VERSION
+  outdir : string
+    Output files will be placed in this directory. Defaults to 'webonly"
+  Returns
+  -------
+  none
+   
+  """
+  
+  import getpass
+  
+  
+  curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
+  
+  if version == '':
+    version = curversion
+    print "Version not specified, so using version %s"%(version)
+  else:
+    if version != curversion:
+      switch_version(version)
+  
+  if outdir=='':
+    outdir = 'webonly'
+  # make folders for the data
+  mkdir_p(outdir)
+  
+  linefile = os.path.expandvars('$ATOMDB/apec_linelist.fits')
+  #print linefile
+  ldat = pyfits.open(linefile)
+  nlines = len(ldat[1].data)
+  
+  print ldat[1].header['NAXIS2']
+  print len(ldat[1].data[51])
+  
+  #print ldat[1].data[0]
+  linesperfile = 1000
+  
+  nfiles = nlines/linesperfile + 1
+  print "nfiles = ", nfiles, "nlines = ", nlines, "linesperfile = ", linesperfile
+  rangedatatype = numpy.dtype({'names':['Lambda_lo','Lambda_hi','filename'],\
+                               'formats':[float, float, '|S40']})
+  
+  rangedata = numpy.zeros(nfiles, dtype=rangedatatype)
+  
+  isort = numpy.argsort(ldat[1].data['Lambda'])
+  ldat[1].data=ldat[1].data[isort]
+  ldat[2].data=ldat[2].data[isort]
+                                
+  for ifile in range(nfiles):
+    # create the lines we need.
+    d1 = ldat[1].data[ifile*linesperfile:min([(ifile+1)*linesperfile, nlines])]
+    d2 = ldat[2].data[ifile*linesperfile:min([(ifile+1)*linesperfile, nlines])]
+    print "Creating file %i of %i"%(ifile+1, nfiles)
+    hdu1 = pyfits.BinTableHDU(d1)
+    hdu1.header=ldat[1].header
+    
+    hdu2 = pyfits.BinTableHDU(d2)
+    hdu2.header=ldat[2].header
+    prihdr = pyfits.Header()
+    prihdr['CONTENT'] = ('Emissivity','Line emission output')
+    prihdr['FILENAME'] = (linefile,'Parent File')
+    prihdr['ORIGIN'] = ('ATOMDB','%s, AtomDB project'%(getpass.getuser()))
+    prihdr['HDUCLASS'] = ('EMISSIVITY','Line Emission Output')
+    prihdr['HDUCLAS1'] = ('SHORT_LINE','Line Emission Output')
+    prihdr['HDUVERS'] = ('1.0.0','Version of datafile')
+    
+    prihdu = pyfits.PrimaryHDU(header=prihdr)
+    hdulist = pyfits.HDUList([prihdu,hdu1,hdu2])
+    
+    hdulist.writeto('%s/apec_v%s_linelist_split_%i.fits'%\
+                   (outdir, version, ifile+1), checksum=True, clobber=True)
+    rangedata[ifile]['Lambda_lo']=min(d1['Lambda'])
+    rangedata[ifile]['Lambda_hi']=max(d1['Lambda'])
+    rangedata[ifile]['filename'] = "apec_v%s_linelist_split_%i.fits"%\
+                                   (version, ifile+1)
+  hdu = pyfits.BinTableHDU(rangedata)
+  prihdu = pyfits.PrimaryHDU()
+  hdulist = pyfits.HDUList([prihdu, hdu])
+  hdulist.writeto('%s/apec_v%s_linelist_split_index.fits'%\
+                   (outdir, version), checksum=True, clobber=True)
+  print "Finished"
+  return
+    
+    
+    
+    
