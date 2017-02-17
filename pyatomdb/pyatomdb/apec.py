@@ -13,8 +13,6 @@ import scipy, ctypes
 import astropy.io.fits as pyfits
 from joblib import Parallel, delayed
 
-import pylab
-
 def calc_full_ionbal(Te, tau=1e14, init_pop=False, Te_init=False, Zlist=False, teunit='K',\
                     extrap=False, cie=True, settings=False):
   """
@@ -1126,8 +1124,7 @@ def parse_par_file(fname):
   if not ('WriteIon' in data.keys()):
     data['WriteIon'] = False
 
-  if 'FileMap' in data.keys():
-	data['filemap']=data['FileMap']
+        
   return data
 
 
@@ -1640,7 +1637,14 @@ def run_apec_element(settings, te, dens, Z):
     print "ERROR: settings['Ionization'] must be CIE or NEI, not %s"%(settings['Ionization'])
 
 
-  abundances = atomdb.get_abundance(settings=settings)
+  abundfile = atomdb.get_filemap_file('abund',\
+                                      Z,\
+                                      False,\
+                                      fmapfile=settings['FileMap'],\
+                                      atomdbroot=os.path.expandvars('$ATOMDB'),\
+                                      misc=True)
+
+  abundances = atomdb.get_abundance(abundfile, settings['Abundances'])
   abund=abundances[Z]
 
   # create placeholders for all the data
