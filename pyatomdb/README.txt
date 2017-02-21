@@ -102,3 +102,6 @@ February 21st 2017: Introduced new way to calculated spectra, using the Session
 and Spec objects in spectrum.py. It is intended to make this the main way to
 calculate spectra, as it should lead to significant speed enhancements by
 avoiding lots of unnecessary recalculation of the same numbers.
+
+0.0.3.1
+February 21st 2017: A series of bug fixes to installation and spectral calculation routines. Closes bugs #1, 2, 5 from github
