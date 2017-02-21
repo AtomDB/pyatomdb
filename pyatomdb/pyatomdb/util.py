@@ -299,6 +299,7 @@ def md5Checksum(filePath):
 #-------------------------------------------------------------------------------
 
 def download_atomdb_emissivity_files(adbroot, userid, version):
+  
   """
   Download the AtomDB equilibrium emissivity files for AtomDB"
   
@@ -327,60 +328,50 @@ def download_atomdb_emissivity_files(adbroot, userid, version):
   # Version 0.1 Initail Release
   # Adam Foster 24th September 2015
   #
-   
+  import tarfile 
   # set up remote file name
   fname = "atomdb_v%s.tar.bz2"%(version)
   
   # set up temporary directory to hold data
+  
+  if adbroot[0] != '/':
+    # is a relative path
+    adbroot = "%s/%s"%(os.getcwd(), adbroot)
+    
   mkdir_p(adbroot)
   if adbroot[-1]=='/':
     tmpdir = adbroot+'installtmp'
   else:
     tmpdir = adbroot+'/installtmp'
   
+  
+  print "making directory %s"%(tmpdir)
   mkdir_p(tmpdir)
   
   # get the files
   urllib.urlcleanup()
 
   fnameout = wget.download('ftp://sao-ftp.harvard.edu/AtomDB/releases/%s'%(fname), out="%s/%s"%(tmpdir, fname))
-
   # collect user statistics if allowed.
   record_upload(fname)
     
   #uncompress
-  print "\nUncompressing",
-  cwd=os.getcwd()
-  os.chdir(tmpdir)
-  subprocess.call(["tar", "-xjf", "%s"%(fnameout)])
+  print ""
+  print "Uncompressing ... ",
+  
+  tf = tarfile.open(name=fnameout, mode='r:bz2')
+  tf.extractall(path=tmpdir)
+  print "Uncompressed"
+  # copy the files
+  dirname = 'atomdb_v%s'%(version)
+  for l in os.listdir('%s/%s'%(tmpdir, dirname)):
+    print "moving %s/%s/%s to %s/%s"%(tmpdir, dirname, l, adbroot, l)
+    shutil.move("%s/%s/%s"%(tmpdir, dirname, l), "%s/%s"%(adbroot, l))
+  
   print "...done"
   
-  print "Moving files to %s" % (adbroot),
-  for ifile in glob.glob('./*/*'):
-    outfile = adbroot+'/'+ifile.split('/')[-1]
-    if os.path.exists(outfile):
-      try:
-        if md5Checksum(outfile) == md5Checksum(ifile):
-          
-        # these files are the same, don't bother copying or 
-        # asking about copying them.
-          continue
-      except IOError:
-        print "outfile = %s, ifile = %s"%(outfile, ifile)
-        raise
-      
-      overwrite = question("file %s already exists. Overwrite?"%(outfile),"y",["y","n"])
-      if overwrite:
-        os.remove(outfile)
-      else:
-        continue
-    shutil.move(ifile,outfile)
-
-
-  os.chdir(cwd)
   shutil.rmtree(tmpdir)
     
-  print "...done"
     
 #-------------------------------------------------------------------------------
     
@@ -413,11 +404,15 @@ def download_atomdb_nei_emissivity_files(adbroot, userid, version):
   # Version 0.1 Initail Release
   # Adam Foster 24th September 2015
   #
-   
+  import tarfile
   # set up remote file name
   fname = "atomdb_v%s_nei.tar.bz2"%(version)
   
   # set up temporary directory to hold data
+  if adbroot[0] != '/':
+    # is a relative path
+    adbroot = "%s/%s"%(os.getcwd(), adbroot)
+
   mkdir_p(adbroot)
   if adbroot[-1]=='/':
     tmpdir = adbroot+'installtmp'
@@ -434,37 +429,19 @@ def download_atomdb_nei_emissivity_files(adbroot, userid, version):
   # collect user statistics if allowed.
   record_upload(fname)
     
-  #uncompress
-  print "\nUncompressing",
-  cwd=os.getcwd()
-  os.chdir(tmpdir)
-  subprocess.call(["tar", "-xjf", "%s"%(fnameout)])
-  print "... done"
+  print ""
+  print "Uncompressing ... ",
   
-  print "Moving files to %s" % (adbroot),
-  for ifile in glob.glob('./*/*'):
-    outfile = adbroot+'/'+ifile.split('/')[-1]
-    if os.path.exists(outfile):
-      try:
-        if md5Checksum(outfile) == md5Checksum(ifile):
-          
-        # these files are the same, don't bother copying or 
-        # asking about copying them.
-          continue
-      except IOError:
-        print "outfile = %s, ifile = %s"%(outfile, ifile)
-        raise
-      
-      overwrite = question("file %s already exists. Overwrite?"%(outfile),"y",["y","n"])
-      if overwrite:
-        os.remove(outfile)
-      else:
-        continue
-    shutil.move(ifile,outfile)
-
-  os.chdir(cwd)
-  shutil.rmtree(tmpdir)
+  tf = tarfile.open(name=fnameout, mode='r:bz2')
+  tf.extractall(path=tmpdir)
+  print "Uncompressed"
+  # copy the files
+  dirname = 'atomdb_v%s'%(version)
+  for l in os.listdir('%s/%s'%(tmpdir, dirname)):
+    print "moving %s/%s/%s to %s/%s"%(tmpdir, dirname, l, adbroot, l)
+    shutil.move("%s/%s/%s"%(tmpdir, dirname, l), "%s/%s"%(adbroot, l))
     
+  shutil.rmtree(tmpdir)
   print "... done"
   
 #-------------------------------------------------------------------------------
