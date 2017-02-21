@@ -182,8 +182,8 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
     for iZ, Z in enumerate(Zlist):
     # ADD  CONTINUUM
       cspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
-                                           binunits=binunits, no_coco=-docont,\
-                                           no_pseudo=-dopseudo)*abund[iZ]
+                                           binunits=binunits, no_coco=not(docont),\
+                                           no_pseudo=not(dopseudo))*abund[iZ]
   
   # broaden the continuum if required:
   if broadening:
