@@ -36,3 +36,16 @@ Make a Spectrum
 Make a broadened and unbroadened spectrum:  ``make_spectrum.py``
 
 .. literalinclude:: ../examples/make_spectrum.py
+
+
+
+===========================
+Make a Spectrum version 2.0
+===========================
+
+Make a spectrum using the new Session class:  ``new_make_spectrum.py``.
+This is significantly faster if you need to make lots of spectra (fitting, 
+interpolating between 2 temperatures etc). Note the example requires an
+RMF and ARF file - adjust to fit your available response.
+
+.. literalinclude:: ../examples/new_make_spectrum.py
