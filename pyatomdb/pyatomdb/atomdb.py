@@ -2690,7 +2690,7 @@ def calc_ionrec_ea(cidat, Te, extrap=False):
 def get_ionrec_rate(Te_in, irdat_in, lvdat_in=False, Te_unit='K', \
                      lvdatp1_in=False, ionpot=False, separate=False,\
                      Z=-1, z1=-1, settings=False, datacache=False,\
-                     extrap=False):
+                     extrap=True):
   """
   Get the ionization and recombination rates at temperture(s) Te from
   ionization and recombination rate data file irdat.
