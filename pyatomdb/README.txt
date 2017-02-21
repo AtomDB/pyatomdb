@@ -96,3 +96,9 @@ January 16th 2017: Bugfix for installation, include joblib as a requirement
 
 0.0.2.5
 January 17th 2017: Bugfix for installation, include mock as a requirement
+
+0.0.3.0
+February 21st 2017: Introduced new way to calculated spectra, using the Session
+and Spec objects in spectrum.py. It is intended to make this the main way to
+calculate spectra, as it should lead to significant speed enhancements by
+avoiding lots of unnecessary recalculation of the same numbers.
