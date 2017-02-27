@@ -1623,7 +1623,8 @@ class Session():
 
     
 
-  def return_spectra(self, te, teunit='keV', raw=False, nearest=False):
+  def return_spectra(self, te, teunit='keV', raw=False, nearest=False,\
+                     get_nearest_t=False):
     """
     Get the spectrum at an exact temperature.
     Interpolates between 2 neighbouring spectra
@@ -1678,7 +1679,8 @@ class Session():
     if nearest:
       index = numpy.argmin(numpy.abs(self.linedata[1].data['kT']-teval))+2
       if not (index in self.spectra.keys()):
-        self.spectra[index] = Spec(self, index)
+        self.spectra[index] = self.Spec(self, index)
+        self.spectra[index].calc_spectrum(self)
       te_nearest = self.linedata[1].data['kT'][index-2]
       if teunit.lower()=='kev':
         pass
@@ -1694,7 +1696,7 @@ class Session():
         s = self.spectra[index].spectrum
       else:  
         s = self.spectra[index].spectrum_withresp
-      if get_nearest_t:
+      if util.keyword_check(get_nearest_t):
         return s, te_nearest
       else:
         return s
@@ -2117,7 +2119,7 @@ class Session():
         #if util.keyword_check(abund):
           #self.set_abund(elements, abund)
       
-        for Z in range(1,31):
+        for Z in session.elements:
         # make the generic spectrum
           if session.specbins_set:
             self.spectrum_by_Z[Z] = make_spectrum(session.specbins, self.index,\
