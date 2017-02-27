@@ -750,7 +750,7 @@ def list_lines(specrange, lldat=False, index=False, linefile=False,\
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
-def list_nei_lines(specrange, Te, tau, Te_init=1e4,  lldat=False, linefile=False,\
+def list_nei_lines(specrange, Te, tau, Te_init=False,  lldat=False, linefile=False,\
               units='angstroms', teunit='K', minepsilon=1e-20, \
               datacache=False):
   """
@@ -858,6 +858,8 @@ def list_nei_lines(specrange, Te, tau, Te_init=1e4,  lldat=False, linefile=False
     print "*** ERROR: unknown unit %s, Must be keV or A. Exiting ***"%\
           (units)
 
+  # convert Te into keV
+
   if teunit.lower() == 'kev':
     kT = Te*1.0
   elif teunit.lower() == 'ev':
@@ -869,6 +871,7 @@ def list_nei_lines(specrange, Te, tau, Te_init=1e4,  lldat=False, linefile=False
           (teunit)
 
 
+  # convert Te_init into keV
   if Te_init != False:
     if teunit.lower() == 'kev':
       kT_init = Te_init*1.0
@@ -879,7 +882,11 @@ def list_nei_lines(specrange, Te, tau, Te_init=1e4,  lldat=False, linefile=False
     else:
       print "*** ERROR: unknown teunit %s, Must be keV or K. Exiting ***"%\
           (teunit)
+  else:
+	# Te_init was not set:
+    kT_init = 1e4*const.KBOLTZ
 
+  
 
   # sort out the line file...
     
@@ -928,9 +935,8 @@ def list_nei_lines(specrange, Te, tau, Te_init=1e4,  lldat=False, linefile=False
   # Calculate the ionization balance.
   ionbal ={}
   for Z in Zlist:
-    ionbal[Z] = apec.solve_ionbal_eigen(Z, kT, tau, Te_init = kT_init,\
-                                        teunit='keV', datacache=datacache)
- 
+    ionbal[Z] = apec.solve_ionbal_eigen(Z, kT, tau=tau, Te_init = kT_init,\
+                                    teunit='keV', datacache=datacache)
   # multiply everything by the appropriate ionization fraction
   if 'Elem_drv' in llist.dtype.names:
     
@@ -942,7 +948,6 @@ def list_nei_lines(specrange, Te, tau, Te_init=1e4,  lldat=False, linefile=False
       
   # filter again based on new epsilon values
   llist=llist[llist['Epsilon']>minepsilon]
-  print "done"
   # at this point, we have data
   return llist
 #-------------------------------------------------------------------------------
