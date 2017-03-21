@@ -871,7 +871,6 @@ def list_nei_lines(specrange, Te, tau, Te_init=False,  lldat=False, linefile=Fal
           (teunit)
 
 
-  # convert Te_init into keV
   if Te_init != False:
     if teunit.lower() == 'kev':
       kT_init = Te_init*1.0
@@ -1626,6 +1625,9 @@ class Session():
       #self.index = index
       #self.ready=True
 
+    self.dolines=True
+    self.docont=True
+    self.dopseudo=True
     
 
   def return_spectra(self, te, teunit='keV', raw=False, nearest=False,\
@@ -2179,5 +2181,706 @@ class Session():
             self.spectrum_withresp = numpy.zeros(len(session.ebins_response)-1)
             for Z in session.elements:
               self.spectrum_withresp += self.spectrum_by_Z_withresp[Z] * session.abund[Z] * session.abundsetvector[Z]
+    
+  
+
+
+class CXSession(Session):
+  """
+  A Charge Exchange session using the same line and coco files, and/or responses
+  
+  Attributes
+  ----------
+  linefile : string
+    The line emissivity data file
+  cocofile : string
+    The continuum emissivity data file
+  linedata: HDUList  
+    The line emissivity data
+  cocodata: HDUList  
+    The line emissivity data
+  elements : array_like, int
+    The atomic number of the elements to include. Defaults to all.
+  abundset : string
+    The elemental abundances to be used. Defaults to Anders and 
+    Grevesse 1989.
+  collisionunits : string
+    Whether the units are given in energy (kev/amu) or velocity (cm/s)
+  ready : bool
+    Set when line, continuum and spectral bin data has been
+    read in, and a spectrum can be calculated.
+  default_abundset : string
+    The abundance set used in line and continuum files
+  abundset : string
+    The abundance set to be used in calculating the spectra.
+  response_set : bool
+    If a response (rmf & arf) have been loaded, set to true
+  spectra : dict of array_like 
+    Holds the spectra at each temperature.
+  rmffile : string
+    Filename of RMF file
+  arffile : string
+    Filename of ARF file
+  rmf : HDUList
+    RMF data
+  arf : HDUList
+    ARF data
+  ionbal : dict of array like
+    ionization balance of each ion, normalized to 1
+    e.g. ionbal[6]=numpy.array([0.5,0.4,0.1,0,0,0,0]) for Carbon
+    
+    
+  """
+
+  def __init__(self, linefile="$ATOMDB/apec_line.fits",\
+                     cocofile="$ATOMDB/apec_coco.fits",\
+                     elements=False, abundset='AG89',
+                     collisionunits = 'kev/amu'):
+    """
+    Initialization routine. Can set the line and continuum files here
+    
+    Input
+    -----
+    linefile : str or HDUList
+      The filename of the line emissivity data, or the opened file.
+    cocofile : str or HDUList
+      The filename of the continuum emissivity data, or the opened file.
+    elements : array_like(int)
+      The atomic numbers of the elements to include. Defaults to all (1-30)
+    abundset : string
+      The abundance set to use. Defaults to AG89. See atomdb.set_abundance 
+      for list of options.
+    collisionunits : string
+      The units for the particle collision speed. Either 'kev/amu' or 'cm/s'.
+    """
+    
+    
+    self.ready=False
+    
+    self.set_apec_files(linefile, cocofile)
+    self.abundset=self.linedata[0].header['SABUND_SOURCE']
+    self.default_abundset=self.linedata[0].header['SABUND_SOURCE']
+    
+    self.specbins_set=False
+
+    # a hold for the spectra
+    self.spectra={}
+
+    # if elements are specified, use them. Otherwise, use Z=1-30
+    if util.keyword_check(elements):
+      self.elements = elements
+    else:
+      self.elements=range(1,31)
+        
+    # set the abundances:
+    #   (1) the initial vector is whatever set AtomDB was calculated on,
+    #       and is therefore 1.0
+    self.abundsetvector = {}
+    for Z in self.elements:
+      self.abundsetvector[Z] = 1.0
+
+    #   (2) but if another vector was already specified, use this instead
+    if util.keyword_check(abundset):
+      self.set_abundset(abundset)
+    
+    
+    self.abund = {}
+    for Z in self.elements:
+      self.abund[Z]=1.0
+    
+
+    self.collisionunits = collisionunits
+    # Open the spectrum files
+    #self.linefile = linefile
+    #self.linefile = pyfits.open(self.linefile)
+    #self.cocofile = cocofile
+    #self.cocodata = pyfits.open(self.cocofile)
+    
+    
+    self.response_set = False
+    self.ready = True
+    #if index >=2:
+      #self.index_set = True
+      #self.index = index
+      #self.ready=True
+
+    self.ionbal_set=False
+    
+  def set_ionbal_temperature(self, te, teunit='keV'):
+    """
+    Set the ionization balance to that of a given electron temperature
+
+    Parameters
+    ----------
+    te : float
+      Electron Temperature
+    teunit : string
+      Units for the temperature. keV or A.
+
+    Return
+    ------
+    none
+
+    Notes
+    -----
+    Modifies self.ionbal
+    """
+    ionbal = {}
+
+    for Z in self.elements:
+      ionbal[Z] = apec.solve_ionbal_eigen(Z, te, \
+                       teunit=teunit)
+    self.ionbal = ionbal
+    self.ionbal_set = True
+    
+    
+  def return_spectra(self, collision, raw=False, nearest=False):
+    """
+    Get the spectrum at an exact temperature.
+    Interpolates between 2 neighbouring spectra
+
+    Finds HDU with kT closest ro desired kT in given line or coco file.
+
+    Opens the line or coco file, and looks for the header unit
+    with temperature closest to te. Use result as index input to make_spectrum
+
+    Parameters
+    ----------
+    collision : float
+      The energy (kev/amu) or velocity (cm/s) of the collision
+    raw : bool
+      If set, return the spectrum without response applied. Default False.
+
+    Returns
+    -------
+    spectrum : array(float)
+      The spectrum in photons cm^5 s^-1 bin^-1, with the response, or
+      photons cm^3 s^-1 bin^-1 if raw is set.
+    """  
+
+    # for each ion, calculate the velocity
+    
+    
+    stot = numpy.zeros(len(self.specbins)-1, dtype=float)
+    for Z in self.elements:
+      # get convert the velocity, etc, into keV/amu
+      if self.collisionunits.lower() == 'cm/s':
+        # convert from velocity to energy
+
+        # in joules
+        print " requesting velocity = %e cm/s = %e m/s"%(collision, collision/100)
+        v_ms = collision/100
+        mass_amu=atomic.Z_to_mass(Z)+1
+        mass_kg = (atomic.Z_to_mass(Z)+1)* const.AMUKG
+        print "mass = %e amu %e kg"%(mass_amu,mass_kg)
+
+        E_J = 0.5*mass_kg * (v_ms)**2
+        print "energy = %e J"%(E_J)
+
+        E_keV = E_J/1.602e-16
+        print "energy_keV = %e keV"%(E_keV)
+        
+#e=0.5 * (atomic.Z_to_mass(Z)+1) * const.AMUKG * (collision/100)**2
+
+        e = E_keV /mass_amu
+        print "e = %e keV/amu"%(e)
+
+        
+      else:
+        e = collision*1.0
+        
+      
+
+      if ((e > self.linedata[1].data['energy'][-1]) |\
+          (e < self.linedata[1].data['energy'][0])):
+        print "*** WARNING: energy %e keV is out of range %f-%f ***" %\
+            (e, self.linedata[1].data['energy'][0], self.linedata[1].data['energy'][-1])
+        continue
+
+      # OK, so we have a valid energy
+      # Make a spectrum for each ion
+
+      index = numpy.where(self.linedata[1].data['energy'] > e)[0][0]
+
+
+      loind = index+1
+      upind = index+2
+      E1 = self.linedata[1].data['Energy'][loind-2]
+      E2 = self.linedata[1].data['Energy'][upind-2]
+    
+      for z1 in range(1,Z+2):
+        if self.ionbal[Z][z1-1]>1e-10:
+          # we should do things
+          for ind in [loind, upind]:
+            if not ind in self.spectra:
+              self.spectra[ind]={}
+            if not Z in self.spectra[ind].keys():
+              self.spectra[ind][Z]={}
+            if not z1 in self.spectra[ind][Z].keys():
+              self.spectra[ind][Z][z1] = self.IonSpec(self, ind, Z, z1)
+              self.spectra[ind][Z][z1].calc_spectrum(self)
+
+            
+          # OK, so I have made sure that all the spectra are generated
+        
+          # now evaluate the spectra at those energies.
+      
+      
+          if not self.response_set:
+            raw=True
+        
+          if raw:
+            print Z, z1, self.ionbal[Z][z1-1]
+            s1 = self.spectra[loind][Z][z1].spectrum * self.ionbal[Z][z1-1]
+            s2 = self.spectra[upind][Z][z1].spectrum * self.ionbal[Z][z1-1]
+        
+          else:  
+            s1 = self.spectra[loind][Z][z1].spectrum_withresp * self.ionbal[Z][z1]
+            s2 = self.spectra[upind][Z][z1].spectrum_withresp * self.ionbal[Z][z1]
+        
+          # linear interp
+        
+          r1 = 1- (e-E1)/(E2-E1)
+          r2 = 1- r1
+        
+          s = s1*r1 + s2*r2
+          stot+=s
+     
+    return stot
+  
+    
+    
+
+  def set_specbins(self, specbins, specunits='A'):
+    """
+    Set the energy or wavelength bin for the raw spectrum
+    
+    Note that this is overridden if a response is loaded
+    
+    Parameters
+    ----------
+    ebins : array(float)
+      The edges of the spectral bins (for n bins, have n+1 edges)
+    specunits : {'a','kev'}
+      The spectral bin units to use. Default is angstroms
+      
+    Returns
+    -------
+    None
+    
+    Notes
+    -----
+    updates  self.specbins, self.binunits, self.specbins_set
+    """
+    
+    # set the energy bins for this spectrum
+    self.specbins=specbins
+    self.binunits=specunits
+    self.specbins_set=True
+    
+    
+  def set_response(self, rmf, arf=False):
+    """
+    Set the response. rmf, arf can either be the filenames or the
+    opened files (latter is faster if called repeatedly)
+    
+    
+    Extended Summary
+    ----------------
+    Amends the following items:
+    
+    self.rmffile : string
+      The rmf file name
+    self.rmf : string
+      The response matrix
+    self.arffile : string
+      The arf file name
+    self.arf : string
+      The arf data
+    
+    Parameters
+    ----------
+    rmf: string or HDUlist
+      The response matrix file
+    arf: string or HDUlist
+      The ancillary response file
+    
+    Returns
+    -------
+    none
+
+    """
+    
+    if util.keyword_check(arf):
+      if type(arf)==str:
+        self.arffile = arf
+        self.arf = pyfits.open(arf)
+      elif type(arf) == pyfits.hdu.hdulist.HDUList:
+        self.arf = arf
+        self.arffile = arf.filename()
+      else:
+        print "ERROR: unknown arf type, %s"%(repr(type(arf)))
+        return
+#      res   = spectrum * arfdat['SPECRESP'].data['SPECRESP']
+    #else:
+      #res = spectrum*1.0
+  
+  
+    if type(rmf)==str:
+      self.rmffile = rmf
+      self.rmf = pyfits.open(rmf)
+    elif type(rmf) == pyfits.hdu.hdulist.HDUList:
+      self.rmf = rmf
+      self.rmffile = rmf.filename()
+    else:
+      print "ERROR: unknown rmf type, %s"%(repr(type(rmf)))
+      return
+    
+    self.ebins_response = get_response_ebins(self.rmf)
+    self.response_set = True
+
+  def set_apec_files(self, linefile="$ATOMDB/apec_line.fits",\
+                     cocofile="$ATOMDB/apec_coco.fits"):
+    """
+    Set the apec line and coco files
+    
+    Parameters
+    ----------
+    linefile : str or HDUList
+      The filename of the line emissivity data, or the opened file.
+    cocofile : str or HDUList
+      The filename of the continuum emissivity data, or the opened file.
+    elements : array_like(int)
+      The atomic numbers of the elements to include. Defaults to all (1-30)
+    abundset : string
+      The abundance set to use. Defaults to AG89. See atomdb.set_abundance 
+    
+    Returns
+    -------
+    None
+    
+    Notes
+    -----
+    Updates self.linefile, self.linedata, self.cocofile and self.cocodata
+    """
+    if util.keyword_check(linefile):
+      if isinstance(linefile, basestring):
+        lfile = os.path.expandvars(linefile)
+        if not os.path.isfile(lfile):
+          print "*** ERROR: no such file %s. Exiting ***" %(lfile)
+          return -1
+        self.linedata = pyfits.open(lfile)
+        self.linefile = lfile
+
+      elif isinstance(linefile, pyfits.hdu.hdulist.HDUList):
+        # no need to do anything, file is already open
+        self.linedata=linefile
+        self.linefile=linefile.filename()
+
+      else:
+        print "Unknown data type for linefile. Please pass a string or an HDUList"
+
+    if util.keyword_check(cocofile):
+
+      if isinstance(cocofile, basestring):
+
+        cfile = os.path.expandvars(cocofile)
+        if not os.path.isfile(cfile):
+          print "*** ERROR: no such file %s. Exiting ***" %(cfile)
+          return -1
+        self.cocodata=pyfits.open(cfile)
+        self.cocofile=cfile
+
+      elif isinstance(cocofile, pyfits.hdu.hdulist.HDUList):
+        # no need to do anything, file is already open
+        self.cocodata=cocofile
+        self.cocofile=cocofile.filename()
+
+      else:
+        print "Unknown data type for cocofile. Please pass a string or an HDUList"
+  
+  def set_abund(self, elements, abund):
+    """
+    Set the elemental abundance, relative to the abundset. Defaults to 
+    1.0 for everything
+    
+    Parameters
+    ----------
+    elements : int or array_like(int)
+      The elements to change the abundance of
+    abund : float or array_like(float)
+      The new abundances. If only 1 value, set all `elements` to this abundance
+      Otherwise, should be of same length as elements.
+    
+    Returns
+    -------
+    None
+    
+    Examples
+    --------
+    Set the abundance of iron to 0.5
+    
+    >>> myspec.set_abund(26, 0.5)
+    
+    Set the abundance of iron and nickel to 0.1 and 0.2 respectively
+    
+    >>> myspec.set_abund([26, 28], [0.1,0.2])
+    
+    Set the abundance of oxygen, neon, magnesium and iron to 0.1
+    
+    >>> myspec.set_abund([8,10,12,26],0.1)
+    """
+    
+    abundvec, aisvec = util.make_vec(abund)
+    elementvec, eisvec = util.make_vec(elements)
+    if (aisvec):
+      if len(abundvec)!= len(elementvec):
+
+        print "abundance vector and element vector must have same number"+\
+              " of elements"
+      else:
+        
+        self.abund[elementvec] = abundvec
+    elif (eisvec):
+      # set all these eleemtns to the same abundance
+      for el in elementvec:
+        self.abund[el]=abund  
+      
+    else:
+      self.abund[elements]=abund  
+              
+    self.recalc()  
+    
+
+  def recalc(self):
+    """
+    Recalculate the spectrum - just for changing abundances etc. 
+    Does not recalculate spectrum fully, just changes the multipliers.
+    Does nothing if self.ready is False, should be run after calc_spectrum.
+    
+    Parameters
+    ----------
+    none
+    
+    Returns
+    -------
+    none
+    
+    Notes
+    --------
+    modifies
+    self.spectrum
+    """
+    for index in self.spectra.keys():
+      self.spectra[index].recalc(self)
+    #if self.ready:
+      #self.spectrum = numpy.zeros(len(self.specbins)-1)
+      #for Z in self.elements:
+        #self.spectrum += self.spectrum_by_Z[Z] * self.abund[Z] * self.abundsetvector[Z]
+      #if self.response_set:
+        #self.spectrum_withresp = numpy.zeros(len(self.ebins_response)-1)
+        #for Z in self.elements:
+          #self.spectrum_withresp += self.spectrum_by_Z_withresp[Z] * self.abund[Z] * self.abundsetvector[Z]
+      
+      
+  def set_abundset(self, abundstring):
+    """
+    Set the abundance set.
+    
+    Parameters
+    ----------
+    abundstring : string
+      The abundance string (e.g. "AG89", "uniform". Case insensitive.
+      See atomdb.get_abundance for list of possible abundances
+    
+    Returns
+    -------
+    none
+      updates self.abundset and self.abundsetvector.
+    """
+    
+    # read in the abundance the raw data was calculated on
+    old = atomdb.get_abundance(abundset=self.default_abundset)
+    
+    # read in the new abundance
+    new = atomdb.get_abundance(abundset=abundstring)
+  
+    # divide the 2, store the replacement ratio to self.abundsetvector
+    for Z in self.abundsetvector.keys():
+      self.abundsetvector[Z]=new[Z]/old[Z]
+
+    # update the current abundance string to represent your input
+    self.abundset=abundstring
+    
+    self.recalc()
+  
+  
+  class IonSpec():
+      """
+      An individual ion spectrum within a session, from a specifically
+      tabulated temperature in a line/coco file.
+    
+      Attributes
+      ----------
+      energy : float
+        The energy of this spectrum, in keV/amu
+      index : int
+        The index in the line file for this spectrum
+      """
+    
+    
+      def __init__(self, session, index, Z, z1):
+        
+        self.energy = session.linedata[1].data['Energy'][index-2]
+        self.index = index
+        self.Z = Z
+        self.z1 = z1
+      
+      
+        
+      def set_index(E, Eunit='kev/amu', logscale = False):
+        """
+        Finds HDU with kT closest to desired kT in given line or coco file.
+    
+        Opens the line or coco file, and looks for the header unit
+        with temperature closest to te. Use result as index input to make_spectrum
+    
+        Parameters
+        ----------
+        E : float
+          Energy in keV/amu
+        Eunit : {'keV' , 'K', 'eV'}
+          Units of E (kev/amu default)
+        logscale : bool
+          Search on a log scale for nearest temperature if set.
+      
+        Returns
+        -------
+        none
+      
+        Notes
+        -----
+        modifies
+        self.index : int
+        Index in HDU file with nearest temperature to te.
+            
+        """  
+    
+        if Eunit.lower() == 'kev/amu':
+          Eval = E*1.0
+          
+#        elif teunit.lower() == 'ev':
+#          teval = te/1000.0
+#        elif teunit.lower() == 'k':
+#          teval = te*const.KBOLTZ
+        else:
+          print "*** ERROR: unknown energy unit %s. Must be keV/amu. Exiting ***"%\
+                (Eunit)
+      
+        if logscale:
+          i = numpy.argmin(numpy.abs(numpy.log(self.linedata[1].data['Energy'])-numpy.log(teval)))
+        else:
+          i = numpy.argmin(numpy.abs(self.linedata[1].data['Energy']-teval))
+        # need to increase the HDU by 2.
+        self.index = i+2
+      
+      def calc_spectrum(self,session,
+                        dolines = True, docont=True, dopseudo=True):
+      
+        """
+        Calculates the spectrum for each ion on a single energy
+      
+        Parameters
+        ----------
+        session : Session
+          The parent Session
+        dolines : bool
+          Include lines in the spectrum
+        docont : bool
+          Include continuum in the spectrum
+        dopseudo : bool
+          Include pseudocontinuum in the spectrum
+        Outputs
+        -------
+        none
+      
+        Notes
+        -----
+        Modifies:\n
+        dict : self.spectrum  the spectrum of the ion\n
+        dict : self.spectrum_withresp the spectrum of the ion, \
+                                           folded through response\n
+        Then calls `recalc()` to update the spectra
+        """
+        # now, we shall calculate the spectrum for each individual element
+    
+        # set the linefile
+    
+        
+        
+        
+        self.energy = session.linedata[1].data['Energy'][self.index-2]
+      
+    #    if util.keyword_check(elements):
+          #self.set_abund(elements, abund)
+      
+        #if util.keyword_check(abund):
+          #self.set_abund(elements, abund)
+      
+        # make the generic spectrum
+        if session.specbins_set:
+          self.spectrum = make_ion_spectrum(session.specbins, self.index,\
+                              self.Z, self.z1, \
+                              linefile = session.linedata, \
+                              cocofile = session.cocodata,\
+                              binunits = 'keV',\
+                              dolines=dolines,\
+                              docont = docont,\
+                              dopseudo = dopseudo)
+        # make the spectrum on the response grid
+        if session.response_set:
+
+          tmp = make_ion_spectrum(session.ebins_response, self.index,\
+                              self.Z, self.z1, \
+                              linefile = session.linedata, \
+                              cocofile = session.cocodata,\
+                              binunits = 'keV',\
+                              dolines=dolines,\
+                              docont = docont,\
+                              dopseudo = dopseudo)
+                                
+          e,self.spectrum = apply_response(tmp, session.rmf, arf=session.arf)
+    
+        self.recalc(session)
+    
+    
+      def recalc(self, session):
+        """
+        Recalculate the spectrum - just for changing abundances etc. 
+        Does not recalculate spectrum fully, just changes the multipliers.
+        Does nothing if self.ready is False, should be run after calc_spectrum.
+        
+        Parameters
+        ----------
+        session : Session
+          The parent session
+        
+        Returns
+        -------
+        none
+        
+        Notes
+        -----
+        Modifies:\n
+        self.spectrum : array_like (float)\n
+        self.spectrum_withresp : array_like (float)
+        """
+    
+        if session.ready:
+          if session.specbins_set:
+            
+            self.spectrum = self.spectrum * session.abund[self.Z] * session.abundsetvector[self.Z]
+          if session.response_set:
+            self.spectrum_withresp = self.spectrum_withresp * session.abund[self.Z] * session.abundsetvector[self.Z]
     
   
