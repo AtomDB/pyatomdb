@@ -14,7 +14,7 @@ import astropy.io.fits as pyfits
 from joblib import Parallel, delayed
 
 def calc_full_ionbal(Te, tau=1e14, init_pop=False, Te_init=False, Zlist=False, teunit='K',\
-                    extrap=False, cie=True, settings=False):
+                    extrap=True, cie=True, settings=False):
   """
   Calculate the ionization balance for all the elements in Zlist.
 
