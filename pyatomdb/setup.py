@@ -2,7 +2,6 @@ from setuptools import setup, Extension
 import os
 
 import sys
-from mock import Mock as MagicMock
 
 
 on_rtd = os.environ.get('READTHEDOCS')=='True'
@@ -33,6 +32,8 @@ linapprox =  Extension('linear_approx',\
 
 
 if on_rtd:
+  from mock import Mock as MagicMock
+
   extmos= []
 
   class Mock(MagicMock):

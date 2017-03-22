@@ -105,3 +105,6 @@ avoiding lots of unnecessary recalculation of the same numbers.
 
 0.0.3.1
 February 21st 2017: A series of bug fixes to installation and spectral calculation routines. Closes bugs #1, 2, 5 from github
+
+0.0.3.2
+March 21st 2017: Several bug fixes and enhancements to the spectrum module. Updated setup.py to handle import of mock more gracefully
