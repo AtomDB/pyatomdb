@@ -203,7 +203,7 @@ def make_ion_spectrum(bins, index, Z,z1, linefile="$ATOMDB/apec_nei_line.fits",\
                   abund=False, dummyfirst=False, nei = True,\
                   dolines = True, docont=True, dopseudo=True):
 
-  r"""
+  """
   make_spectrum is the most generic "make me a spectrum" routine.
   
   It returns the emissivity in counts cm^3 s^-1 bin^-1.
@@ -1676,12 +1676,6 @@ class Session():
       print "*** ERROR: unknown temeprature unit %s. Must be eV, keV or K. Exiting ***"%\
             (teunits)
     
-    if ((teval > self.linedata[1].data['kT'][-1]) |\
-        (teval < self.linedata[1].data['kT'][0])):
-      print "*** ERROR: temperature %f keV is out of range %f-%f ***" %\
-            (teval, self.linedata[1].data['kT'][0], self.linedata[1].data['kT'][-1])
-      return
-    # find the 2 nearest temperatures
     
     if nearest:
       index = numpy.argmin(numpy.abs(self.linedata[1].data['kT']-teval))+2
@@ -1708,6 +1702,13 @@ class Session():
       else:
         return s
     else:
+      if ((teval > self.linedata[1].data['kT'][-1]) |\
+          (teval < self.linedata[1].data['kT'][0])):
+        print "*** ERROR: temperature %f keV is out of range %f-%f ***" %\
+              (teval, self.linedata[1].data['kT'][0], self.linedata[1].data['kT'][-1])
+        return
+    # find the 2 nearest temperatures
+
       index = numpy.where(self.linedata[1].data['kT'] > teval)[0][0]
 
 
@@ -2080,8 +2081,7 @@ class Session():
         # need to increase the HDU by 2.
         self.index = i+2
       
-      def calc_spectrum(self,session,
-                        dolines = True, docont=True, dopseudo=True):
+      def calc_spectrum(self,session):
       
         """
         Calculates the spectrum for each element on a single temperature
@@ -2132,17 +2132,17 @@ class Session():
             self.spectrum_by_Z[Z] = make_spectrum(session.specbins, self.index,\
                                                   session.linedata, session.cocodata,\
                                                   session.binunits,elements=[Z],\
-                                                  dolines=dolines,\
-                                                  docont = docont,\
-                                                  dopseudo = dopseudo)
+                                                  dolines=session.dolines,\
+                                                  docont=session.docont,\
+                                                  dopseudo=session.dopseudo)
         # make the spectrum on the response grid
           if session.response_set:
             tmp = make_spectrum(session.ebins_response, self.index,\
                                 session.linedata, session.cocodata,\
                                 'keV',elements=[Z],\
-                                dolines=dolines,\
-                                docont = docont,\
-                                dopseudo = dopseudo)
+                                dolines=session.dolines,\
+                                docont =session.docont,\
+                                dopseudo =session.dopseudo)
                                 
             e,self.spectrum_by_Z_withresp[Z] = apply_response(tmp, session.rmf, arf=session.arf)
     

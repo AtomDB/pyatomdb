@@ -4622,10 +4622,16 @@ def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
     
     lefteigenvec = numpy.zeros([Z,Z], dtype=float)
     righteigenvec = numpy.zeros([Z,Z], dtype=float)
-    for i in range(Z):
-      for j in range(Z):
-        lefteigenvec[i,j] = d['EIGEN'].data['VL'][Tindex][i*Z+j]
-        righteigenvec[i,j] = d['EIGEN'].data['VR'][Tindex][i*Z+j]
+    if Z==1:
+      for i in range(Z):
+        for j in range(Z):
+          lefteigenvec[i,j] = d['EIGEN'].data['VL'][Tindex]
+          righteigenvec[i,j] = d['EIGEN'].data['VR'][Tindex]
+    else:
+      for i in range(Z):
+        for j in range(Z):
+          lefteigenvec[i,j] = d['EIGEN'].data['VL'][Tindex][i*Z+j]
+          righteigenvec[i,j] = d['EIGEN'].data['VR'][Tindex][i*Z+j]
         
     delt = 1.0/(len(telist)-1.0)
     work = numpy.zeros(Z, dtype=float)
@@ -4636,9 +4642,11 @@ def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
     delt = 1.0
 
     worktmp = numpy.zeros(Z)
-    for i in range(Z):
-      worktmp[i] = fspectmp[i]*numpy.exp(d['EIGEN'].data['EIG'][Tindex,i]*delt*tau)
-    
+    if Z >1:
+      for i in range(Z):
+        worktmp[i] = fspectmp[i]*numpy.exp(d['EIGEN'].data['EIG'][Tindex,i]*delt*tau)
+    else:
+      worktmp[0] = fspectmp[0]*numpy.exp(d['EIGEN'].data['EIG'][Tindex]*delt*tau)
     frac = numpy.zeros(Z+1)
     for i in range(Z):
       for j in range(Z):

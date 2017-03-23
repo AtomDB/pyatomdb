@@ -17,8 +17,8 @@ Version 0.3 - added RRC generation routines
 Adam Foster August 28th 2015
 """
 
-import os, datetime, numpy, re, time
-import util, atomic, spectrum, const, urllib2
+import os, datetime, numpy, re, time, getpass
+import util, atomic, spectrum, const, urllib2, apec
 import astropy.io.fits as pyfits
 from scipy import stats, integrate
 
@@ -5169,3 +5169,459 @@ def get_oscillator_strength(Z, z1, upperlev, lowerlev, datacache=False):
   f_ij = Aji * (g_j*1.0/g_i) * (lam**2/6.6702e15)
   
   return f_ij
+
+
+def make_lorentz(version = False, do_all=True, cie=False, power=False,\
+                 stronglines=False, neicsd=False, neilines=False):
+  """
+  This makes all the Lorentz data comparison files from the Astrophysical 
+  Collisional Plasma Test Suite, version 0.4.0
+  
+  Parameters
+  ----------
+  version : string (optional)
+    e.g. "3.0.7" to run the suite for v3.0.7. Otherwise uses latest version.
+  
+  Returns
+  -------
+  none
+  """
+  
+  # set the version
+  if util.keyword_check(version):
+	util.switch_version(version)
+  else:
+	version = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
+
+  # if one (or more) in particular is specified, turn off "do_all"
+  if sum([cie, power, stronglines, neicsd,neilines])>0:
+	do_all=False
+
+  # if do_all, turn them all on
+  if do_all:
+	cie=True
+	power=True
+	stronglines=True
+	neicsd=True
+	neilines=True
+
+  # run the data
+  if cie:
+    lorentz_cie(version)
+  if power:
+    lorentz_power(version)
+  if stronglines:
+	lorentz_stronglines(version)
+  if neicsd:
+    lorentz_neicsd(version)
+  if neilines:
+    lorentz_neilines(version)
+  
+def lorentz_cie(version):
+  """
+  Calculate the CSD of equilibrium plasmas at 1e6, 6e6K and 4keV.
+  
+  Parameters
+  ----------
+  version : string
+    The version string
+  
+  Returns
+  -------
+  None
+  
+  """
+    
+  # open the output files
+  f = open('CIE-CSD_atomdb_%s.dat'%(version),'w')
+  f.write('Z   Ion   1e6K   6e6K   4.642e7K\n')
+  Zlist = [1,2,6,7,8,10,12,14,16,18,20,26,28]
+  ionbal_out = []
+  for kT in [1e6, 6e6, 4/const.KBOLTZ]:
+    ionbal = apec.calc_full_ionbal(kT, extrap=True, cie=True, \
+                      Zlist=Zlist)
+    ionbal_out.append(ionbal)
+  
+  for Z in Zlist:
+    for z1 in range(Z+1):
+	  f.write("%2i %2i %10.6f %10.6f %10.6f\n"%\
+              (Z, z1, \
+               max(-20, numpy.log10(ionbal_out[0][Z][z1])),\
+               max(-20, numpy.log10(ionbal_out[1][Z][z1])),\
+               max(-20, numpy.log10(ionbal_out[2][Z][z1]))))
+  f.close()
+
+
+
+def lorentz_power(version):
+  """
+  Calculate the power emitted from a 13.6eV to 13.6keV plasma
+  
+  Parameters
+  ----------
+  version : string
+    The version string
+  
+  Returns
+  -------
+  None
+  
+  """
+  Zlist = [1,2,6,7,8,10,12,14,16,18,20,26,28]
+  # open the output files
+  f = open('Power_atomdb_%s.dat'%(version),'w')
+  ebins = numpy.linspace(0.0136, 13.6, 10001)
+  energy = const.ERG_KEV*(ebins[1:]+ebins[:-1])/2
+  s = "Z "
+  for iT in range(51):
+    flt = 4.0+(0.1*iT)
+    s += "        %.1f"%(flt)
+  
+  f.write("%s\n"%(s))
+  
+  ses = spectrum.Session(elements=Zlist)
+  ses.set_specbins(ebins, specunits='keV')
+  for iT in range(51):
+    kT = 4.0+(iT*0.1)
+    kT = 10**kT
+    if iT == 0:
+		kT+=1
+    ses.return_spectra(kT, teunit='K', nearest=True)
+    print iT
+  
+  for Z in Zlist:
+    tot_e = numpy.zeros(51)
+    s = "%2i"%(Z)
+    print Z
+    for iT in range(2,53):
+      spec = ses.spectra[iT].spectrum_by_Z[Z]
+      e = spec*energy
+      tot_e[iT-2] = sum(e)
+      s+= " %10.6f"%(numpy.log10(tot_e[iT-2]))
+    f.write("%s\n"%(s))
+  f.close()
+
+
+def lorentz_stronglines(version):
+  """
+  Calculate the 100 strongest lines below 1000A
+  
+  Parameters
+  ----------
+  version : string
+    The version string
+  fourkevfile: string
+    The 4kev line file
+  
+  Returns
+  -------
+  None
+  
+  """
+  
+  ldat = pyfits.open(os.path.expandvars("$ATOMDB/apec_v%s_line.fits"%(version)))
+  
+  # get the strongest 500 lines
+  llist_type = numpy.dtype({'names':['Lambda','Z','Ion','Flux', 'UpperLev', 'LowerLev'],\
+                              'formats':[float, int, int, float, int, int]})
+  abund=pyatomdb.atomdb.get_abundance(abundset='Lodd09')
+  for ikT, kT in enumerate([1e6, 6e6, 4/const.KBOLTZ]):
+    upind = numpy.where(ldat[1].data['kT']>kT*const.KBOLTZ)[0][0]+2
+    loind = upind-1
+    
+    llist_lo = ldat[loind].data
+    llist_up = ldat[upind].data
+    # only include lines below 1000A
+    llist_lo = llist_lo[llist_lo['Lambda']<1000]
+    llist_up = llist_up[llist_up['Lambda']<1000]
+    fname = 'StrongLines%i_atomdb_%s.dat'%(ikT+1, version)
+    f = open(fname, 'w')
+    # now interpolate
+    t1 = numpy.log(ldat[1].data['kT'][loind-2])
+    t2 = numpy.log(ldat[1].data['kT'][upind-2])
+    
+    
+    
+    r1 = 1- (numpy.log(kT*const.KBOLTZ)-t1)/(t2-t1)
+    r2 = 1- r1
+
+
+    llist_lo.sort(order='Epsilon')
+    llist_lo=llist_lo[::-1]
+
+    llist_up.sort(order='Epsilon')
+    llist_up=llist_up[::-1]
+
+    llist_out = numpy.zeros(500, dtype = llist_type)
+    llist_out['Lambda'] = llist_lo['Lambda'][:500]
+    llist_out['Z'] = llist_lo['Element'][:500]
+    llist_out['Ion'] = llist_lo['Ion'][:500]-1
+    llist_out['Flux'] = numpy.log(llist_lo['Epsilon'][:500])*r1
+    llist_out['UpperLev'] = llist_lo['UpperLev'][:500]
+    llist_out['LowerLev'] = llist_lo['LowerLev'][:500]
+
+    for i in range(len(llist_out)):
+      ii = numpy.where((llist_up['Element']==llist_out['Z'][i]) &\
+                       (llist_up['Ion'] == llist_out['Ion'][i]+1)&\
+                       (llist_up['UpperLev'] == llist_out['UpperLev'][i])&\
+                       (llist_up['LowerLev'] == llist_out['LowerLev'][i]))[0]
+      if len(ii) > 0:
+        llist_out['Flux'][i] += numpy.log(llist_up['Epsilon'][ii[0]])*r2
+
+    # do abundance
+    abvec = numpy.zeros(max(abund.keys())+1)
+    for Z in range(1,len(abvec)):
+      abvec[Z] = abund[Z]
+    ab = abvec[llist_out['Element']]
+	
+    llist_out['Flux']=numpy.exp(llist_out['Flux'])
+    llist_out['Flux']*=ab
+    llist_out.sort(order='Flux')
+    llist_out = llist_out[::-1]
+
+    now = datetime.datetime.now()
+    
+    f.write('# Generated %s by %s\n'%(now.strftime("%c"), os.getenv('USER')))
+    f.write('# 100 strongest lines in collisional plasma with T=%eK\n'%(kT))
+    f.write('Indx Lambda Z Ion Flux\n')
+
+    for i in range(100):
+      print "%3i %14f %2i %2i %10.6f"%\
+            (i+1,\
+             llist_out['Lambda'][i],\
+             llist_out['Z'][i],\
+             llist_out['Ion'][i],\
+             numpy.log10(llist_out['Flux'][i]*0.8365))
+             
+      f.write("%3i %14f %2i %2i %10.6f\n"%\
+            (i+1,\
+             llist_out['Lambda'][i],\
+             llist_out['Z'][i],\
+             llist_out['Ion'][i],\
+             numpy.log10(llist_out['Flux'][i]*0.8365)))
+    f.close()
+             
+def lorentz_neicsd(version):
+  """
+  Charge state distribution of a gas ionizing from 1e4K to 2.321e7K (=2keV)
+  at a fluence ($n_e$ * t, or $\tau$) of $10^{10}$ cm$^-3$ s
+  
+  Parameters
+  ----------
+  version : string
+    The version string
+  
+  Returns
+  -------
+  None
+  
+  """
+  Te_init = 1e4
+  Te_final = 2.321e7
+  tau = 1e10
+  now = datetime.datetime.now()
+  util.switch_version(version)
+  f = open('NEI-CSD_atomdb_v%s.dat'%(version),'w')
+  f.write('# Generated %s by %s\n'%(now.strftime("%c"), os.getenv('USER')))
+  f.write('# CSD of plasma ionizing from 1e4K to 2.321e7K for ne*t = 1e10 cm^-3 s\n')
+  f.write('Z Ion Pop\n')
+  for Z in [1,2,6,7,8,10,12,14,16,18,20,26,28]:
+    print Z
+    ionbal = apec.solve_ionbal_eigen(Z, Te_final,  tau=tau, Te_init=Te_init, \
+                         teunit='K')
+
+    for i in range(len(ionbal)):
+      f.write('%2i %2i %e\n'%(Z,i,ionbal[i]))
+  f.close()
+  
+  
+def lorentz_neilines(version):
+  """
+  100 strongest lines with wavelength < 1000A for a 1cm^3 plasma
+  (1) starting at 1e4K, going to 2.321e7K
+  at a fluence ($n_e$ * t, or $\tau$) of $10^{10}$ cm$^-3$ s
+  (2) starting at 3.5keV, going to 1.5keV
+  at a fluence ($n_e$ * t, or $\tau$) of $10^{10}$ cm$^-3$ s
+  
+  Parameters
+  ----------
+  version : string
+    The version string
+  
+  Returns
+  -------
+  None
+  
+  """
+  abund=get_abundance(abundset='Lodd09')
+  abund_old=get_abundance(abundset='AG89')
+  
+  abund_square = numpy.zeros(len(abund)+1)
+  for i in abund.keys():
+    abund_square[i]=abund[i]/abund_old[i]
+  Te_init_list = [1e4, 3.5/const.KBOLTZ]
+  Te_final_list = [2.321e7, 1.5/const.KBOLTZ]
+  tau_list = [1e10, 1e10]
+  now = datetime.datetime.now()
+  util.switch_version(version)
+  f = open('NEI-Lines_atomdb_v%s.dat'%(version),'w')
+  f.write('# Generated %s by %s\n'%(now.strftime("%c"), os.getenv('USER')))
+  f.write('# CSD of plasma ionizing from 1e4K to 2.321e7K for ne*t = 1e10 cm^-3 s\n')
+  f.write('# Lambda is in Angstroms\n')
+  f.write('Lambda Z Ion Flux\n')
+
+
+  
+  for irun in range(len(Te_init_list)):
+    Te_init = Te_init_list[irun]
+    Te_final = Te_final_list[irun]
+    tau = tau_list[irun]
+
+    ldat = pyfits.open(os.path.expandvars("$ATOMDB/apec_v%s_nei_line.fits"%(version)))
+
+    upind = numpy.where(ldat[1].data['kT']>Te_final*const.KBOLTZ)[0][0]+2
+    loind = upind-1
+    
+    llist_lo = ldat[loind].data
+    llist_up = ldat[upind].data
+    # only include lines below 1000A
+    llist_lo = llist_lo[llist_lo['Lambda']<1000]
+    llist_up = llist_up[llist_up['Lambda']<1000]
+
+    ionbal = {}
+    for Z in range(1,31):
+      ionbal[Z] = numpy.zeros(Z+1)
+
+    for Z in [1,2,6,7,8,10,12,14,16,18,20,26,28]:
+
+      ionbal[Z] = apec.solve_ionbal_eigen(Z, Te_final,  tau=tau, Te_init=Te_init, \
+                           teunit='K')
+
+    ionbal_square = numpy.zeros([31,31])
+    for Z in [1,2,6,7,8,10,12,14,16,18,20,26,28]:
+      ionbal_square[Z,:Z+1] = ionbal[Z]
+
+    scale = abund_square[llist_lo['ELEMENT']] * ionbal_square[llist_lo['ELEMENT'],llist_lo['ION_DRV']-1]
+    llist_lo['EPSILON'] *= scale
+
+    scale = abund_square[llist_up['ELEMENT']] * ionbal_square[llist_up['ELEMENT'],llist_up['ION_DRV']-1]
+    llist_up['EPSILON'] *= scale
+
+      # remove weak lines
+    llist_lo = llist_lo[llist_lo['EPSILON']>1e-30]
+    llist_up = llist_up[llist_up['EPSILON']>1e-30]
+    print "len lo = ", len(llist_lo)
+    print "len up = ", len(llist_up)
+
+#    llist_lo = numpy.array(llist_lo)
+
+    llist_lo.sort(order = ['Element','Ion','UpperLev','LowerLev', 'Ion_drv'])
+    llist_out_dtype=numpy.dtype({'names':['Lambda','Element','Ion','UpperLev','LowerLev','Epsilon'],\
+                                 'formats':[float, int, int, int, int, float]})
+    llist_lo_out = numpy.zeros(len(llist_lo), dtype=llist_out_dtype)
+    iline = -1
+    print "summing NEI lines for lo ind"
+    for i in range(len(llist_lo)):
+
+      if ( (llist_lo['Element'][i] == llist_lo_out['Element'][iline]) &\
+           (llist_lo['UpperLev'][i] == llist_lo_out['UpperLev'][iline]) &\
+           (llist_lo['LowerLev'][i] == llist_lo_out['LowerLev'][iline]) &\
+           (llist_lo['Ion'][i] == llist_lo_out['Ion'][iline])):
+        llist_lo_out['Epsilon'][iline]+=llist_lo['Epsilon'][i]
+        
+      else:
+		iline+=1
+		llist_lo_out['Element'][iline] = llist_lo['Element'][i]
+		llist_lo_out['Ion'][iline] = llist_lo['Ion'][i]
+		llist_lo_out['UpperLev'][iline] = llist_lo['UpperLev'][i]
+		llist_lo_out['LowerLev'][iline] = llist_lo['LowerLev'][i]
+		llist_lo_out['Epsilon'][iline] = llist_lo['Epsilon'][i]
+		llist_lo_out['Lambda'][iline] = llist_lo['Lambda'][i]
+
+    llist_lo_out=llist_lo_out[:iline+1]
+    llist_lo_out=llist_lo_out[llist_lo_out['Epsilon']>1e-20]
+    llist_lo_out.sort(order='Epsilon')
+
+    print "summing NEI lines for up ind"
+
+    llist_up.sort(order = ['Element','Ion','UpperLev','LowerLev', 'Ion_drv'])
+    llist_up_out = numpy.zeros(len(llist_up), dtype=llist_out_dtype)
+    iline = -1
+
+    for i in range(len(llist_up)):
+
+      if ( (llist_up['Element'][i] == llist_up_out['Element'][iline]) &\
+           (llist_up['UpperLev'][i] == llist_up_out['UpperLev'][iline]) &\
+           (llist_up['LowerLev'][i] == llist_up_out['LowerLev'][iline]) &\
+           (llist_up['Ion'][i] == llist_up_out['Ion'][iline])):
+        llist_up_out['Epsilon'][iline]+=llist_up['Epsilon'][i]
+        
+      else:
+		iline+=1
+		llist_up_out['Element'][iline] = llist_up['Element'][i]
+		llist_up_out['Ion'][iline] = llist_up['Ion'][i]
+		llist_up_out['UpperLev'][iline] = llist_up['UpperLev'][i]
+		llist_up_out['LowerLev'][iline] = llist_up['LowerLev'][i]
+		llist_up_out['Epsilon'][iline] = llist_up['Epsilon'][i]
+		llist_up_out['Lambda'][iline] = llist_up['Lambda'][i]
+
+    llist_up_out=llist_up_out[:iline+1]
+    llist_up_out=llist_up_out[llist_up_out['Epsiupn']>1e-20]
+    llist_up_out.sort(order='Epsilon')
+		
+    print "Combining emissivities"
+
+    # trim to 1000 strongest lines
+    llist_up_out = llist_up_out[-1000:]
+    llist_lo_out = llist_lo_out[-1000:]
+
+    t1 = numpy.log(ldat[1].data['kT'][loind-2])
+    t2 = numpy.log(ldat[1].data['kT'][upind-2])
+    
+    r1 = 1- (numpy.log(kT*const.KBOLTZ)-t1)/(t2-t1)
+    r2 = 1- r1
+
+    llist_out = numpy.zeros(2000,dtype=llist_out_dtype)
+    llist_out[:1000] = llist_lo_out
+    llist_out['Epsilon']*=r1
+
+    iline = 1000
+    for i in range(len(llist_up_out)):
+      j = numpy.where( (llist_out['Element'] == llist_up_out['Element'][i]) &\
+                       (llist_out['Ion'] == llist_up_out['Ion'][i]) &\
+                       (llist_out['UpperLev'] == llist_up_out['UpperLev'][i]) &\
+                       (llist_out['LowerLev'] == llist_up_out['LowerLev'][i]))[0]
+      if len(j) == 0:
+        llist_out['Element'][iline] = llist_up_out['Element'][i]
+        llist_out['Lambda'][iline] = llist_up_out['Lambda'][i]
+        llist_out['Ion'][iline] = llist_up_out['Ion'][i]
+        llist_out['UpperLev'][iline] = llist_up_out['UpperLev'][i]
+        llist_out['LowerLev'][iline] = llist_up_out['LowerLev'][i]
+        llist_out['Epsilon'][iline] = llist_up_out['Epsilon'][i]*r2
+        iline+=1
+      else:
+        llist_out['Epsilon'][j[0]] += llist_up_out['Epsilon'][i]*r2
+
+    print "Final filtering"
+    llist_out = llist_out[:iline]
+
+    llist_out.sort(order=['Epsilon'])
+    llist_out[::-1]
+
+    llist_out = llist_out[:100]
+
+    for i in range(len(llist_out)):
+      print llist_out[i]
+    
+    zzz=raw_input('HELLO')
+        
+
+      
+
+
+      
+
+
+
+  f.close()  
+  
