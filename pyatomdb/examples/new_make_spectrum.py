@@ -12,8 +12,8 @@ arf = '/export1/projects/atomdb_308/hitomi/arf_100041010sxs.arf'
 data = pyatomdb.spectrum.Session()
 
 # If you want to specify custom energy bins:
-#ebins = numpy.linspace(1,2,1001)
-#data.set_specbins(ebins, units='A')
+ebins = numpy.linspace(1,2,1001)
+data.set_specbins(ebins, units='A')
 
 # alternative method: just load the response and use its binning. Note
 # that this will always be in keV currently, because reasons.

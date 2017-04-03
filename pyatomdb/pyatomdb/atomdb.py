@@ -453,41 +453,41 @@ def dr_mazzotta(Te, c):
 def dr_badnell(Te, c):
   """
   Convert data from Badnell constants into a DR Rate
-  
+
   Parameters
   ----------
   Te : float or array(float)
     Electron temperature[s] in K
-  
+
   c : array
-    Constants from DR rates. Stored as alternating pairs in AtomDB, so 
+    Constants from DR rates. Stored as alternating pairs in AtomDB, so
     c1,e1,c2,e2,c3,e3 etc in the IONREC_PAR column
-    
+
   Returns
   -------
   float
     DR rate in cm^3 s-1
-  
+
   References
   ----------
   See http://amdpp.phys.strath.ac.uk/tamoc/DATA/DR/
-  """  
-  
+  """
+
   Te_in, wasvec = util.make_vec(Te)
-  
+
   ret = numpy.zeros(len(Te_in))
   for i in range(len(c)/2):
     if c[2*i] != 0.0:
       ret += c[2*i] * numpy.exp(-c[2*i+1]/Te_in)
   ret *= Te_in**-1.5
-  
-    
+
+
   if wasvec==False:
     ret=ret[0]
-  
-  
+
+
   return ret
-  
+
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -495,47 +495,47 @@ def dr_badnell(Te, c):
 def rr_badnell(Te, c):
   """
   Convert data from Badnell constants into a RR Rate
-  
+
   Parameters
   ----------
   Te : float or array(float)
     Electron temperature[s] in K
-  
+
   c : array
-    Constants from DR rates. Stored as alternating pairs in AtomDB, so 
+    Constants from DR rates. Stored as alternating pairs in AtomDB, so
     c1,e1,c2,e2,c3,e3 etc in the IONREC_PAR column
-    
+
   Returns
   -------
   float
     RR rate in cm^3 s-1
-  
+
   References
   ----------
   See http://amdpp.phys.strath.ac.uk/tamoc/DATA/RR/
-  """  
-  
+  """
+
   Te_in, wasvec = util.make_vec(Te)
-  
+
   ret = numpy.zeros(len(Te_in))
-  
+
   A = c[0]
   B = c[1]
   T0 = c[2]
   T1=c[3]
   C = c[4]
   T2 = c[5]
-  
+
   if C != 0:
     B += C*numpy.exp(-T2/Te_in)
-  
+
   ret = A/ ((Te_in/T0)**0.5*\
             (1+(Te_in/T0)**0.5)**(1-B) *\
             (1+(Te_in/T1)**0.5)**(1+B))
-  
+
   if wasvec==False:
     ret=ret[0]
-  
+
   return ret
 
 #-------------------------------------------------------------------------------
@@ -738,7 +738,7 @@ def get_filemap_file(ftype, Z, z1, fmapfile="$ATOMDB/filemap",\
     10 or 'abund': elemental abundances
     11 or 'hbrems': Hummer bremstrahlung gaunt factor coefficients
     13 or 'rbrems': Relativistic bremstrahlung gaunt factor coefficients
-        
+
 
   Returns
   -------
@@ -762,7 +762,7 @@ def get_filemap_file(ftype, Z, z1, fmapfile="$ATOMDB/filemap",\
           ftype_misc = 13
       else:
         ftype_misc = int(ftype)
-        
+
       i = numpy.where(fmap['misc_type']==ftype_misc)[0]
       if len(i)==0:
         print "Error: file type: %i not found in filemap %s" %(ftype,fmapfile)
@@ -770,7 +770,8 @@ def get_filemap_file(ftype, Z, z1, fmapfile="$ATOMDB/filemap",\
       else:
         ret = fmap['misc'][i[0]]
     else:
-      print "Error: unknown file type: %s not recognized" %(ftype)
+      if not ftype.lower() in ['eigen','ionbal']:
+        print "Error: unknown file type: %s not recognized" %(ftype)
       ret = ''
   else:
     i = numpy.where((fmap['Z']==Z)&(fmap['z1']==z1))[0]
@@ -927,22 +928,22 @@ def get_abundance(abundfile=False, abundset='AG89', element=[-1],\
                   datacache=False, settings = False):
   """
   Get the elemental abundances, relative to H (H=1.0)
-  
+
   Parameters
   ----------
   abundfile : string
     special abundance file, if not using the default from filemap
   abundset : string
     Abundance set. Available:
-   
+
     * Allen: Allen, C. W.  Astrophysical Quantities, 3rd Ed.,  1973 (London: Athlone Press)
-   
+
     * AG89: Anders, E. and Grevesse, N. 1989, Geochimica et Cosmochimica Acta, 53, 197
-   
+
     * GA88: Grevesse, N, and Anders, E.1988, Cosmic abundances of matter, ed. C. J. Waddington, AIP Conference, Minneapolis, MN
-   
+
     * Feldman: Feldman, U., Mandelbaum, P., Seely, J.L., Doschek, G.A.,Gursky H., 1992, ApJSS, 81,387
-    
+
     Default is AG89
   element : list of int
     Elements to find abundance for. If not specified, return all.
@@ -950,12 +951,12 @@ def get_abundance(abundfile=False, abundset='AG89', element=[-1],\
     See get_data
   datacache : settings
     See get_data
-    
+
   Returns
   -------
   dict
     abundances in dictionary, i.e :
-    
+
     {1: 1.0,\n
      2: 0.097723722095581111,\n
      3: 1.4454397707459272e-11,\n
@@ -963,8 +964,8 @@ def get_abundance(abundfile=False, abundset='AG89', element=[-1],\
      5: 3.9810717055349735e-10,\n
      6: 0.00036307805477010178,...\n
 
-  """    
-    
+  """
+
   if not abundfile:
     abunddata = get_data(False, False, 'abund', \
                                 datacache=datacache,\
@@ -1458,16 +1459,16 @@ def calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
     if int(om[0]) == 5:
 #      upsilon = interpolate.interp1d(xs, om[2:2+om[0]], kind='cubic',\
 #       bounds_error=False, fill_value=0.0)(st)
-      y2 = prep_spline_atomdb(xs, om[2:2+om[0]], 5)
-      upsilon = calc_spline_atomdb(xs, om[2:2+om[0]], y2, 5, st)
+      y2 = prep_spline_atomdb(xs, om[2:2+int(om[0])], 5)
+      upsilon = calc_spline_atomdb(xs, om[2:2+int(om[0])], y2, 5, st)
     elif int(om[0])== 9:
-      upsilon = interpolate.interp1d(xs9, om[2:2+om[0]], kind='cubic',\
+      upsilon = interpolate.interp1d(xs9, om[2:2+int(om[0])], kind='cubic',\
        bounds_error=False, fill_value=0.0)(st)
-      y2 = prep_spline_atomdb(xs9, om[2:2+om[0]], 9)
+      y2 = prep_spline_atomdb(xs9, om[2:2+int(om[0])], 9)
       stvec, isstvec = util.make_vec(st)
       upsilon = numpy.zeros(len(stvec))
       for ist, st in enumerate(stvec):
-        upsilon[ist] = calc_spline_atomdb(xs9, om[2:2+om[0]], y2, 9, st)
+        upsilon[ist] = calc_spline_atomdb(xs9, om[2:2+int(om[0])], y2, 9, st)
       if isstvec==False:
         upsilon = upsilon[0]
 
@@ -2121,19 +2122,13 @@ def interpolate_ionrec_rate(cidat,Te, force_extrap=False):
   tmpci[tmpci<0] = 0.0
 
 #  try:
-  tmp = numpy.exp(interpolate.interp1d(numpy.log(cidat['temperature'][:N_interp]), \
+  ci_in = numpy.double(cidat['temperature'][:N_interp])
+  tmpci = numpy.double(tmpci)
+
+  tmp = numpy.exp(interpolate.interp1d(numpy.log(ci_in), \
                              numpy.log(tmpci+1e-30), \
                              kind=1, bounds_error=False,\
                              fill_value=numpy.nan)(numpy.log(Te)))-1e-30
-
-
-#  print Te, tmp, cidat['min_temp'], cidat['max_temp']
-
-#  for i in range(len(Te)):
-#    print Te[i],tmp[i]
-#  print 'input'
-#  for i in range(len(cidat['temperature'])):
-#    print cidat['temperature'][i], cidat['ionrec_par'][i]
 
   # let's deal with the near misses
   nantest =  numpy.isnan(tmp)
@@ -2213,8 +2208,8 @@ def calc_ionrec_ci(cidat, Te, extrap=False, ionpot=False):
       npts = cidat['par_type']-const.CI_DERE
       ci[ici] = calc_ci_dere(Te[ici], ionpot, cidat['Temperature'][:npts], \
                              cidat['ionrec_par'][:npts])
-    
-    
+
+
     else:
       print "Unknown CI type: %i"%(cidat['par_type'])
 
@@ -2227,7 +2222,7 @@ def calc_ionrec_ci(cidat, Te, extrap=False, ionpot=False):
     if len(ilow) > 0:
       # calculate the value at Te_min
       Te_min = numpy.array([cidat['min_temp']])
-      
+
       cimin = calc_ionrec_ci(cidat, Te_min, ionpot=ionpot)
       # if log of this is < 46.0, this is a small number, just repeat this
       if numpy.log(cimin[0])<46.0:
@@ -2237,7 +2232,7 @@ def calc_ionrec_ci(cidat, Te, extrap=False, ionpot=False):
       # and use to construct a good second derivative.
       else:
         tetmp = numpy.logspace(numpy.log10(Te_min), numpy.log10(Te_min)+1,4)
-        
+
         citmp=calc_ionrec_ci(cidat, tetmp, ionpot=ionpot)
 
         tetmpl = numpy.log(tetmp)
@@ -2281,7 +2276,7 @@ def calc_ci_dere(Te, ionpot, Tscal, Upsscal):
 
   """
   Calculate the collisional ionization rates using the Dere 2007 method
-  
+
   Parameters
   ----------
   Te : float or array(float)
@@ -2292,24 +2287,24 @@ def calc_ci_dere(Te, ionpot, Tscal, Upsscal):
     scaled temperatures
   Upsscal : array(float)
     scaled upsilons
-  
+
   Returns
   -------
   float or array(float)
     Ionization rate in cm^3 s^-1
-  
+
   References
   ----------
   2007A&A...466..771D
   """
   from scipy import interpolate
-  from scipy.special import exp1  
-  
+  from scipy.special import exp1
+
   tin, wasvec = util.make_vec(Te)
   tinscal = tin*const.KBOLTZ*1000/ionpot
 
   f = 2.0
-  
+
   xin = (1 - numpy.log10(f) / numpy.log10(tinscal+f))
   xdat = Tscal
   ydat = Upsscal
@@ -2317,11 +2312,11 @@ def calc_ci_dere(Te, ionpot, Tscal, Upsscal):
   tck = interpolate.splrep(xdat,ydat)
   yout = interpolate.splev(xin,tck)
   R = tinscal**(-0.5) * ionpot**(-1.5) * exp1(1/tinscal)*yout
-  
+
   if not wasvec:
     R=R[0]
   return R
-  
+
 
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -2411,7 +2406,7 @@ def calc_ionrec_rr(cidat, Te, extrap=False):
                b * numpy.log(Te[ilow])**2 +\
                c * numpy.log(Te[ilow]) +\
                d
-        
+
         rr[ilow]=cinew
 
 
@@ -2457,24 +2452,24 @@ def calc_ionrec_dr(cidat, Te, extrap=False):
 
   """
   Calculate the DR rate at temperature Te for a transition cidat
-  
+
   Parameters
   ----------
-  
+
   cidat: array
     A line from the IR file with the data on the transition to be calcualted
   Te: array(float)
     Electron temperature of interest (in K)
   extrap : bool
     Whether to perform extrappolation or not
-  
-  
+
+
   Returns
   -------
   float
     The DR rate in cm^3 s^-1
   """
-  
+
   dr = numpy.zeros(len(Te))
   # set values outside range to NAN
   idr = numpy.where((Te >= cidat['min_temp']) & (Te <= cidat['max_temp']))[0]
@@ -2490,10 +2485,10 @@ def calc_ionrec_dr(cidat, Te, extrap=False):
             cidat['par_type'][6]*numpy.exp(-cidat['par_type'][2]/T_eV) +\
             cidat['par_type'][7]*numpy.exp(-cidat['par_type'][3]/T_eV) +\
             cidat['par_type'][8]*numpy.exp(-cidat['par_type'][4]/T_eV))
-  
+
     elif (cidat['par_type'] == const.DR_BADNELL):
       dr[idr] = dr_badnell(Te[idr], cidat['ionrec_par'])
-  
+
     elif (((cidat['par_type'] >= const.INTERP_IONREC_RATE_COEFF) &
          (cidat['par_type'] <= const.INTERP_IONREC_RATE_COEFF + const.MAX_IONREC))|
         ((cidat['par_type'] >= const.INTERP_IONREC_RATE_OPEN) &
@@ -2886,7 +2881,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
   lvdatap1 : HDUList
     The level data for the recombining or ionized data.
   ionpot : float
-    The ionization potential in eV (required for some calculations, if 
+    The ionization potential in eV (required for some calculations, if
     not provided, it will be looked up)
   force_extrap : bool
     Force extrappolation to occur for rates outside the nominal range
@@ -2920,31 +2915,31 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
     See description in read_data
   datacache : dict
     See description in read_data
-    
+
   Returns
   -------
   float or array(float)
     Maxwellian rate coefficient, in units of cm^3 s^-1
     For collisional excitation (proton or electron) returns
     excitation, dexcitation rates
-    
+
   Examples
   --------
   Te = numpy.logspace(4,9,20)
-  
+
   (1) Get excitation rates for row 12 of an Fe XVII file
   colldata = pyatomdb.atomdb.get_data(26,17,'EC')
   exc, dex = get_maxwell_rate(Te, colldata=colldata, index=12)
-  
+
   (2) Get excitation rates for row 12 of an Fe XVII file
   exc, dex = get_maxwell_rate(Te, Z=26,z1=17, index=12)
-  
+
   (3) Get excitation rates for transitions from level 1 to 15 of FE XVII
   exc, dex = get_maxwell_rate(Te, Z=26, z1=17, dtype='EC', finallev=15, initlev=1)
-  
+
   """
-# Note interface update 03-Apr-2016  
-  
+# Note interface update 03-Apr-2016
+
   isiter=True
   try:
     _ = (e for e in Te)
@@ -2979,9 +2974,9 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
     if dtype=='EC':
       Z=colldata[1].header['ELEMENT']
       z1=colldata[1].header['ION_STAT']+1
-      
-        
-        
+
+
+
   else:
     # Check we have Z & z1 & dtype specified
     if ((dtype != False) & (Z>0) & (z1>0)):
@@ -2997,8 +2992,8 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
       else:
         print "Error: unknown dtype %s"%(dtype)
         return False
-      
-          
+
+
     else:
       print "Error: must specify dtype, Z and z1 to load file"
       return False
@@ -3016,7 +3011,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
         return ret, ret
     else:
       return ret
-  
+
   # now to sort out Z, z1
   if Z<0:
     Z = colldata[1].header['ELEMENT']
@@ -3025,7 +3020,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
       z1 = colldata[1].header['ION_STAT']+1
     elif dtype in ['XR','DR','RR','XD']:
       z1 = colldata[1].header['ION_STAT']+2
-  
+
   # Now get the correct transition
   if index>=0:
     if (finallev | initlev):
@@ -3050,13 +3045,13 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
 
 
   else:
-  
+
     if (finallev==False | initlev == False):
       print "Error: if not specifying index, must specify finallev and ",
       print "initlev"
       return False
     else:
-      
+
       if dtype=='EC':
         index = numpy.where((colldata[1].data['lower_lev']==initlev) &\
                             (colldata[1].data['upper_lev']==finallev))[0]
@@ -3120,7 +3115,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
           return ret
         else:
           index = index[0]
-          
+
   # convert the data.
 
   if dtype=='EC':
@@ -3128,16 +3123,16 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
     ecdat = colldata[1].data[index]
     upind = ecdat['upper_lev']
     loind = ecdat['lower_lev']
-    
+
     if not(lvdata):
       lvdata = get_data(Z,z1,'LV', settings=settings, datacache=datacache)
-    
+
     uplev = lvdata[1].data[upind-1]
     lolev = lvdata[1].data[loind-1]
 
     delta_E = uplev['energy']-lolev['energy']
     Ztmp = lvdata[1].header['ELEMENT']
-    
+
     degu = uplev['lev_deg']
     degl = lolev['lev_deg']
 
@@ -3179,10 +3174,10 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
         lvdata = get_data(z,z1,'LV', settings=settings, datacache=datacache)
       if not(lvdatap1):
         lvdatap1 = get_data(z,z1+1,'LV', settings=settings, datacache=datacache)
-    
+
       uplev = lvdatap1[1].data[upind-1]
       lolev = lvdata[1].data[loind-1]
-      
+
       # get the ionization potential
       if not(ionpot):
 #        print "fixing ionpot"
@@ -3331,7 +3326,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
 #        print lvdata, Z, z1
         lvdata = get_data(Z,z1,'LV', settings=settings, datacache=datacache)
 #        print lvdata
-        
+
       if not(lvdatap1):
         lvdatap1 = get_data(Z,z1+1,'LV', settings=settings, datacache=datacache)
 
@@ -3432,7 +3427,7 @@ def sigma_hydrogenic(Z, N,L,  Ein):
     # Common Factorial
     commfact1 = 1.
     commfact2 = 1.
-    
+
     if (n+l >= 2*l+2):
       for iFact in range(2*l+3, n+l+1):
         commfact1 *= iFact
@@ -3457,14 +3452,14 @@ def sigma_hydrogenic(Z, N,L,  Ein):
 
     Gterm_p1 = (l+1-n)*G_hyd(l+1, n-l-1, eta, rho) +\
     ((l+1+n)/(1+rho*rho))*G_hyd(l+1, n-l, eta, rho)
-    
+
     if (l!=0):
       Gterm_m1 = G_hyd(l, n-l-1, eta, rho) - \
         G_hyd(l, n-l+1, eta, rho)/((1.+rho*rho)**2)
     else:
       Gterm_m1 = 0.
 
-    
+
 
     sigma_p1 = (coeff/E[iE])*((2)**(4*l+6.)/3.)*(lp1*lp1/(2*l+1.))*\
                (commfact1/commfact2)*(prodterm/(lp1*lp1+eta*eta))*\
@@ -3574,10 +3569,10 @@ def calc_rrc(Z, z1, eedges, Te, lev, xstardat=False, \
   """
   # Version 0.1 Initial Release
   #
-  # Version 0.2 
+  # Version 0.2
   # Fixed unit issues
   # Adam Foster 2015-Oct-23
-  
+
   #OK, let's get the line data.
 
   rrc = numpy.zeros(len(eedges)-1)
@@ -3666,7 +3661,7 @@ def calc_rrc(Z, z1, eedges, Te, lev, xstardat=False, \
   emission_edges = rrc_ph_value(eedges, Z, z1,  rrc_ph_factor, I_e, \
                                 kT, ldat, xstardat, xstarlevfinal)
 
-  
+
   edgebin = numpy.argmin(eedges>I_e)-1
 
   if edgebin > -1:
@@ -3755,7 +3750,7 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
         sigma_coeff=numpy.zeros(2, dtype=float)
         sigma_coeff[0] = finlev['n_quan']
         sigma_coeff[1] = finlev['l_quan']
-        
+
       else:
         continue
     elif finlev['phot_type']==const.CLARK:
@@ -3815,7 +3810,7 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
 #        print "Calculated RRC for Z %i  z1 %i  iLev %i"%\
 #              (Z, z1, iLev)
 #        for i in range(len(tmprrc)):
-#          print ebins[i],ebins[i+1], tmprrc[i]      
+#          print ebins[i],ebins[i+1], tmprrc[i]
 #        print "ENDCalculated RRC for Z %i  z1 %i  iLev %i"%\
 #              (Z, z1, iLev)
         rr_lev_rate = sum(tmprrc)
@@ -3833,19 +3828,19 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
       tmprrc, total = calc_rrc(Z, z1, ebins, T, iLev+1, \
               settings=settings, datacache=datacache, returntotal=True)
       tmprrc *= abund*ion_pop*binwidth
-      
+
       rr_lev_rate = sum(tmprrc)
 #      print "Calculated RRC for Z %i  z1 %i  iLev %i"%\
 #            (Z, z1, iLev)
 #      for i in range(len(tmprrc)):
-#        print ebins[i],ebins[i+1], tmprrc[i]      
+#        print ebins[i],ebins[i+1], tmprrc[i]
 #      print "ENDCalculated RRC for Z %i  z1 %i  iLev %i"%\
 #            (Z, z1, iLev)
 
       LevelRecombRate[iLev] += total*abund*ion_pop
-      
+
       tot_rec_rate += total*abund*ion_pop
-      
+
       rrc += tmprrc
 #      for i in xrange(len(tmprrc)):
         #print "%e %e %e" %(ebins[i], ebins[i+1], tmprrc[i])
@@ -3944,7 +3939,7 @@ def read_filemap(filemap="$ATOMDB/filemap", atomdbroot="$ATOMDB"):
                         (numpy.array(z1)==z1_tmp))[0]
 
       j=j[0]
-      
+
       if int(splt[0]) == 1:
         irlist[j] = fname
       if int(splt[0]) == 2:
@@ -4110,14 +4105,14 @@ def get_data(Z, z1, ftype, datacache=False, \
        *           'DR' - dielectronic recombination satellite line data
        *           'PI' - XSTAR photoionization data
        *           'AI' - autoionization data
-       
+
        Or, for non-ion-specific data (abundances and bremstrahlung coeffts)
        *           'ABUND' - abundance tables
        *           'HBREMS' - Hummer bremstrahlung coefficients
        *           'RBREMS' - relativistic bremstrahlung coefficitients
        *           'IONBAL' - ionization balance tables
        *           'EIGEN'  - eigenvalue files
-       
+
   filemap : string
     The filemap to use, if you do not want to use the default one.
 
@@ -4183,11 +4178,11 @@ def get_data(Z, z1, ftype, datacache=False, \
 
   # check if data type requested in "miscellanous", i.e. a bremstrahlung
   # or abundance related file, not an ion-specific file.
-  
+
   ismisc = False
-  if ftype.lower() in ['abund','hbrems','rbrems','ionbal']:
+  if ftype.lower() in ['abund','hbrems','rbrems','ionbal','eigen']:
     ismisc = True
-  
+
 
   if datacache != False:
     # make sure that the relevant dictionaries are ready to receive the data
@@ -4214,25 +4209,43 @@ def get_data(Z, z1, ftype, datacache=False, \
         datacache['datasums']['misc'] = {}
 
     if ismisc:
-      if ftype.upper() in datacache['data']['misc'].keys():
+      havedata = False
+
+#      if not 'misc' in datacache['data'].keys():
+#        print "ping1"
+#        datacache['data']['misc']={}
+
+
+      if ftype.upper() =='EIGEN':
+        if not 'EIGEN' in datacache['data']['misc'].keys():
+          datacache['data']['misc']['EIGEN']={}
+          datacache['datasums']['misc']['EIGEN']={}
+          havedata = False
+
+      if ftype.upper() =='EIGEN':
+        if Z in datacache['data']['misc']['EIGEN'].keys():
+          havedata=True
+
+
+      elif ((ftype.upper() in datacache['data']['misc'].keys()) &\
+            (ftype.upper() != 'EIGEN')):
       # this means we have the data cached, no need to fetch it
-        pass
-      else:
-      # check for file location overrides
+        havedata=True
+
+      if not(havedata):
         if settings:
           if settings['filemap']:
             fmapfile = settings['filemap']
           if settings['atomdbroot']:
             atomdbroot = settings['atomdbroot']
- 
+
         fname = get_filemap_file(ftype, False, False, fmapfile=fmapfile,\
                                atomdbroot=atomdbroot, quiet=True,\
                                misc = True)
-
         if fname=='':
         # no data exists
           # This is expected if it's an ionbal file
-          
+
           if ftype.lower()=='ionbal':
             # conversion here:
             curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
@@ -4253,6 +4266,9 @@ def get_data(Z, z1, ftype, datacache=False, \
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.4.fits'%(atomic.Ztoelsymb(Z).lower())
             else:
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.7.fits'%(atomic.Ztoelsymb(Z).lower())
+            if not 'EIGEN' in datacache['data']['misc'].keys():
+              datacache['data']['misc'][ftype.upper()]={}
+              datacache['datasums']['misc'][ftype.upper()]={}
           else:
             datacache['data']['misc'][ftype.upper()] = False
 
@@ -4285,7 +4301,6 @@ def get_data(Z, z1, ftype, datacache=False, \
 
 
 
-
     else:
       if ftype.upper() in datacache['data'][Z][z1].keys():
       # this means we have the data cached, no need to fetch it
@@ -4296,17 +4311,17 @@ def get_data(Z, z1, ftype, datacache=False, \
           if 'filemap' in settings.keys():
             if settings['filemap']:
               fmapfile = settings['filemap']
-          if 'atomdbroot' in settings.keys():    
+          if 'atomdbroot' in settings.keys():
             if settings['atomdbroot']:
               atomdbroot = settings['atomdbroot']
- 
+
         fname = get_filemap_file(ftype, Z, z1, fmapfile=fmapfile,\
                                atomdbroot=atomdbroot, quiet=True)
 
         if fname=='':
         # no data exists
 
-          
+
           datacache['data'][Z][z1][ftype.upper()] = False
 
         else:
@@ -4460,16 +4475,38 @@ def get_data(Z, z1, ftype, datacache=False, \
           d[1].columns.change_name('COEFF_OM','EFFCOLLSTRPAR')
         except:
           d[1].columns[d[1].data.names.index('COEFF_OM')].name='EFFCOLLSTRPAR'
-    if datacache:
-      datacache['data'][Z][z1][ftype.upper()] = d
-      datacache['datasums'][Z][z1][ftype.upper()] = d[1].header['DATASUM']
 
-      return datacache['data'][Z][z1][ftype.upper()]
+    if datacache:
+      if ismisc:
+        if ftype.upper()=='EIGEN':
+          if not Z in datacache['data']['misc']['EIGEN'].keys():
+            datacache['data']['misc']['EIGEN'][Z]=d
+            datacache['datasums']['misc']['EIGEN'][Z] = d[1].header['DATASUM']
+            return datacache['data']['misc'][ftype.upper()][Z]
+
+        else:
+          datacache['data']['misc'][ftype.upper()] = d
+          datacache['datasums']['misc'][ftype.upper()] = d[1].header['DATASUM']
+          return datacache['data']['misc'][ftype.upper()]
+
+      else:
+        datacache['data'][Z][z1][ftype.upper()] = d
+        datacache['datasums'][Z][z1][ftype.upper()] = d[1].header['DATASUM']
+
+        return datacache['data'][Z][z1][ftype.upper()]
     else:
       return d
   else:
     if datacache:
-      return datacache['data'][Z][z1][ftype.upper()]
+      if ismisc:
+        if ftype.upper()=='EIGEN':
+          return datacache['data']['misc'][ftype.upper()][Z]
+        else:
+          return datacache['data']['misc'][ftype.upper()]
+      else:
+        return datacache['data'][Z][z1][ftype.upper()]
+
+
     else:
       return False
 
@@ -4604,7 +4641,7 @@ def rrc_ph_value(E, Z, z1, rrc_ph_factor, IonE, kT, levdat, \
 
   igood = numpy.where(((-(E - IonE)/kT)>const.MIN_RRC_EXPONENT)&\
                        ((-(E - IonE)/kT)<const.MAX_RRC_EXPONENT))[0]
-  
+
   ifinite = numpy.isfinite(E[igood]**2*numpy.exp(-(E[igood] - IonE)/kT))
   #print kT
   if sum(ifinite)!=len(igood):
@@ -4687,7 +4724,7 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
 #  Adam Foster August 28th 2015
 
   # determine whether input is scalar or vector
-  
+
   Evec,isvec=util.make_vec(E)
 #  isvec = True
 #  try:
@@ -4695,7 +4732,7 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
 #  except TypeError:
 #    isvec = False
 #  Evec = numpy.array([E])
-#    
+#
   result = numpy.zeros(len(Evec), dtype=float)
 
   # set up the sigma coefficients
@@ -4889,12 +4926,12 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
 
-  
+
 #-----------------------------------------------------------------------
 def A_twoph(A,E0,E):
   """
   Convert the A value into energy distribution for 2-photon transitions
-  
+
   Parameters
   ----------
   A : float
@@ -4907,49 +4944,49 @@ def A_twoph(A,E0,E):
   -------
   array(float)
     Distribution of transtion rate amongst bins E (s^-1)
-  
+
   References
   ----------
-  From Nussbaumer & Schmutz, 1984, A+A, 138,495 
-  Z is the element, and E is the energy of the bin, in keV 
-  y is unitless, and is equal to nu/nu0 = lambda0/lambda, where 
-  lambda0 = 1215.7 A for hydrogen--the base wavelength of the 2s->1s 
-  transition.  This fit is accurate to better than 0.6% for 
-  0.01 < y < 0.99 
+  From Nussbaumer & Schmutz, 1984, A+A, 138,495
+  Z is the element, and E is the energy of the bin, in keV
+  y is unitless, and is equal to nu/nu0 = lambda0/lambda, where
+  lambda0 = 1215.7 A for hydrogen--the base wavelength of the 2s->1s
+  transition.  This fit is accurate to better than 0.6% for
+  0.01 < y < 0.99
 
-  The A_norm is the A value for neutral hydrogen for this transition. 
-  For other transitions, we renormalize to the appropriate A value. 
+  The A_norm is the A value for neutral hydrogen for this transition.
+  For other transitions, we renormalize to the appropriate A value.
 
-  This routine is used for BOTH hydrogenic and He-like two-photon 
-  distributions.  This is justified using the result of 
-  Derevianko & Johnson, 1997, Phys Rev A, 56, 1288 who show in 
-  Figures 5 and 2 of that paper that the difference is everywhere 
-  less than 10% between these two for Z=6-28 -- it is about 5% or so. 
+  This routine is used for BOTH hydrogenic and He-like two-photon
+  distributions.  This is justified using the result of
+  Derevianko & Johnson, 1997, Phys Rev A, 56, 1288 who show in
+  Figures 5 and 2 of that paper that the difference is everywhere
+  less than 10% between these two for Z=6-28 -- it is about 5% or so.
   """
-  
+
   C     = 202.0 #s^-1
   alpha = 0.88
   beta  = 1.53
   gamma = 0.80
   A_norm= 8.2249 #s^-1
-  
-  
+
+
   y = E/E0
   i = numpy.where((y>0) & (y<1))[0]
-  
+
   result = numpy.zeros(len(E), dtype=float)
 
   x = y[i]*(1-y[i])
-  
+
   z = (4*x)**gamma
-  
+
   result[i] = C*(x*(1-z) + alpha* (x**beta)*z)
-  
-  result *= (A/A_norm)  # Also need R_Z/R_H, but even for Z=26, this is 
-                         # only 1.0005, so we'll ignore it. 
-                         
-  return result   # in s^-1 
-  
+
+  result *= (A/A_norm)  # Also need R_Z/R_H, but even for Z=26, this is
+                         # only 1.0005, so we'll ignore it.
+
+  return result   # in s^-1
+
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
@@ -4957,7 +4994,7 @@ def A_twoph(A,E0,E):
 def calc_two_phot(wavelength, einstein_a, lev_pop, ebins):
   """
   Calculate two photon spectrum
-  
+
   Parameters
   ----------
   wavelength : float
@@ -4968,7 +5005,7 @@ def calc_two_phot(wavelength, einstein_a, lev_pop, ebins):
     The level population for the upper level
   ebins : array(float)
     The bin edges for the spectrum (in keV)
-    
+
   Returns
   -------
   array(float)
@@ -4980,17 +5017,17 @@ def calc_two_phot(wavelength, einstein_a, lev_pop, ebins):
   E0 = const.HC_IN_KEV_A/wavelength
   dE= ebins[1:]-ebins[:-1]
   A_E=A_twoph(einstein_a,E0,E)
-    
+
 #    emission = ldat['lev_pop']*(E/E0)*A_E*dE*const.ERG_KEV
   emission = lev_pop*(E/E0)*A_E*dE*const.ERG_KEV
   emission[E>=E0]=0.0
     # at this point, emission is in erg cm^3/s/bin
-    
+
     # convert to photons cm^3/s/bin
   emission/= (const.ERG_KEV*E)
-  
+
 #  print "A=%e, E0=%e, lev_pop=%e, wavelength=%e"%(einstein_a, E0, lev_pop, wavelength)
-  
+
   i = numpy.where(E<E0)[0]
 #  for ii in i:
 #    print "iBin: %i E: %e A_E: %e Emiss: %e"%(ii, E[ii], A_E[ii], emission[ii])
@@ -5135,9 +5172,9 @@ def get_oscillator_strength(Z, z1, upperlev, lowerlev, datacache=False):
 
   lvdat = get_data(Z, z1, 'LV', datacache=datacache)
   ladat = get_data(Z, z1, 'LA', datacache=datacache)
-  
+
   # get the various things
-  
+
   i = numpy.where((ladat[1].data['upper_lev']==upperlev) &\
                   (ladat[1].data['lower_lev']==lowerlev))[0]
 
@@ -5158,80 +5195,87 @@ def get_oscillator_strength(Z, z1, upperlev, lowerlev, datacache=False):
   else:
     up = upperlev
     lo = lowerlev
-  
+
   i = i[0]
   Aji = ladat[1].data['einstein_a'][i]
   g_j = lvdat[1].data['lev_deg'][up-1]
   g_i = lvdat[1].data['lev_deg'][lo-1]
   lam = ladat[1].data['wavelen'][i]
-  
-  
+
+
   f_ij = Aji * (g_j*1.0/g_i) * (lam**2/6.6702e15)
-  
+
   return f_ij
 
 
 def make_lorentz(version = False, do_all=True, cie=False, power=False,\
-                 stronglines=False, neicsd=False, neilines=False):
+                 stronglines=False, neicsd=False, neilines=False,\
+                 neicont=False, levpop=False):
   """
-  This makes all the Lorentz data comparison files from the Astrophysical 
+  This makes all the Lorentz data comparison files from the Astrophysical
   Collisional Plasma Test Suite, version 0.4.0
-  
+
   Parameters
   ----------
   version : string (optional)
     e.g. "3.0.7" to run the suite for v3.0.7. Otherwise uses latest version.
-  
+
   Returns
   -------
   none
   """
-  
+
   # set the version
   if util.keyword_check(version):
-	util.switch_version(version)
+    util.switch_version(version)
   else:
-	version = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
+    version = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
 
   # if one (or more) in particular is specified, turn off "do_all"
-  if sum([cie, power, stronglines, neicsd,neilines])>0:
-	do_all=False
+  if sum([cie, power, stronglines, neicsd,neilines, neicont, levpop])>0:
+    do_all=False
 
   # if do_all, turn them all on
   if do_all:
-	cie=True
-	power=True
-	stronglines=True
-	neicsd=True
-	neilines=True
+    cie=True
+    power=True
+    stronglines=True
+    neicsd=True
+    neilines=True
+    neicont = True
+    levpop = True
 
   # run the data
-  if cie:
-    lorentz_cie(version)
-  if power:
-    lorentz_power(version)
-  if stronglines:
-	lorentz_stronglines(version)
-  if neicsd:
-    lorentz_neicsd(version)
-  if neilines:
-    lorentz_neilines(version)
-  
+#  if cie:
+#    lorentz_cie(version)
+#  if power:
+#    lorentz_power(version)
+#  if stronglines:
+#    lorentz_stronglines(version)
+#  if neicsd:
+#    lorentz_neicsd(version)
+#  if neilines:
+#    lorentz_neilines(version)
+#  if neicont:
+#    lorentz_neicont(version)
+  if levpop:
+    lorentz_levpop(version)
+
 def lorentz_cie(version):
   """
   Calculate the CSD of equilibrium plasmas at 1e6, 6e6K and 4keV.
-  
+
   Parameters
   ----------
   version : string
     The version string
-  
+
   Returns
   -------
   None
-  
+
   """
-    
+
   # open the output files
   f = open('CIE-CSD_atomdb_%s.dat'%(version),'w')
   f.write('Z   Ion   1e6K   6e6K   4.642e7K\n')
@@ -5241,10 +5285,10 @@ def lorentz_cie(version):
     ionbal = apec.calc_full_ionbal(kT, extrap=True, cie=True, \
                       Zlist=Zlist)
     ionbal_out.append(ionbal)
-  
+
   for Z in Zlist:
     for z1 in range(Z+1):
-	  f.write("%2i %2i %10.6f %10.6f %10.6f\n"%\
+      f.write("%2i %2i %10.6f %10.6f %10.6f\n"%\
               (Z, z1, \
                max(-20, numpy.log10(ionbal_out[0][Z][z1])),\
                max(-20, numpy.log10(ionbal_out[1][Z][z1])),\
@@ -5255,19 +5299,23 @@ def lorentz_cie(version):
 
 def lorentz_power(version):
   """
-  Calculate the power emitted from a 13.6eV to 13.6keV plasma
-  
+  Calculate the power emitted from 13.6eV to 13.6keV in a 1m^3 slab of
+  plasma with n_e=1e6m^-3.
+
   Parameters
   ----------
   version : string
     The version string
-  
+
   Returns
   -------
   None
-  
+
   """
   Zlist = [1,2,6,7,8,10,12,14,16,18,20,26,28]
+  ag89=get_abundance(abundset='AG89')
+  lodd=get_abundance(abundset='Lodd09')
+
   # open the output files
   f = open('Power_atomdb_%s.dat'%(version),'w')
   ebins = numpy.linspace(0.0136, 13.6, 10001)
@@ -5276,19 +5324,19 @@ def lorentz_power(version):
   for iT in range(51):
     flt = 4.0+(0.1*iT)
     s += "        %.1f"%(flt)
-  
+
   f.write("%s\n"%(s))
-  
+
   ses = spectrum.Session(elements=Zlist)
   ses.set_specbins(ebins, specunits='keV')
   for iT in range(51):
     kT = 4.0+(iT*0.1)
     kT = 10**kT
     if iT == 0:
-		kT+=1
+      kT+=1
     ses.return_spectra(kT, teunit='K', nearest=True)
     print iT
-  
+
   for Z in Zlist:
     tot_e = numpy.zeros(51)
     s = "%2i"%(Z)
@@ -5296,7 +5344,9 @@ def lorentz_power(version):
     for iT in range(2,53):
       spec = ses.spectra[iT].spectrum_by_Z[Z]
       e = spec*energy
-      tot_e[iT-2] = sum(e)
+      # add corrections for NH != 1, to 1m3 volume, and abundance set
+      # from AG89 to Lodders 2009
+      tot_e[iT-2] = sum(e)*0.8365*1e6*lodd[Z]/ag89[Z]
       s+= " %10.6f"%(numpy.log10(tot_e[iT-2]))
     f.write("%s\n"%(s))
   f.close()
@@ -5304,31 +5354,31 @@ def lorentz_power(version):
 
 def lorentz_stronglines(version):
   """
-  Calculate the 100 strongest lines below 1000A
-  
+  Calculate the 100 strongest lines below 1000A from a 1m3 slab of plasma
+  with n_e = 1e6m-3, at 3 different temperatures: 10^6K, 6e6K, 4.642e7K
+
   Parameters
   ----------
   version : string
     The version string
-  fourkevfile: string
-    The 4kev line file
-  
+
   Returns
   -------
   None
-  
+
   """
-  
+
   ldat = pyfits.open(os.path.expandvars("$ATOMDB/apec_v%s_line.fits"%(version)))
-  
+
   # get the strongest 500 lines
   llist_type = numpy.dtype({'names':['Lambda','Z','Ion','Flux', 'UpperLev', 'LowerLev'],\
                               'formats':[float, int, int, float, int, int]})
-  abund=pyatomdb.atomdb.get_abundance(abundset='Lodd09')
+  lodd=get_abundance(abundset='Lodd09')
+  ag89=get_abundance(abundset='AG89')
   for ikT, kT in enumerate([1e6, 6e6, 4/const.KBOLTZ]):
     upind = numpy.where(ldat[1].data['kT']>kT*const.KBOLTZ)[0][0]+2
     loind = upind-1
-    
+
     llist_lo = ldat[loind].data
     llist_up = ldat[upind].data
     # only include lines below 1000A
@@ -5339,9 +5389,9 @@ def lorentz_stronglines(version):
     # now interpolate
     t1 = numpy.log(ldat[1].data['kT'][loind-2])
     t2 = numpy.log(ldat[1].data['kT'][upind-2])
-    
-    
-    
+
+
+
     r1 = 1- (numpy.log(kT*const.KBOLTZ)-t1)/(t2-t1)
     r2 = 1- r1
 
@@ -5369,18 +5419,18 @@ def lorentz_stronglines(version):
         llist_out['Flux'][i] += numpy.log(llist_up['Epsilon'][ii[0]])*r2
 
     # do abundance
-    abvec = numpy.zeros(max(abund.keys())+1)
+    abvec = numpy.zeros(max(lodd.keys())+1)
     for Z in range(1,len(abvec)):
-      abvec[Z] = abund[Z]
-    ab = abvec[llist_out['Element']]
-	
+      abvec[Z] = lodd[Z]/ag89[Z]
+    ab = abvec[llist_out['Z']]
+
     llist_out['Flux']=numpy.exp(llist_out['Flux'])
     llist_out['Flux']*=ab
     llist_out.sort(order='Flux')
     llist_out = llist_out[::-1]
 
     now = datetime.datetime.now()
-    
+
     f.write('# Generated %s by %s\n'%(now.strftime("%c"), os.getenv('USER')))
     f.write('# 100 strongest lines in collisional plasma with T=%eK\n'%(kT))
     f.write('Indx Lambda Z Ion Flux\n')
@@ -5391,30 +5441,30 @@ def lorentz_stronglines(version):
              llist_out['Lambda'][i],\
              llist_out['Z'][i],\
              llist_out['Ion'][i],\
-             numpy.log10(llist_out['Flux'][i]*0.8365))
-             
+             numpy.log10(llist_out['Flux'][i]*0.8365*1e6))
+
       f.write("%3i %14f %2i %2i %10.6f\n"%\
             (i+1,\
              llist_out['Lambda'][i],\
              llist_out['Z'][i],\
              llist_out['Ion'][i],\
-             numpy.log10(llist_out['Flux'][i]*0.8365)))
+             numpy.log10(llist_out['Flux'][i]*0.8365*1e6)))
     f.close()
-             
+
 def lorentz_neicsd(version):
   """
   Charge state distribution of a gas ionizing from 1e4K to 2.321e7K (=2keV)
   at a fluence ($n_e$ * t, or $\tau$) of $10^{10}$ cm$^-3$ s
-  
+
   Parameters
   ----------
   version : string
     The version string
-  
+
   Returns
   -------
   None
-  
+
   """
   Te_init = 1e4
   Te_final = 2.321e7
@@ -5433,8 +5483,8 @@ def lorentz_neicsd(version):
     for i in range(len(ionbal)):
       f.write('%2i %2i %e\n'%(Z,i,ionbal[i]))
   f.close()
-  
-  
+
+
 def lorentz_neilines(version):
   """
   100 strongest lines with wavelength < 1000A for a 1cm^3 plasma
@@ -5442,46 +5492,67 @@ def lorentz_neilines(version):
   at a fluence ($n_e$ * t, or $\tau$) of $10^{10}$ cm$^-3$ s
   (2) starting at 3.5keV, going to 1.5keV
   at a fluence ($n_e$ * t, or $\tau$) of $10^{10}$ cm$^-3$ s
-  
+
   Parameters
   ----------
   version : string
     The version string
-  
+
   Returns
   -------
   None
-  
+
   """
-  abund=get_abundance(abundset='Lodd09')
-  abund_old=get_abundance(abundset='AG89')
-  
-  abund_square = numpy.zeros(len(abund)+1)
-  for i in abund.keys():
-    abund_square[i]=abund[i]/abund_old[i]
+  import pickle
+  lodd=get_abundance(abundset='Lodd09')
+  ag89=get_abundance(abundset='AG89')
+
+  abund = numpy.zeros(len(ag89)+1)
+  for i in lodd.keys():
+    abund[i]=lodd[i]/ag89[i]
   Te_init_list = [1e4, 3.5/const.KBOLTZ]
   Te_final_list = [2.321e7, 1.5/const.KBOLTZ]
   tau_list = [1e10, 1e10]
   now = datetime.datetime.now()
   util.switch_version(version)
-  f = open('NEI-Lines_atomdb_v%s.dat'%(version),'w')
-  f.write('# Generated %s by %s\n'%(now.strftime("%c"), os.getenv('USER')))
-  f.write('# CSD of plasma ionizing from 1e4K to 2.321e7K for ne*t = 1e10 cm^-3 s\n')
-  f.write('# Lambda is in Angstroms\n')
-  f.write('Lambda Z Ion Flux\n')
 
 
-  
+
   for irun in range(len(Te_init_list)):
+
+
     Te_init = Te_init_list[irun]
     Te_final = Te_final_list[irun]
     tau = tau_list[irun]
+
+
+    f = open('NEI-Lines%i_atomdb_v%s.dat'%(irun+1,version),'w')
+    f.write('# Generated %s by %s\n'%(now.strftime("%c"), os.getenv('USER')))
+    f.write('# Stong Lines of 1m3 slab of plasma ionizing from %.3eK to %.3eK for ne*t = %.0e cm^-3 s\n'%\
+             (Te_init, Te_final, tau))
+    f.write('# Lambda is in Angstroms\n')
+    f.write('Lambda Z Ion Flux\n')
 
     ldat = pyfits.open(os.path.expandvars("$ATOMDB/apec_v%s_nei_line.fits"%(version)))
 
     upind = numpy.where(ldat[1].data['kT']>Te_final*const.KBOLTZ)[0][0]+2
     loind = upind-1
-    
+    print "upind = %i, %eK" %(upind, ldat[upind].header['TEMPERATURE'])
+    print "loind = %i, %eK"%(loind, ldat[loind].header['TEMPERATURE'])
+    print "Te_final = %eK"%(Te_final)
+
+
+    t1 = numpy.log(ldat[1].data['kT'][loind-2])
+    t2 = numpy.log(ldat[1].data['kT'][upind-2])
+    print "t1 = ", t1
+    print "t2 = ", t2
+    print "log(tefinal)", numpy.log(Te_final*const.KBOLTZ)
+    r1 = 1- (numpy.log(Te_final*const.KBOLTZ)-t1)/(t2-t1)
+    r2 = 1- r1
+    print "r1= ",r1, "r2  ", r2
+
+
+
     llist_lo = ldat[loind].data
     llist_up = ldat[upind].data
     # only include lines below 1000A
@@ -5501,17 +5572,22 @@ def lorentz_neilines(version):
     for Z in [1,2,6,7,8,10,12,14,16,18,20,26,28]:
       ionbal_square[Z,:Z+1] = ionbal[Z]
 
-    scale = abund_square[llist_lo['ELEMENT']] * ionbal_square[llist_lo['ELEMENT'],llist_lo['ION_DRV']-1]
+    scale = abund[llist_lo['ELEMENT']] * ionbal_square[llist_lo['ELEMENT'],llist_lo['ION_DRV']-1]
     llist_lo['EPSILON'] *= scale
 
-    scale = abund_square[llist_up['ELEMENT']] * ionbal_square[llist_up['ELEMENT'],llist_up['ION_DRV']-1]
-    llist_up['EPSILON'] *= scale
+    print "max scale:", max(scale)
+    print "max eps:", max(llist_lo['EPSILON'])
 
+    scale = abund[llist_up['ELEMENT']] * ionbal_square[llist_up['ELEMENT'],llist_up['ION_DRV']-1]
+    llist_up['EPSILON'] *= scale
+    print "max scale:", max(scale)
+    print "max eps:", max(llist_up['EPSILON'])
       # remove weak lines
     llist_lo = llist_lo[llist_lo['EPSILON']>1e-30]
     llist_up = llist_up[llist_up['EPSILON']>1e-30]
     print "len lo = ", len(llist_lo)
     print "len up = ", len(llist_up)
+
 
 #    llist_lo = numpy.array(llist_lo)
 
@@ -5528,15 +5604,15 @@ def lorentz_neilines(version):
            (llist_lo['LowerLev'][i] == llist_lo_out['LowerLev'][iline]) &\
            (llist_lo['Ion'][i] == llist_lo_out['Ion'][iline])):
         llist_lo_out['Epsilon'][iline]+=llist_lo['Epsilon'][i]
-        
+
       else:
-		iline+=1
-		llist_lo_out['Element'][iline] = llist_lo['Element'][i]
-		llist_lo_out['Ion'][iline] = llist_lo['Ion'][i]
-		llist_lo_out['UpperLev'][iline] = llist_lo['UpperLev'][i]
-		llist_lo_out['LowerLev'][iline] = llist_lo['LowerLev'][i]
-		llist_lo_out['Epsilon'][iline] = llist_lo['Epsilon'][i]
-		llist_lo_out['Lambda'][iline] = llist_lo['Lambda'][i]
+        iline+=1
+        llist_lo_out['Element'][iline] = llist_lo['Element'][i]
+        llist_lo_out['Ion'][iline] = llist_lo['Ion'][i]
+        llist_lo_out['UpperLev'][iline] = llist_lo['UpperLev'][i]
+        llist_lo_out['LowerLev'][iline] = llist_lo['LowerLev'][i]
+        llist_lo_out['Epsilon'][iline] = llist_lo['Epsilon'][i]
+        llist_lo_out['Lambda'][iline] = llist_lo['Lambda'][i]
 
     llist_lo_out=llist_lo_out[:iline+1]
     llist_lo_out=llist_lo_out[llist_lo_out['Epsilon']>1e-20]
@@ -5555,31 +5631,32 @@ def lorentz_neilines(version):
            (llist_up['LowerLev'][i] == llist_up_out['LowerLev'][iline]) &\
            (llist_up['Ion'][i] == llist_up_out['Ion'][iline])):
         llist_up_out['Epsilon'][iline]+=llist_up['Epsilon'][i]
-        
+
       else:
-		iline+=1
-		llist_up_out['Element'][iline] = llist_up['Element'][i]
-		llist_up_out['Ion'][iline] = llist_up['Ion'][i]
-		llist_up_out['UpperLev'][iline] = llist_up['UpperLev'][i]
-		llist_up_out['LowerLev'][iline] = llist_up['LowerLev'][i]
-		llist_up_out['Epsilon'][iline] = llist_up['Epsilon'][i]
-		llist_up_out['Lambda'][iline] = llist_up['Lambda'][i]
+        iline+=1
+        llist_up_out['Element'][iline] = llist_up['Element'][i]
+        llist_up_out['Ion'][iline] = llist_up['Ion'][i]
+        llist_up_out['UpperLev'][iline] = llist_up['UpperLev'][i]
+        llist_up_out['LowerLev'][iline] = llist_up['LowerLev'][i]
+        llist_up_out['Epsilon'][iline] = llist_up['Epsilon'][i]
+        llist_up_out['Lambda'][iline] = llist_up['Lambda'][i]
 
     llist_up_out=llist_up_out[:iline+1]
-    llist_up_out=llist_up_out[llist_up_out['Epsiupn']>1e-20]
+    llist_up_out=llist_up_out[llist_up_out['Epsilon']>1e-20]
     llist_up_out.sort(order='Epsilon')
-		
+
     print "Combining emissivities"
 
     # trim to 1000 strongest lines
     llist_up_out = llist_up_out[-1000:]
     llist_lo_out = llist_lo_out[-1000:]
 
-    t1 = numpy.log(ldat[1].data['kT'][loind-2])
-    t2 = numpy.log(ldat[1].data['kT'][upind-2])
-    
-    r1 = 1- (numpy.log(kT*const.KBOLTZ)-t1)/(t2-t1)
-    r2 = 1- r1
+    print 'saving llist_up_out to llist_up_out.pkl'
+    pickle.dump(llist_up_out, open('llist_up_out_%i.pkl'%(irun),'w'))
+    print 'saving llist_lo_out to llist_lo_out.pkl'
+    pickle.dump(llist_lo_out, open('llist_lo_out_%i.pkl'%(irun),'w'))
+
+
 
     llist_out = numpy.zeros(2000,dtype=llist_out_dtype)
     llist_out[:1000] = llist_lo_out
@@ -5600,28 +5677,498 @@ def lorentz_neilines(version):
         llist_out['Epsilon'][iline] = llist_up_out['Epsilon'][i]*r2
         iline+=1
       else:
+        print "adding epsilon=%e to %e line"%(llist_up_out['Epsilon'][i]*r2,\
+                llist_out['Epsilon'][j[0]])
         llist_out['Epsilon'][j[0]] += llist_up_out['Epsilon'][i]*r2
-
-    print "Final filtering"
+        print llist_out[j[0]]
+    print "Final filtering, keep %i lines"%(iline)
     llist_out = llist_out[:iline]
 
-    llist_out.sort(order=['Epsilon'])
-    llist_out[::-1]
+    llist_out.sort(order='Epsilon')
+
+    llist_out=llist_out[::-1]
 
     llist_out = llist_out[:100]
 
+    # scale for NH < 1
+    llist_out['Epsilon']*=0.8365*1e6
+
     for i in range(len(llist_out)):
       print llist_out[i]
-    
-    zzz=raw_input('HELLO')
-        
+      f.write('%9.5f %2i %2i %e\n'%\
+              (llist_out['Lambda'][i],\
+               llist_out['Element'][i],\
+               llist_out['Ion'][i]-1,\
+               llist_out['Epsilon'][i]))
 
-      
-
-
-      
-
+    f.close()
 
 
-  f.close()  
-  
+
+
+def lorentz_neicont(version):
+  """
+  Full spectrum of a gas ionizing from 1e4K to 2.321e7K (=2keV)
+  at a fluence ($n_e$ * t, or $\tau$) of $10^{10}$ cm$^-3$ s
+
+  Parameters
+  ----------
+  version : string
+    The version string
+
+  Returns
+  -------
+  None
+
+  """
+  Te_init = 3.5/(const.KBOLTZ)
+  Te_final = 1.5/(const.KBOLTZ)
+  tau = 1e10
+  # set up 1 ev bins from 10eV to 10keV
+  ebins = numpy.arange(0.01, 10.001, 0.001)
+  now = datetime.datetime.now()
+  util.switch_version(version)
+
+  # make the spectrum.
+  speclo = numpy.zeros(len(ebins)-1)
+  specup = numpy.zeros(len(ebins)-1)
+  ag89 = get_abundance(abundset='AG89')
+  lodd = get_abundance(abundset='Lodd09')
+  ldat = pyfits.open(os.path.expandvars("$ATOMDB/apec_nei_line.fits"))
+  cdat = pyfits.open(os.path.expandvars("$ATOMDB/apec_nei_comp.fits"))
+
+
+  upind = numpy.where(ldat[1].data['kT']>Te_final*const.KBOLTZ)[0][0]+2
+  loind = upind-1
+
+  for Z in range(1,31):
+    print "starting element %s"%(atomic.Ztoelname(Z))
+    ionbal = apec.solve_ionbal_eigen(Z, Te_final,  tau=tau, Te_init=Te_init, \
+                           teunit='K')
+
+    abund = lodd[Z]/ag89[Z]
+    for z in range(len(ionbal)):
+      z1 = z+1
+      if ionbal[z] > 1e-10:
+        tmp = spectrum.make_ion_spectrum(ebins, loind, Z, z1, linefile=ldat,\
+                                         cocofile=cdat)
+        speclo+=tmp*ionbal[z]*abund
+
+        tmp = spectrum.make_ion_spectrum(ebins, upind, Z, z1, linefile=ldat,\
+                                         cocofile=cdat)
+        specup+=tmp*ionbal[z]*abund
+
+  # now interpolate
+  t1 = numpy.log(ldat[1].data['kT'][loind-2])
+  t2 = numpy.log(ldat[1].data['kT'][upind-2])
+  print "t1 = ", t1
+  print "t2 = ", t2
+  print "log(tefinal)", numpy.log(Te_final*const.KBOLTZ)
+  r1 = 1- (numpy.log(Te_final*const.KBOLTZ)-t1)/(t2-t1)
+  r2 = 1- r1
+  print "r1= ",r1, "r2  ", r2
+  spec = speclo*r1+specup*r2
+
+  # now scale spectrum by NH to get correct norm, and 1e6 to get to 1m^3
+  spec *= 0.8365*1e6
+
+  f = open('NEI-Cont_atomdb_%s.dat'%(version),'w')
+  f.write('# Generated %s by %s\n'%(now.strftime("%c"), os.getenv('USER')))
+  f.write('# Full spectrum of 1m3 plasma slab with n_e=1e6m^-3\n')
+  f.write('# recombining from %.3eK to %.3eK for ne*t = %.0e cm^-3 s\n'%\
+             (Te_init, Te_final, tau))
+  f.write('# listed on 1eV bins, no broadening applied\n')
+  f.write('# flux in ph cm^3 s^-1 bin^-1\n')
+  f.write('# BinLo BinHi Flux\n')
+  for i in range(len(spec)):
+    f.write("%6.3f %6.3f %e\n"%(ebins[i], ebins[i+1], spec[i]))
+  f.close()
+
+
+def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
+  """
+  calculate the level population for a particular ion
+
+  """
+  abund = get_abundance(abundset='Lodd09')[Z]
+  # first, get the ionization balance
+  datacache={}
+  lvdat = get_data(Z,z1,'LV', datacache=datacache)
+  ionbal = apec.solve_ionbal_eigen(Z,Te)
+  settings = apec.parse_par_file(os.path.expandvars('$ATOMDB/apec_v%s.par'%\
+                                (version)))
+
+  # now find the total rate out of the level
+  la_rates_up, la_rates_lo, la_rates_rates =\
+                          apec.gather_rates(Z, z1, Te, Ne, datacache=datacache, \
+                          settings=settings, do_la=True, do_ai=False, \
+                          do_ec=False, do_pc=False,  do_ir=False)
+
+  ec_rates_up,ec_rates_lo,ec_rates_rates = \
+                          apec.gather_rates(Z, z1, Te, Ne, datacache=datacache, \
+                          settings=settings, do_la=False, do_ai=False, \
+                          do_ec=True, do_pc=False,  do_ir=False)
+
+  i = numpy.where((la_rates_up==up-1) &\
+                  (la_rates_lo != up-1))[0]
+  print la_rates_rates[i]
+  out = sum(la_rates_rates[i])
+  print "calc out from LA file %e " %(out)
+  out = lvdat[1].data['ARAD_TOT'][up-1]
+  print "calc out from LV file %e " %(out)
+  i = numpy.where((ec_rates_up==up-1) &\
+                  (ec_rates_lo != up-1))[0]
+  print "calc out from EC file %e " %(sum(ec_rates_rates[i]))
+  out += sum(ec_rates_rates[i])
+
+
+  # ionization
+  if (z1 > 1):
+    ioniz_ionpop = ionbal[z1-2]
+
+    ionup, ionlo, ionrates = apec.gather_rates(Z, z1-1, Te, Ne, \
+                           datacache=datacache, settings=settings)
+    lev_pop = apec.solve_level_pop(ionup,ionlo,ionrates, settings)
+
+    # scale by ion pop, abundance
+    lev_pop *= abund*ioniz_ionpop
+
+    for i in range(len(lev_pop)):
+      print i, lev_pop[i]
+
+    lvdat = get_data(Z,z1-1,'LV', datacache=datacache)
+
+    iaut = numpy.where(lvdat[1].data['AAUT_TOT']>0)[0]
+    print iaut
+    aidat = get_data(Z,z1-1,'AI', datacache=datacache)
+    lvdat2 = get_data(Z,z1,'LV', datacache=datacache)
+
+#    for i in range(len(lvdat2[1].data)):
+#      k = numpy.where(aidat[1].data['LEVEL_FINAL']==i+1)[0]
+#      if len(k) > 0:
+#        print i+1, sum(aidat[1].data['AUTO_RATE'][k]*
+#                       lev_pop[aidat[1].data['LEVEL_INIT'][k]-1])
+#
+#    zzz=raw_input()
+
+    # now find the ionization rates
+    do_xi = True
+    lev_pop_xi=apec.calc_ioniz_popn(lev_pop, Z, z1, z1-1, Te, Ne, \
+                            settings=settings, datacache=datacache, \
+                             do_xi=True)
+    lev_pop_noxi=apec.calc_ioniz_popn(lev_pop, Z, z1, z1-1, Te, Ne, \
+                            settings=settings, datacache=datacache, \
+                             do_xi=False)
+    lev_pop_ci = lev_pop_xi-lev_pop_noxi
+
+    excitauto = lev_pop_noxi[up-1]*out
+    direction = lev_pop_ci[up-1]*out
+
+  else:
+    ionlevpop = numpy.zeros(len(lvdat[1].data))
+    excitauto = 0.0
+    direction = 0.0
+
+
+# excitation
+  if True:
+    ionpop = ionbal[z1-1]
+    lvdat=get_data(Z,z1,'LV', datacache=datacache)
+
+    excup, exclo, excrates = apec.gather_rates(Z, z1, Te, Ne, datacache=datacache,\
+                                      settings=settings)
+    lev_pop = apec.solve_level_pop(excup,exclo,excrates, settings)
+
+    # scale by ion pop, abundance
+    lev_pop *= abund*ionpop
+
+
+    # now gather rates by individual process:
+    ecup, eclo, ecrates = apec.gather_rates(Z, z1, Te, Ne, datacache=datacache,\
+                                      settings=settings, do_la=False, \
+                                      do_ai=False, \
+                          do_ec=True, do_pc=False,  do_ir=False)
+
+    k = numpy.where((ecup==0) & (eclo==up-1))[0]
+    print ecrates[k]
+
+    laup, lalo, larates = apec.gather_rates(Z, z1, Te, Ne, datacache=datacache,\
+                                      settings=settings, do_la=True, \
+                                      do_ai=False, \
+                          do_ec=False, do_pc=False,  do_ir=False)
+    pcup, pclo, pcrates = apec.gather_rates(Z, z1, Te, Ne, datacache=datacache,\
+                                      settings=settings, do_la=False, \
+                                      do_ai=False, \
+                          do_ec=False, do_pc=True,  do_ir=False)
+    # now multiply these rates by their driving populations to get the
+    # contribution
+
+    # electron excitation and de-excitation
+    iec= numpy.where(ecup == up-1)[0]
+    eexcout = 0.0
+    edexout = 0.0
+
+    eexcin = 0.0
+    edexin = 0.0
+    print ecup[iec]
+    print eclo[iec]
+    print len(lvdat[1].data)
+    print "HMM"
+    for ii in iec:
+      if eclo[ii]==ecup[ii]: continue
+      if lvdat[1].data['ENERGY'][ecup[ii]] < lvdat[1].data['ENERGY'][eclo[ii]]:
+        eexcout += ecrates[ii]*lev_pop[ecup[ii]]
+      else:
+        edexout += ecrates[ii]*lev_pop[ecup[ii]]
+
+    iec= numpy.where(eclo == up-1)[0]
+    for ii in iec:
+      if eclo[ii]==ecup[ii]: continue
+      if lvdat[1].data['ENERGY'][ecup[ii]] < lvdat[1].data['ENERGY'][eclo[ii]]:
+        eexcin += ecrates[ii]*lev_pop[ecup[ii]]
+      else:
+        edexin += ecrates[ii]*lev_pop[ecup[ii]]
+
+
+    # same for proton collisions
+    ipc= numpy.where(pcup == up-1)[0]
+    pexcin = 0.0
+    pdexin = 0.0
+    pexcout = 0.0
+    pdexout = 0.0
+
+    for ii in ipc:
+      if pclo[ii]==pcup[ii]: continue
+      if lvdat[1].data['ENERGY'][pcup[ii]] < lvdat[1].data['ENERGY'][pclo[ii]]:
+        pexcout += pcrates[ii]*lev_pop[pcup[ii]]
+      else:
+        pdexout += pcrates[ii]*lev_pop[pcup[ii]]
+
+    ipc= numpy.where(pclo == up-1)[0]
+    for ii in ipc:
+      if pclo[ii]==pcup[ii]: continue
+      if lvdat[1].data['ENERGY'][pcup[ii]] < lvdat[1].data['ENERGY'][pclo[ii]]:
+        pexcin += pcrates[ii]*lev_pop[pcup[ii]]
+      else:
+        pdexin += pcrates[ii]*lev_pop[pcup[ii]]
+
+    # something something radiative transitions
+    ila= numpy.where((lalo == up-1)& (lalo!=laup))[0]
+
+    lain = sum(larates[ila] * lev_pop[laup[ila]])
+
+    for iila in ila:
+      if larates[iila] * lev_pop[laup[iila]] > 1e-17:
+        print larates[iila], laup[iila], lalo[iila], lev_pop[laup[iila]], larates[iila] * lev_pop[laup[iila]]
+
+  else:
+    lain = 0.0
+    eexcin = 0.0
+    eexcout = 0.0
+    edexin = 0.0
+    edexout = 0.0
+    pexcin = 0.0
+    pexcout = 0.0
+    pdexin = 0.0
+    pdexout = 0.0
+
+  # now do recombination!
+  if z1 < Z+1:
+    # recombination is always from the groudn state so we are ok
+    # no need to caculate level pop
+    ionpop = ionbal[z1]
+    levpop =numpy.ones(1)
+    levpop *= ionpop*abund
+
+
+    ebins = apec.make_vector_nbins(settings['LinearGrid'], \
+                            settings['GridMinimum'], \
+                            settings['GridMaximum'], \
+                            settings['NumGrid'])
+    # do the DR satellite lines
+    if settings['DRSatellite']:
+      print "Start calc_satellte run_apec_ion at %s"%(time.asctime())
+
+      linelist_dr, drlevrates = apec.calc_satellite(Z, z1, Te, \
+                                datacache=datacache, settings=settings)
+      drlevrates *=ionpop*abund
+
+    else:
+      linelist_dr = numpy.zeros(0, dtype= generate_datatypes(linetype))
+      drlevrates = 0.0
+    print "drlevrates"
+    print drlevrates
+    # Radiative Recombination
+    if settings['RRC']:
+      rrc, rrlevrates = calc_rad_rec_cont(Z, z1, z1+1, Te, \
+                        ebins, settings=settings, datacache=datacache)
+      rrlevrates*=ionpop*abund
+
+    else:
+      rrlevrates=0.0
+    print "rrlevrates"
+    print rrlevrates
+
+    # if there is recombination to process:
+    tmpdrlevrates,xxx = util.make_vec(drlevrates)
+    tmprrlevrates,xxx = util.make_vec(rrlevrates)
+
+    sum_rr_out=0.0
+    sum_dr_out = 0.0
+    if sum(tmpdrlevrates) + sum(tmprrlevrates)>0:
+      print "Start calc_recomb_popn at %s"%(time.asctime())
+
+      levpop_dr=apec.calc_recomb_popn(levpop, Z, z1,\
+                                      z1+1, Te, Ne, drlevrates,\
+                                      rrlevrates,\
+                                      datacache=datacache, \
+                                      settings=settings,
+                                      dronly=True)
+
+      levpop_rr=apec.calc_recomb_popn(levpop, Z, z1,\
+                                      z1+1, Te, Ne, drlevrates,\
+                                      rrlevrates,\
+                                      datacache=datacache, \
+                                      settings=settings,
+                                      rronly=True)
+
+      # make into lines
+      ladat = get_data(Z,z1,'LA', datacache=datacache)
+
+      j = numpy.where(ladat[1].data['LOWER_LEV']==lo)[0]
+      print "levpop_rr, levopo_dr"
+      for i in range(len(levpop_rr)):
+        print i, levpop_rr[i], levpop_dr[i]
+
+      print "levpop", levpop
+      sum_rr_in = sum(ladat[1].data['EINSTEIN_A'][j] *\
+                      levpop_rr[ladat[1].data['UPPER_LEV'][j]-1])
+
+      sum_dr_in = sum(ladat[1].data['EINSTEIN_A'][j] *\
+                      levpop_dr[ladat[1].data['UPPER_LEV'][j]-1])
+
+      j = numpy.where(ladat[1].data['UPPER_LEV']==up)[0]
+      print "up=", up
+      print ladat[1].data['EINSTEIN_A'][j]
+      sum_rr_out = sum(ladat[1].data['EINSTEIN_A'][j] *\
+                      levpop_rr[up-1])
+
+      sum_dr_out = sum(ladat[1].data['EINSTEIN_A'][j] *\
+                      levpop_dr[up-1])
+      rate_out = sum(ladat[1].data['EINSTEIN_A'][j])
+
+      print sum_rr_in
+      print sum_dr_in
+      print sum_rr_out
+      print sum_dr_out
+      print rate_out
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  print "ionbal", ionbal
+#  print "levpop = %e"%(lev_pop[up-1])
+  print "DI in = %e"%(direction)
+  print "Excit-Auto in = %e"%(excitauto)
+  print "Rad in = %e"%(lain)
+  print "Rad out = %e" %(out)
+  print "E_excite in = %e" %(eexcin)
+  print "E_excite out = %e"%(eexcout)
+  print "E_dexcite in = %e"%(edexin)
+  print "E_dexcite out = %e"%(edexout)
+  print "P_excite in = %e"%(pexcin)
+  print "P_excite out = %e"%(pexcout)
+  print "P_dexcite in = %e"%(pdexin)
+  print "P_dexcite out = %e"%(pdexout)
+  print "RR in = %e"%(sum_rr_out)
+  print "DR in = %e"%(sum_dr_out)
+
+  cfactor = 0.8365
+
+  s = "%i %e %e %e %e %e %e %e %e %e %e %e\n"%\
+      (linelabel, Te, Ne, eexcin*cfactor, edexout*cfactor, \
+       pexcin * cfactor, pdexout*cfactor,\
+       lain * cfactor, out, \
+       sum_rr_out * cfactor, sum_dr_out*cfactor, \
+       (direction+excitauto)*cfactor)
+
+  print s
+  return s
+
+def lorentz_levpop(version):
+  """
+  Calculate the level populating processes for each line in the stronglines
+  Files. This will require a significant rerun of APEC. Hmmmmm
+
+  Processes to be tracked: electron excitation, electron de-excitation,
+  proton excitation and dexcitation, cascade into the level, radiative out,
+  recombination (incl. cascade) in, DR (incl cascade) in, and inner-shell
+  ionization in (why only inner shell?)
+  """
+
+  # Method:
+  # For each line, calculate the population of the level completely (i.e run most
+  # of apec) from each of a range of sources (ionization, recombination,
+  # excitation). Apply appropriate modifiers to get a plasma with the relevant
+  # density, abundance and othe animals
+
+  # this is just a test call for now:
+
+
+  linelist = {}
+  linelist['ID']=[ 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17]
+  linelist['Z']= [26,26,26,26,26, 8 ,8, 8, 8,26,26,26,26, 8, 8,26,26]
+  linelist['z1']=[17,17,17,17,17, 7, 7, 7, 7,25,25,25,25, 8, 8,26,26]
+  linelist['up']=[27,23, 5, 3, 2, 7, 6, 5, 2, 7, 6, 5, 2, 3, 4, 3, 4]
+  linelist['lo']=[ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+  Telist = [1e6, 6e6, 4.642e7]
+  Nelist = [1e0, 1e12]
+  now = datetime.datetime.now()
+  f = open('LevelPop_atomdb_%s.dat'%(version),'w')
+  f.write('# Generated %s by %s\n'%(now.strftime("%c"), os.getenv('USER')))
+  f.write('# Populating processes for lines listed in table 2 of\n')
+  f.write('# the Lorentz standards, at T=1e6, 6e6 and 2.321e7K,\n')
+  f.write('# and n_e=1e6 and 1e18m^-3\n')
+  f.write('# Rates are given in units of per m^3 s^-1\n')
+  f.write('# we include here all direct and excitation-ionization processes\n')
+  f.write('# and subsequent cascade under inner shell ionization/excitation\n')
+  f.write('# columns are:\n')
+  f.write('#   LineID (from Table 2)\n')
+  f.write('#   Temperature (K)\n')
+  f.write('#   Electron Density (cm^-3)\n')
+  f.write('#   Electron excitation into level (cm^-3 s^-1)\n')
+  f.write('#   Electron de-excitation out of level (cm^-3 s^-1)\n')
+  f.write('#   Proton excitation into level (cm^-3 s^-1)\n')
+  f.write('#   Electron excitation out of level (cm^-3 s^-1)\n')
+  f.write('#   Excitation-Cascade from higher levels (cm^-3 s^-1)\n')
+  f.write('#   Radiative decay out (s^-1)\n')
+  f.write('#   Radiative Recombination into level (and cascade from capture to higher levels) (cm^-3 s^-1)\n')
+  f.write('#   Dielectronic Recombination into level (and cascade from capture to higher levels) (cm^-3 s^-1)\n')
+  f.write('#   Ionization into the level (cm^-3 s^-1)\n')
+
+  f.write('  Num     Te    Ne    EExc    EDeExc    PExc    PDeexc    CascadeTo    RadiativeOut     RRin    DRin    ISIon\n')
+  for iNe in range(len(Nelist)):
+    for iTe in range(len(Telist)):
+      for iline in range(len(linelist['ID'])):
+
+        s=get_lorentz_levpop(linelist['Z'][iline],\
+                           linelist['z1'][iline],\
+                           linelist['up'][iline],\
+                           linelist['lo'][iline],\
+                           Telist[iTe],\
+                           Nelist[iNe],
+                           version, linelist['ID'][iline])
+        f.write(s)
+  f.close()
