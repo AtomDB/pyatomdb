@@ -2641,8 +2641,12 @@ class CXSession(Session):
         print "abundance vector and element vector must have same number"+\
               " of elements"
       else:
+        print elementvec
+        print abundvec
+        print self.abund
+        for iel in range(len(elementvec)):
 
-        self.abund[elementvec] = abundvec
+          self.abund[elementvec[iel]] = abundvec[iel]
     elif (eisvec):
       # set all these eleemtns to the same abundance
       for el in elementvec:
@@ -2674,7 +2678,9 @@ class CXSession(Session):
     self.spectrum
     """
     for index in self.spectra.keys():
-      self.spectra[index].recalc(self)
+      for Z in self.spectra[index].keys():
+        for z1 in self.spectra[index][Z].keys():
+          self.spectra[index][Z][z1].recalc(self)
     #if self.ready:
       #self.spectrum = numpy.zeros(len(self.specbins)-1)
       #for Z in self.elements:
