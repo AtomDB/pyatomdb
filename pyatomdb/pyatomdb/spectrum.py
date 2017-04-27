@@ -1628,7 +1628,8 @@ class Session():
     self.dolines=True
     self.docont=True
     self.dopseudo=True
-
+    self.broaden=False
+    
 
   def return_spectra(self, te, teunit='keV', raw=False, nearest=False,\
                      get_nearest_t=False):
@@ -2134,7 +2135,8 @@ class Session():
                                                   session.binunits,elements=[Z],\
                                                   dolines=session.dolines,\
                                                   docont=session.docont,\
-                                                  dopseudo=session.dopseudo)
+                                                  dopseudo=session.dopseudo,\
+                                                  broadening=session.broaden, broadenunits=session.binunits)
         # make the spectrum on the response grid
           if session.response_set:
             tmp = make_spectrum(session.ebins_response, self.index,\
@@ -2206,6 +2208,9 @@ class CXSession(Session):
     Grevesse 1989.
   collisionunits : string
     Whether the units are given in energy (kev/amu) or velocity (cm/s)
+  veltype : int
+    Whether the velocity is in terms of (1) center of mass, (2) donor ion or
+    (3) receiver ion
   ready : bool
     Set when line, continuum and spectral bin data has been
     read in, and a spectrum can be calculated.
@@ -2336,7 +2341,7 @@ class CXSession(Session):
     self.ionbal_set = True
 
 
-  def return_spectra(self, collision, raw=False, nearest=False):
+  def return_spectra(self, collision, veltype=False, raw=False, nearest=False):
     """
     Get the spectrum at an exact temperature.
     Interpolates between 2 neighbouring spectra
@@ -2362,47 +2367,88 @@ class CXSession(Session):
 
     # for each ion, calculate the velocity
 
+    if veltype:
+      self.veltype = int( veltype)
+
+    veltype = self.veltype
+
+
 
     stot = numpy.zeros(len(self.specbins)-1, dtype=float)
     for Z in self.elements:
       # get convert the velocity, etc, into keV/amu
       if self.collisionunits.lower() == 'cm/s':
         # convert from velocity to energy
+        #
+        #
+        # After some maths... it seems that the ultimate parameter of
+        # interest, center of mass velocity in keV/u,
+        # is completely independent of whether the donor or receiver
+        # is moving for a given velocity. Which makes sense.
+        # But this also makes this parameter completely redundant, so
+        # this is dead code just now.
+        # i.e. whether the type is 1, 2 or 3 will all give the same result
+        # until I am told otherwise...
+
+        if veltype in [1,2,3]:
+          # this is the reduced mass velocity in kev/u
+          v = 25 * (collision/1e5)**2/4786031.3
+
+        #if veltype==1:
+          # this is the reduced mass velocity
+        #  v = 25 * (collision/1e5)**2/4786031.3
+        #elif veltype==2:
+          # this is the donor velocity
+        #  m_donor = float(self.linedata[0].header['DONOR_MASS'])
+        #  m_receiver = atomic.Z_to_mass(Z)
+
+          # convert donor velocity to keV/amu
+        #  E_donor = 25 * (collision/1e5)**2/(2.1877e3**2) * m_donor
+
+        #  E_red =
+
+
+        #  E_com = v_donor * m_donor
+
+          # logic here: need to convert collision from donor
+          # velocity to center of mass velocity
+
 
         # in joules
-        print " requesting velocity = %e cm/s = %e m/s"%(collision, collision/100)
-        v_ms = collision/100
-        mass_amu=atomic.Z_to_mass(Z)+1
-        mass_kg = (atomic.Z_to_mass(Z)+1)* const.AMUKG
-        print "mass = %e amu %e kg"%(mass_amu,mass_kg)
+        #print " requesting velocity = %e cm/s = %e m/s"%(collision, collision/100)
+        #v_ms = collision/100
+        #mass_amu=atomic.Z_to_mass(Z)+1
+        #mass_kg = (atomic.Z_to_mass(Z)+1)* const.AMUKG
+        #print "mass = %e amu %e kg"%(mass_amu,mass_kg)
 
-        E_J = 0.5*mass_kg * (v_ms)**2
-        print "energy = %e J"%(E_J)
+        #E_J = 0.5*mass_kg * (v_ms)**2
+        #print "energy = %e J"%(E_J)
 
-        E_keV = E_J/1.602e-16
-        print "energy_keV = %e keV"%(E_keV)
+        #E_keV = E_J/1.602e-16
+        #print "energy_keV = %e keV"%(E_keV)
 
 #e=0.5 * (atomic.Z_to_mass(Z)+1) * const.AMUKG * (collision/100)**2
 
-        e = E_keV /mass_amu
-        print "e = %e keV/amu"%(e)
+        #e = E_keV /mass_amu
+        print "v = %e keV/u"%(v)
 
 
       else:
-        e = collision*1.0
+        v = collision*1.0
 
 
 
-      if ((e > self.linedata[1].data['energy'][-1]) |\
-          (e < self.linedata[1].data['energy'][0])):
-        print "*** WARNING: energy %e keV is out of range %f-%f ***" %\
-            (e, self.linedata[1].data['energy'][0], self.linedata[1].data['energy'][-1])
+      if ((v > self.linedata[1].data['energy'][-1]) |\
+          (v < self.linedata[1].data['energy'][0])):
+        print "*** WARNING: velocity %v keV/u is out of range %f-%f ***" %\
+            (v, self.linedata[1].data['energy'][0], self.linedata[1].data['energy'][-1])
+
         continue
 
       # OK, so we have a valid energy
       # Make a spectrum for each ion
 
-      index = numpy.where(self.linedata[1].data['energy'] > e)[0][0]
+      index = numpy.where(self.linedata[1].data['energy'] > v)[0][0]
 
 
       loind = index+1
@@ -2442,7 +2488,7 @@ class CXSession(Session):
 
           # linear interp
 
-          r1 = 1- (e-E1)/(E2-E1)
+          r1 = 1- (v-E1)/(E2-E1)
           r2 = 1- r1
 
           s = s1*r1 + s2*r2
