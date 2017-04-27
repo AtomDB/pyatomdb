@@ -16,8 +16,8 @@ try:
   import astropy.io.fits as pyfits
 except:
   import pyfits
-  
-  
+
+
 
 ################################################################################
 #
@@ -39,8 +39,8 @@ except:
 
 #-------------------------------------------------------------------------------
 
-def figcoords(lowxpix, lowypix, highxpix, highypix, 
-                  lowxval, lowyval, highxval, highyval, 
+def figcoords(lowxpix, lowypix, highxpix, highypix,
+                  lowxval, lowyval, highxval, highyval,
                   xpix, ypix, logx=False, logy=False):
 
 
@@ -57,10 +57,10 @@ def figcoords(lowxpix, lowypix, highxpix, highypix,
   else:
     lyval = lowyval*1.0
     hyval = highyval*1.0
-  
+
   dx = (hxval-lxval)/(highxpix-lowxpix)
   dy = (hyval-lyval)/(highypix-lowypix)
-  
+
 #  print dx, dy
   xout = lxval + (xpix-lowxpix)*dx
   yout = lyval + (ypix-lowypix)*dy
@@ -92,23 +92,23 @@ def unique(s):
      If that's not possible either, the sequence elements must support
      equality-testing.  Then unique() will usually work in quadratic
      time.
-     
+
      Parameters
      ----------
      s : list type object
        List to remove the duplicates from
-     
+
      Returns
      -------
      list type object
        ...with all the duplicates removed
-     
+
      References
      ----------
      Taken from Python Cookbook, written by Tim Peters.
      http://code.activestate.com/recipes/52560/
-       
-     
+
+
      """
 
      n = len(s)
@@ -157,23 +157,23 @@ def unique(s):
          if x not in u:
              u.append(x)
      return u
-     
+
 #-------------------------------------------------------------------------------
 
 def mkdir_p(path):
   """
   Create a directory. If it already exists, do nothing.
-  
+
   Parameters
   ----------
   path : string
     The directory to make
-  
+
   Returns
   -------
   none
   """
-  
+
   try:
     os.makedirs(path)
   except OSError as exc: # Python >2.5
@@ -186,7 +186,7 @@ def mkdir_p(path):
 def question(question, default, multichoice  = []):
   """
   Ask question with default answer provided. Return answer
-  
+
   Parameters
   ----------
   question : str
@@ -195,7 +195,7 @@ def question(question, default, multichoice  = []):
     Default answer to question
   multichoice : str
     if set, answer must be one of these choices
-  
+
   Returns
   -------
   str
@@ -214,14 +214,14 @@ def question(question, default, multichoice  = []):
       qstring+=i+'/'
     qstring=qstring[:-1]
     qstring+=') [%s]'%(default)
-    
+
     while True:
       ans = raw_input(qstring)
       if ans=='':
         ans=default
-      if ans.lower() in mclower:  
+      if ans.lower() in mclower:
         break
-  else:      
+  else:
     ans = raw_input("%s [%s] :" %(question, default))
     if ans =='':
       ans = default
@@ -232,19 +232,19 @@ def question(question, default, multichoice  = []):
 def record_upload(fname):
   """
   Transmits record of a file transfer to AtomDB
-  
+
   This simply transmits the USERID, filename, and time to AtomDB. If USERID=0,
   then the user has chosen not to share this information and this is skipped
-  
+
   Parameters
   ----------
   fname : string
     The file name being downloaded.
-  
+
   Returns
   -------
   None
-  
+
   """
   #
   # Version 0.1 Initial Release
@@ -255,7 +255,7 @@ def record_upload(fname):
     userid = tmp['USERID']
   except KeyError:
     print load_user_prefs()
-  
+
   if int(userid) > 0:
     postform = {  'TYPE' : const.FILEDOWNLOAD,\
                   'USERID': int(userid),\
@@ -264,29 +264,29 @@ def record_upload(fname):
     r = requests.post('http://www.atomdb.org/util/process_downloads.php',\
                       data = postform)
   return
-    
+
 #-------------------------------------------------------------------------------
 
 def md5Checksum(filePath):
   """
   Calculate the md5 checksum of a file
-  
+
   Parameters
   ----------
   filepath : str
     the file to calculate the md5sum of
-  
+
   Returns
   -------
   string
     the hexadecimal string md5 hash of the file
-    
+
   References
   ----------
   Taken from http://joelverhagen.com/blog/2011/02/md5-hash-of-file-in-python/
-  
+
   """
-    
+
   with open(filePath, 'rb') as fh:
     m = hashlib.md5()
     while True:
@@ -299,19 +299,19 @@ def md5Checksum(filePath):
 #-------------------------------------------------------------------------------
 
 def download_atomdb_emissivity_files(adbroot, userid, version):
-  
+
   """
   Download the AtomDB equilibrium emissivity files for AtomDB"
-  
+
   This code will go to the AtomDB FTP site and download the necessary files.
   It will then unpack them into a directory adbroot. It will not
   overwrite existing files with the same md5sum (to avoid pointless updates)
-  but it will not know this until it has downloaded and unzipped the main 
+  but it will not know this until it has downloaded and unzipped the main
   file.
-  
+
   Parameters
   ----------
-  
+
   adbroot : string
     The location to install the data. Typically should match $ATOMDB
   userid : string
@@ -319,7 +319,7 @@ def download_atomdb_emissivity_files(adbroot, userid, version):
     is also fine (provided it is all numbers)
   version : string
     The version string for the release, e.g. "3.0.2"
-  
+
   Returns
   -------
   None
@@ -328,37 +328,37 @@ def download_atomdb_emissivity_files(adbroot, userid, version):
   # Version 0.1 Initail Release
   # Adam Foster 24th September 2015
   #
-  import tarfile 
+  import tarfile
   # set up remote file name
   fname = "atomdb_v%s.tar.bz2"%(version)
-  
+
   # set up temporary directory to hold data
-  
+
   if adbroot[0] != '/':
     # is a relative path
     adbroot = "%s/%s"%(os.getcwd(), adbroot)
-    
+
   mkdir_p(adbroot)
   if adbroot[-1]=='/':
     tmpdir = adbroot+'installtmp'
   else:
     tmpdir = adbroot+'/installtmp'
-  
-  
+
+
   print "making directory %s"%(tmpdir)
   mkdir_p(tmpdir)
-  
+
   # get the files
   urllib.urlcleanup()
 
   fnameout = wget.download('ftp://sao-ftp.harvard.edu/AtomDB/releases/%s'%(fname), out="%s/%s"%(tmpdir, fname))
   # collect user statistics if allowed.
   record_upload(fname)
-    
+
   #uncompress
   print ""
   print "Uncompressing ... ",
-  
+
   tf = tarfile.open(name=fnameout, mode='r:bz2')
   tf.extractall(path=tmpdir)
   print "Uncompressed"
@@ -367,27 +367,27 @@ def download_atomdb_emissivity_files(adbroot, userid, version):
   for l in os.listdir('%s/%s'%(tmpdir, dirname)):
     print "moving %s/%s/%s to %s/%s"%(tmpdir, dirname, l, adbroot, l)
     shutil.move("%s/%s/%s"%(tmpdir, dirname, l), "%s/%s"%(adbroot, l))
-  
+
   print "...done"
-  
+
   shutil.rmtree(tmpdir)
-    
-    
+
+
 #-------------------------------------------------------------------------------
-    
+
 def download_atomdb_nei_emissivity_files(adbroot, userid, version):
   """
   Download the AtomDB non-equilibrium emissivity files for AtomDB"
-  
+
   This code will go to the AtomDB FTP site and download the necessary files.
   It will then unpack them into a directory adbroot. It will not
   overwrite existing files with the same md5sum (to avoid pointless updates)
-  but it will not know this until it has downloaded and unzipped the main 
+  but it will not know this until it has downloaded and unzipped the main
   file.
-  
+
   Parameters
   ----------
-  
+
   adbroot : string
     The location to install the data. Typically should match $ATOMDB
   userid : string
@@ -395,7 +395,7 @@ def download_atomdb_nei_emissivity_files(adbroot, userid, version):
     is also fine (provided it is all numbers)
   version : string
     The version string for the release, e.g. "3.0.2"
-  
+
   Returns
   -------
   None
@@ -407,7 +407,7 @@ def download_atomdb_nei_emissivity_files(adbroot, userid, version):
   import tarfile
   # set up remote file name
   fname = "atomdb_v%s_nei.tar.bz2"%(version)
-  
+
   # set up temporary directory to hold data
   if adbroot[0] != '/':
     # is a relative path
@@ -418,9 +418,9 @@ def download_atomdb_nei_emissivity_files(adbroot, userid, version):
     tmpdir = adbroot+'installtmp'
   else:
     tmpdir = adbroot+'/installtmp'
-  
+
   mkdir_p(tmpdir)
-  
+
   # get the files
   urllib.urlcleanup()
 
@@ -428,10 +428,10 @@ def download_atomdb_nei_emissivity_files(adbroot, userid, version):
 
   # collect user statistics if allowed.
   record_upload(fname)
-    
+
   print ""
   print "Uncompressing ... ",
-  
+
   tf = tarfile.open(name=fnameout, mode='r:bz2')
   tf.extractall(path=tmpdir)
   print "Uncompressed"
@@ -440,32 +440,32 @@ def download_atomdb_nei_emissivity_files(adbroot, userid, version):
   for l in os.listdir('%s/%s'%(tmpdir, dirname)):
     print "moving %s/%s/%s to %s/%s"%(tmpdir, dirname, l, adbroot, l)
     shutil.move("%s/%s/%s"%(tmpdir, dirname, l), "%s/%s"%(adbroot, l))
-    
+
   shutil.rmtree(tmpdir)
   print "... done"
-  
+
 #-------------------------------------------------------------------------------
 
 def load_user_prefs(adbroot="$ATOMDB"):
   """
   Loads user preference data from $ATOMDB/userdata
-  
+
   Parameters
   ----------
   adbroot : string
     The AtomDB root directory. Defaults to environment variable $ATOMDB.
-  
+
   Returns
   -------
   dictionary
     keyword/setting pairs e.g. settings['USERID'] = "12345678"
-  
+
   """
   #
   # Version 0.1 Adam Foster
   # Initial Release 24th Sep 2015
-  # 
-    
+  #
+
   ret = {}
 
   fname = os.path.expandvars(adbroot+'/userdata')
@@ -481,26 +481,26 @@ def load_user_prefs(adbroot="$ATOMDB"):
           print "Error: cannot parse line in userdata file: %s\n%s"%(fname, l)
         else:
           ret[ls[0].strip()]=ls[1].strip()
-  return ret    
+  return ret
 
 #-------------------------------------------------------------------------------
 
 def write_user_prefs(prefs, adbroot="$ATOMDB"):
     """
-    Write user preference data to $ATOMDB/userdata. This will overwrite the 
-    entire file. 
-    
-    Therefore you should use "load_user_prefs", then add in additional 
+    Write user preference data to $ATOMDB/userdata. This will overwrite the
+    entire file.
+
+    Therefore you should use "load_user_prefs", then add in additional
     keywords, the call write_user_prefs.
-    
+
     Parameters
     ----------
     prefs: dictionary
       keyword/setting pairs e.g. settings['USERID'] = "12345678"
-    
+
     adbroot : string
       The AtomDB root directory. Defaults to environment variable $ATOMDB.
-    
+
     Returns
     -------
     None
@@ -508,10 +508,10 @@ def write_user_prefs(prefs, adbroot="$ATOMDB"):
     #
     # Version 0.1 Adam Foster
     # Initial Release 24th Sep 2015
-    # 
-    
+    #
+
     fname = os.path.expandvars(adbroot+'/userdata')
-    
+
     l =  open(fname,'w')
       #remove trailing/leading whitespace
     for i in prefs.keys():
@@ -524,21 +524,21 @@ def write_user_prefs(prefs, adbroot="$ATOMDB"):
 def initialize():
   """
   Initialize your AtomDB Setup
-  
+
   This code will let you select where to install AtomDB, get the
   latest version of the filemap, and download the emissivity
   files needed for various functions to work.
-  
+
   Parameters
   ----------
-  None. 
-  
+  None.
+
   Returns
   -------
   None
-  
+
   """
-  
+
   if 'ATOMDB' in os.environ:
     adbroot_init = os.environ['ATOMDB']
   else:
@@ -555,30 +555,30 @@ def initialize():
     userid = '00000000'
   else:
     userid = "%08i"%(numpy.random.randint(1e8))
-  
+
   print "You are about to install:"
   print "AtomDB installation location: %s"%(adbroot)
   print "Transmit anonymous user data: %s"%(anondat)
   print "Randomly generated userid: %s"%(userid)
-  
+
   proceed = question("Is this ok?","y",\
                           multichoice=["y","n"])
-                          
+
   if proceed == 'n':
     print "Aborting"
     return
-  
+
   if proceed == 'y':
-    
+
     print "Temporarily setting $ATOMDB environment variable to %s."%(adbroot),
     print " It is *strongly* recommended that you add this to your environment ",
     print " permanently."
     os.environ['ATOMDB'] = adbroot
-    
+
     print "creating directory %s"%(adbroot),
     mkdir_p(adbroot)
     print "...done"
-    
+
     print "creating user data file %s/userdata"%(adbroot),
     userdatafname = "%s/userdata"%(adbroot)
     if os.path.exists(userdatafname):
@@ -591,31 +591,31 @@ def initialize():
     write_user_prefs(userprefs, adbroot=adbroot)
 
     print "...done"
-    
+
     print "finding current version of AtomDB. ",
 #    a=curl.Curl()
 #    version=a.get('ftp://sao-ftp.harvard.edu/AtomDB/releases/LATEST')
 #    a.close()
-    
-    ftp = ftplib.FTP('sao-ftp.harvard.edu') 
+
+    ftp = ftplib.FTP('sao-ftp.harvard.edu')
     x = ftp.login()
     r = StringIO()
     x = ftp.retrbinary('RETR /AtomDB/releases/LATEST', r.write)
     version = r.getvalue()[:-1]
     x = ftp.quit()
     print "Latest version is %s"%(version)
-    
+
     get_new_files=question(\
       "Do you wish to download the emissivity data for these files (recommended)?",\
       "y",multichoice=["y","n"])
-    
+
     if get_new_files=='y':
       download_atomdb_emissivity_files(adbroot, userid, version)
 
     get_new_nei_files=question(\
       "Do you wish to download the non-equilibrium emissivity data for these files (recommended)?",\
       "y",multichoice=["y","n"])
-    
+
     if get_new_nei_files=='y':
       download_atomdb_nei_emissivity_files(adbroot, userid, version)
 
@@ -624,24 +624,24 @@ def initialize():
 def check_version():
   """
   Checks if there is a more recent version of the database to install.
-  
+
   Parameters
   ----------
-  None. 
-  
+  None.
+
   Returns
   -------
   None
-  
+
   """
-  
+
   try:
     adbroot_init = os.environ['ATOMDB']
   except KeyError:
     print "You must set the ATOMDB environment variable for this to work!"
     raise
-  
-  ftp = ftplib.FTP('sao-ftp.harvard.edu') 
+
+  ftp = ftplib.FTP('sao-ftp.harvard.edu')
   x = ftp.login()
   r = StringIO()
   x = ftp.retrbinary('RETR /AtomDB/releases/LATEST', r.write)
@@ -652,19 +652,19 @@ def check_version():
 
   if (curversion != newversion):
     ans = question("New version %s is available. Upgrade?"%(newversion),"y",["y","n"])
-  
+
     if ans=="y":
       get_new_files=question(\
         "Do you wish to download the emissivity data for these files (recommended)?",\
         "y",multichoice=["y","n"])
-    
+
       if get_new_files=='y':
         download_atomdb_emissivity_files(adbroot, userid, version)
 
       get_new_nei_files=question(\
         "Do you wish to download the non-equilibrium emissivity data for these files (recommended)?",\
         "y",multichoice=["y","n"])
-    
+
       if get_new_nei_files=='y':
         download_atomdb_nei_emissivity_files(adbroot, userid, version)
   else:
@@ -679,13 +679,13 @@ def check_version():
 
 def switch_version(version):
   """
-  Changes the AtomDB version. Note this will overwrite several links 
+  Changes the AtomDB version. Note this will overwrite several links
   on your hard disk, and will *NOT* be repaired upon quitting python.
 
   The files affect are the VERSION file and the soft links
   $ATOMDB/apec_line.fits, $ATOMDB/apec_coco.fits, $ATOMDB/filemap and
   $ATOMDB/apec_linelist.fits
-  
+
   Parameters
   ----------
   version: string
@@ -706,46 +706,46 @@ def switch_version(version):
   except keyError:
     print "You must set the ATOMDB environment variable for this to work!"
     raise
-  
-  
+
+
   # check the AtomDB version string is a suitable string
-  
+
   if not re.match('^\d\.\d\.\d$',version):
     print "Error: version number must be of format %i.%i.%i, e.g. 3.0.2"
     return
 
   # check current version
   curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
-  
+
   if curversion == version:
     print "Already using version %s. Not changing anything!" %(version)
     return
-  
+
   # ok, otherwise we must do things!
   startdir = os.getcwd()
 
   # check for existing local files. If so we can just change the pointers
-  mustdownload = False  
-  
+  mustdownload = False
+
   flist =   ['apec_vVERSION_line.fits', 'apec_vVERSION_coco.fits',\
                 'filemap_vVERSION', 'apec_vVERSION_linelist.fits']
   if version[0] == '3':
     flist.append('apec_vVERSION_nei_line.fits')
     flist.append('apec_vVERSION_nei_comp.fits')
-  
+
   for f in flist:
     fname_test = re.sub('VERSION',version, os.path.expandvars("$ATOMDB/%s"%(f)))
-    
+
     if os.path.exists(fname_test):
       print "%s already exists"%(fname_test)
       pass
-      
+
     else:
       print "We are missing some files for this version, downloading now"
       mustdownload = True
 
   if mustdownload:
-    # go find the files      
+    # go find the files
     ftproot = 'sao-ftp.harvard.edu'
     # get the filename
     if version[0] =='2':
@@ -754,14 +754,14 @@ def switch_version(version):
     elif version[0] =='3':
       fname = re.sub('VERSION',version,'atomdb_vVERSION.tar.bz2')
       dirname = 'AtomDB/releases'
-      
+
     localfile = os.path.expandvars("$ATOMDB/tmp/%s"%(fname))
       # create temporary folder
     mkdir_p(os.path.expandvars("$ATOMDB/tmp"))
-      
-     
+
+
     print "Attempting to download %s to %s"%('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile)
-    
+
     if os.path.isfile(localfile):
       os.remove(localfile)
     # get the file
@@ -769,7 +769,7 @@ def switch_version(version):
       wget.download('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile)
     except IOError:
       print "Cannot find file ftp://%s/%s/%s on server. Please check that version %s is a valid version."%(ftproot,dirname,fname, version)
-      return    
+      return
     # ok, now open up the relevant file and copy the things we need
     print "\nUncompressing %s..." %(localfile)
 
@@ -786,12 +786,12 @@ def switch_version(version):
     if version[0] =='3':
       fname = re.sub('VERSION',version,'atomdb_vVERSION_nei.tar.bz2')
       dirname = 'AtomDB/releases'
-      
+
       localfile = os.path.expandvars("$ATOMDB/tmp/%s"%(fname))
         # create temporary folder
       mkdir_p(os.path.expandvars("$ATOMDB/tmp"))
-      
-     
+
+
       print "Attempting to download %s to %s"%('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile)
     # get the file
       if os.path.isfile(localfile):
@@ -801,7 +801,7 @@ def switch_version(version):
         wget.download('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile)
       except IOError:
         print "Cannot find file ftp://%s/%s/%s on server. Please check that version %s is a valid version."%(ftproot,dirname,fname, version)
-        return    
+        return
     # ok, now open up the relevant file and copy the things we need
       print "\nUncompressing %s..." %(localfile)
 
@@ -817,46 +817,46 @@ def switch_version(version):
     urllib.urlcleanup()
 
     for ifile in glob.glob('*%s*'%(version)):
-      
+
       outfile = os.path.expandvars("$ATOMDB/%s"%(ifile))
       if os.path.exists(outfile):
         try:
           if md5Checksum(outfile) == md5Checksum(ifile):
             print "file %s already exists, not overwriting"%(ifile)
-        # these files are the same, don't bother copying or 
+        # these files are the same, don't bother copying or
         # asking about copying them.
             continue
         except IOError:
           print "outfile = %s, ifile = %s"%(outfile, ifile)
           raise
-      
+
         overwrite = question("file %s already exists. Overwrite?"%(outfile),"y",["y","n"])
         if overwrite:
           os.remove(outfile)
           shutil.move(ifile,outfile)
         else:
           continue
-      else: 
+      else:
 
         shutil.move(ifile,outfile)
 
     print "...done"
-    
+
     os.chdir(os.path.expandvars("$ATOMDB"))
     # delete temporary directory
     shutil.rmtree('tmp')
-    
+
   os.chdir(os.path.expandvars("$ATOMDB"))
   # OK, download complete. Now to make symlinks
-  
+
   flistlist = ['apec_vVERSION_line.fits', 'apec_vVERSION_coco.fits',\
                 'filemap_vVERSION', 'apec_vVERSION_linelist.fits']
   if int(version[0]) >=3:
     flistlist.append('apec_vVERSION_nei_line.fits')
     flistlist.append('apec_vVERSION_nei_comp.fits')
-    
+
   for flist in flistlist:
-                  
+
     # remove existing link if there is one
 #    print "CHECKING FOR %s/%s"%(os.getcwd(), re.sub('VERSION',version,flist))
 #    if os.path.exists(re.sub('VERSION',version,flist)):
@@ -866,9 +866,9 @@ def switch_version(version):
     print flist
     if os.path.islink(re.sub('_vVERSION','',flist)):
       os.remove(re.sub('_vVERSION','',flist))
-      
+
     os.symlink(re.sub('VERSION',version,flist), re.sub('_vVERSION','',flist))
-    
+
     # update version
     a = open('VERSION','w')
     a.write(version+'\n')
@@ -893,7 +893,7 @@ def make_vec(d):
     d as a vector (same as input if already an iterable type)
   isvec : bool
     True if d was a vector, otherwise False.
-  
+
 
   """
   isvec=True
@@ -903,7 +903,7 @@ def make_vec(d):
   except TypeError:
     isvec=False
     vecd= numpy.array([d])
-    
+
   return vecd,isvec
 
 #-------------------------------------------------------------------------------
@@ -920,7 +920,7 @@ def write_lv_file(fname, dat, clobber=False):
     * z1 : int: ion charge + 1
     * comments : iterable of strings: comments to append to the file
     * data : numpy.array: stores all the individual level data, with the following types
-      
+
       - elec_config : string (40 char max) : Electron configuration strings\n
       - energy : float: Level energy (eV)\n
       - e_error : float : Energy level error (eV)\n
@@ -929,13 +929,13 @@ def write_lv_file(fname, dat, clobber=False):
       - s_quan : float : S quantum number\n
       - lev_deg : int : level degeneracy\n
       - phot_type : int : photoionization data type::
-      
+
             -1. none\n
              0. hydrogenic\n
              1. Clark\n
              2. Verner\n
              3. XSTAR data
-             
+
       - phot_par : float(20) : photoionization paramters (see specific PI type for definition)\n
       - Aaut_tot : float (optional) : the total autoionization rate out of the level (s^-1)\n
       - Arad_tot : float (optional) : the total radiative rate out of the level (s^-1)\n
@@ -947,11 +947,11 @@ def write_lv_file(fname, dat, clobber=False):
 
   clobber : bool
     Overwrite existing file if it exists.
-    
+
   Returns
   -------
   none
-  
+
 
   """
 
@@ -965,14 +965,14 @@ def write_lv_file(fname, dat, clobber=False):
     fileversion = '1.1.0'
   else:
     fileversion = '1.0.0'
-
-  hdu0.header.update('DATE', now.strftime('%d/%m/%y'))
-  hdu0.header.update('E_LEVEL', "Atomic Energy Levels")
-  hdu0.header.update('FILENAME', "Python routine")
-  hdu0.header.update('ORIGIN', "ATOMDB",comment=os.environ['USER']+", AtomDB project")
-  hdu0.header.update('HDUCLASS', "ATOMIC",comment="Atomic Data")
-  hdu0.header.update('HDUCLAS1', "E_LEVEL",comment="Atomic Energy levels")
-  hdu0.header.update('HDUVERS', fileversion,comment="Version of datafile")
+  print now.strftime('%d/%m/%y')
+  hdu0.header['DATE']= now.strftime('%d/%m/%y')
+  hdu0.header['E_LEVEL']= "Atomic Energy Levels"
+  hdu0.header['FILENAME']="Python routine"
+  hdu0.header['ORIGIN'] = ( "ATOMDB",os.environ['USER']+", AtomDB project")
+  hdu0.header['HDUCLASS']=("ATOMIC","Atomic Data")
+  hdu0.header['HDUCLAS1']=("E_LEVEL","Atomic Energy levels")
+  hdu0.header['HDUVERS']= (fileversion,"Version of datafile")
 
 
   # do a key case conversion
@@ -1016,7 +1016,7 @@ def write_lv_file(fname, dat, clobber=False):
 
   #secondary HDU, hdu1:
   if fileversion=='1.0.0':
-    hdu1 = pyfits.new_table(pyfits.ColDefs(
+    hdu1 = pyfits.BinTableHDU.from_columns(pyfits.ColDefs(
             [pyfits.Column(name='ELEC_CONFIG',
                format='40A',
                array=dat[datakey][keys['elec_config']]),
@@ -1055,7 +1055,7 @@ def write_lv_file(fname, dat, clobber=False):
              ))
 
   elif fileversion=='1.1.0':
-    hdu1 = pyfits.new_table(pyfits.ColDefs(
+    hdu1 = pyfits.BinTableHDU.from_columns(pyfits.ColDefs(
             [pyfits.Column(name='ELEC_CONFIG',
                format='40A',
                array=dat[datakey][keys['elec_config']]),
@@ -1106,24 +1106,24 @@ def write_lv_file(fname, dat, clobber=False):
                format='20A',
                array=dat[datakey][keys['arad_ref']])] ))
 
-  hdu1.header.update('XTENSION', hdu1.header['XTENSION'],
-          comment='Written by '+os.environ['USER']+now.strftime('%a %Y-%m-%d %H:%M:%S')+ 'UTC')
-  hdu1.header.update('EXTNAME', atomic.spectroscopic_name(dat['Z'],dat['z1']),
-          comment='Ion Name', before="TTYPE1")
-  hdu1.header.update('HDUCLASS', 'ATOMIC',
-          comment='Atomic Data', before="TTYPE1")
-  hdu1.header.update('HDUCLAS1', 'E_LEVEL',
-          comment='Energy level tables', before="TTYPE1")
-  hdu1.header.update('ELEMENT', dat['Z'],
-          comment='Numer of protons in element', before="TTYPE1")
-  hdu1.header.update('ION_STAT', dat['z1']-1,
-          comment='ion state (0 = neutral)', before="TTYPE1")
-  hdu1.header.update('ION_NAME', atomic.spectroscopic_name(dat['Z'],dat['z1']),
-          comment='Ion Name', before="TTYPE1")
-  hdu1.header.update('N_LEVELS',len(dat[datakey][keys['elec_config']]) ,
-           comment='Number of energy levels', before="TTYPE1")
-  hdu1.header.update('HDUVERS1', '1.1.0',
-           comment='Version of datafile', before="TTYPE1")
+  hdu1.header['XTENSION']=(hdu1.header['XTENSION'],\
+                          'Written by '+os.environ['USER']+\
+                          now.strftime('%a %Y-%m-%d %H:%M:%S')+ 'UTC')
+  hdu1.header['EXTNAME']= (atomic.spectroscopic_name(dat['Z'],dat['z1']),
+          'Ion Name')
+  hdu1.header['HDUCLASS'] = ('ATOMIC', 'Atomic Data')
+  hdu1.header['HDUCLAS1'] = ('E_LEVEL','Energy level tables')
+
+  hdu1.header['ELEMENT']=( dat['Z'],
+          'Numer of protons in element')
+  hdu1.header['ION_STAT']=( dat['z1']-1,\
+                            'ion state (0 = neutral)')
+  hdu1.header['ION_NAME']=(atomic.spectroscopic_name(dat['Z'],dat['z1']),
+          'Ion Name')
+  hdu1.header['N_LEVELS'] = (len(dat[datakey][keys['elec_config']]) ,
+           'Number of energy levels')
+  hdu1.header['HDUVERS1'] = ('1.1.0',
+           'Version of datafile')
 
   if 'comments' in dat.keys():
     for icmt in dat['comments']:
@@ -1139,7 +1139,7 @@ def write_lv_file(fname, dat, clobber=False):
       os.remove(fname)
     except OSError:
       pass
-  
+
   try:
     hdulist.writeto(fname, checksum=True, clobber=clobber)
   except TypeError:
@@ -1159,12 +1159,12 @@ def write_la_file(fname, dat, clobber=False):
     The file to write
   dat : list
     The data to write. Should be a list with the following keywords:
-    
+
     * Z : int : nuclear charge
     * z1 : int : ion charge + 1
     * comments : iterable of strings : comments to append to the file
     * data : numpy.array: stores all the individual level data, with the following types:
-      
+
       - upper_lev : int : Upper level of transition
       - lower_lev : int : Lower level of transition
       - wavelen : float : Wavelength of transition (A)
@@ -1173,10 +1173,10 @@ def write_la_file(fname, dat, clobber=False):
       - ein_a_err : float : Error in A coefficient (s-1)
       - wave_ref : string(20) : wavelength reference (bibcode)
       - ein_a_ref : string(20) : A-value reference (bibcode)
-      
+
   clobber : bool
     Overwrite existing file if it exists.
-    
+
   Returns
   -------
   none
@@ -1188,13 +1188,13 @@ def write_la_file(fname, dat, clobber=False):
   hdu0 = pyfits.PrimaryHDU()
   now = datetime.datetime.utcnow()
 
-  hdu0.header.update('DATE', now.strftime('%d/%m/%y'))
-  hdu0.header.update('EM_LINES', "Emission Line Data")
-  hdu0.header.update('FILENAME', "Python routine")
-  hdu0.header.update('ORIGIN', "ATOMDB",comment=os.environ['USER']+", AtomDB project")
-  hdu0.header.update('HDUCLASS', "ATOMIC",comment="Atomic Data")
-  hdu0.header.update('HDUCLAS1', "EM_LINES",comment="Emission Line data")
-  hdu0.header.update('HDUVERS', "1.0.0",comment="Version of datafile")
+  hdu0.header['DATE']=( now.strftime('%d/%m/%y'))
+  hdu0.header['EM_LINES']=( "Emission Line Data")
+  hdu0.header['FILENAME']=( "Python routine")
+  hdu0.header['ORIGIN']=( "ATOMDB",os.environ['USER']+", AtomDB project")
+  hdu0.header['HDUCLASS']=( "ATOMIC","Atomic Data")
+  hdu0.header['HDUCLAS1']=( "EM_LINES","Emission Line data")
+  hdu0.header['HDUVERS']=( "1.0.0","Version of datafile")
 
   # do a key case conversion
   datakey=''
@@ -1225,10 +1225,10 @@ def write_la_file(fname, dat, clobber=False):
       keys['wv_obs_ref'] = i
     if i.lower()=='ein_a_ref':
       keys['ein_a_ref'] = i
-      
-  
+
+
   #secondary HDU, hdu1:
-  hdu1 = pyfits.new_table(pyfits.ColDefs(
+  hdu1 = pyfits.BinTableHDU.from_columns(pyfits.ColDefs(
         [pyfits.Column(name='UPPER_LEV',
            format='1J',
            array=dat[datakey][keys['upper_lev']]),
@@ -1266,24 +1266,23 @@ def write_la_file(fname, dat, clobber=False):
            array=dat[datakey][keys['ein_a_ref']])]
          ))
 
-  hdu1.header.update('XTENSION', hdu1.header['XTENSION'],
-          comment='Written by '+os.environ['USER']+now.strftime('%a %Y-%m-%d %H:%M:%S')+ 'UTC')
-  hdu1.header.update('EXTNAME', atomic.spectroscopic_name(dat['Z'],dat['z1']),
-          comment='Ion Name', before="TTYPE1")
-  hdu1.header.update('HDUCLASS', 'ATOMIC',
-          comment='Atomic Data', before="TTYPE1")
-  hdu1.header.update('HDUCLAS1', 'EM_LINES',
-          comment='Emission line tables', before="TTYPE1")
-  hdu1.header.update('ELEMENT', dat['Z'],
-          comment='Numer of protons in element', before="TTYPE1")
-  hdu1.header.update('ION_STAT', dat['z1']-1,
-          comment='ion state (0 = neutral)', before="TTYPE1")
-  hdu1.header.update('ION_NAME', atomic.spectroscopic_name(dat['Z'],dat['z1']),
-          comment='Ion Name', before="TTYPE1")
-  hdu1.header.update('N_LINES',len(dat['data']) ,
-           comment='Number of emission lines', before="TTYPE1")
-  hdu1.header.update('HDUVERS1', '1.0.0',
-           comment='Version of datafile', before="TTYPE1")
+  hdu1.header['XTENSION']=(hdu1.header['XTENSION'],
+          'Written by '+os.environ['USER']+now.strftime('%a %Y-%m-%d %H:%M:%S')+ 'UTC')
+  hdu1.header['EXTNAME']=(atomic.spectroscopic_name(dat['Z'],dat['z1']),
+          'Ion Name')
+  hdu1.header['HDUCLASS']=('ATOMIC',
+          'Atomic Data')
+  hdu1.header['HDUCLAS1']=('EM_LINES',
+          'Emission line tables'
+          'Numer of protons in element')
+  hdu1.header['ION_STAT']=(dat['z1']-1,
+          'ion state (0 = neutral)')
+  hdu1.header['ION_NAME']=(atomic.spectroscopic_name(dat['Z'],dat['z1']),
+          'Ion Name')
+  hdu1.header['N_LINES']=(len(dat['data']) ,
+           'Number of emission lines')
+  hdu1.header['HDUVERS1']=('1.0.0',
+           'Version of datafile')
 
   if  'comments' in dat.keys():
     print 'adding comments'
@@ -1321,7 +1320,7 @@ def write_ai_file(fname, dat, clobber=False):
     The file to write
   dat : list
     The data to write. Should be a list with the following keywords:
-    
+
     * Z : int: nuclear charge
     * z1 : int: ion charge + 1
     * comments : iterable of strings:  comments to append to the file
@@ -1338,7 +1337,7 @@ def write_ai_file(fname, dat, clobber=False):
 
   clobber : bool
     Overwrite existing file if it exists.
-    
+
   Returns
   -------
   none
@@ -1406,7 +1405,7 @@ def write_ai_file(fname, dat, clobber=False):
 
   # combine hdus
 
-  
+
   if 'comments' in dat.keys():
     print 'adding comments'
     for icmt in dat['comments']:
@@ -1443,12 +1442,12 @@ def write_ec_file(fname, dat, clobber=False):
     The file to write
   dat : list
     The data to write. Should be a list with the following keywords:
-    
+
     * Z : int : nuclear charge
     * z1 : int : ion charge + 1
     * comments : iterable of strings: comments to append to the file
     * data : numpy.array : stores all the individual level data, with the following types:
-    
+
       - lower_lev : int : Lower level of transition
       - upper_lev : int : Upper level of transition
       - coeff_type : int : Coefficient type
@@ -1462,7 +1461,7 @@ def write_ec_file(fname, dat, clobber=False):
 
   clobber : bool
     Overwrite existing file if it exists.
-    
+
   Returns
   -------
   none
@@ -1484,8 +1483,8 @@ def write_ec_file(fname, dat, clobber=False):
     if i.lower() in keylist:
       keys[i.lower()] = i
     else:
-      print "Error: didn't find key %s" %(i.lower())   
-  
+      print "Error: didn't find key %s" %(i.lower())
+
 
 
 
@@ -1569,7 +1568,7 @@ def write_ec_file(fname, dat, clobber=False):
              format='20A',
              array=dat['data'][keys['reference']])]
            ))
-    
+
   hdu1.header.update('XTENSION', hdu1.header['XTENSION'],
           comment='Written by '+os.environ['USER']+now.strftime('%a %Y-%m-%d %H:%M:%S')+ 'UTC')
   hdu1.header.update('EXTNAME', atomic.spectroscopic_name(dat['Z'], dat['z1']),
@@ -1625,11 +1624,11 @@ def write_ir_file(fname, dat, clobber=False):
     The file to write
   dat : list
     The data to write. Should be a list with the following keywords:
-    
+
     * Z : int : nuclear charge
     * z1 : int : ion charge + 1
     * comments : iterable of strings : comments to append to the file
-    * ionpot : float : ionization potential (eV)   
+    * ionpot : float : ionization potential (eV)
     * ip_dere : float : ionization potential (eV)   (from dere, optional)
     * data : numpy.array : stores all the individual level data, with the following types:
 
@@ -1639,7 +1638,7 @@ def write_ir_file(fname, dat, clobber=False):
       - level_init : int : Initial level
       - level_final : int : Final level
       - tr_type : string(2) : Transition type::
-      
+
           CI = collisional excitaion
           EA = excitation autoionization
           RR = radiative recombination
@@ -1647,7 +1646,7 @@ def write_ir_file(fname, dat, clobber=False):
           XI = ionization, excluded from total rate calculation
           XR = recombination, excluded from total rate calculation
           (XR and XI are used to populate level directly)
-      
+
       - tr_index : int : index within the file
       - par_type : int : parameter type, i.e. how the data is stored
       - min_temp : float : Minimum temperature in range (K)
@@ -1666,7 +1665,7 @@ def write_ir_file(fname, dat, clobber=False):
       - br_rat_ref : string(20) : Branching ratio reference (bibcode)
   clobber : bool
     Overwrite existing file if it exists.
-    
+
   Returns
   -------
   none
@@ -1694,7 +1693,7 @@ def write_ir_file(fname, dat, clobber=False):
     if i.lower() in keylist:
       keys[i.lower()] = i
     else:
-      print "Error: didn't find key %s" %(i.lower())  
+      print "Error: didn't find key %s" %(i.lower())
   #secondary HDU, hdu1:
 
   print keys
@@ -1797,7 +1796,7 @@ def write_ir_file(fname, dat, clobber=False):
     hdu1.header.update('IP_DERE', dat['ip_dere'],
              comment='Ionization Potential for Dere Ionization Rates', \
              before="TTYPE1")
-  
+
   if 'comments' in dat.keys():
     print 'adding comments'
     for icmt in dat['comments']:
@@ -1824,48 +1823,48 @@ def write_ir_file(fname, dat, clobber=False):
 def keyword_check(keyword):
   """
   Returns False is the keyword is in fact false, otherwise returns True
-  
+
   Parameters
   ----------
-  keyword: any 
+  keyword: any
     The keyword value
-  
+
   Returns
   -------
   bool
     True if the keyword is set to not False, otherwise False
   """
-  
+
   # first, check if iterable
-  
+
   isbool=True
-  
+
   try:
     it = iter(keyword)
     return True
-  except TypeError: 
+  except TypeError:
     pass
 
 
   # so it's not iterable
-  
+
   if keyword==False:
     return False
   else:
-    return True  
+    return True
 
 #-------------------------------------------------------------------------------
 
 def write_develop_data(data, filemapfile, Z, z1, ftype, folder, froot):
   import string
-  
+
   """
   Write the data to the next version of the file. Update the filemap.
-  
+
   """
-  
+
   # ok. This is hard.
-  
+
   # 1 create a new filename
   #
   # filename is of type: "folder/APED/elsymb/elsymb_z1/elsymb_z1_ftype_froot_ITERATION.fits"
@@ -1877,31 +1876,31 @@ def write_develop_data(data, filemapfile, Z, z1, ftype, folder, froot):
   isunique=False
   i=1
   flocation =string.join(fname1.split('/')[:-1],'/')
-  
+
   if not os.path.isdir(flocation):
     mkdir_p(flocation)
-  
+
   while not isunique:
     fname = "%s_%i.fits"%(fname1, i)
-    
+
     if not os.path.exists(fname):
       isunique=True
     else:
       i+=1
   # ok, we have a unique file
-  
+
   # check we can update the filemap
   ret = atomdb.read_filemap(filemap=filemapfile)
-  
+
   j = numpy.where((ret['Z']==Z) & \
                   (ret['z1']==z1))[0]
   if len(j)==0:
     print "Hmm... this data doesn't exist?"
-    
+
   else:
     ret[ftype.lower()][j[0]] = fname
     atomdb.write_filemap(ret, filemapfile)
-    
+
     data.writeto(fname)
 
 #-------------------------------------------------------------------------------
@@ -1910,7 +1909,7 @@ def generate_xspec_ionbal_files(Z, filesuffix, settings = False):
   """
   Generate the eigen files that XSPEC uses to calculate the ionizatoin
   balances
-  
+
   Parameters
   ----------
   Z : int
@@ -1925,27 +1924,27 @@ def generate_xspec_ionbal_files(Z, filesuffix, settings = False):
 
     * settings['atomdbroot']: If you have files in non-standard locations
       you can replace $ATOMDB with this value
-  
+
   Returns
   -------
    none
-   
+
   """
   import scipy.linalg
   # get the ion & rec rates
 
   Telist = numpy.logspace(4,9,1251)
-  
+
   ionlist = numpy.zeros([len(Telist), Z])
   reclist = numpy.zeros([len(Telist), Z])
-  
+
   # outputs:
   feqb = numpy.zeros([len(Telist),Z+1])
   vl_out = numpy.zeros([len(Telist),Z**2])
   vr_out = numpy.zeros([len(Telist),Z**2])
   eig_out = numpy.zeros([len(Telist),Z])
-  
-  
+
+
   for z1 in range(1,Z+1):
     iontmp, rectmp = atomdb.get_ionrec_rate(Telist, False, Z=Z, z1=z1, extrap=True,
                                             settings=settings)
@@ -1957,7 +1956,7 @@ def generate_xspec_ionbal_files(Z, filesuffix, settings = False):
     Te = Telist[ite]
     ion = ionlist[ite,:]
     rec = reclist[ite,:]
-  
+
 
     b = numpy.zeros(Z+1, dtype=numpy.float32)
     a = numpy.zeros((Z+1,Z+1), dtype=numpy.float32)
@@ -1995,7 +1994,7 @@ def generate_xspec_ionbal_files(Z, filesuffix, settings = False):
             else:
               AA[0,iCol] = -(ion[0] + rec[0])
 
-  
+
           if (iCol==1): AA[0,iCol] = rec[1] - ion[0]
           if (iCol>1):
             AA[0,iCol] = -ion[0]
@@ -2017,12 +2016,12 @@ def generate_xspec_ionbal_files(Z, filesuffix, settings = False):
 
     leftevec = numpy.zeros(Z**2)
     rightevec = numpy.zeros(Z**2)
-  
+
   # The value VL in which is stored is not actually the left eigenvecotr,
   # but is instead the inverse of vr.
-  
+
     vl = numpy.matrix(vr_la)**-1
-  
+
 
     for i in range(Z):
       for j in range(Z):
@@ -2032,7 +2031,7 @@ def generate_xspec_ionbal_files(Z, filesuffix, settings = False):
     vr_out[ite] = rightevec
     vl_out[ite] = leftevec
     eig_out[ite] = wr_la
-  
+
 
   hdu0 = pyfits.PrimaryHDU()
   now = datetime.datetime.utcnow()
@@ -2040,7 +2039,7 @@ def generate_xspec_ionbal_files(Z, filesuffix, settings = False):
   hdu0.header.update('DATE', now.strftime('%d/%m/%y'))
   hdu0.header.update('FILENAME', "Python routine")
   hdu0.header.update('ORIGIN', "ATOMDB",comment=os.environ['USER']+", AtomDB project")
-  
+
   #secondary HDU, hdu1:
   hdu1 = pyfits.new_table(pyfits.ColDefs(
         [pyfits.Column(name='FEQB',
@@ -2055,10 +2054,10 @@ def generate_xspec_ionbal_files(Z, filesuffix, settings = False):
          pyfits.Column(name='VL',
            format='%iD'%(Z**2),
            array=vl_out)] ))
-  
+
   hdulist = pyfits.HDUList([hdu0,hdu1])
   hdulist[1].header['EXTNAME']='EIGEN'
-  
+
   fname = 'eigen%s_%s.fits'%(atomic.Ztoelsymb(Z).lower(), filesuffix)
   hdulist.writeto(fname, checksum=True, clobber=True)
 
@@ -2068,7 +2067,7 @@ def make_release_filetree(filemapfile_in, filemapfile_out, \
                           replace_source, destination, versionname):
   """
   Take an existing filemap, copy the files to the atomdbftp folder as required.
-  
+
   Parameters
   ----------
   filemapfile_in : string
@@ -2081,22 +2080,22 @@ def make_release_filetree(filemapfile_in, filemapfile_out, \
     The folder to store the files in
   versionname : string
     The version string for the new files (e.g. 3_0_4)
-  
+
   Returns
   -------
   None
-  
+
   Notes
   -----
   This code searches for any files which don't have $ATOMDB in the filename
   and assumes they are new.
-  
+
   It updates the file name to be $ATOMDB/elname/elname_ion/elname_ion_FTYPE_versionname.fits
-  
+
   Versionname will have its last number stsripped and replaced with "a".
   So 3_0_4_2 becomes 3_0_4_a. This reflects that 4-number versions are for revisions of a file
   under development, while 3 number + letter are for released data.
-  
+
   And then copies it to the destination folder, compressing it with gzip.
   """
   import re, gzip
@@ -2111,7 +2110,7 @@ def make_release_filetree(filemapfile_in, filemapfile_out, \
                 '%s_v%s_a.fits'%(key.upper(), versionname),fmapf)
 
         fout = re.sub('XXX',destination, fmapf)
-        
+
         tmp = open(fin, 'rb')
         tmpd = tmp.read()
         print "writing %s ..."%(fout+'.gz'),
@@ -2119,7 +2118,7 @@ def make_release_filetree(filemapfile_in, filemapfile_out, \
         tmpo.write(tmpd)
         tmp.close()
         print "done"
-        
+
         fmap[key][i] = fmapf
 
   atomdb.write_filemap(fmap, filemapfile_out, atomdbroot='XXX')
@@ -2130,21 +2129,21 @@ def make_release_filetree(filemapfile_in, filemapfile_out, \
 def make_linelist(linefile, outfile):
   """
   Create atomdb linelist file from line.fits file
-  
+
   Parameters
   ----------
-  
+
   linefile : string
     The filename of the line file
   outfile : string
     The output filename of the string
-  
+
   Returns
   -------
   none
-  
+
   """
-  
+
   # open the line file
   d = pyfits.open(linefile)
 
@@ -2189,14 +2188,14 @@ def make_linelist(linefile, outfile):
                                         (numpy.float,51),\
                                         (numpy.float,51),\
                                         (numpy.float,51)]})
-   
+
   tmpdattype =  numpy.dtype({'names':['Lambda',\
                                       'Lambda_Err',\
                                       'LambdaTh'],\
                              'formats':[numpy.float,\
                                         numpy.float,\
                                         numpy.float]})
-   
+
   # master data
   ldat_all = numpy.zeros(0, dtype=linedattype)
 
@@ -2208,7 +2207,7 @@ def make_linelist(linefile, outfile):
     for z1 in range(1,z0+1):
       ldat_list[z1] = numpy.zeros(1000,dtype=linedattype)
       ildat_list[z1] = 0
-    
+
     tstart = time.time()
     for it in range(0,nte):
       i = it + 2
@@ -2217,7 +2216,7 @@ def make_linelist(linefile, outfile):
       # filter the data by element
       delem = d[i].data[d[i].data['element']==z0]
       if len(delem)==0: continue
-      
+
       for il in delem:
         z1 = il['Ion']
         ildat = ildat_list[z1]
@@ -2248,8 +2247,8 @@ def make_linelist(linefile, outfile):
 #          z['Density'] = tmpNe
 #          z['Emissivity'] = tmpEmis
 #          z['Emissivity_Err'] = tmpEmiserr
-          
-          
+
+
           ldat_list[z1]['Lambda'][ildat] = il['Lambda']
           ldat_list[z1]['Lambda_Err'][ildat] = il['Lambda_Err']
           ldat_list[z1]['Element'][ildat] = il['Element']
@@ -2263,10 +2262,10 @@ def make_linelist(linefile, outfile):
           ldat_list[z1]['Emissivity_Err'][ildat][:]  = numpy.nan
 
           ildat_list[z1]+=1
-          
+
           if ildat_list[z1] == len(ldat_list[z1]):
             ldat_list[z1] = numpy.append(ldat_list[z1], numpy.zeros(1000, dtype=linedattype))
-          
+
         else:
           # update existing line
           imatch = imatch[0]
@@ -2275,7 +2274,7 @@ def make_linelist(linefile, outfile):
           ldat_list[z1]['Density'][imatch][ind] = dens
           ldat_list[z1]['Emissivity'][imatch][ind] = il['Epsilon']
           ldat_list[z1]['Arraysize'][imatch] += 1
-    
+
     for z1 in ldat_list.keys():
       ldat_list[z1] = ldat_list[z1][:ildat_list[z1]]
       ldat_all = numpy.append(ldat_all, ldat_list[z1])
@@ -2287,7 +2286,7 @@ def make_linelist(linefile, outfile):
   # now go through and sort out the peaks
   for line in ldat_all:
     line['PeakIndex'] = numpy.argmax(line['Emissivity'])+1
-  
+
   # get number of points
   maxpoints = numpy.max(ldat_all['Arraysize'])
   hdu1dat = {}
@@ -2305,7 +2304,7 @@ def make_linelist(linefile, outfile):
   hdu1dat['density']     = ldat_all['Density'][:,:maxpoints]
   hdu1dat['emissivity']  = ldat_all['Emissivity'][:,:maxpoints]
   hdu1dat['emissivity_err']= ldat_all['Emissivity_Err'][:,:maxpoints]
-  
+
 
   hdu2dat = {}
   hdu2dat['lambda']    =  hdu1dat['lambda']
@@ -2500,7 +2499,7 @@ def make_linelist(linefile, outfile):
 def write_ionbal_file(Te, dens, ionpop, filename, Te_linear = False, dens_linear=False):
   """
   Create ionization balance file
-  
+
   Parameters
   ----------
   Te : array(float)
@@ -2516,7 +2515,7 @@ def write_ionbal_file(Te, dens, ionpop, filename, Te_linear = False, dens_linear
     if true, temperature grid is linear
   dens_linear : bool
     if true, density grid is linear
-    
+
   """
 
   # get list of elements
@@ -2531,23 +2530,23 @@ def write_ionbal_file(Te, dens, ionpop, filename, Te_linear = False, dens_linear
   X_ionpot = numpy.zeros([n, nZ], dtype=float)
   for i in range(n):
     Z_element[i,:] =Z_el1
-  
+
   iZ = 0
   for Z in Zlist:
     X_ionpot[:,iZ:iZ+Z+1] = ionpop[Z]
     iZ+=Z+1
-  
+
   # OK, done!
   Te_vec = numpy.zeros(n)
   Ne_vec = numpy.zeros(n)
-  
+
   for i in range(len(dens)):
     for j in range(len(Te)):
       Te_vec[i*len(Te)+j] = Te[j]
       Ne_vec[i*len(Te)+j] = dens[i]
-      
-  
-  
+
+
+
 #  hdu1 = pyfits.TableHDU.from_columns(pyfits.ColDefs(
 #        [pyfits.Column(name='TEMPERATURE',
 #           format='1E',
@@ -2564,7 +2563,7 @@ def write_ionbal_file(Te, dens, ionpop, filename, Te_linear = False, dens_linear
 #           format='%iE'%(nZ),
 #           array=X_ionpot)]))
 
-  
+
   hdu1 = pyfits.BinTableHDU.from_columns(pyfits.ColDefs(
         [pyfits.Column(name='TEMPERATURE',
            format='1E',
@@ -2599,8 +2598,8 @@ def write_ionbal_file(Te, dens, ionpop, filename, Te_linear = False, dens_linear
   else:
     nfirst = numpy.log10(dens[0])
     ndelta = (numpy.log10(dens[-1])-numpy.log10(dens[0]))/(len(dens)-1)
-    
-  
+
+
   hdu1.header['T_FIRST'] = (tfirst, '[K] First temperature')
   hdu1.header['T_DELTA'] = (tdelta, '[K] Delta temperature')
   hdu1.header['T_LINEAR'] = (Te_linear, 'Linear (or log) temperature spacing')
@@ -2609,17 +2608,17 @@ def write_ionbal_file(Te, dens, ionpop, filename, Te_linear = False, dens_linear
   hdu1.header['N_DELTA'] = (ndelta, '[cm**(-3)] Delta density')
   hdu1.header['N_LINEAR'] = (dens_linear, 'Linear (or log) density spacing')
   hdu1.header['N_NUMBER'] = (len(dens), 'Number of density grid points')
-  
+
   hdu1.header['N_ELEMEN'] = (len(Zlist), 'Number of elements')
   hdu1.header['N_IONS'] = (nZ, 'Total number of ion stages')
-  
+
   #primary HDU, hdu0
   hdu0 = pyfits.PrimaryHDU()
   now = datetime.datetime.utcnow()
   hdu0.header['DATE']= now.strftime('%d/%m/%y')
 
   hdulist = pyfits.HDUList([hdu0,hdu1])
-  
+
   hdulist.writeto(filename, checksum=True)
 
 
@@ -2628,7 +2627,7 @@ def make_release_tarballs(ciefileroot, neifileroot, filemap, versionname, \
                           releasenotes, parfile, neiparfile,makelinelist=False):
   """
   Create tarball for exmissivity files for a new release.
-  
+
   Parameters
   ----------
   ciefileroot : string
@@ -2650,7 +2649,7 @@ def make_release_tarballs(ciefileroot, neifileroot, filemap, versionname, \
   makelinelist : bool
     Remake the line list from the line file. If not specified, assumes linelist
     file already exists.
-    
+
   Returns
   -------
   None
@@ -2728,7 +2727,7 @@ def generate_equilibrium_ionbal_files(filename, settings = False):
   """
   Generate the eigen files that XSPEC uses to calculate the ionizatoin
   balances
-  
+
   Parameters
   ----------
   filename : string
@@ -2741,11 +2740,11 @@ def generate_equilibrium_ionbal_files(filename, settings = False):
 
     * settings['atomdbroot']: If you have files in non-standard locations
       you can replace $ATOMDB with this value
-  
+
   Returns
   -------
    none
-   
+
   """
 
   # get the ion & rec rates
@@ -2756,11 +2755,11 @@ def generate_equilibrium_ionbal_files(filename, settings = False):
   for Z in range(1,31):
     ionlist = numpy.zeros([len(Telist), Z])
     reclist = numpy.zeros([len(Telist), Z])
-  
+
   # outputs:
     feqb = numpy.zeros([len(Telist),Z+1])
-  
-  
+
+
     for z1 in range(1,Z+1):
       iontmp, rectmp = atomdb.get_ionrec_rate(Telist, False, Z=Z, z1=z1, extrap=True,
                                               settings=settings)
@@ -2772,12 +2771,12 @@ def generate_equilibrium_ionbal_files(filename, settings = False):
       Te = Telist[ite]
       ion = ionlist[ite,:]
       rec = reclist[ite,:]
-  
+
 
       b = numpy.zeros(Z+1, dtype=numpy.float32)
       a = numpy.zeros((Z+1,Z+1), dtype=numpy.float32)
 
- 
+
       for iZ in range(0,Z):
         a[iZ,iZ] -= (ion[iZ])
         a[iZ+1,iZ] += (ion[iZ])
@@ -2795,13 +2794,13 @@ def generate_equilibrium_ionbal_files(filename, settings = False):
       c[c<1e-10]=0.0
       feqb[ite] = c
     ionbal[Z] = feqb
-  
+
   write_ionbal_file(Telist, Nelist, ionbal, filename, Te_linear = False, dens_linear=True)
 
 def generate_isis_files(version='', outfile='atomdb_VERSION_isis.tar.bz2'):
   """
   Generate the ISIS tarball
-  
+
   Parameters
   ----------
   version : string
@@ -2812,13 +2811,13 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_isis.tar.bz2'):
   Returns
   -------
   none
-   
+
   """
   import re, tarfile
   # get the version number
-  
+
   curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
-  
+
   if version == '':
     version = curversion
     print "Version not specified, so using version %s"%(version)
@@ -2829,14 +2828,14 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_isis.tar.bz2'):
   # make folders for the data
   mkdir_p('tmp')
   foldername = re.sub('VERSION',version,'tmp/atomdb_vVERSION_isis')
-  
+
   mkdir_p(foldername)
-  
+
   linefile = os.path.expandvars('$ATOMDB/apec_linelist.fits')
   ldat = pyfits.open(linefile)
 
   filemap = os.path.expandvars('$ATOMDB/filemap')
-  
+
   f = atomdb.read_filemap()
   for i in range(len(f['Z'])):
     Z = f['Z'][i]
@@ -2845,9 +2844,9 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_isis.tar.bz2'):
     lafname = f['la'][i]
     lvfname = f['lv'][i]
     drfname = f['dr'][i]
-    
+
     if lvfname == '': continue
-    
+
     # copy across the LV & DR files if appropriate
     lvfnameout = re.sub(os.path.expandvars('$ATOMDB'), foldername, lvfname)
     tmp=''
@@ -2858,9 +2857,9 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_isis.tar.bz2'):
     if not os.path.isfile(lvfname):
       a = atomdb.get_data(Z,z1,'LV')
     shutil.copy2(lvfname, lvfnameout)
-     
+
     if drfname != '':
-    
+
     # copy across the LV & DR files if appropriate
       drfnameout = re.sub(os.path.expandvars('$ATOMDB'), foldername, drfname)
       if not os.path.isfile(drfname):
@@ -2870,12 +2869,12 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_isis.tar.bz2'):
     # now do the hard part
     lafnameout = re.sub(os.path.expandvars('$ATOMDB'), foldername, lafname)
     lafnameout = re.sub('.fits', '_isis.fits', lafnameout)
-    
+
     if not os.path.isfile(lafname):
       a = atomdb.get_data(Z,z1,'LA')
 
     f['la'][i]=lafnameout
-    
+
     ladat = pyfits.open(lafname)
     # keep only the transitions we care about
     k = ldat[2].data[(ldat[2].data['Element']==Z) &\
@@ -2890,10 +2889,10 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_isis.tar.bz2'):
                 (Z,z1,ik['UpperLev'], ik['LowerLev'])
       else:
         isgood[ii[0]]=True
-    
+
     ladat[1].data=ladat[1].data[isgood]
     ladat[1].header['N_LINES']=sum(isgood)
-    
+
     ladat.writeto(lafnameout, checksum=True, clobber=True)
     print "wrote %s with %i lines instead of %i"%\
           (lafnameout, sum(isgood), len(isgood))
@@ -2934,17 +2933,17 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_isis.tar.bz2'):
                             out="%s/APED/ionbal/%s"%(foldername, 'MM98_ionbal.fits'))
 
   # Need to make a link to the abundance file
-  
+
   shutil.copy2(os.path.expandvars('$ATOMDB/apec_v%s_coco.fits'%(version)),\
                "%s/"%(foldername))
-             
+
   # Need to make a symbolic link from one Abundance file to the other
   os.symlink("%s/APED/misc/Abundances_v2.0.0a.fits"%(foldername),\
              "%s/APED/misc/Abundances.fits"%(foldername))
-              
-  
-  
-  
+
+
+
+
   print "Compressing..."
   os.chdir('tmp')
   tar = tarfile.open(name='atomdb_v%s_isis.tar.bz2'%(version), mode='w:bz2')
@@ -2952,7 +2951,7 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_isis.tar.bz2'):
   tar.close()
   print "Done"
   os.chdir('../')
-  
+
 
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
@@ -2961,7 +2960,7 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_isis.tar.bz2'):
 def generate_web_fitsfiles(version='', outdir=''):
   """
   Split the linelist files into many small files and make an index for them
-  
+
   Parameters
   ----------
   version : string
@@ -2972,48 +2971,48 @@ def generate_web_fitsfiles(version='', outdir=''):
   Returns
   -------
   none
-   
+
   """
-  
+
   import getpass
-  
-  
+
+
   curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
-  
+
   if version == '':
     version = curversion
     print "Version not specified, so using version %s"%(version)
   else:
     if version != curversion:
       switch_version(version)
-  
+
   if outdir=='':
     outdir = 'webonly'
   # make folders for the data
   mkdir_p(outdir)
-  
+
   linefile = os.path.expandvars('$ATOMDB/apec_linelist.fits')
   #print linefile
   ldat = pyfits.open(linefile)
   nlines = len(ldat[1].data)
-  
+
   print ldat[1].header['NAXIS2']
   print len(ldat[1].data[51])
-  
+
   #print ldat[1].data[0]
   linesperfile = 1000
-  
+
   nfiles = nlines/linesperfile + 1
   print "nfiles = ", nfiles, "nlines = ", nlines, "linesperfile = ", linesperfile
   rangedatatype = numpy.dtype({'names':['Lambda_lo','Lambda_hi','filename'],\
                                'formats':[float, float, '|S40']})
-  
+
   rangedata = numpy.zeros(nfiles, dtype=rangedatatype)
-  
+
   isort = numpy.argsort(ldat[1].data['Lambda'])
   ldat[1].data=ldat[1].data[isort]
   ldat[2].data=ldat[2].data[isort]
-                                
+
   for ifile in range(nfiles):
     # create the lines we need.
     d1 = ldat[1].data[ifile*linesperfile:min([(ifile+1)*linesperfile, nlines])]
@@ -3021,7 +3020,7 @@ def generate_web_fitsfiles(version='', outdir=''):
     print "Creating file %i of %i"%(ifile+1, nfiles)
     hdu1 = pyfits.BinTableHDU(d1)
     hdu1.header=ldat[1].header
-    
+
     hdu2 = pyfits.BinTableHDU(d2)
     hdu2.header=ldat[2].header
     prihdr = pyfits.Header()
@@ -3031,10 +3030,10 @@ def generate_web_fitsfiles(version='', outdir=''):
     prihdr['HDUCLASS'] = ('EMISSIVITY','Line Emission Output')
     prihdr['HDUCLAS1'] = ('SHORT_LINE','Line Emission Output')
     prihdr['HDUVERS'] = ('1.0.0','Version of datafile')
-    
+
     prihdu = pyfits.PrimaryHDU(header=prihdr)
     hdulist = pyfits.HDUList([prihdu,hdu1,hdu2])
-    
+
     hdulist.writeto('%s/apec_v%s_linelist_split_%i.fits'%\
                    (outdir, version, ifile+1), checksum=True, clobber=True)
     rangedata[ifile]['Lambda_lo']=min(d1['Lambda'])
@@ -3048,7 +3047,7 @@ def generate_web_fitsfiles(version='', outdir=''):
                    (outdir, version), checksum=True, clobber=True)
   print "Finished"
   return
-    
-    
-    
-    
+
+
+
+
