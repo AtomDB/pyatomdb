@@ -181,15 +181,17 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
   if docont | dopseudo:
     for iZ, Z in enumerate(Zlist):
     # ADD  CONTINUUM
-      cspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
+      tmpcspectrum = make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
                                            binunits=binunits, no_coco=not(docont),\
                                            no_pseudo=not(dopseudo))*abund[iZ]
 
   # broaden the continuum if required:
-  if broadening:
-    cspectrum = broaden_continuum(ebins, cspectrum, binunits = binunits, \
+      if broadening:
+        cspectrum += broaden_continuum(ebins, tmpcspectrum, Z,binunits = binunits, \
                       broadening=broadening,\
                       broadenunits=broadenunits)
+      else:
+        cspectrum += tmpcspectrum
   if dummyfirst:
     return numpy.append([0],   cspectrum+lspectrum)
   else:
@@ -352,43 +354,140 @@ def make_ion_spectrum(bins, index, Z,z1, linefile="$ATOMDB/apec_nei_line.fits",\
   if docont:
     # ADD  LINES
     if nei:
-      cspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
+      tmpcspectrum = make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
                                          ion = z1, binunits=binunits,\
                                          no_pseudo=True)*abund
     else:
-      cspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
+      tmpcspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
                                          ion = 0, binunits=binunits,\
                                          no_pseudo=True)*abund
-
-
+    if broadening:
+      cspectrum += broaden_continuum(ebins, tmpcspectrum, Z, binunits = binunits, \
+                      broadening=broadening,\
+                      broadenunits=broadenunits)
+    else:
+      cspectrum += tmpcspectrum
+      
   if dopseudo:
     # ADD  LINES
     if nei:
-      pspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
+      tmppspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
                                          ion = z1, binunits=binunits, \
                                          no_coco=True)*abund
     else:
-      pspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
+      tmppspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
                                          ion = 0, binunits=binunits, \
                                          no_coco=True)*abund
 
-
-
-  # broaden the continuum if required:
-  if broadening:
-
-    cspectrum = broaden_continuum(ebins, cspectrum, binunits = binunits, \
+    if broadening:
+      pspectrum += broaden_continuum(ebins, tmppspectrum, Z, binunits = binunits, \
                       broadening=broadening,\
                       broadenunits=broadenunits)
-    pspectrum = broaden_continuum(ebins, pspectrum, binunits = binunits, \
-                      broadening=broadening,\
-                      broadenunits=broadenunits)
+    else:
+      pspectrum += tmppspectrum
+
+
   if dummyfirst:
     return numpy.append([0],   cspectrum+lspectrum+pspectrum)
   else:
     return cspectrum+lspectrum+pspectrum
 
 
+##-------------------------------------------------------------------------------
+##-------------------------------------------------------------------------------
+##-------------------------------------------------------------------------------
+#def add_lines(Z, abund, lldat, ebins, z1=False, z1_drv=False, \
+              #broadening=False, broadenunits='A'):
+  #"""
+  #Add lines to spectrum, applying gaussian broadening.
+
+  #Add the lines in list lldat, with atomic number Z, to a spectrum delineated
+  #by ebins (these are the edges, in keV). Apply broadening to the spectrum
+  #if broadening != False, with units of broadenunits (so can do constant
+  #wavelength or energy broadening)
+
+  #Parameters
+  #----------
+  #Z : int
+    #Element of interest (e.g. 6 for carbon)
+  #abund : float
+    #Abundance of element, relative to AG89 data.
+  #lldat : dtype linelist
+    #The linelist to add. Usually the hdu from the apec_line.fits \
+    #file, often with some filters pre-applied.
+  #ebins : array of floats
+    #Energy bins. Will return spectrum with nbins-1 data points.
+  #z1 : int
+    #Ion charge +1 of ion to return
+  #z1_drv : int
+    #Driving Ion charge +1 of ion to return
+  #broadening : float
+    #Apply spectral broadening if > 0. Units of A of keV
+  #broadenunits : {'A' , 'keV'}
+    #The units of broadening, Angstroms or keV
+
+
+  #Returns
+  #-------
+  #array of float
+    #broadened emissivity spectrum, in photons cm^3 s^-1 bin^-1. Array has \
+    #len(ebins)-1 values.
+  #"""
+##
+##  History
+##  -------
+##  Version 0.1 - initial release
+##    Adam Foster July 17th 2015
+##
+
+  #lammax = (const.HC_IN_KEV_A/ebins[0])
+  #lammin = (const.HC_IN_KEV_A/ebins[-1])
+  #if broadenunits.lower() in ['a','angstrom','angstroms']:
+    #bunits = 'a'
+  #elif broadenunits.lower() =='kev':
+    #bunits = 'kev'
+  #else:
+    #print "Error: unknown broadening unit %s, Must be keV or A. Exiting ***"%\
+          #(broadenunits)
+    #return -1
+  #if broadening:
+    #if bunits == 'a':
+      #lammax += broadening
+      #lammin -= broadening
+    #else:
+      #lammax += lammax**2 * broadening/const.HC_IN_KEV_A
+      #lammin -= lammin**2 * broadening/const.HC_IN_KEV_A
+
+
+  #l = lldat[(lldat['element']==Z) &\
+            #(lldat['lambda'] <= lammax) &\
+            #(lldat['lambda'] >= lammin)]
+
+  #if z1:
+    #l = l[l['ion'] ==z1]
+  #if z1_drv:
+    #l = l[l['ion_drv'] ==z1_drv]
+
+  #spectrum = numpy.zeros(len(ebins)-1, dtype=float)
+
+  #if broadening:
+    #if  bunits == 'a':
+      #for ll in l:
+        #spectrum+=atomdb.addline2(ebins, const.HC_IN_KEV_A/ll['lambda'], \
+                 #ll['epsilon']* abund,\
+                 #broadening*const.HC_IN_KEV_A/(ll['lambda']**2))
+    #else:
+      #for ll in l:
+        #spectrum+=atomdb.addline2(ebins, const.HC_IN_KEV_A/ll['lambda'], \
+                 #ll['epsilon']* abund,\
+                 #broadening)
+  #else:
+    #for ll in l:
+      #spectrum[numpy.argmax(\
+               #numpy.where(ebins <= const.HC_IN_KEV_A/ll['lambda'])[0])]+=\
+               #ll['epsilon']* abund
+
+  #return spectrum
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -419,8 +518,10 @@ def add_lines(Z, abund, lldat, ebins, z1=False, z1_drv=False, \
     Driving Ion charge +1 of ion to return
   broadening : float
     Apply spectral broadening if > 0. Units of A of keV
-  broadenunits : {'A' , 'keV'}
-    The units of broadening, Angstroms or keV
+  broadenunits : {'A' , 'keV', 'thermal'}
+    The units of broadening, Angstroms or keV, or thermal. If thermal,
+    the broadening parameter is assumed to be the electron
+    temperature in keV.
 
 
   Returns
@@ -429,6 +530,7 @@ def add_lines(Z, abund, lldat, ebins, z1=False, z1_drv=False, \
     broadened emissivity spectrum, in photons cm^3 s^-1 bin^-1. Array has \
     len(ebins)-1 values.
   """
+  import scipy.stats
 #
 #  History
 #  -------
@@ -438,18 +540,33 @@ def add_lines(Z, abund, lldat, ebins, z1=False, z1_drv=False, \
 
   lammax = (const.HC_IN_KEV_A/ebins[0])
   lammin = (const.HC_IN_KEV_A/ebins[-1])
-  if broadenunits.lower() in ['a','angstrom','angstroms']:
-    bunits = 'a'
-  elif broadenunits.lower() =='kev':
-    bunits = 'kev'
-  else:
-    print "Error: unknown broadening unit %s, Must be keV or A. Exiting ***"%\
-          (broadenunits)
-    return -1
+
+
   if broadening:
+
+    if broadenunits.lower() in ['a','angstrom','angstroms']:
+      bunits = 'a'
+    elif broadenunits.lower() =='kev':
+      bunits = 'kev'
+    elif broadenunits.lower() =='thermal':
+      bunits = 'thermal'
+      mass = atomic.Z_to_mass(Z)
+      bfac = 1.46529e-3*numpy.sqrt(broadening/mass)
+
+    else:
+      print "Error: unknown broadening unit %s, Must be keV or A. Exiting ***"%\
+            (broadenunits)
+      return -1
+
+
+
+
     if bunits == 'a':
       lammax += broadening
       lammin -= broadening
+    if bunits == 'thermal':
+      lammax += bfac*lammax*3
+      lammin -= bfac*lammin*3
     else:
       lammax += lammax**2 * broadening/const.HC_IN_KEV_A
       lammin -= lammin**2 * broadening/const.HC_IN_KEV_A
@@ -465,13 +582,23 @@ def add_lines(Z, abund, lldat, ebins, z1=False, z1_drv=False, \
     l = l[l['ion_drv'] ==z1_drv]
 
   spectrum = numpy.zeros(len(ebins)-1, dtype=float)
-
+  specadd = lambda x: x[1:]-x[:-1]
   if broadening:
     if  bunits == 'a':
       for ll in l:
         spectrum+=atomdb.addline2(ebins, const.HC_IN_KEV_A/ll['lambda'], \
                  ll['epsilon']* abund,\
                  broadening*const.HC_IN_KEV_A/(ll['lambda']**2))
+    elif  bunits == 'thermal':
+      wavelengths = const.HC_IN_KEV_A/ebins[::-1]
+      stddev = bfac*l['lambda']
+      
+      for ll in l:
+        spectrum += \
+          specadd(scipy.stats.norm(ll['lambda'],bfac*ll['lambda']).cdf(wavelengths))*\
+          ll['epsilon']
+      spectrum=spectrum[::-1]  
+
     else:
       for ll in l:
         spectrum+=atomdb.addline2(ebins, const.HC_IN_KEV_A/ll['lambda'], \
@@ -484,6 +611,7 @@ def add_lines(Z, abund, lldat, ebins, z1=False, z1_drv=False, \
                ll['epsilon']* abund
 
   return spectrum
+
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -1248,7 +1376,7 @@ def expand_E_grid(eedges, n,Econt_in_full, cont_in_full):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
-def broaden_continuum(bins, spectrum, binunits = 'keV', \
+def broaden_continuum(bins, spectrum, Z, binunits = 'keV', \
                       broadening=False,\
                       broadenunits='keV'):
   """
@@ -1262,12 +1390,14 @@ def broaden_continuum(bins, spectrum, binunits = 'keV', \
     will return len(bins)-1 values.
   spectrum : array(float)
     The emissivities in each bin in the unbroadened spectrum
+  Z : int
+    Atomic number of the element
   binunits : {'keV' , 'A'}
     The energy units for bins. "keV" or "A". Default keV.
   broadening : float
     Broaden the continuum by gaussians of this width (if False,\
     no broadening is applied)
-  broadenunits : {'keV' , 'A'}
+  broadenunits : {'keV' , 'A', 'thermal'}
     Units for broadening (kev or A)
 
   Returns
@@ -1280,7 +1410,7 @@ def broaden_continuum(bins, spectrum, binunits = 'keV', \
 #  -------
 #  Version 0.1 - initial release
 #    Adam Foster July 17th 2015
-
+  import scipy.stats
   # convert to energy grid
   if binunits.lower() in ['kev']:
     angstrom = False
@@ -1297,6 +1427,10 @@ def broaden_continuum(bins, spectrum, binunits = 'keV', \
   if broadening:
     if broadenunits.lower() in ['a','angstrom','angstroms']:
       bunits = 'a'
+    elif broadenunits.lower() in ['thermal']:
+      bunits = 'thermal'
+      mass = atomic.Z_to_mass(Z)
+      bfac = 1.46529e-3*numpy.sqrt(broadening/mass)
     elif broadenunits.lower() in ['kev']:
       bunits = 'kev'
     else:
@@ -1306,17 +1440,31 @@ def broaden_continuum(bins, spectrum, binunits = 'keV', \
     # do the broadening
     spec = numpy.zeros(len(spectrum))
     emid = (bins[1:]+bins[:-1])/2
-    if broadenunits == 'a':
-      # convert to keV
-      broadenvec = const.HC_IN_KEV_A/emid
-    else:
-      broadenvec = numpy.zeros(len(emid))
-      broadenvec[:] = emid
-    for i in range(len(spec)):
 
-      spec += atomdb.addline2(bins, emid[i], \
-                 spectrum[i],\
-                 broadenvec[i])
+    specadd = lambda x: x[1:]-x[:-1]
+    if broadenunits == 'thermal':
+      wavelengths = const.HC_IN_KEV_A/bins[::-1]
+      for ie, lam in enumerate(12.398425/emid):
+
+        spec+= \
+          specadd(scipy.stats.norm(lam,bfac*lam).cdf(wavelengths))*spectrum[ie]
+
+      spec=spec[::-1]  
+
+
+    else:
+      if broadenunits == 'a':
+        # convert to keV
+        broadenvec = const.HC_IN_KEV_A/emid
+
+      else:
+        broadenvec = numpy.zeros(len(emid))
+        broadenvec[:] = emid
+      for i in range(len(spec)):
+
+        spec += atomdb.addline2(bins, emid[i], \
+                   spectrum[i],\
+                   broadenvec[i])
     spectrum=spec
   if angstrom:
     spectrum=spectrum[::-1]
@@ -1629,6 +1777,7 @@ class Session():
     self.docont=True
     self.dopseudo=True
     self.broaden=False
+    self.broadenunits=''
     
 
   def return_spectra(self, te, teunit='keV', raw=False, nearest=False,\
@@ -1984,7 +2133,36 @@ class Session():
         #for Z in self.elements:
           #self.spectrum_withresp += self.spectrum_by_Z_withresp[Z] * self.abund[Z] * self.abundsetvector[Z]
 
+  def set_broadening(self, broadenvalue,broadenunits):
+    """
+    Set whether the spectrum should be convolved with Gaussian broadening
 
+    Parameters
+    ----------
+    broadenvalue: float
+      The numerical value by which to broaden, in keV or Angstroms.
+      However, if broadenunits is set to "thermal", this value will be
+      ignored if it is <= 0 and broadening will be set by the plasma temperature,
+      otherwise the specified temperature will be used.
+    broadenunits: {'A', 'keV','thermal'}
+      The units for the broadening. Thermal turns on thermal doppler broadening
+      assuming the plasma temperature.
+
+    Returns
+    -------
+    none
+
+    Notes
+    -----
+    modifies
+    self.broadening
+    self.broadenunits
+    """
+
+    self.broaden=broadenvalue
+    self.broadenunits=broadenunits
+    return
+    
   def set_abundset(self, abundstring):
     """
     Set the abundance set.
@@ -2130,13 +2308,25 @@ class Session():
         for Z in session.elements:
         # make the generic spectrum
           if session.specbins_set:
-            self.spectrum_by_Z[Z] = make_spectrum(session.specbins, self.index,\
+            if session.broadenunits=='thermal':
+              
+              self.spectrum_by_Z[Z] = make_spectrum(session.specbins, self.index,\
                                                   session.linedata, session.cocodata,\
                                                   session.binunits,elements=[Z],\
                                                   dolines=session.dolines,\
                                                   docont=session.docont,\
                                                   dopseudo=session.dopseudo,\
-                                                  broadening=session.broaden, broadenunits=session.binunits)
+                                                  broadening=self.temperature, \
+                                                  broadenunits=session.broadenunits)
+            else:
+              self.spectrum_by_Z[Z] = make_spectrum(session.specbins, self.index,\
+                                                  session.linedata, session.cocodata,\
+                                                  session.binunits,elements=[Z],\
+                                                  dolines=session.dolines,\
+                                                  docont=session.docont,\
+                                                  dopseudo=session.dopseudo,\
+                                                  broadening=session.broaden, \
+                                                  broadenunits=session.broadenunits)
         # make the spectrum on the response grid
           if session.response_set:
             tmp = make_spectrum(session.ebins_response, self.index,\
