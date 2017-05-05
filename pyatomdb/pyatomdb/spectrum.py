@@ -2440,7 +2440,7 @@ class CXSession(Session):
 
       if ((v > self.linedata[1].data['energy'][-1]) |\
           (v < self.linedata[1].data['energy'][0])):
-        print "*** WARNING: velocity %v keV/u is out of range %f-%f ***" %\
+        print "*** WARNING: velocity %e keV/u is out of range %f-%f ***" %\
             (v, self.linedata[1].data['energy'][0], self.linedata[1].data['energy'][-1])
 
         continue
@@ -2448,7 +2448,11 @@ class CXSession(Session):
       # OK, so we have a valid energy
       # Make a spectrum for each ion
 
-      index = numpy.where(self.linedata[1].data['energy'] > v)[0][0]
+      index = numpy.where(self.linedata[1].data['energy'] > v)[0]
+      if len(index)==0:
+        index = len(self.linedata[1].data['energy'])-1
+      else:
+        index = index[0]
 
 
       loind = index+1
@@ -2894,7 +2898,8 @@ class CXSession(Session):
                               binunits = 'keV',\
                               dolines=dolines,\
                               docont = docont,\
-                              dopseudo = dopseudo)
+                              dopseudo = dopseudo,\
+                              broadening=session.broaden, broadenunits=session.binunits)
         # make the spectrum on the response grid
         if session.response_set:
 
@@ -2905,7 +2910,8 @@ class CXSession(Session):
                               binunits = 'keV',\
                               dolines=dolines,\
                               docont = docont,\
-                              dopseudo = dopseudo)
+                              dopseudo = dopseudo,\
+                              broadening=session.broaden, broadenunits=session.binunits)
 
           e,self.spectrum = apply_response(tmp, session.rmf, arf=session.arf)
 
