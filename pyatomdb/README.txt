@@ -108,3 +108,6 @@ February 21st 2017: A series of bug fixes to installation and spectral calculati
 
 0.0.3.2
 March 21st 2017: Several bug fixes and enhancements to the spectrum module. Updated setup.py to handle import of mock more gracefully
+
+0.0.3.3
+May 5th 2017: Several bug fixes and initial inclusion of charge exchange model
