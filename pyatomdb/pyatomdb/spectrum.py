@@ -1386,6 +1386,10 @@ def apply_response(spectrum, rmf, arf=False):
       print "Cannot find index for matrix in this data"
       raise
 
+  # bugfix: not all missions index from 0 (or 1). 
+  # Use chanoffset to correct for this.
+  chanoffset = rmfdat['EBOUNDS'].data['CHANNEL'][0]
+
   for ibin, i in enumerate(rmfdat[matrixname].data):
     if res[ibin]==0.0: continue
     lobound = 0
@@ -1395,7 +1399,7 @@ def apply_response(spectrum, rmf, arf=False):
 
     if numpy.isscalar(fchan):
       fchan = numpy.array([fchan])
-
+    fchan -= chanoffset
     if numpy.isscalar(nchan):
       nchan = numpy.array([nchan])
 
@@ -1404,7 +1408,6 @@ def apply_response(spectrum, rmf, arf=False):
       if ilo < 0: continue
 
       ihi = fchan[j] + nchan[j]
-
       ret[ilo:ihi] += res[ibin]*i['MATRIX'][lobound:lobound+nchan[j]]
       lobound += nchan[j]
 
