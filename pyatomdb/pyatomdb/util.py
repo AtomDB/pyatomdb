@@ -1820,6 +1820,205 @@ def write_ir_file(fname, dat, clobber=False):
 
   print "file written: "+fname
 
+
+
+
+
+#-------------------------------------------------------------------------------
+
+def write_dr_file(fname, dat, clobber=False):
+  """
+  Write the data in list dat to fname
+
+  Parameters
+  ----------
+  fname : string : The file to write
+  dat : list : The data to write. Should be a list with the following keywords:
+    * Z : int : nuclear charge
+    * z1 : int: ion charge + 1
+    * comments : iterable of strings: comments to append to the file
+    * data : numpy.array: stores all the individual level data, with the following types
+
+      - upper_lev : int : upper level of transition\n
+      - lower_lev : int : lower level of transition\n
+      - wavelen : float : Wavelength of transtion (A)\n
+      - wave_obs : float : Observed wavelength of transition (A)\n
+      - wave_err : float Error in wavelength (A)\n
+      - dr_type : int : DR data type. 1=Jaconelli, 2 = Safranova\n
+      - e_excite : float : transition excitation energy (keV)\n
+      - e_exc_err : float : error in transition excitation energy (keV)\n
+      - satelint : float : intensity factor (s-1)\n
+      - satinterr : float : error in intensity factor (s-1)\n
+      - params : float(10) : parameters
+      - drrate_ref : string(20) :  DR rate reference (usually bibcode)\n
+      - wave_ref : string(20) : wavelength reference (bibcode)\n
+      - wv_obs_ref : string(20) : observed wavelength reference (bibcode)\n
+
+  clobber : bool
+    Overwrite existing file if it exists.
+
+  Returns
+  -------
+  none
+
+
+  """
+  # start generation of new HDU:
+
+  #primary HDU, hdu0
+  hdu0 = pyfits.PrimaryHDU()
+  now = datetime.datetime.utcnow()
+
+  hdu0.header['DATE']=( now.strftime('%d/%m/%y'))
+  hdu0.header['EM_LINES']=( "Emission Line Data")
+  hdu0.header['FILENAME']=( "Python routine")
+  hdu0.header['ORIGIN']=( "ATOMDB",os.environ['USER']+", AtomDB project")
+  hdu0.header['HDUCLASS']=( "ATOMIC","Atomic Data")
+  hdu0.header['HDUCLAS1']=( "DR_LINES","Dielectronic Satellite Line Data")
+  hdu0.header['N_ELEMEN']=(1,"Number of elements")
+  hdu0.header['N_IONS']=( 1,"Total number of ions")
+
+
+  # do a key case conversion
+  datakey=''
+  for i in dat.keys():
+    if i.lower()=='data':
+      datakey=i
+  keys={}
+  for i in dat[datakey].dtype.names:
+    if i.lower()=='upper_lev':
+      keys['upper_lev'] = i
+    if i.lower()=='lower_lev':
+      keys['lower_lev'] = i
+    if i.lower()=='upper_lev':
+      keys['upper_lev'] = i
+    if i.lower()=='wavelen':
+      keys['wavelen'] = i
+    if i.lower()=='wave_obs':
+      keys['wave_obs'] = i
+    if i.lower()=='wave_err':
+      keys['wave_err'] = i
+    if i.lower()=='dr_type':
+      keys['dr_type'] = i
+    if i.lower()=='e_excite':
+      keys['e_excite'] = i
+    if i.lower()=='eexc_err':
+      keys['eexc_err'] = i
+    if i.lower()=='satelint':
+      keys['satelint'] = i
+    if i.lower()=='satinterr':
+      keys['satinterr'] = i
+    if i.lower()=='params':
+      keys['params'] = i
+    if i.lower()=='drrate_ref':
+      keys['drrate_ref'] = i
+    if i.lower()=='wave_ref':
+      keys['wave_ref'] = i
+    if i.lower()=='wv_obs_ref':
+      keys['wv_obs_ref'] = i
+
+
+  #secondary HDU, hdu1:
+  hdu1 = pyfits.BinTableHDU.from_columns(pyfits.ColDefs(
+        [pyfits.Column(name='UPPER_LEV',
+           format='1J',
+           array=dat[datakey][keys['upper_lev']]),
+         pyfits.Column(name='LOWER_LEV',
+           format='1J',
+           array=dat[datakey][keys['lower_lev']]),
+         pyfits.Column(name='WAVELEN',
+           format='1E',
+           unit='Angstrom',
+           array=dat[datakey][keys['wavelen']]),
+         pyfits.Column(name='WAVE_OBS',
+           format='1E',
+           unit='Angstrom',
+           array=dat[datakey][keys['wave_obs']]),
+         pyfits.Column(name='WAVE_ERR',
+           format='1E',
+           unit='Angstrom',
+           array=dat[datakey][keys['wave_err']]),
+         pyfits.Column(name='DR_TYPE',
+           format='1J',
+           array=dat[datakey][keys['dr_type']]),
+         pyfits.Column(name='E_EXCITE',
+           format='1E',
+           unit='keV',
+           array=dat[datakey][keys['e_excite']]),
+         pyfits.Column(name='EEXC_ERR',
+           format='1E',
+           unit='keV',
+           array=dat[datakey][keys['eexc_err']]),
+         pyfits.Column(name='SATELINT',
+           format='1E',
+           unit='s**-1',
+           array=dat[datakey][keys['satelint']]),
+         pyfits.Column(name='SATINTERR',
+           format='1E',
+           unit='s**-1',
+           array=dat[datakey][keys['satinterr']]),
+         pyfits.Column(name='PARAMS',
+           format='10E',
+           array=dat[datakey][keys['satinterr']]),
+         pyfits.Column(name='DRRATE_REF',
+           format='20A',
+           array=dat[datakey][keys['drrate_ref']]),
+         pyfits.Column(name='WAVE_REF',
+           format='20A',
+           array=dat[datakey][keys['wave_ref']]),
+         pyfits.Column(name='WV_OBS_REF',
+           format='20A',
+           array=dat[datakey][keys['wv_obs_ref']])]
+         ))
+
+  hdu1.header['XTENSION']=(hdu1.header['XTENSION'],
+          'Written by '+os.environ['USER']+now.strftime('%a %Y-%m-%d %H:%M:%S')+ 'UTC')
+  hdu1.header['EXTNAME']=(atomic.spectroscopic_name(dat['Z'],dat['z1']),
+          'Ion Name')
+  hdu1.header['HDUCLASS']=('ATOMIC',
+          'Atomic Data')
+  hdu1.header['HDUCLAS1']=('DR_LINES',
+          'Dielectronic Satlline line data')
+  hdu1.header['ELEMENT']=(dat['Z'],
+          'Numer of protons in element')
+  hdu1.header['ION_STAT']=(dat['z1']-1,
+          'ion state (0 = neutral)')
+  hdu1.header['ION_NAME']=(atomic.spectroscopic_name(dat['Z'],dat['z1']),
+          'Ion Name')
+  hdu1.header['N_LINES']=(len(dat['data']) ,
+           'Number of satellite lines')
+  hdu1.header['HDUVERS1']=('1.0.0',
+           'Version of datafile')
+
+  if  'comments' in dat.keys():
+    print 'adding comments'
+    for icmt in dat['comments']:
+      hdu1.header.add_comment(icmt)
+
+  # combine hdus
+  print 'combining HDUs'
+  hdulist = pyfits.HDUList([hdu0,hdu1])
+
+  # write out file (overwrite any existing file)
+  if clobber:
+    try:
+      os.remove(fname)
+    except OSError:
+      pass
+
+  print 'writing drfile'
+  try:
+    hdulist.writeto(fname, checksum=True, clobber=clobber)
+  except TypeError:
+    hdulist.writeto(fname, clobber=clobber)
+
+  print "file written: "+fname
+
+
+#-------------------------------------------------------------------------------
+
+
+
 def keyword_check(keyword):
   """
   Returns False is the keyword is in fact false, otherwise returns True
@@ -2036,12 +2235,12 @@ def generate_xspec_ionbal_files(Z, filesuffix, settings = False):
   hdu0 = pyfits.PrimaryHDU()
   now = datetime.datetime.utcnow()
 
-  hdu0.header.update('DATE', now.strftime('%d/%m/%y'))
-  hdu0.header.update('FILENAME', "Python routine")
-  hdu0.header.update('ORIGIN', "ATOMDB",comment=os.environ['USER']+", AtomDB project")
+  hdu0.header['DATE']= now.strftime('%d/%m/%y')
+  hdu0.header['FILENAME']= "Python routine"
+  hdu0.header['ORIGIN']= ("ATOMDB",os.environ['USER']+", AtomDB project")
 
   #secondary HDU, hdu1:
-  hdu1 = pyfits.new_table(pyfits.ColDefs(
+  hdu1 = pyfits.BinTableHDU.from_columns(pyfits.ColDefs(
         [pyfits.Column(name='FEQB',
            format='%iD'%(Z+1),
            array=feqb),
