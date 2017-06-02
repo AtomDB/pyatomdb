@@ -1105,7 +1105,7 @@ def get_ion_lines(linefile, Z, z1, fullinfo=False):
 
 def get_line_emissivity( Z, z1, upind, loind, \
                          linefile="$ATOMDB/apec_line.fits",\
-                         ion_drv=False, elem_drv=False):
+                         ion_drv=False, elem_drv=False, use_nei=False):
 
   """
   Get the emissivity of a line as fn of temperature from APEC line file
@@ -1129,6 +1129,12 @@ def get_line_emissivity( Z, z1, upind, loind, \
   elem_drv : int
     same as ion_drv, but specified driving element. Currently this setting
     is pointless, as all transitions have the same driving element as element.
+  use_nei : bool
+    This can be useful when trying to get line emissivities which fall
+    below the 1e-20 cut off. Applying this flag, the NEI file will be used
+    by default and an ionization balance applied. This should give the
+    same results as normal for strong emissivities, but go to a lower
+    emissivity before being set to zero. Use with caution...
 
   Returns
   -------
@@ -1148,29 +1154,54 @@ def get_line_emissivity( Z, z1, upind, loind, \
   #
   # Version 0.1 - Initial Release
   # Adam Foster 25 Sep 2015
+  # Version 0.2 - Added use_nei
+  # Adam Foster 28 Apr 2017
+  
   #
 
+
+  if use_nei:
+    if linefile=="$ATOMDB/apec_line.fits":
+		linefile = "$ATOMDB/apec_nei_line.fits"
+
   a = pyfits.open(os.path.expandvars(linefile))
+  
   kT = a[1].data.field('kT')
   dens = a[1].data.field('eDensity')
   time = a[1].data.field('time')
 
   epsilon = numpy.zeros(len(kT), dtype=float)
+
+  datacache={}
+  
   for ikT in range(len(kT)):
+	  
     iikT = ikT + 2
-    if ion_drv:
+    if use_nei:
       j = numpy.where((a[iikT].data.field("element") == Z) &\
                       (a[iikT].data.field("ion") == z1) &\
-                      (a[iikT].data.field("ion_drv") == ion_drv) &\
                       (a[iikT].data.field("UpperLev") == upind) &
                       (a[iikT].data.field("LowerLev") == loind))[0]
+      if len(j) == 0: continue
+      ionbal = apec.solve_ionbal_eigen(Z,kT[ikT],teunit='keV', datacache=datacache)
+      for jj in j:
+        print ikT, a[iikT].data['Ion_drv'][jj], a[iikT].data['Epsilon'][jj], ionbal[a[iikT].data['Ion_drv'][jj]-1]
+
+        epsilon[ikT]+= a[iikT].data['Epsilon'][jj] * ionbal[a[iikT].data['Ion_drv'][jj]-1]
     else:
-      j = numpy.where((a[iikT].data.field("element") == Z) &\
-                      (a[iikT].data.field("ion") == z1) &\
-                      (a[iikT].data.field("UpperLev") == upind) &
-                      (a[iikT].data.field("LowerLev") == loind))[0]
-    if len(j) > 0:
-      epsilon[ikT] += sum(a[iikT].data.field("Epsilon")[j])
+      if ion_drv:
+        j = numpy.where((a[iikT].data.field("element") == Z) &\
+                        (a[iikT].data.field("ion") == z1) &\
+                        (a[iikT].data.field("ion_drv") == ion_drv) &\
+                        (a[iikT].data.field("UpperLev") == upind) &
+                        (a[iikT].data.field("LowerLev") == loind))[0]
+      else:
+        j = numpy.where((a[iikT].data.field("element") == Z) &\
+                        (a[iikT].data.field("ion") == z1) &\
+                        (a[iikT].data.field("UpperLev") == upind) &
+                        (a[iikT].data.field("LowerLev") == loind))[0]
+      if len(j) > 0:
+        epsilon[ikT] += sum(a[iikT].data.field("Epsilon")[j])
   ret = {}
   ret['kT'] = kT
   ret['dens'] = dens
