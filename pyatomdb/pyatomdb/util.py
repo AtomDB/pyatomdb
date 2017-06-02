@@ -2188,7 +2188,7 @@ def generate_xspec_ionbal_files(Z, filesuffix, settings = False):
 
         if (iRow==0):
           if (iCol==0):
-            if (Z>2):
+            if (Z>=2):
               AA[0,iCol] = -(ion[0] + ion[1] + rec[0])
             else:
               AA[0,iCol] = -(ion[0] + rec[0])
