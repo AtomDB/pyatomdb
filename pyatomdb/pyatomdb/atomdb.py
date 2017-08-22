@@ -5822,6 +5822,7 @@ def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
 
   """
   abund = get_abundance(abundset='Lodd09')[Z]
+  util.switch_version(version)
   # first, get the ionization balance
   datacache={}
   lvdat = get_data(Z,z1,'LV', datacache=datacache)
@@ -5845,8 +5846,9 @@ def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
   print la_rates_rates[i]
   out = sum(la_rates_rates[i])
   print "calc out from LA file %e " %(out)
-  out = lvdat[1].data['ARAD_TOT'][up-1]
-  print "calc out from LV file %e " %(out)
+  if 'ARAD_TOT' in lvdat[1].data.names:
+    out = lvdat[1].data['ARAD_TOT'][up-1]
+    print "calc out from LV file %e " %(out)
   i = numpy.where((ec_rates_up==up-1) &\
                   (ec_rates_lo != up-1))[0]
   print "calc out from EC file %e " %(sum(ec_rates_rates[i]))
@@ -5868,9 +5870,9 @@ def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
       print i, lev_pop[i]
 
     lvdat = get_data(Z,z1-1,'LV', datacache=datacache)
-
-    iaut = numpy.where(lvdat[1].data['AAUT_TOT']>0)[0]
-    print iaut
+    if 'AAUT_TOT' in lvdat[1].data.names:
+      iaut = numpy.where(lvdat[1].data['AAUT_TOT']>0)[0]
+      print iaut
     aidat = get_data(Z,z1-1,'AI', datacache=datacache)
     lvdat2 = get_data(Z,z1,'LV', datacache=datacache)
 
