@@ -16,7 +16,7 @@ Introduction
 
 
 PyAtomDB is a selection of utilities designed to interact with the `AtomDB
-database <https://www.atomdb.org>`_ . Currently, these utilities are in a far from finished format, however progress on this is ongoing. These have been taken from a series of codes on my laptop which were useful. Some produce lots of unhelpful onscreen output.
+database <https://www.atomdb.org>`_ . These utilities started life as routines scattered around my laptop, so some produce lots of unhelpful onscreen output.
 
 
 There are several different modules currently. These are:
@@ -96,7 +96,7 @@ Installation
 ------------
 PyAtomDB can be installed from pypi, using the simple ``pip install pyatomdb`` command.
 
-For PyAtomDB to be useful, it requires access to a range of AtomDB database files (these are all `FITS <fits.gsfc.nasa.gov>`_ files). The database has two broad types of files, emissivity files and fundamental atomic data files (APED, the Astrophysical Plasma Emission Database). 
+For PyAtomDB to be useful, it requires access to a range of AtomDB database files (these are all `FITS <fits.gsfc.nasa.gov>`_ files). The database has two broad types of files, emissivity files (APEC) and fundamental atomic data files (APED, the Astrophysical Plasma Emission Database). 
 
 The emissivity files are needed for things such as producing spectra. The APED files are underlying atomic data and are not strictly needed for creating a spectrum, but can be useful for getting later information out.
 
@@ -108,12 +108,12 @@ or for csh, add this to your .cshrc or .cshrc.login::
   
   setenv ATOMDB /home/username/atomdb   
 
-If you run the following code, PyAtomDB will download the files you need to get started::
+If you run the following code within a python shell, PyAtomDB will download the files you need to get started::
 
   import pyatomdb
   pyatomdb.util.initialize()
 
-This will prompt you for an install location (defaulting to `$ATOMDB`)and whether to download the emissivity files. It is suggested that you say yes. It will also ask if you mind sharing anonymous download information with us. We would appreciate it if you say yes, but it is not necessary for the functioning of the software.
+This will prompt you for an install location (defaulting to `$ATOMDB`) and whether to download the emissivity files. It is suggested that you say yes. It will also ask if you mind sharing anonymous download information with us. We would appreciate it if you say yes, but it is not necessary for the functioning of the software.
 
 --------------------------
 Example: Making a Spectrum
