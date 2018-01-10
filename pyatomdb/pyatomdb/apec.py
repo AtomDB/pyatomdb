@@ -3186,7 +3186,6 @@ def calc_cascade_population(matrixA, matrixB):
 
   mb =matrixB[1:]
   ma =matrixA[1:,1:]
-
   # solve
   try:
     popn = numpy.linalg.solve(ma,mb)
@@ -4633,7 +4632,7 @@ def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
       delt = 1.0
 
       worktmp = numpy.zeros(Z)
-      
+
       for itau, ttau in enumerate(tau_vec):
         if Z >1:
           for i in range(Z):
@@ -4655,18 +4654,18 @@ def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
           frac = frac/sum(frac)
         frac[0] = 1-sum(frac[1:])
         frac_out[iTe,itau,:]=frac
-  
+
   if tau_set:
     if not tau_isvec:
-      
+
       frac_out=frac_out[:,0,:]
-      
+
       if not Te_isvec:
         frac_out=frac_out[0,:]
     else:
       if not Te_isvec:
         frac_out=frac_out[0,:,:]
-    
+
     return frac_out
   else:
     return equilib

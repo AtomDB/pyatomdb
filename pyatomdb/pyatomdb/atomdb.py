@@ -1156,16 +1156,16 @@ def get_line_emissivity( Z, z1, upind, loind, \
   # Adam Foster 25 Sep 2015
   # Version 0.2 - Added use_nei
   # Adam Foster 28 Apr 2017
-  
+
   #
 
 
   if use_nei:
     if linefile=="$ATOMDB/apec_line.fits":
-		linefile = "$ATOMDB/apec_nei_line.fits"
+      linefile = "$ATOMDB/apec_nei_line.fits"
 
   a = pyfits.open(os.path.expandvars(linefile))
-  
+
   kT = a[1].data.field('kT')
   dens = a[1].data.field('eDensity')
   time = a[1].data.field('time')
@@ -1173,9 +1173,9 @@ def get_line_emissivity( Z, z1, upind, loind, \
   epsilon = numpy.zeros(len(kT), dtype=float)
 
   datacache={}
-  
+
   for ikT in range(len(kT)):
-	  
+
     iikT = ikT + 2
     if use_nei:
       j = numpy.where((a[iikT].data.field("element") == Z) &\
@@ -5277,18 +5277,18 @@ def make_lorentz(version = False, do_all=True, cie=False, power=False,\
     levpop = True
 
   # run the data
-#  if cie:
-#    lorentz_cie(version)
-#  if power:
-#    lorentz_power(version)
-#  if stronglines:
-#    lorentz_stronglines(version)
-#  if neicsd:
-#    lorentz_neicsd(version)
-#  if neilines:
-#    lorentz_neilines(version)
-#  if neicont:
-#    lorentz_neicont(version)
+  if cie:
+    lorentz_cie(version)
+  if power:
+    lorentz_power(version)
+  if stronglines:
+    lorentz_stronglines(version)
+  if neicsd:
+    lorentz_neicsd(version)
+  if neilines:
+    lorentz_neilines(version)
+  if neicont:
+    lorentz_neicont(version)
   if levpop:
     lorentz_levpop(version)
 
@@ -5826,7 +5826,7 @@ def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
   # first, get the ionization balance
   datacache={}
   lvdat = get_data(Z,z1,'LV', datacache=datacache)
-  ionbal = apec.solve_ionbal_eigen(Z,Te)
+  ionbal = apec.solve_ionbal_eigen(Z,Te, datacache=datacache)
   settings = apec.parse_par_file(os.path.expandvars('$ATOMDB/apec_v%s.par'%\
                                 (version)))
 

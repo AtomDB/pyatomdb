@@ -2298,18 +2298,19 @@ def make_release_filetree(filemapfile_in, filemapfile_out, \
   And then copies it to the destination folder, compressing it with gzip.
   """
   import re, gzip
-  fmap = atomdb.read_filemap(filemapfile_in, atomdbroot='XXX')
+  fmap = atomdb.read_filemap(filemapfile_in)
   for i in range(len(fmap['Z'])):
     for key in ['em','ci','pi','la','ai','ir','ec','lv','pc','dr']:
       if fmap[key][i] =='': continue
-      if replace_source in fmap[key][i]:
+
+      if  re.search("_\d.fits",fmap[key][i]):
+
         fin = fmap[key][i]
         fmapf = re.sub(replace_source, 'XXX', fin)
         fmapf = re.sub('%s[^ \t\r\n\v\f]*.fits'%(key.upper()),\
                 '%s_v%s_a.fits'%(key.upper(), versionname),fmapf)
 
         fout = re.sub('XXX',destination, fmapf)
-
         tmp = open(fin, 'rb')
         tmpd = tmp.read()
         print "writing %s ..."%(fout+'.gz'),
@@ -2996,17 +2997,18 @@ def generate_equilibrium_ionbal_files(filename, settings = False):
 
   write_ionbal_file(Telist, Nelist, ionbal, filename, Te_linear = False, dens_linear=True)
 
-def generate_isis_files(version='', outfile='atomdb_VERSION_isis.tar.bz2'):
+def generate_isis_files(version='', outfile='atomdb_VERSION_lineid.tar.bz2'):
   """
-  Generate the ISIS tarball
+  Generate the atomic data necessary solely for identifying lines in AtomDB.
+  Useful in ISIS, for example.
 
   Parameters
   ----------
   version : string
-    version number to generate ISIS tarball for. Defaults to version in
+    version number to generate line ID tarball for. Defaults to version in
     $ATOMDB/VERSION
   outfile : string
-    the file to be generated. Defaults to atomdb_VERSION_isis.tar.bz2
+    the file to be generated. Defaults to atomdb_VERSION_lineid.tar.bz2
   Returns
   -------
   none
@@ -3026,7 +3028,7 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_isis.tar.bz2'):
 
   # make folders for the data
   mkdir_p('tmp')
-  foldername = re.sub('VERSION',version,'tmp/atomdb_vVERSION_isis')
+  foldername = re.sub('VERSION',version,'tmp/atomdb_vVERSION_lineid')
 
   mkdir_p(foldername)
 
@@ -3067,7 +3069,7 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_isis.tar.bz2'):
 
     # now do the hard part
     lafnameout = re.sub(os.path.expandvars('$ATOMDB'), foldername, lafname)
-    lafnameout = re.sub('.fits', '_isis.fits', lafnameout)
+    lafnameout = re.sub('.fits', '_lineid.fits', lafnameout)
 
     if not os.path.isfile(lafname):
       a = atomdb.get_data(Z,z1,'LA')
@@ -3145,8 +3147,8 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_isis.tar.bz2'):
 
   print "Compressing..."
   os.chdir('tmp')
-  tar = tarfile.open(name='atomdb_v%s_isis.tar.bz2'%(version), mode='w:bz2')
-  tar.add('atomdb_v%s_isis'%(version))
+  tar = tarfile.open(name='atomdb_v%s_lineid.tar.bz2'%(version), mode='w:bz2')
+  tar.add('atomdb_v%s_lineid'%(version))
   tar.close()
   print "Done"
   os.chdir('../')

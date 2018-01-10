@@ -151,9 +151,9 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
 #  cdat = pyfits.open(cfile)
 
   # get the index
-  if ((index < 2) | (index > len(ldat))):
-    print "*** ERRROR: Index must be in range %i to %i"%(2, len(ldat)-1)
-    return -1
+  #if ((index < 2) | (index > len(ldat))):
+  #  print "*** ERRROR: Index must be in range %i to %i"%(2, len(ldat)-1)
+  #  return -1
 
   lldat = ldat[index].data
   ccdat = cdat[index].data
@@ -327,9 +327,9 @@ def make_ion_spectrum(bins, index, Z,z1, linefile="$ATOMDB/apec_nei_line.fits",\
 
 
   # get the index
-  if ((index < 2) | (index > len(ldat))):
-    print "*** ERRROR: Index must be in range %i to %i"%(2, len(ldat)-1)
-    return -1
+  #if ((index < 2) | (index > len(ldat))):
+  #  print "*** ERRROR: Index must be in range %i to %i"%(2, len(ldat)-1)
+  #  return -1
 
   lldat = ldat[index].data
   ccdat = cdat[index].data
@@ -453,7 +453,6 @@ def add_lines(Z, abund, lldat, ebins, z1=False, z1_drv=False, \
     else:
       lammax += lammax**2 * broadening/const.HC_IN_KEV_A
       lammin -= lammin**2 * broadening/const.HC_IN_KEV_A
-
 
   l = lldat[(lldat['element']==Z) &\
             (lldat['lambda'] <= lammax) &\
@@ -2737,6 +2736,16 @@ class CXSession(Session):
     The line emissivity data
   cocodata: HDUList
     The line emissivity data
+  acxlinefile : string
+    The line emissivity data file for fallback ACX data
+  acxcocofile : string
+    The continuum emissivity data file for fallback ACX data
+  acxlinedata: HDUList
+    The line emissivity data for fallback ACX data
+  acxcocodata: HDUList
+    The line emissivity data for fallback ACX data
+  acxmodel: int
+    The acx model fallback to use (1-16)
   elements : array_like, int
     The atomic number of the elements to include. Defaults to all.
   abundset : string
@@ -2769,15 +2778,21 @@ class CXSession(Session):
   ionbal : dict of array like
     ionization balance of each ion, normalized to 1
     e.g. ionbal[6]=numpy.array([0.5,0.4,0.1,0,0,0,0]) for Carbon
-
+  donor : str
+    Neutral donor element symbol ["H" or "He" for now]
 
   """
 
   def __init__(self, linefile = False,\
                      cocofile = False,\
+                     acxlinefile = False,\
+                     acxcocofile = False,\
                      elements = False, \
                      abundset = 'AG89',\
-                     collisionunits = 'kev/amu'):
+                     collisionunits = 'kev/amu',\
+                     veltype=1,\
+                     donor='H',\
+                     acxmodel = 8):
     """
     Initialization routine. Can set the line and continuum files here
 
@@ -2787,6 +2802,10 @@ class CXSession(Session):
       The filename of the line emissivity data, or the opened file.
     cocofile : str or HDUList
       The filename of the continuum emissivity data, or the opened file.
+    acxlinefile : string
+      The line emissivity data file for fallback ACX data, or the opened file.
+    acxcocofile : string
+      The continuum emissivity data file for fallback ACX data, or the opened file.
     elements : array_like(int)
       The atomic numbers of the elements to include. Defaults to all (1-30)
     abundset : string
@@ -2794,6 +2813,13 @@ class CXSession(Session):
       for list of options.
     collisionunits : string
       The units for the particle collision speed. Either 'kev/amu' or 'cm/s'.
+    veltype : int
+      Whether the velocity is in terms of (1) center of mass, (2) donor ion or
+      (3) receiver ion
+    donor : string
+      Neutral donor element symbol ["H" or "He" for now]
+    acxmodel : int
+      Default ACX model to use
 
     Notes
     -----
@@ -2804,7 +2830,7 @@ class CXSession(Session):
 
     self.ready=False
 
-    self.set_apec_files(linefile, cocofile)
+    self.set_apec_files(linefile, cocofile, acxlinefile, acxcocofile)
     self.abundset=self.linedata[0].header['SABUND_SOURCE']
     self.default_abundset=self.linedata[0].header['SABUND_SOURCE']
 
@@ -2812,6 +2838,8 @@ class CXSession(Session):
 
     # a hold for the spectra
     self.spectra={}
+    self.spectra['ACX']={}
+
 
     self.datacache={}
 
@@ -2847,7 +2875,12 @@ class CXSession(Session):
 
     self.broaden=False
 
-  def set_donor(elem, linefile=False, cocofile=False):
+    self.set_donor(donor)
+    self.acxmodel=acxmodel
+    self.veltype=veltype
+    self.usekronos=True
+
+  def set_donor(self, elem, linefile=False, cocofile=False):
     """
     Set the donor ion/atom/molecule
 
@@ -2861,8 +2894,23 @@ class CXSession(Session):
     Sets the donor. Will also set the files you want to use.
 
     """
+    # make sure we are in title case
+    donor = elem.title()
+    if not donor in ['H','He']:
+      print "Can only use H or He donor at this time"
+      print "Exiting without setting donor"
+      return
 
-  def set_nl_dist(dist, linefile=False, cocofile=False):
+
+    # set the donor
+    self.donor=donor
+
+    donor_Z = atomic.elsymb_to_Z('He')
+    donor_mass = atomic.Z_to_mass(donor_Z)
+
+    self.donor_mass = donor_mass
+
+  def set_acxmodel(self, dist, linefile=False, cocofile=False):
     """
     Set the n, l distribution to use for ions where velocity dependent
     data is not present
@@ -2902,6 +2950,8 @@ class CXSession(Session):
     | 16  | weighted 2 shells | Separable distribution by L.     |
     +=====+===================+==================================+
     """
+    self.acxmodel=dist
+
 
   def set_ionbal_temperature(self, te, teunit='keV'):
     """
@@ -2929,6 +2979,8 @@ class CXSession(Session):
                        teunit=teunit, datacache=self.datacache)
     self.ionbal = ionbal
     self.ionbal_set = True
+    self.ionbal_temperature=te
+    self.ionbal_temperatureunit=teunit
 
 
   def return_spectra(self, collision, raw=False):
@@ -2959,90 +3011,136 @@ class CXSession(Session):
 
     stot = numpy.zeros(len(self.specbins)-1, dtype=float)
 
-
-    if self.collisionunits.lower() == 'cm/s':
-        # this is the reduced mass velocity in kev/u
-      v = 25 * (collision/1e5)**2/4786031.3
-    elif self.collisionunits.lower()=='kev/amu':
-      v = collision*1.0
-    elif self.collisionunits.lower()=='kev/u':
-      v = collision*1.0
-    elif self.collisionunits.lower()=='ev/u':
-      v = collision/1000.0
-    elif self.collisionunits.lower()=='ev/amu':
-      v = collision/1000.0
-    else:
-      print "*** ERROR: Unknown collision unit %s: should be kev/amu or cm/s ***" %(self.collisionunits)
-      return
-
+    # convert whatever the input was to center of mass velocities and energies
+    velocity = {}
+    collenergy = {}
 
     for Z in self.elements:
-      # get convert the velocity, etc, into keV/amu
+      if self.collisionunits.lower() == 'cm/s':
+          # this is the reduced mass velocity in kev/u
+        if self.veltype==1:
+          velocity[Z] = collision*1.0
+          collenergy[Z] = 25 * (collision/1e5)**2/4786031.3
+        elif self.veltype == 2:
+          # donor ion is moving
+          velocity[Z] = self.donor_mass*collision/(self.donor_mass+atomic.Z_to_mass(Z))
+          collenergy[Z] = 25 * (velocity[Z]/1e5)**2/4786031.3
+        elif self.veltype == 3:
+          # receiver ion is moving
+          velocity[Z] = atomic.Z_to_mass(Z)*collision/(self.donor_mass+atomic.Z_to_mass(Z))
+          collenergy[Z] = 25 * (velocity[Z]/1e5)**2/4786031.3
+      elif self.collisionunits.lower() in ['kev/amu', 'kev/u']:
+        collenergy[Z] = collision*1.0
+        velocity[Z] = 1e5* numpy.sqrt(4786031.3*collenergy[Z]/25.)
+      elif self.collisionunits.lower() in ['ev/u', 'ev/amu']:
+        collenergy[Z] = collision/1000.0
+        velocity[Z] = 1e5* numpy.sqrt(4786031.3*collenergy[Z]/25.)
+      else:
+        print "*** ERROR: Unknown collision unit %s: should be kev/amu or cm/s ***" %(self.collisionunits)
+        return
 
-      if ((v > self.linedata[1].data['energy'][-1]) |\
-          (v < self.linedata[1].data['energy'][0])):
-        print "*** WARNING: velocity %e keV/u is out of range %f-%f ***" %\
-            (v, self.linedata[1].data['energy'][0], self.linedata[1].data['energy'][-1])
-        continue
+
+#      if ((velocity[Z] > self.linedata[1].data['energy'][-1]) |\
+#          (velocity[Z] < self.linedata[1].data['energy'][0])):
+#        print "*** WARNING: velocity %e keV/u is out of range %f-%f ***" %\
+#            (velocity[Z], self.linedata[1].data['energy'][0], self.linedata[1].data['energy'][-1])
+#        continue
 
       # OK, so we have a valid energy
       # Make a spectrum for each ion
 
-      index = numpy.where(self.linedata[1].data['energy'] > v)[0]
-      if len(index)==0:
-        index = len(self.linedata[1].data['energy'])-1
-      else:
-        index = index[0]
-
-
-      loind = index+1
-      upind = index+2
-      E1 = self.linedata[1].data['Energy'][loind-2]
-      E2 = self.linedata[1].data['Energy'][upind-2]
-
+      #print "energy[%i] = %e, velocity[%i] = %e"%(Z, collenergy[Z], Z, velocity[Z])
       for z1 in range(1,Z+2):
         if self.ionbal[Z][z1-1]>1e-10:
           # we should do things
-          for ind in [loind, upind]:
-            if not ind in self.spectra:
-              self.spectra[ind]={}
-            if not Z in self.spectra[ind].keys():
-              self.spectra[ind][Z]={}
-            if not z1 in self.spectra[ind][Z].keys():
-              self.spectra[ind][Z][z1] = CXSpec(self, ind, Z, z1)
-              self.spectra[ind][Z][z1].calc_spectrum(self)
 
+          # check if this ion is in the spectrum, or if we need to fall
+          # back to ACX
+          ienergy = numpy.where((self.linedata[1].data['Z']==Z) &\
+                            (self.linedata[1].data['z1']==z1))[0]
+          if ((self.usekronos==True) &(len(ienergy) == 1)):
+            # data is in Kronos files
+            ienergy = ienergy[0]
+            evec=self.linedata[1].data['Energy'][ienergy][:self.linedata[1].data['nE'][ienergy]]
+            if collenergy[Z] < evec[0]:
+              loind = 2
+              upind = 2
+            elif collenergy[Z] > evec[-1]:
+              loind = len(evec)+1
+              upind = len(evec)+1
+            else:
+              index = numpy.where(evec > collenergy[Z])[0]
+              if len(index)==0:
+                index = len(evec)-1
+                print "WARNING: %e kev/amu is above the maximum energy in the CX file of %e keV/amu"%\
+                     (collenergy[Z], max(evec))
+              else:
+                index = index[0]
 
-          # OK, so I have made sure that all the spectra are generated
+              loind = index+1
+              upind = index+2
+            E1 = evec[loind-2]
+            E2 = evec[upind-2]
+       #     print "loind ", loind,", upind ", upind, ", E1 ", E1,", E2 ", E2
+            # get the spectra here
+            for ind in [loind, upind]:
+              if not ind in self.spectra:
+                self.spectra[ind]={}
+              if not Z in self.spectra[ind].keys():
+                self.spectra[ind][Z]={}
+              if not z1 in self.spectra[ind][Z].keys():
+                self.spectra[ind][Z][z1] = CXSpec(self, ind, Z, z1)
+                self.spectra[ind][Z][z1].calc_spectrum(self)
 
-          # now evaluate the spectra at those energies.
+            # now evaluate the spectra at those energies.
+            if not self.response_set:
+              raw=True
 
+            if raw:
+              s1 = self.spectra[loind][Z][z1].spectrum * \
+                   self.ionbal[Z][z1-1] * velocity[Z]
+              s2 = self.spectra[upind][Z][z1].spectrum * \
+                   self.ionbal[Z][z1-1] * velocity[Z]
 
-          if not self.response_set:
-            raw=True
-
-          if raw:
-            print Z, z1, self.ionbal[Z][z1-1]
-            s1 = self.spectra[loind][Z][z1].spectrum * self.ionbal[Z][z1-1]
-            s2 = self.spectra[upind][Z][z1].spectrum * self.ionbal[Z][z1-1]
-
-          else:
-            s1 = self.spectra[loind][Z][z1].spectrum_withresp * self.ionbal[Z][z1]
-            s2 = self.spectra[upind][Z][z1].spectrum_withresp * self.ionbal[Z][z1]
+            else:
+              s1 = self.spectra[loind][Z][z1].spectrum_withresp * \
+                   self.ionbal[Z][z1-1] * velocity[Z]
+              s2 = self.spectra[upind][Z][z1].spectrum_withresp * \
+                   self.ionbal[Z][z1-1] * velocity[Z]
 
           # linear interp
+            if loind==upind:
+              stot += s1
+            else:
+              r1 = 1- (collenergy[Z]-E1)/(E2-E1)
+              r2 = 1- r1
 
-          r1 = 1- (v-E1)/(E2-E1)
-          r2 = 1- r1
+              s = s1*r1 + s2*r2
+              stot+=s
 
-          s = s1*r1 + s2*r2
-          stot+=s
+          else: # Use ACX models
+            if not Z in self.spectra['ACX'].keys():
+              self.spectra['ACX'][Z] = {}
+            if not z1 in self.spectra['ACX'][Z].keys():
+              self.spectra['ACX'][Z][z1] = ACXSpec(self, Z, z1)
+              self.spectra['ACX'][Z][z1].calc_spectrum(self)
+            if not self.response_set:
+              raw=True
 
+            if raw:
+              s1 = self.spectra['ACX'][Z][z1].spectrum * \
+                   self.ionbal[Z][z1-1] *\
+                   velocity[Z] / self.spectra['ACX'][Z][z1].velocity
+            else:
+              s1 = self.spectra['ACX'][Z][z1].spectrum_withresp * \
+                   self.ionbal[Z][z1-1] *\
+                   velocity[Z] / self.spectra['ACX'][Z][z1].velocity
+  #          print "self.spectra['ACX'][Z][z1].velocity", self.spectra['ACX'][Z][z1].velocity
+
+            stot+=s1
     return stot
 
-
-
-
+#-------------------------------------------------------------------------------
   def set_specbins(self, specbins, specunits='A'):
     """
     Set the energy or wavelength bin for the raw spectrum
@@ -3131,8 +3229,11 @@ class CXSession(Session):
     self.ebins_response = get_response_ebins(self.rmf)
     self.response_set = True
 
-  def set_apec_files(self, linefile="$ATOMDB/apec_line.fits",\
-                     cocofile="$ATOMDB/apec_coco.fits"):
+  def set_apec_files(self,\
+                     linefile="$ATOMDB/apec_kronos_H_line.fits",\
+                     cocofile="$ATOMDB/apec_kronos_H_comp.fits",\
+                     acxlinefile="$ATOMDB/apec_acx_H_line.fits",\
+                     acxcocofile="$ATOMDB/apec_acx_H_comp.fits"):
     """
     Set the apec line and coco files
 
@@ -3142,10 +3243,10 @@ class CXSession(Session):
       The filename of the line emissivity data, or the opened file.
     cocofile : str or HDUList
       The filename of the continuum emissivity data, or the opened file.
-    elements : array_like(int)
-      The atomic numbers of the elements to include. Defaults to all (1-30)
-    abundset : string
-      The abundance set to use. Defaults to AG89. See atomdb.set_abundance
+    acxlinefile : str or HDUList
+      The filename of the ACX line emissivity data, or the opened file.
+    acxcocofile : str or HDUList
+      The filename of the ACX continuum emissivity data, or the opened file.
 
     Returns
     -------
@@ -3173,9 +3274,7 @@ class CXSession(Session):
         print "Unknown data type for linefile. Please pass a string or an HDUList"
 
     if util.keyword_check(cocofile):
-
       if isinstance(cocofile, basestring):
-
         cfile = os.path.expandvars(cocofile)
         if not os.path.isfile(cfile):
           print "*** ERROR: no such file %s. Exiting ***" %(cfile)
@@ -3187,9 +3286,46 @@ class CXSession(Session):
         # no need to do anything, file is already open
         self.cocodata=cocofile
         self.cocofile=cocofile.filename()
-
       else:
         print "Unknown data type for cocofile. Please pass a string or an HDUList"
+
+
+
+
+
+    if util.keyword_check(acxlinefile):
+      if isinstance(acxlinefile, basestring):
+        acxlfile = os.path.expandvars(acxlinefile)
+        if not os.path.isfile(acxlfile):
+          print "*** ERROR: no such file %s. Exiting ***" %(acxlfile)
+          return -1
+        self.acxlinedata = pyfits.open(acxlfile)
+        self.acxlinefile = acxlfile
+
+      elif isinstance(acxlinefile, pyfits.hdu.hdulist.HDUList):
+        # no need to do anything, file is already open
+        self.acxlinedata=acxlinefile
+        self.acxlinefile=acxlinefile.filename()
+
+      else:
+        print "Unknown data type for acxlinefile. Please pass a string or an HDUList"
+
+    if util.keyword_check(acxcocofile):
+      if isinstance(acxcocofile, basestring):
+        acxcfile = os.path.expandvars(acxcocofile)
+        if not os.path.isfile(acxcfile):
+          print "*** ERROR: no such file %s. Exiting ***" %(acxcfile)
+          return -1
+        self.acxcocodata=pyfits.open(acxcfile)
+        self.acxcocofile=acxcfile
+
+      elif isinstance(acxcocofile, pyfits.hdu.hdulist.HDUList):
+        # no need to do anything, file is already open
+        self.acxcocodata=acxcocofile
+        self.acxcocofile=acxcocofile.filename()
+      else:
+        print "Unknown data type for acxcocofile. Please pass a string or an HDUList"
+
 
   def set_abund(self, elements, abund):
     """
@@ -3231,9 +3367,9 @@ class CXSession(Session):
         print "abundance vector and element vector must have same number"+\
               " of elements"
       else:
-        print elementvec
-        print abundvec
-        print self.abund
+#        print elementvec
+#        print abundvec
+#        print self.abund
         for iel in range(len(elementvec)):
 
           self.abund[elementvec[iel]] = abundvec[iel]
@@ -3333,7 +3469,11 @@ class CXSpec(Spec):
 
     def __init__(self, session, index, Z, z1):
 
-      self.energy = session.linedata[1].data['Energy'][index-2]
+      itmp = numpy.where((session.linedata[1].data['Z']==Z)&\
+                         (session.linedata[1].data['z1']==z1))[0][0]
+#      print session.linedata[1].data['Energy'][itmp]
+#      print index-1
+      self.energy = session.linedata[1].data['Energy'][itmp][index-1]
       self.index = index
       self.Z = Z
       self.z1 = z1
@@ -3420,8 +3560,8 @@ class CXSpec(Spec):
 
 
 
-
-      self.energy = session.linedata[1].data['Energy'][self.index-2]
+      #print self.energy
+      #self.energy = session.linedata[1].data['Energy'][self.index-2]
 
   #    if util.keyword_check(elements):
         #self.set_abund(elements, abund)
@@ -3486,5 +3626,128 @@ class CXSpec(Spec):
           self.spectrum = self.spectrum * session.abund[self.Z] * session.abundsetvector[self.Z]
         if session.response_set:
           self.spectrum_withresp = self.spectrum_withresp * session.abund[self.Z] * session.abundsetvector[self.Z]
+
+
+
+class ACXSpec(Spec):
+    """
+    An individual ion spectrum within a session, from a specifically
+    tabulated energy in a line/coco file.
+
+    Attributes
+    ----------
+    velocity : float
+      The center of mass velocity on which this is calculated (cm/s)
+    index : int
+      The index in the line file for this spectrum
+    Z : int
+      The element
+    z1 : int
+      The the recombining ion charge+1 (so 5 for C4+ + H -> C3+ + H+)
+    """
+
+
+    def __init__(self, session, Z, z1):
+
+      self.velocity = session.acxlinedata[1].header['velocity']
+      self.Z = Z
+      self.z1 = z1
+
+
+    def calc_spectrum(self,session,
+                      dolines = True, docont=True, dopseudo=True):
+
+      """
+      Calculates the spectrum for each ion on a single energy
+
+      Parameters
+      ----------
+      session : Session
+        The parent Session
+      dolines : bool
+        Include lines in the spectrum
+      docont : bool
+        Include continuum in the spectrum
+      dopseudo : bool
+        Include pseudocontinuum in the spectrum
+      Outputs
+      -------
+      none
+
+      Notes
+      -----
+      Modifies:\n
+      dict : self.spectrum  the spectrum of the ion\n
+      dict : self.spectrum_withresp the spectrum of the ion, \
+                                         folded through response\n
+      Then calls `recalc()` to update the spectra
+      """
+      # now, we shall calculate the spectrum for each individual element
+
+      # set the linefile
+
+      # make the generic spectrum
+      self.velocity = session.acxcocodata[session.acxmodel].header['velocity']
+
+      if session.specbins_set:
+        self.spectrum = make_ion_spectrum(session.specbins, session.acxmodel,\
+                            self.Z, self.z1, \
+                            linefile = session.acxlinedata, \
+                            cocofile = session.acxcocodata,\
+                            binunits = 'keV',\
+                            dolines=dolines,\
+                            docont = docont,\
+                            dopseudo = dopseudo,\
+                            broadening=session.broaden, broadenunits=session.binunits)
+
+
+      # make the spectrum on the response grid
+      if session.response_set:
+        tmp = make_ion_spectrum(session.ebins_response, self.index,\
+                            self.Z, self.z1, \
+                            linefile = session.acxlinedata, \
+                            cocofile = session.acxcocodata,\
+                            binunits = 'keV',\
+                            dolines=dolines,\
+                            docont = docont,\
+                            dopseudo = dopseudo,\
+                            broadening=session.broaden, broadenunits=session.binunits)
+
+        e,self.spectrum_withresp = apply_response(tmp, session.rmf, arf=session.arf)
+
+      self.recalc(session)
+
+
+    def recalc(self, session):
+      """
+      Recalculate the spectrum - just for changing abundances etc.
+      Does not recalculate spectrum fully, just changes the multipliers.
+      Does nothing if self.ready is False, should be run after calc_spectrum.
+
+      Parameters
+      ----------
+      session : Session
+        The parent session
+
+      Returns
+      -------
+      none
+
+      Notes
+      -----
+      Modifies:\n
+      self.spectrum : array_like (float)\n
+      self.spectrum_withresp : array_like (float)
+      """
+
+      # need to adjust for velocity
+
+      if session.ready:
+        if session.specbins_set:
+
+          self.spectrum = self.spectrum * session.abund[self.Z] * session.abundsetvector[self.Z]
+        if session.response_set:
+          self.spectrum_withresp = self.spectrum_withresp * session.abund[self.Z] * session.abundsetvector[self.Z]
+
 
 
