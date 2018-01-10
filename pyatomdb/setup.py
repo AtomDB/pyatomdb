@@ -70,7 +70,7 @@ setup(name='pyatomdb',
       install_requires=[
       "requests",\
       "wget",\
-      "numpy",\
+      "numpy>=1.9.0",\
       "scipy",\
       "joblib",\
       "mock",\

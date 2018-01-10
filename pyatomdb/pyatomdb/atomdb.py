@@ -1156,16 +1156,16 @@ def get_line_emissivity( Z, z1, upind, loind, \
   # Adam Foster 25 Sep 2015
   # Version 0.2 - Added use_nei
   # Adam Foster 28 Apr 2017
-  
+
   #
 
 
   if use_nei:
     if linefile=="$ATOMDB/apec_line.fits":
-		linefile = "$ATOMDB/apec_nei_line.fits"
+      linefile = "$ATOMDB/apec_nei_line.fits"
 
   a = pyfits.open(os.path.expandvars(linefile))
-  
+
   kT = a[1].data.field('kT')
   dens = a[1].data.field('eDensity')
   time = a[1].data.field('time')
@@ -1173,9 +1173,9 @@ def get_line_emissivity( Z, z1, upind, loind, \
   epsilon = numpy.zeros(len(kT), dtype=float)
 
   datacache={}
-  
+
   for ikT in range(len(kT)):
-	  
+
     iikT = ikT + 2
     if use_nei:
       j = numpy.where((a[iikT].data.field("element") == Z) &\
@@ -5277,18 +5277,18 @@ def make_lorentz(version = False, do_all=True, cie=False, power=False,\
     levpop = True
 
   # run the data
-#  if cie:
-#    lorentz_cie(version)
-#  if power:
-#    lorentz_power(version)
-#  if stronglines:
-#    lorentz_stronglines(version)
-#  if neicsd:
-#    lorentz_neicsd(version)
-#  if neilines:
-#    lorentz_neilines(version)
-#  if neicont:
-#    lorentz_neicont(version)
+  if cie:
+    lorentz_cie(version)
+  if power:
+    lorentz_power(version)
+  if stronglines:
+    lorentz_stronglines(version)
+  if neicsd:
+    lorentz_neicsd(version)
+  if neilines:
+    lorentz_neilines(version)
+  if neicont:
+    lorentz_neicont(version)
   if levpop:
     lorentz_levpop(version)
 
@@ -5822,10 +5822,11 @@ def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
 
   """
   abund = get_abundance(abundset='Lodd09')[Z]
+  util.switch_version(version)
   # first, get the ionization balance
   datacache={}
   lvdat = get_data(Z,z1,'LV', datacache=datacache)
-  ionbal = apec.solve_ionbal_eigen(Z,Te)
+  ionbal = apec.solve_ionbal_eigen(Z,Te, datacache=datacache)
   settings = apec.parse_par_file(os.path.expandvars('$ATOMDB/apec_v%s.par'%\
                                 (version)))
 
@@ -5845,8 +5846,9 @@ def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
   print la_rates_rates[i]
   out = sum(la_rates_rates[i])
   print "calc out from LA file %e " %(out)
-  out = lvdat[1].data['ARAD_TOT'][up-1]
-  print "calc out from LV file %e " %(out)
+  if 'ARAD_TOT' in lvdat[1].data.names:
+    out = lvdat[1].data['ARAD_TOT'][up-1]
+    print "calc out from LV file %e " %(out)
   i = numpy.where((ec_rates_up==up-1) &\
                   (ec_rates_lo != up-1))[0]
   print "calc out from EC file %e " %(sum(ec_rates_rates[i]))
@@ -5868,9 +5870,9 @@ def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
       print i, lev_pop[i]
 
     lvdat = get_data(Z,z1-1,'LV', datacache=datacache)
-
-    iaut = numpy.where(lvdat[1].data['AAUT_TOT']>0)[0]
-    print iaut
+    if 'AAUT_TOT' in lvdat[1].data.names:
+      iaut = numpy.where(lvdat[1].data['AAUT_TOT']>0)[0]
+      print iaut
     aidat = get_data(Z,z1-1,'AI', datacache=datacache)
     lvdat2 = get_data(Z,z1,'LV', datacache=datacache)
 

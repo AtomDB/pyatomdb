@@ -2031,7 +2031,7 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
       airate = aidat[1].data['Auto_Rate']
 
       if not(has_sum_lv):
-        for i in range(len(laup)):
+        for i in range(len(aiup)):
           diagterms[aiup[i]] +=airate[i]
     t2=time.time()
     print "Finished Gather Rates do_ai at %s: took %f seconds"%(time.asctime(),t2-t1)
@@ -3186,7 +3186,6 @@ def calc_cascade_population(matrixA, matrixB):
 
   mb =matrixB[1:]
   ma =matrixA[1:,1:]
-
   # solve
   try:
     popn = numpy.linalg.solve(ma,mb)
@@ -4516,12 +4515,12 @@ def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
   ----------
   Z : int
     atomic number of element
-  Te : float
-    electron temperature, default in K
+  Te : float or array
+    electron temperature(s), default in K
   init_pop : float array
     initial population of ions for non-equlibrium calculations. Will be renormalised to 1.
-  tau : float
-    N_e * t for the non-equilibrium ioniziation
+  tau : float or array
+    N_e * t for the non-equilibrium ioniziation, in cm^3 s^-1.
   Te_init : float
     initial ionization balance temperature, same units as Te
   teunit : {'K' , 'keV'}
@@ -4530,6 +4529,8 @@ def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
     Can optionally point directly to the file in question, i.e. to look at older data
     look at $HEADAS/../spectral/modelData/eigenELSYMB_v3.0.fits.
     If not set, download from AtomDB FTP site.
+  datacache : dict
+    Used for caching the data. See description in atomdb.get_data
 
   Returns
   -------
@@ -4598,55 +4599,73 @@ def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
                 factorhigh * d['EIGEN'].data['FEQB'][ite[1]]
     else:
       equilib = d['EIGEN'].data['FEQB'][ite[0]]
-
   if do_nei:
     if (do_equilib):
       init_pop = equilib
 
     # renormalize
-    init_pop = init_pop/sum(init_pop)
+    # make Te into a vector
+    Te_vec, Te_isvec = util.make_vec(Te)
+    tau_vec, tau_isvec = util.make_vec(tau)
+    frac_out = numpy.zeros([len(Te_vec),len(tau_vec),Z+1], dtype=float)
+    for iTe, Te in enumerate(Te_vec):
+      Tindex = numpy.argmin((telist-Te)**2)
 
-    Tindex = numpy.argmin((telist-Te)**2)
+      lefteigenvec = numpy.zeros([Z,Z], dtype=float)
+      righteigenvec = numpy.zeros([Z,Z], dtype=float)
+      if Z==1:
+        for i in range(Z):
+          for j in range(Z):
+            lefteigenvec[i,j] = d['EIGEN'].data['VL'][Tindex]
+            righteigenvec[i,j] = d['EIGEN'].data['VR'][Tindex]
+      else:
+        for i in range(Z):
+          for j in range(Z):
+            lefteigenvec[i,j] = d['EIGEN'].data['VL'][Tindex][i*Z+j]
+            righteigenvec[i,j] = d['EIGEN'].data['VR'][Tindex][i*Z+j]
 
-    lefteigenvec = numpy.zeros([Z,Z], dtype=float)
-    righteigenvec = numpy.zeros([Z,Z], dtype=float)
-    if Z==1:
-      for i in range(Z):
-        for j in range(Z):
-          lefteigenvec[i,j] = d['EIGEN'].data['VL'][Tindex]
-          righteigenvec[i,j] = d['EIGEN'].data['VR'][Tindex]
-    else:
-      for i in range(Z):
-        for j in range(Z):
-          lefteigenvec[i,j] = d['EIGEN'].data['VL'][Tindex][i*Z+j]
-          righteigenvec[i,j] = d['EIGEN'].data['VR'][Tindex][i*Z+j]
 
-    delt = 1.0/(len(telist)-1.0)
-    work = numpy.zeros(Z, dtype=float)
-    work = init_pop[1:] - d['EIGEN'].data['FEQB'][Tindex][1:]
+      work = numpy.array(init_pop[1:] - d['EIGEN'].data['FEQB'][Tindex][1:], dtype=float)
 
-    fspectmp = numpy.matrix(lefteigenvec) * numpy.matrix(work).transpose()
+      fspectmp = numpy.matrix(lefteigenvec) * numpy.matrix(work).transpose()
 
-    delt = 1.0
+      delt = 1.0
 
-    worktmp = numpy.zeros(Z)
-    if Z >1:
-      for i in range(Z):
-        worktmp[i] = fspectmp[i]*numpy.exp(d['EIGEN'].data['EIG'][Tindex,i]*delt*tau)
-    else:
-      worktmp[0] = fspectmp[0]*numpy.exp(d['EIGEN'].data['EIG'][Tindex]*delt*tau)
-    frac = numpy.zeros(Z+1)
-    for i in range(Z):
-      for j in range(Z):
-        frac[i+1] += worktmp[j]*righteigenvec[j][i]
-      frac[i+1] += d['EIGEN'].data['FEQB'][Tindex][i+1]
+      worktmp = numpy.zeros(Z)
 
-    frac[frac<0.0] = 0.0
+      for itau, ttau in enumerate(tau_vec):
+        if Z >1:
+          for i in range(Z):
+            worktmp[i] = fspectmp[i]*numpy.exp(d['EIGEN'].data['EIG'][Tindex,i]*delt*ttau)
 
-    if sum(frac)< 1.0:
-      frac[0] = 1.0-sum(frac)
+        else:
+          worktmp[0] = fspectmp[0]*numpy.exp(d['EIGEN'].data['EIG'][Tindex]*delt*ttau)
+
+        frac = numpy.zeros(Z+1)
+        for i in range(Z):
+          for j in range(Z):
+            frac[i+1] += worktmp[j]*righteigenvec[j][i]
+          frac[i+1] += d['EIGEN'].data['FEQB'][Tindex][i+1]
+
+
+        frac[frac<0.0] = 0.0
+
+        if sum(frac)> 1.0:
+          frac = frac/sum(frac)
+        frac[0] = 1-sum(frac[1:])
+        frac_out[iTe,itau,:]=frac
 
   if tau_set:
-    return frac
+    if not tau_isvec:
+
+      frac_out=frac_out[:,0,:]
+
+      if not Te_isvec:
+        frac_out=frac_out[0,:]
+    else:
+      if not Te_isvec:
+        frac_out=frac_out[0,:,:]
+
+    return frac_out
   else:
     return equilib
