@@ -130,7 +130,9 @@ def calc_full_ionbal(Te, tau=1e14, init_pop=False, Te_init=False, Zlist=False, t
   return pop
 
 
-
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
 
 
 def solve_ionbal(ionrate, recrate, init_pop=False, tau=False):
@@ -176,8 +178,8 @@ def solve_ionbal(ionrate, recrate, init_pop=False, tau=False):
   except ValueError:
     do_equilib=False
   Z = len(ionrate)
-  b = numpy.zeros(Z+1, dtype=numpy.float32)
-  a = numpy.zeros((Z+1,Z+1), dtype=numpy.float32)
+  b = numpy.zeros(Z+1, dtype=float)
+  a = numpy.zeros((Z+1,Z+1), dtype=float)
 
 
   for iZ in range(0,Z):
@@ -192,8 +194,10 @@ def solve_ionbal(ionrate, recrate, init_pop=False, tau=False):
     a[0,iZ]=1.0
   b[0]=1.0
 
-  lu,piv,eqpop,info=scipy.linalg.lapack.dgesv(a,b)
+  eqpop=numpy.linalg.solve(a,b)
+
   eqpop[eqpop<0] = 0.0
+
   eqpop[0] = max([1.0-sum(eqpop[1:]), 0])
 
   if do_equilib == True:
@@ -203,7 +207,7 @@ def solve_ionbal(ionrate, recrate, init_pop=False, tau=False):
   #remake matrix a
   Z=len(ionrate)+1
   ndim=Z
-  AA = numpy.zeros((ndim-1,ndim-1), dtype=numpy.float32)
+  AA = numpy.zeros((ndim-1,ndim-1), dtype=float)
   # populate with stuff
 
   for iCol in range(ndim-1):
@@ -234,23 +238,23 @@ def solve_ionbal(ionrate, recrate, init_pop=False, tau=False):
            AA[iRow,iCol]= recrate[iRow+1]
 
 
-  wr_la,wi_la,vl_la,vr_la, info=scipy.linalg.lapack.dgeev(AA)
+  w,v = numpy.linalg.eig(AA)
 
 
   # now copy VR to AA
-  AA=vr_la
+  AA=v
 
   # b_in is difference betwen initial and final populations
-  b_in=numpy.float32(init_pop[1:])-eqpop[1:]
+  b_in=init_pop[1:]-eqpop[1:]
 
   # solve for initial conditions
-  lu,piv,b_out,info=scipy.linalg.lapack.dgesv(AA,b_in)
+  b_out=numpy.linalg.solve(AA,b_in)
 
   # include exponential decay term
-  C = b_out*numpy.exp( wr_la*numpy.float32(tau) )
+  C = b_out*numpy.exp( w*tau )
 
   # get change
-  G = numpy.dot(vr_la,C)
+  G = numpy.dot(v,C)
 
   # solve for population
   Ion_pop=numpy.zeros(Z)
@@ -4506,7 +4510,7 @@ def generate_apec_headerblurb(settings, linehdulist, cocohdulist):
 
 def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
                        teunit='K', \
-                       filename=False, datacache=False):
+                       filename=False, datacache=False, debug=False):
   """
   Solve the ionization balance for a range of ions using the eigenvector
   approach and files as distributed in XSPEC.
@@ -4610,6 +4614,8 @@ def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
     frac_out = numpy.zeros([len(Te_vec),len(tau_vec),Z+1], dtype=float)
     for iTe, Te in enumerate(Te_vec):
       Tindex = numpy.argmin((telist-Te)**2)
+      print d['EIGEN'].data[Tindex]
+      print Tindex
 
       lefteigenvec = numpy.zeros([Z,Z], dtype=float)
       righteigenvec = numpy.zeros([Z,Z], dtype=float)
@@ -4647,13 +4653,19 @@ def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
             frac[i+1] += worktmp[j]*righteigenvec[j][i]
           frac[i+1] += d['EIGEN'].data['FEQB'][Tindex][i+1]
 
-
+        print frac
+        print "sum(frac) pre -ve = ",sum(frac)
+        if debug:
+          frac_out[iTe, itau,:] = frac
         frac[frac<0.0] = 0.0
 
         if sum(frac)> 1.0:
+          print frac
+          print "sum(frac) pre norm = ",sum(frac)
           frac = frac/sum(frac)
         frac[0] = 1-sum(frac[1:])
-        frac_out[iTe,itau,:]=frac
+        if not(debug):
+          frac_out[iTe,itau,:]=frac
 
   if tau_set:
     if not tau_isvec:
