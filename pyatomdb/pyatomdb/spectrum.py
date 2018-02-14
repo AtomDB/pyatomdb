@@ -3034,7 +3034,7 @@ class CXSession(Session):
         velocity[Z] = 1e5* numpy.sqrt(4786031.3*collenergy[Z]/25.)
       elif self.collisionunits.lower() in ['ev/u', 'ev/amu']:
         collenergy[Z] = collision/1000.0
-        velocity[Z] = 1e5* numpy.sqrt(4786031.3*collenergy[Z]/25.)
+        velocity[Z] = 1e5* numpy.sqrt(4786031.3*collenergy[Z]*1e-3/25.)
       else:
         print "*** ERROR: Unknown collision unit %s: should be kev/amu or cm/s ***" %(self.collisionunits)
         return
