@@ -117,4 +117,7 @@ May 23rd 2017: Bug fix to spectrum.apply_response, now handles response files
 indexed from zero (thank you Lia Corrales for finding this issue)
 
 0.5.0
-January 9th 2017: Major updates to include CX models. Increased version number to something relevant to 3 decimal style.
+January 9th 2018: Major updates to include CX models. Increased version number to something relevant to 3 decimal style.
+
+0.5.1
+February 14th 2018: Bugfix to use 64bit floats for ionization fraction calculation, which was occasionally causing issues.

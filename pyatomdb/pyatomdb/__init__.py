@@ -6,7 +6,7 @@ import atomic
 import ctypes
 import apec
 import sys
-__version__="0.0.7.0"
+__version__="0.5.1"
 
 try:
   PATH = os.path.dirname(__file__)
