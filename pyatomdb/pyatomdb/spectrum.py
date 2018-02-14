@@ -3034,7 +3034,7 @@ class CXSession(Session):
         velocity[Z] = 1e5* numpy.sqrt(4786031.3*collenergy[Z]/25.)
       elif self.collisionunits.lower() in ['ev/u', 'ev/amu']:
         collenergy[Z] = collision/1000.0
-        velocity[Z] = 1e5* numpy.sqrt(4786031.3*collenergy[Z]/25.)
+        velocity[Z] = 1e5* numpy.sqrt(4786031.3*collenergy[Z]*1e-3/25.)
       else:
         print "*** ERROR: Unknown collision unit %s: should be kev/amu or cm/s ***" %(self.collisionunits)
         return
@@ -3098,14 +3098,18 @@ class CXSession(Session):
 
             if raw:
               s1 = self.spectra[loind][Z][z1].spectrum * \
+                   self.abund[Z] *\
                    self.ionbal[Z][z1-1] * velocity[Z]
               s2 = self.spectra[upind][Z][z1].spectrum * \
+                   self.abund[Z] *\
                    self.ionbal[Z][z1-1] * velocity[Z]
 
             else:
               s1 = self.spectra[loind][Z][z1].spectrum_withresp * \
+                   self.abund[Z] *\
                    self.ionbal[Z][z1-1] * velocity[Z]
               s2 = self.spectra[upind][Z][z1].spectrum_withresp * \
+                   self.abund[Z] *\
                    self.ionbal[Z][z1-1] * velocity[Z]
 
           # linear interp
@@ -3130,10 +3134,12 @@ class CXSession(Session):
             if raw:
               s1 = self.spectra['ACX'][Z][z1].spectrum * \
                    self.ionbal[Z][z1-1] *\
+                   self.abund[Z] *\
                    velocity[Z] / self.spectra['ACX'][Z][z1].velocity
             else:
               s1 = self.spectra['ACX'][Z][z1].spectrum_withresp * \
                    self.ionbal[Z][z1-1] *\
+                   self.abund[Z] *\
                    velocity[Z] / self.spectra['ACX'][Z][z1].velocity
   #          print "self.spectra['ACX'][Z][z1].velocity", self.spectra['ACX'][Z][z1].velocity
 
@@ -3381,8 +3387,6 @@ class CXSession(Session):
     else:
       self.abund[elements]=abund
 
-    self.recalc()
-
 
   def recalc(self):
     """
@@ -3621,11 +3625,15 @@ class CXSpec(Spec):
       """
 
       if session.ready:
-        if session.specbins_set:
+#        if session.specbins_set:
+#          self.spectrum = self.spectrum * session.abund[self.Z] * session.abundsetvector[self.Z]
+#        if session.response_set:
+#          self.spectrum_withresp = self.spectrum_withresp * session.abund[self.Z] * session.abundsetvector[self.Z]
 
-          self.spectrum = self.spectrum * session.abund[self.Z] * session.abundsetvector[self.Z]
+        if session.specbins_set:
+          self.spectrum = self.spectrum  * session.abundsetvector[self.Z]
         if session.response_set:
-          self.spectrum_withresp = self.spectrum_withresp * session.abund[self.Z] * session.abundsetvector[self.Z]
+          self.spectrum_withresp = self.spectrum_withresp * session.abundsetvector[self.Z]
 
 
 
@@ -3743,11 +3751,14 @@ class ACXSpec(Spec):
       # need to adjust for velocity
 
       if session.ready:
+#        if session.specbins_set:
+#          self.spectrum = self.spectrum * session.abund[self.Z] * session.abundsetvector[self.Z]
+#        if session.response_set:
+#          self.spectrum_withresp = self.spectrum_withresp * session.abund[self.Z] * session.abundsetvector[self.Z]
+
         if session.specbins_set:
-
-          self.spectrum = self.spectrum * session.abund[self.Z] * session.abundsetvector[self.Z]
+          self.spectrum = self.spectrum *  session.abundsetvector[self.Z]
         if session.response_set:
-          self.spectrum_withresp = self.spectrum_withresp * session.abund[self.Z] * session.abundsetvector[self.Z]
-
+          self.spectrum_withresp = self.spectrum_withresp * session.abundsetvector[self.Z]
 
 

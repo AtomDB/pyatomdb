@@ -1846,7 +1846,7 @@ def write_dr_file(fname, dat, clobber=False):
       - wave_err : float Error in wavelength (A)\n
       - dr_type : int : DR data type. 1=Jaconelli, 2 = Safranova\n
       - e_excite : float : transition excitation energy (keV)\n
-      - e_exc_err : float : error in transition excitation energy (keV)\n
+      - eexc_err : float : error in transition excitation energy (keV)\n
       - satelint : float : intensity factor (s-1)\n
       - satinterr : float : error in intensity factor (s-1)\n
       - params : float(10) : parameters
@@ -2157,8 +2157,8 @@ def generate_xspec_ionbal_files(Z, filesuffix, settings = False):
     rec = reclist[ite,:]
 
 
-    b = numpy.zeros(Z+1, dtype=numpy.float32)
-    a = numpy.zeros((Z+1,Z+1), dtype=numpy.float32)
+    b = numpy.zeros(Z+1, dtype=float)
+    a = numpy.zeros([Z+1,Z+1], dtype=float)
 
 
     for iZ in range(0,Z):
@@ -2180,7 +2180,7 @@ def generate_xspec_ionbal_files(Z, filesuffix, settings = False):
 
     ZZ=len(ion)+1
     ndim=ZZ
-    AA = numpy.zeros((ndim-1,ndim-1), dtype=numpy.float32)
+    AA = numpy.zeros((ndim-1,ndim-1), dtype=float)
     # populate with stuff
 
     for iCol in range(ndim-1):
@@ -2211,25 +2211,26 @@ def generate_xspec_ionbal_files(Z, filesuffix, settings = False):
              AA[iRow,iCol]= rec[iRow+1]
 
 
-    wr_la,wi_la,vl_la,vr_la, info=scipy.linalg.lapack.dgeev(AA)
-
+    w,vr=numpy.linalg.eig(AA)
+    if (w.dtype!='float64'):
+      print "nooooooooooO", w.dtype
     leftevec = numpy.zeros(Z**2)
     rightevec = numpy.zeros(Z**2)
 
   # The value VL in which is stored is not actually the left eigenvecotr,
   # but is instead the inverse of vr.
 
-    vl = numpy.matrix(vr_la)**-1
+    vl = numpy.matrix(vr)**-1
 
 
     for i in range(Z):
       for j in range(Z):
         leftevec[i*Z+j] = vl[i,j]
-        rightevec[i*Z+j] = vr_la[j,i]
+        rightevec[i*Z+j] = vr[j,i]
 
     vr_out[ite] = rightevec
     vl_out[ite] = leftevec
-    eig_out[ite] = wr_la
+    eig_out[ite] = w
 
 
   hdu0 = pyfits.PrimaryHDU()
