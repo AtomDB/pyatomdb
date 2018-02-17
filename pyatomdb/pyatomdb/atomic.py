@@ -915,7 +915,7 @@ def get_maxn(cfgstr):
 #------------------------------------------------------------------------------
     
 def parse_eissner(cfgstr, nel=0):
-  shelllist='1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+  shelllist='123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxy'
   llist = 'spdfghiklmnoqrtuvwxyz'
   cfg = cfgstr.strip()
   if len(cfg)%3 == 0:
@@ -924,6 +924,8 @@ def parse_eissner(cfgstr, nel=0):
       pass
     elif cfg[-1] in ['5','6','7']:
       cfg='5'+cfg[:-1]
+    elif cfg[-2] == 'z':
+      cfg='5'+cfg
     else:
       print "Invalid configuration (1) %s" %(cfg)
   elif len(cfg)%3 == 2:
@@ -932,14 +934,22 @@ def parse_eissner(cfgstr, nel=0):
     else:
       print "Invalid configuration (2) %s" %(cfg)
   elif len(cfg)%3 == 1:
-    print "Invalid configuration (3) %s" %(cfg)
-  
+    if not cfg[-2]=='z':
+      print "Invalid configuration (3) %s" %(cfg)
   ret = ""
-  for i in range(len(cfg)/3):
-    cfgtmp = cfg[3*i:3*(i+1)]
-    nelec = int(cfgtmp[:2])-50
-    ishell = shelllist.index(cfgtmp[2])
+  i=0
+  while i < len(cfg):
+    cfgtmp = cfg[i:i+3]
+    if 'z' in cfgtmp:
+      cfgtmp = cfg[i:i+4]
+    i += len(cfgtmp)
     
+    nelec = int(cfgtmp[:2])-50
+    if len(cfgtmp)==3:
+      ishell = shelllist.index(cfgtmp[2])
+    else:
+      ishell = shelllist.index(cfgtmp[3])-9+len(shelllist)
+      
     n=1
     l=0
     for ii in range(ishell):
