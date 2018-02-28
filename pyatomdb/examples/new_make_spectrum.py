@@ -13,7 +13,7 @@ data = pyatomdb.spectrum.Session()
 
 # If you want to specify custom energy bins:
 ebins = numpy.linspace(1,2,1001)
-data.set_specbins(ebins, units='A')
+data.set_specbins(ebins, specunits='A')
 
 # alternative method: just load the response and use its binning. Note
 # that this will always be in keV currently, because reasons.
@@ -26,7 +26,7 @@ ebins = data.ebins_response
 # then linearly interpolates between the result
 #
 # vector is stored for each element at each temperature
-# so if you change temperature/abundance, it's a simple multiplication adn
+# so if you change temperature/abundance, it's a simple multiplication and
 # interpolation instead of a total recalculation
 
 t0 = time.time()
