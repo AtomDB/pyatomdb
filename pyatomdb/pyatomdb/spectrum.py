@@ -1079,6 +1079,7 @@ def print_lines(llist, specunits = 'A', do_cfg=False):
                                  lvdat[1].data['LEV_DEG'][il['LowerLev']-1])
       else:
         pass
+      print(s)
 
 
 
