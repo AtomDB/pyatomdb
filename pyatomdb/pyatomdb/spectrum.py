@@ -24,7 +24,7 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
                   elements=False, abund=False, dummyfirst=False,\
                   dolines = True, docont=True, dopseudo=True):
 
-  r"""
+  """
   make_spectrum is the most generic "make me a spectrum" routine.
 
   It returns the emissivity in counts cm^3 s^-1 bin^-1.
@@ -82,6 +82,10 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
 #    Added dummyfirst keyword
 #    Adam Foster July 21st 2015
 #
+#  Version 0.3
+#    Fixed bug in angstrom spectrum generation
+#    Adam Foster February 28th 2018
+#
 
 
   # set up the bins
@@ -91,8 +95,10 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
 
   if binunits.lower()=='kev':
     ebins = bins*1.0
+    flipspectrum=False
   elif binunits.lower() in ['a', 'angstrom', 'angstroms']:
     ebins = const.HC_IN_KEV_A/bins[::-1]
+    flipspectrum=True
   else:
     print "*** ERROR: unknown binning unit %s, Must be keV or A. Exiting ***"%\
           (binunits)
@@ -182,14 +188,22 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
     for iZ, Z in enumerate(Zlist):
     # ADD  CONTINUUM
       cspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
-                                           binunits=binunits, no_coco=not(docont),\
+                                           binunits='keV', no_coco=not(docont),\
                                            no_pseudo=not(dopseudo))*abund[iZ]
 
   # broaden the continuum if required:
   if broadening:
-    cspectrum = broaden_continuum(ebins, cspectrum, binunits = binunits, \
+    cspectrum = broaden_continuum(ebins, cspectrum, binunits = 'keV', \
                       broadening=broadening,\
                       broadenunits=broadenunits)
+
+  # now flip results back around if angstroms
+  if flipspectrum:
+    cspectrum = cspectrum[::-1]
+    lspectrum = lspectrum[::-1]
+
+
+
   if dummyfirst:
     return numpy.append([0],   cspectrum+lspectrum)
   else:
