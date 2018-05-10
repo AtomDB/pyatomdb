@@ -121,3 +121,6 @@ January 9th 2018: Major updates to include CX models. Increased version number t
 
 0.5.1
 February 14th 2018: Bugfix to use 64bit floats for ionization fraction calculation, which was occasionally causing issues.
+
+0.5.2
+May 10th 2018: Bugfixes, including one where angstrom spectra where generated backwards.
