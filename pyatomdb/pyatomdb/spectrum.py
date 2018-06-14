@@ -1903,6 +1903,7 @@ class Session():
       return
 
     self.ebins_response = get_response_ebins(self.rmf)
+    self.binunits='keV'
     self.response_set = True
 
   def set_apec_files(self, linefile="$ATOMDB/apec_line.fits",\
@@ -2299,7 +2300,7 @@ class NEISession(Session):
 
   def __init__(self, linefile="$ATOMDB/apec_nei_line.fits",\
                      cocofile="$ATOMDB/apec_nei_comp.fits",\
-                     elements=False, abundset='AG89'):
+                     elements=range(1,31), abundset='AG89'):
     """
     Initialization routine. Can set the line and continuum files here
 
@@ -2336,8 +2337,8 @@ class NEISession(Session):
     # if elements are specified, use them. Otherwise, use Z=1-30
     if util.keyword_check(elements):
       self.elements = elements
-    else:
-      self.elements=range(1,31)
+#    else:
+#      self.elements=range(1,31)
 
     # set the abundances:
     #   (1) the initial vector is whatever set AtomDB was calculated on,
@@ -2427,7 +2428,7 @@ class NEISession(Session):
 
     Finds HDU with kT closest to desired kT in given line or coco file.
 
-    Opens the line or coco file, and looks for the header unit
+    Opens the line or comp file, and looks for the header unit
     with temperature closest to te. Use result as index input to make_spectrum
 
     Parameters
@@ -2633,8 +2634,8 @@ class NEISpec(Spec):
       Notes
       -----
       Modifies:\n
-      dict : self.spectrum_by_Z  the spectrum of each element\n
-      dict : self.spectrum_by_Z_withresp  the spectrum of each element, \
+      dict : self.spectrum_by_ion  the spectrum of each element\n
+      dict : self.spectrum_by_ion_withresp  the spectrum of each element, \
                                          folded through response\n
       Then calls `recalc()` to update the spectra
       """
@@ -2674,7 +2675,7 @@ class NEISpec(Spec):
 
         # make the spectrum on the response grid
         if session.response_set:
-          self.spectrum_by_ion[Z] = {}
+          self.spectrum_by_ion_withresp[Z] = {}
 
           for z1 in range(1, Z+2):
             tmp = make_ion_spectrum(session.ebins_response, self.index,\
@@ -2732,7 +2733,7 @@ class NEISpec(Spec):
             for z in range(Z+1):
               z1 = z+1
               if session.ionbal[Z][z1-1]>1e-10:
-                self.spectrum_withresp += self.spectrum_by_Z_withresp[Z] * session.abund[Z] * \
+                self.spectrum_withresp += self.spectrum_by_ion_withresp[Z][z1] * session.abund[Z] * \
                                           session.abundsetvector[Z] * session.ionbal[Z][z1-1]
 
 
@@ -3248,6 +3249,8 @@ class CXSession(Session):
       return
 
     self.ebins_response = get_response_ebins(self.rmf)
+
+    self.binunits='keV'
     self.response_set = True
 
   def set_apec_files(self,\

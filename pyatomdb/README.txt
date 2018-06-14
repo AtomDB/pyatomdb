@@ -124,3 +124,6 @@ February 14th 2018: Bugfix to use 64bit floats for ionization fraction calculati
 
 0.5.2
 May 10th 2018: Bugfixes, including one where angstrom spectra where generated backwards.
+
+0.5.3
+June 14th 2018: Bugfixes: NEI spectrum session fixed to assign bin units correctly when using a response file
