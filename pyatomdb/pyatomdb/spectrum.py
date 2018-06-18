@@ -3025,8 +3025,8 @@ class CXSession(Session):
 
     # for each ion, calculate the velocity
 
-    stot = numpy.zeros(len(self.specbins)-1, dtype=float)
-
+    #stot = numpy.zeros(len(self.specbins)-1, dtype=float)
+    stot_set=False
     # convert whatever the input was to center of mass velocities and energies
     velocity = {}
     collenergy = {}
@@ -3130,12 +3130,18 @@ class CXSession(Session):
 
           # linear interp
             if loind==upind:
+              if stot_set==False:
+                stot = numpy.zeros(len(s1))
+                stot_set=True
               stot += s1
             else:
               r1 = 1- (collenergy[Z]-E1)/(E2-E1)
               r2 = 1- r1
 
               s = s1*r1 + s2*r2
+              if stot_set==False:
+                stot = numpy.zeros(len(s1))
+                stot_set=True
               stot+=s
 
           else: # Use ACX models
@@ -3159,6 +3165,9 @@ class CXSession(Session):
                    velocity[Z] / self.spectra['ACX'][Z][z1].velocity
   #          print "self.spectra['ACX'][Z][z1].velocity", self.spectra['ACX'][Z][z1].velocity
 
+            if stot_set==False:
+              stot = numpy.zeros(len(s1))
+              stot_set=True
             stot+=s1
     return stot
 
@@ -3615,7 +3624,7 @@ class CXSpec(Spec):
                             dopseudo = dopseudo,\
                             broadening=session.broaden, broadenunits=session.binunits)
 
-        e,self.spectrum = apply_response(tmp, session.rmf, arf=session.arf)
+        e,self.spectrum_withresp = apply_response(tmp, session.rmf, arf=session.arf)
 
       self.recalc(session)
 
@@ -3643,16 +3652,21 @@ class CXSpec(Spec):
       """
 
       if session.ready:
-#        if session.specbins_set:
-#          self.spectrum = self.spectrum * session.abund[self.Z] * session.abundsetvector[self.Z]
-#        if session.response_set:
-#          self.spectrum_withresp = self.spectrum_withresp * session.abund[self.Z] * session.abundsetvector[self.Z]
-
         if session.specbins_set:
-          self.spectrum = self.spectrum  * session.abundsetvector[self.Z]
-        if session.response_set:
-          self.spectrum_withresp = self.spectrum_withresp * session.abundsetvector[self.Z]
 
+          self.spectrum = numpy.zeros(len(session.specbins)-1)
+          if session.ionbal[self.Z][self.z1-1]>1e-10:
+            self.spectrum += self.spectrum * \
+                             session.abund[self.Z] *\
+                             session.abundsetvector[self.Z] * \
+                             session.ionbal[self.Z][self.z1-1]
+        if session.response_set:
+          self.spectrum_withresp = numpy.zeros(len(session.ebins_response)-1)
+          if session.ionbal[self.Z][self.z1-1]>1e-10:
+            self.spectrum_withresp += self.spectrum_by_ion_withresp[self.Z][self.z1] *\
+                                      session.abund[self.Z] * \
+                                      session.abundsetvector[self.Z] *\
+                                      self.session.ionbal[Z][z1-1]
 
 
 class ACXSpec(Spec):
@@ -3729,7 +3743,7 @@ class ACXSpec(Spec):
 
       # make the spectrum on the response grid
       if session.response_set:
-        tmp = make_ion_spectrum(session.ebins_response, self.index,\
+        tmp = make_ion_spectrum(session.ebins_response, session.acxmodel,\
                             self.Z, self.z1, \
                             linefile = session.acxlinedata, \
                             cocofile = session.acxcocodata,\
