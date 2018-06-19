@@ -79,10 +79,10 @@ def Ztoelsymb(Z) :
           'Pa', 'U')
 
   if Z < 1 :
-      print "Z must be between 1 and 92. You have given Z= " + repr(z0)
+      print("Z must be between 1 and 92. You have given Z= " + repr(z0))
       ret=-1
   elif Z > 92 :
-      print "Z must be between 1 and 92. You have given Z= " + repr(z0)
+      print("Z must be between 1 and 92. You have given Z= " + repr(z0))
       ret=-1
   else :
       ret=elsymb[Z-1]
@@ -205,10 +205,10 @@ def Ztoelname(Z):
           'Actinium'    , 'Thorium'     , 'Protactinium', 'Uranium')
 
   if Z < 1 :
-    print "Z must be between 1 and 92. You have given Z= " + repr(Z)
+    print("Z must be between 1 and 92. You have given Z= " + repr(Z))
     ret=-1
   elif Z > 92 :
-    print "Z must be between 1 and 92. You have given Z= " + repr(Z)
+    print("Z must be between 1 and 92. You have given Z= " + repr(Z))
     ret=-1
   else :
     ret=elname[Z-1]
@@ -240,7 +240,7 @@ def int2roman(number):
                  500 : "D" , 900 : "CM", 1000 : "M" }
     result = ""
 
-    for value, numeral in sorted(numerals.items(), reverse=True):
+    for value, numeral in sorted(list(numerals.items()), reverse=True):
         while number >= value:
             result += numeral
             number -= value
@@ -269,9 +269,9 @@ def int_to_roman(input):
 
    """
    if type(input) != type(1):
-      raise TypeError, "expected integer, got %s" % type(input)
+      raise TypeError("expected integer, got %s" % type(input))
    if not 0 < input < 4000:
-      raise ValueError, "Argument must be between 1 and 3999"   
+      raise ValueError("Argument must be between 1 and 3999")   
    ints = (1000, 900,  500, 400, 100,  90, 50,  40, 10,  9,   5,  4,   1)
    nums = ('M',  'CM', 'D', 'CD','C', 'XC','L','XL','X','IX','V','IV','I')
    result = ""
@@ -303,14 +303,14 @@ def roman_to_int(input):
    Convert a roman numeral to an integer.
    """
    if type(input) != type(""):
-      raise TypeError, "expected string, got %s" % type(input)
+      raise TypeError("expected string, got %s" % type(input))
    input = input.upper()
    nums = ['M', 'D', 'C', 'L', 'X', 'V', 'I']
    ints = [1000, 500, 100, 50,  10,  5,   1]
    places = []
    for c in input:
       if not c in nums:
-         raise ValueError, "input is not a valid roman numeral: %s" % input
+         raise ValueError("input is not a valid roman numeral: %s" % input)
    for i in range(len(input)):
       c = input[i]
       value = ints[nums.index(c)]
@@ -329,7 +329,7 @@ def roman_to_int(input):
    if int_to_roman(sum) == input:
       return sum
    else:
-      raise ValueError, 'input is not a valid roman numeral: %s' % input
+      raise ValueError('input is not a valid roman numeral: %s' % input)
 #*******************************************************************************
 #
 #  Routine spectroscopic_name
@@ -528,7 +528,7 @@ def elsymb_to_Z(elsymb) :
   try:
     ind=ellist.index(elsymb.lower().strip())
   except ValueError:
-    print "elsymb_to_z0 error: invalid element symbol '"+elsymb+"', returning -1"
+    print("elsymb_to_z0 error: invalid element symbol '"+elsymb+"', returning -1")
     ind=-1
   
   return ind+1
@@ -655,10 +655,10 @@ def Z_to_mass(Z):
            231.03588   , 238.02891)
 
   if Z < 1 :
-    print "Z must be between 1 and 92. You have given Z= " + repr(Z)
+    print("Z must be between 1 and 92. You have given Z= " + repr(Z))
     ret=-1
   elif Z > 92 :
-    print "Z must be between 1 and 92. You have given Z= " + repr(Z)
+    print("Z must be between 1 and 92. You have given Z= " + repr(Z))
     ret=-1
   else :
     ret=masslist[Z-1]
@@ -790,9 +790,9 @@ def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
       if nel_tot == nel_targ: continue
       
       if nel_tot > nel_targ:
-        print "ERROR: more electron in n=%i shell than there should be for %s" %\
-            (nnext, cfgstr)
-        print "   %i vs %i" %(nel_tot, nel_targ)
+        print("ERROR: more electron in n=%i shell than there should be for %s" %\
+            (nnext, cfgstr))
+        print("   %i vs %i" %(nel_tot, nel_targ))
         
       while nel_tot< nel_targ:
 ##        print occup
@@ -927,15 +927,15 @@ def parse_eissner(cfgstr, nel=0):
     elif cfg[-2] == 'z':
       cfg='5'+cfg
     else:
-      print "Invalid configuration (1) %s" %(cfg)
+      print("Invalid configuration (1) %s" %(cfg))
   elif len(cfg)%3 == 2:
     if not cfg[0] in ['5','6','7']:
       cfg = '5'+cfg
     else:
-      print "Invalid configuration (2) %s" %(cfg)
+      print("Invalid configuration (2) %s" %(cfg))
   elif len(cfg)%3 == 1:
     if not cfg[-2]=='z':
-      print "Invalid configuration (3) %s" %(cfg)
+      print("Invalid configuration (3) %s" %(cfg))
   ret = ""
   i=0
   while i < len(cfg):

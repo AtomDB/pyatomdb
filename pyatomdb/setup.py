@@ -74,6 +74,6 @@ setup(name='pyatomdb',
       "scipy",\
       "joblib",\
       "mock",\
-      "astropy==2.0.7"],
+      "astropy"],
       ext_modules = extmos)
 

@@ -1,10 +1,10 @@
 __all__=["atomdb","util","atomic","spectrum","const","apec"]
 
 from .atomdb import *
-import spectrum
-import atomic
+from . import spectrum
+from . import atomic
 import ctypes
-import apec
+from . import apec
 import sys
 __version__="0.5.3"
 

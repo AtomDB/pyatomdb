@@ -18,7 +18,9 @@ Adam Foster August 28th 2015
 """
 
 import os, datetime, numpy, re, time, getpass
-import util, atomic, spectrum, const, urllib2, apec
+import urllib.request, urllib.error, urllib.parse
+from . import util, apec, const, atomic
+
 import astropy.io.fits as pyfits
 from scipy import stats, integrate
 
@@ -63,7 +65,7 @@ def write_filemap(d, filemap, atomdbroot=''):
       d['misc'][i] = re.sub(atomdbroot,'$ATOMDB',d['misc'][i])
     else:
       # see if the ATOMDB environment variable is set
-      if 'ATOMDB' in os.environ.keys():
+      if 'ATOMDB' in list(os.environ.keys()):
         d['misc'][i] = re.sub(os.environ['ATOMDB'],'$ATOMDB',d['misc'][i])
     a.write('%2i %2i %2i ' % (d['misc_type'][i], 0, -1)+\
                               d['misc'][i]+'\n')
@@ -83,7 +85,7 @@ def write_filemap(d, filemap, atomdbroot=''):
           d[tt][i] = re.sub(atomdbroot,'$ATOMDB',d[tt][i])
         else:
           # see if the ATOMDB environment variable is set
-          if 'ATOMDB' in os.environ.keys():
+          if 'ATOMDB' in list(os.environ.keys()):
             d[tt][i] = re.sub(os.environ['ATOMDB'],'$ATOMDB',d[tt][i])
 
 
@@ -602,7 +604,7 @@ def get_ionfrac(ionbalfile, Z, te, z1=-1):
   dat = get_ionbal(ionbalfile, Z)
   it = numpy.argmin(abs(dat['te']-te))
   if z1==-1:
-    z1 = range(0,Z+1)
+    z1 = list(range(0,Z+1))
   else:
     z1=z1-1
   frac = dat['frac'][it,z1]
@@ -629,11 +631,11 @@ def get_ionbal(ionbalfile, element, ion=-1):
 
   # check ion makes sense for the given element
   if ion ==0:
-    print 'ion should be in range 1 to Z, in this case '+repr(Z)
-    print 'return whole element ionization balance in stead'
+    print('ion should be in range 1 to Z, in this case '+repr(Z))
+    print('return whole element ionization balance in stead')
   if ion > element + 1:
-    print 'ion should be in range 1 to Z, in this case '+repr(Z)
-    print 'ERROR, returning -1'
+    print('ion should be in range 1 to Z, in this case '+repr(Z))
+    print('ERROR, returning -1')
     return -1
 
 
@@ -641,7 +643,7 @@ def get_ionbal(ionbalfile, element, ion=-1):
   a=get_data(1,1,'IONBAL')
 #  find data type
   for i in a[1].header:
-    print i
+    print(i)
   if a[1].header['HDUCLASS']=='ION_BAL':
 
     # find index for correct ion
@@ -765,43 +767,43 @@ def get_filemap_file(ftype, Z, z1, fmapfile="$ATOMDB/filemap",\
 
       i = numpy.where(fmap['misc_type']==ftype_misc)[0]
       if len(i)==0:
-        print "Error: file type: %i not found in filemap %s" %(ftype,fmapfile)
+        print("Error: file type: %i not found in filemap %s" %(ftype,fmapfile))
         ret = ''
       else:
         ret = fmap['misc'][i[0]]
     else:
       if not ftype.lower() in ['eigen','ionbal']:
-        print "Error: unknown file type: %s not recognized" %(ftype)
+        print("Error: unknown file type: %s not recognized" %(ftype))
       ret = ''
   else:
     i = numpy.where((fmap['Z']==Z)&(fmap['z1']==z1))[0]
     ret=''
     if len(i)==0:
       if not quiet :
-        print "WARNING: there is no data for the ion "+\
-               atomic.spectroscopic_name(Z,z1)
+        print("WARNING: there is no data for the ion "+\
+               atomic.spectroscopic_name(Z,z1))
       ret=''
 
     if len(i)>1:
-      print "ERROR: there are multiple entries for the ion "+\
-             atomic.spectroscopic_name(Z,z1)
+      print("ERROR: there are multiple entries for the ion "+\
+             atomic.spectroscopic_name(Z,z1))
       ret=''
 
     if len(i)==1:
       i=i[0]
       ftypel = ftype.lower()
 
-      if not ftypel in fmap.keys():
+      if not ftypel in list(fmap.keys()):
 
-        print "Error: invalid file type: "+ftype
+        print("Error: invalid file type: "+ftype)
         ret = ''
 
       else:
         ret = fmap[ftypel][i]
         if len(ret)==0:
           if not quiet :
-            print "WARNING: no data of type "+ftype+" exists for ion "+\
-                atomic.spectroscopic_name(Z,z1)
+            print("WARNING: no data of type "+ftype+" exists for ion "+\
+                atomic.spectroscopic_name(Z,z1))
 
   return ret
 #-------------------------------------------------------------------------------
@@ -876,18 +878,18 @@ def get_level_details(level, Z=-1, z1=-1, filename='', \
   if filename=='':
     # get the filename from the other variables
     if Z < 0:
-      print "Error in get_level_details: must specify filename or "+\
-            "Z, z1 and filemap"
+      print("Error in get_level_details: must specify filename or "+\
+            "Z, z1 and filemap")
       return -1
 
     if z1 < 0:
-      print "Error in get_level_details: must specify filename or "+\
-            "Z, z1 and filemap"
+      print("Error in get_level_details: must specify filename or "+\
+            "Z, z1 and filemap")
       return -1
 
     if filemap =='':
-      print "Error in get_level_details: must specify filename or "+\
-            "Z, z1 and filemap"
+      print("Error in get_level_details: must specify filename or "+\
+            "Z, z1 and filemap")
       return -1
     filename = get_filemap_file(filemap, 'LV', Z, z1,\
                                 atomdbroot=atomdbroot)
@@ -974,12 +976,12 @@ def get_abundance(abundfile=False, abundset='AG89', element=[-1],\
     abunddata = pyfits.open(abundfile)
 
   if element[0]==-1:
-    element = range(1,31)
+    element = list(range(1,31))
 
   ind = numpy.where(abunddata[1].data.field('Source')==abundset)[0]
   if len(ind)==0:
-    print "Invalid Abundance Set chosen: select from ", \
-          abunddata[1].data.field('Source')
+    print("Invalid Abundance Set chosen: select from ", \
+          abunddata[1].data.field('Source'))
     return -1
   ret = {}
   for Z in element:
@@ -997,8 +999,8 @@ def get_emissivity(linefile, elem, ion, upper, lower, kT=[-1], \
   a = pyfits.open(linefile)
   # find the blocks of interest
   if ((kT[0] != -1) & (hdu[0] != -1)):
-    print "Error in get_emissivity: provide either the hdu numbers "+\
-          "(starting from 2) or the temperatures"
+    print("Error in get_emissivity: provide either the hdu numbers "+\
+          "(starting from 2) or the temperatures")
     return -1
   interpKt = False
   if (kT[-1] != -1):
@@ -1009,21 +1011,21 @@ def get_emissivity(linefile, elem, ion, upper, lower, kT=[-1], \
     elif kTunits.lower()== "kev":
       kT_keV = numpy.array(kT)
     else:
-      print "Error in get_emissivity: kTunits must be K or keV"
+      print("Error in get_emissivity: kTunits must be K or keV")
       return -1
 
     ikT_min = numpy.where(a[1].data.field('kT') >= min(kT_keV))[0]
     ikT_max = numpy.where(a[1].data.field('kT') <= max(kT_keV))[0]
     if ((len(ikT_min)==0) | (ikT_min[0] == 0)):
-      print "Error in get_emissivity: kT=%e out of range %e:%e keV" %\
+      print("Error in get_emissivity: kT=%e out of range %e:%e keV" %\
              (min(kT_keV), a[1].data.field('kT')[0], \
-              a[1].data.field('kT')[-1])
+              a[1].data.field('kT')[-1]))
       return -1
 
     if ((len(ikT_max)==0) | (ikT_max[-1] == len(a[1].data.field('kT'))-1)):
-      print "Error in get_emissivity: kT=%e out of range %e:%e keV" %\
+      print("Error in get_emissivity: kT=%e out of range %e:%e keV" %\
              (max(kT_kev), a[1].data.field('kT')[0], \
-              a[1].data.field('kT')[-1])
+              a[1].data.field('kT')[-1]))
       return -1
     ikT = numpy.arange(ikT_min[0]-1, ikT_max[-1]+2)
   elif (hdu[0] != -1):
@@ -1089,12 +1091,12 @@ def get_ion_lines(linefile, Z, z1, fullinfo=False):
                     (a[iikT].data.field("ion") == z1))[0]
     nlines[ikT] = len(j)
     if (fullinfo):
-      print "kT = %.2e, nlines = %i" % (kT[ikT], nlines[ikT])
+      print("kT = %.2e, nlines = %i" % (kT[ikT], nlines[ikT]))
       if nlines[ikT] > 0:
         for jj in j:
-          print "%5i: %10f %.4e" % (jj, \
+          print("%5i: %10f %.4e" % (jj, \
                                     a[iikT].data.field('lambda')[jj], \
-                                    a[iikT].data.field('epsilon')[jj])
+                                    a[iikT].data.field('epsilon')[jj]))
 
   return nlines
 
@@ -1185,7 +1187,7 @@ def get_line_emissivity( Z, z1, upind, loind, \
       if len(j) == 0: continue
       ionbal = apec.solve_ionbal_eigen(Z,kT[ikT],teunit='keV', datacache=datacache)
       for jj in j:
-        print ikT, a[iikT].data['Ion_drv'][jj], a[iikT].data['Epsilon'][jj], ionbal[a[iikT].data['Ion_drv'][jj]-1]
+        print(ikT, a[iikT].data['Ion_drv'][jj], a[iikT].data['Epsilon'][jj], ionbal[a[iikT].data['Ion_drv'][jj]-1])
 
         epsilon[ikT]+= a[iikT].data['Epsilon'][jj] * ionbal[a[iikT].data['Ion_drv'][jj]-1]
     else:
@@ -1867,7 +1869,7 @@ def calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
     calc_type = const.P_RATE_COEFF
 
   if (calc_type == -1):
-    print "ERROR: undefined collision type %i" %(coll_type)
+    print("ERROR: undefined collision type %i" %(coll_type))
     return False
 
   #print "upsilon:", upsilon
@@ -1910,7 +1912,7 @@ def calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
 
     exc_rate = numpy.zeros(len(upsilon), dtype=float)
     dex_rate = numpy.zeros(len(upsilon), dtype=float)
-    print "Can't calculate collision strength for protons."
+    print("Can't calculate collision strength for protons.")
 
 
   if ((calc_type == const.P_RATE_COEFF)|(calc_type == const.E_RATE_COEFF)):
@@ -1923,11 +1925,11 @@ def calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
 #  zzz=raw_input()
 
   if sum(numpy.isnan(numpy.asarray(exc_rate)))>0:
-    print "ERROR: calculated excitation rate an NaN"
-    print coll_type, min_T, max_T, Tarr, om, dE, T, Z, degl, degu
+    print("ERROR: calculated excitation rate an NaN")
+    print(coll_type, min_T, max_T, Tarr, om, dE, T, Z, degl, degu)
   if sum(numpy.isnan(numpy.asarray(dex_rate)))>0:
-    print "ERROR: calculated excitation rate an NaN"
-    print coll_type, min_T, max_T, Tarr, om, dE, T, Z, degl, degu
+    print("ERROR: calculated excitation rate an NaN")
+    print(coll_type, min_T, max_T, Tarr, om, dE, T, Z, degl, degu)
 
   if force_extrap:
     return exc_rate, dex_rate, did_extrap
@@ -2144,7 +2146,7 @@ def interpolate_ionrec_rate(cidat,Te, force_extrap=False):
     N_interp = cidat['par_type'] - const.INTERP_IONREC_RATE_OPEN
 
   else:
-    print "interpolate_rate failed -- very odd."
+    print("interpolate_rate failed -- very odd.")
     return 0.0
 
   # do interpolation
@@ -2242,7 +2244,7 @@ def calc_ionrec_ci(cidat, Te, extrap=False, ionpot=False):
 
 
     else:
-      print "Unknown CI type: %i"%(cidat['par_type'])
+      print("Unknown CI type: %i"%(cidat['par_type']))
 
 
   # now see if extrappolation is required:
@@ -2402,7 +2404,7 @@ def calc_ionrec_rr(cidat, Te, extrap=False):
     rr[irr] = interpolate_ionrec_rate(cidat,Te[irr])
 
   else:
-    print "calc_ionrec_rate: RR Recombination type %i not recognized" %(cidat['par_type'])
+    print("calc_ionrec_rate: RR Recombination type %i not recognized" %(cidat['par_type']))
 
   if extrap:
     ilow = numpy.where(Te<cidat['min_temp'])[0]
@@ -2531,7 +2533,7 @@ def calc_ionrec_dr(cidat, Te, extrap=False):
       dr[idr] = interpolate_ionrec_rate(cidat,Te[idr])
 
     else:
-      print "calc_ionrec_rate: DR Recombination type %i not recognized" %(cidat['par_type'])
+      print("calc_ionrec_rate: DR Recombination type %i not recognized" %(cidat['par_type']))
 
   # now extrappolate if required
   if extrap:
@@ -2658,7 +2660,7 @@ def calc_ionrec_ea(cidat, Te, extrap=False):
 
 
   else:
-    print "calc_ionrec_rate: EA type %i not recognized" %(cidat['par_type'])
+    print("calc_ionrec_rate: EA type %i not recognized" %(cidat['par_type']))
   # now extrappolate if required
 
   if extrap:
@@ -2788,7 +2790,7 @@ def get_ionrec_rate(Te_in, irdat_in, lvdat_in=False, Te_unit='K', \
   elif Te_unit.lower()=='kev':
     Te /=const.KBOLTZ
   else:
-    print "ERROR: units should be k, eV or keV"
+    print("ERROR: units should be k, eV or keV")
     return -1
 
    # check IR data
@@ -2796,31 +2798,31 @@ def get_ionrec_rate(Te_in, irdat_in, lvdat_in=False, Te_unit='K', \
 
   if (z1>=0) &( Z>=0):
     irdat = get_data(Z,z1, 'IR',settings=settings, datacache=datacache)
-  elif isinstance(irdat_in, basestring):
+  elif isinstance(irdat_in, str):
     #string (assumed filename)
     irdat = pyfits.open(irdat_in)
   elif type(irdat_in)==pyfits.hdu.hdulist.HDUList:
     # already opened IR file
     irdat = irdat_in
   else:
-    print "ERROR: unable to process irdat as supplied."
+    print("ERROR: unable to process irdat as supplied.")
     return -1
 
   if (z1>=0) &( Z>=0):
     lvdat = get_data(Z,z1, 'LV',settings=settings, datacache=datacache)
-  elif isinstance(lvdat_in, basestring):
+  elif isinstance(lvdat_in, str):
     #string (assumed filename)
     lvdat = pyfits.open(lvdat_in)
   elif type(lvdat_in)==pyfits.hdu.hdulist.HDUList:
     # already opened IR file
     lvdat = lvdat_in
   else:
-    print "ERROR: unable to process lvdat as supplied."
+    print("ERROR: unable to process lvdat as supplied.")
     return -1
 
   if (z1>=0) &( Z>=0):
     lvdatp1 = get_data(Z,z1+1, 'LV',settings=settings, datacache=datacache)
-  elif isinstance(lvdatp1_in, basestring):
+  elif isinstance(lvdatp1_in, str):
     #string (assumed filename)
     lvdatp1 = pyfits.open(lvdatp1_in)
   elif type(lvdatp1_in)==pyfits.hdu.hdulist.HDUList:
@@ -2988,14 +2990,14 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
   elif Te_unit.lower() == 'k':
     Te_arr = 1.0* Te_arr
   else:
-    print 'ERROR: Unknown Te_unit "%s": should be "K" or "keV"' % (Te_unit)
+    print('ERROR: Unknown Te_unit "%s": should be "K" or "keV"' % (Te_unit))
     return False
 
   # CHECK THE INPUTS
   # 1: the collional excitation data
   if colldata:
     if Z>=0 | z1 >=0:
-      print 'ERROR: specified colldata, Z and z1. Either specify colldata or Z, z1 & dtype'
+      print('ERROR: specified colldata, Z and z1. Either specify colldata or Z, z1 & dtype')
       return False
     # set the dtype
     if dtype==False:
@@ -3021,17 +3023,17 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
       elif dtype == 'PC':
         colldata = get_data(Z,z1,'PC', settings=settings, datacache=datacache)
       else:
-        print "Error: unknown dtype %s"%(dtype)
+        print("Error: unknown dtype %s"%(dtype))
         return False
 
 
     else:
-      print "Error: must specify dtype, Z and z1 to load file"
+      print("Error: must specify dtype, Z and z1 to load file")
       return False
   # OK, at this point we have the colldata. Yay.
   # check colldata is real
   if colldata==False:
-    print "No collisional data found. Returning zeros"
+    print("No collisional data found. Returning zeros")
     ret = numpy.zeros(len(Te_arr), dtype=float)
     if dtype in ['EC','PC']:
       if not(isiter):
@@ -3055,7 +3057,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
   # Now get the correct transition
   if index>=0:
     if (finallev | initlev):
-      print "Error: specify index or upperlev and lowerlev"
+      print("Error: specify index or upperlev and lowerlev")
       return False
     # If I have the index, set the dtype
     if colldata[1].header['HDUCLAS1'] == 'COLL_STR':
@@ -3064,8 +3066,8 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
       # get the type:
       dtype = colldata[1].data.field('TR_TYPE')[index]
     else:
-      print "ERROR: supplied data is not a collision strength (EC) or "+\
-            "ionization/recombination (IR) set. Returning"
+      print("ERROR: supplied data is not a collision strength (EC) or "+\
+            "ionization/recombination (IR) set. Returning")
       return False
 
     if z1<0:
@@ -3078,8 +3080,8 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
   else:
 
     if (finallev==False | initlev == False):
-      print "Error: if not specifying index, must specify finallev and ",
-      print "initlev"
+      print("Error: if not specifying index, must specify finallev and ", end=' ')
+      print("initlev")
       return False
     else:
 
@@ -3087,8 +3089,8 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
         index = numpy.where((colldata[1].data['lower_lev']==initlev) &\
                             (colldata[1].data['upper_lev']==finallev))[0]
         if len(index)==0:
-          print "Warning: no data found for electron excitation from "+\
-                "level %i to %i"%(initlev, finallev)
+          print("Warning: no data found for electron excitation from "+\
+                "level %i to %i"%(initlev, finallev))
           ret = numpy.zeros(len(Te_arr), dtype=float)
           if not isiter:
             ret = ret[0]
@@ -3102,8 +3104,8 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
         index = numpy.where((colldata[1].data['lowerlev']==initlev) &\
                             (colldata[1].data['upperlev']==finallev))[0]
         if len(index)==0:
-          print "Warning: no data found for proton excitation from "+\
-                "level %i to %i"%(initlev, finallev)
+          print("Warning: no data found for proton excitation from "+\
+                "level %i to %i"%(initlev, finallev))
           ret = numpy.zeros(len(Te_arr), dtype=float)
           if not isiter:
             ret = ret[0]
@@ -3120,9 +3122,9 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                             (colldata[1].data['ion_init']==z1) &\
                             (colldata[1].data['ion_final']==z1+1))[0]
         if len(index)==0:
-          print "Warning: no data found for collisional ionization from "+\
+          print("Warning: no data found for collisional ionization from "+\
                 "ion %i, level %i to ion %i, level %i"%\
-                 (z1, initlev, z1+1, finallev)
+                 (z1, initlev, z1+1, finallev))
           ret = numpy.zeros(len(Te_arr), dtype=float)
           if not isiter:
             ret = ret[0]
@@ -3137,9 +3139,9 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                             (colldata[1].data['ion_init']==z1) &\
                             (colldata[1].data['ion_final']==z1-1))[0]
         if len(index)==0:
-          print "Warning: no data found for collisional ionization from "+\
+          print("Warning: no data found for collisional ionization from "+\
                 "ion %i, level %i to ion %i, level %i"%\
-                 (z1, initlev, z1-1, finallev)
+                 (z1, initlev, z1-1, finallev))
           ret = numpy.zeros(len(Te_arr), dtype=float)
           if not isiter:
             ret = ret[0]
@@ -3168,8 +3170,8 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
     degl = lolev['lev_deg']
 
     if delta_E < 0:
-      print "WARNING: delta_E < 0, upind = %i, loind = %i, eup =%e, elo=%e"%\
-               (upind, loind, uplev['energy'],lolev['energy'])
+      print("WARNING: delta_E < 0, upind = %i, loind = %i, eup =%e, elo=%e"%\
+               (upind, loind, uplev['energy'],lolev['energy']))
       delta_E *= -1.0
       degl =uplev['lev_deg']
       degu = lolev['lev_deg']
@@ -3237,11 +3239,11 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
       ci = calc_ionrec_ci(cidat,Te_arr, extrap=force_extrap)
       if sum(numpy.isnan(ci))>0:
         if not silent:
-          print "calc_ionrec_rate: CI(%10s -> %10s): Te out of range min->max=%e->%e:"%\
+          print("calc_ionrec_rate: CI(%10s -> %10s): Te out of range min->max=%e->%e:"%\
                     (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                      atomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
                      cidat['min_temp'], cidat['max_temp']),\
-                     Te_arr[numpy.isnan(ci)]
+                     Te_arr[numpy.isnan(ci)])
       if sum(ci[numpy.isfinite(ci)] < 0)>0:
         if not silent:
           s= "calc_ionrec_rate: CI(%10s -> %10s): negative CI found: =%e->%e:"%\
@@ -3249,7 +3251,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                      atomic.spectroscopic_name(cidat['element'],cidat['ion_final']))
           for i in  numpy.where(ci[numpy.isfinite(ci)] < 0)[0]:
             s += " %e:%e, " % (Te_arr[i],ci[i])
-          print s
+          print(s)
 
 
     return ci
@@ -3259,11 +3261,11 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
     ea = calc_ionrec_ea(cidat,Te_arr, extrap=force_extrap)
     if sum(numpy.isnan(ea))>0:
       if not silent:
-        print "calc_ionrec_rate: EA(%10s -> %10s): Te out of range min->max=%e->%e:"%\
+        print("calc_ionrec_rate: EA(%10s -> %10s): Te out of range min->max=%e->%e:"%\
                  (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                  atomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
                  cidat['min_temp'], cidat['max_temp']),\
-                 Te_arr[numpy.isnan(ea)]
+                 Te_arr[numpy.isnan(ea)])
     if sum(ea[numpy.isfinite(ea)] < 0)>0:
       if not silent:
         s= "calc_ionrec_rate: EA(%10s -> %10s): negative EA found: =%e->%e:"%\
@@ -3271,7 +3273,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                  atomic.spectroscopic_name(cidat['element'],cidat['ion_final']))
         for i in  numpy.where(ea[numpy.isfinite(ea)] < 0)[0]:
           s += " %e:%e, " % (Te_arr[i],ea[i])
-        print s
+        print(s)
     return ea
   elif dtype=='DR':
     cidat = colldata[1].data[index]
@@ -3279,11 +3281,11 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
     if sum(numpy.isnan(dr))>0:
       if not silent:
 
-        print "calc_ionrec_rate: DR(%10s -> %10s): Te out of range min->max=%e->%e:"%\
+        print("calc_ionrec_rate: DR(%10s -> %10s): Te out of range min->max=%e->%e:"%\
                 (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                  atomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
                  cidat['min_temp'], cidat['max_temp']),\
-                 Te_arr[numpy.isnan(dr)]
+                 Te_arr[numpy.isnan(dr)])
     if sum(dr[numpy.isfinite(dr)] < 0)>0:
       if not silent:
 
@@ -3292,7 +3294,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                    atomic.spectroscopic_name(cidat['element'],cidat['ion_final']))
         for i in  numpy.where(dr[numpy.isfinite(dr)] < 0)[0]:
           s += " %e:%e, " % (Te_arr[i],dr[i])
-        print s
+        print(s)
     return dr
 
 
@@ -3301,11 +3303,11 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
     rr = calc_ionrec_rr(cidat,Te_arr, extrap=force_extrap)
     if sum(numpy.isnan(rr))>0:
       if not silent:
-        print "calc_ionrec_rate: RR(%10s -> %10s): Te out of range min->max=%e->%e:"%\
+        print("calc_ionrec_rate: RR(%10s -> %10s): Te out of range min->max=%e->%e:"%\
                 (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                  atomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
                  cidat['min_temp'], cidat['max_temp']),\
-                 Te_arr[numpy.isnan(r)]
+                 Te_arr[numpy.isnan(r)])
     if sum(rr[numpy.isfinite(rr)] < 0)>0:
       if not silent:
         s= "calc_ionrec_rate: RR(%10s -> %10s): negative RR found: =%e->%e:"%\
@@ -3313,7 +3315,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                    atomic.spectroscopic_name(cidat['element'],cidat['ion_final']))
         for i in  numpy.where(rr[numpy.isfinite(rr)] < 0)[0]:
           s += " %e:%e, " % (Te_arr[i],rr[i])
-        print s
+        print(s)
     return rr
 
 
@@ -3324,10 +3326,10 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
     if sum(numpy.isnan(xr))>0:
       if not silent:
 
-        print "calc_ionrec_rate: xr(%10s -> %10s,T=%9.3e) = %8g"%\
+        print("calc_ionrec_rate: xr(%10s -> %10s,T=%9.3e) = %8g"%\
                   (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                    adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
-                   Te,xr)
+                   Te,xr))
 
     return xr
 
@@ -3337,10 +3339,10 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
     if sum(numpy.isnan(xr))>0:
       if not silent:
 
-        print "calc_ionrec_rate: xd(%10s -> %10s,T=%9.3e) = %8g"%\
+        print("calc_ionrec_rate: xd(%10s -> %10s,T=%9.3e) = %8g"%\
                   (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                    adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
-                   Te,xr)
+                   Te,xr))
 
     return xr
 
@@ -3362,9 +3364,9 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
         lvdatap1 = get_data(Z,z1+1,'LV', settings=settings, datacache=datacache)
 
       if (lvdata[1].header['ion_stat']+1 != cidat['ion_init']):
-        print "ERROR: lvdata and cidat not for matching ions!"
+        print("ERROR: lvdata and cidat not for matching ions!")
       if (lvdatap1[1].header['ion_stat']+1 != cidat['ion_final']):
-        print "ERROR: lvdatap1 and cidat not for matching ions!"
+        print("ERROR: lvdatap1 and cidat not for matching ions!")
 
       upind = cidat['level_final']
       loind = cidat['level_init']
@@ -3394,10 +3396,10 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
     else:
       xi = calc_ionrec_ci(cidat,Te_arr, extrap=force_extrap)
       if (xi < 0.0):
-        print "calc_ionrec_rate: CI(%10s -> %10s,T=%9.3e) = %8g"%\
+        print("calc_ionrec_rate: CI(%10s -> %10s,T=%9.3e) = %8g"%\
                   (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                    adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
-                   Te,xi)
+                   Te,xi))
         xi=0.0
     return xi
 
@@ -3535,7 +3537,7 @@ def B_hyd(s, l, m, eta):
   MAX_BHYD = 10000
   d = numpy.zeros(MAX_BHYD, dtype=float)
   if ((s+1)*(s+1) > MAX_BHYD):
-    print("B_hyd: Increase MAX_BHYD to at least %d",(s+1)*(s+1))
+    print(("B_hyd: Increase MAX_BHYD to at least %d",(s+1)*(s+1)))
 
 
   d[0*(s+1) + 0] = 1.0
@@ -4217,26 +4219,26 @@ def get_data(Z, z1, ftype, datacache=False, \
 
   if datacache != False:
     # make sure that the relevant dictionaries are ready to receive the data
-    if not 'data' in datacache.keys():
+    if not 'data' in list(datacache.keys()):
       datacache['data']={}
     if not ismisc:
-      if not Z in datacache['data'].keys():
+      if not Z in list(datacache['data'].keys()):
         datacache['data'][Z]={}
-      if not z1 in datacache['data'][Z].keys():
+      if not z1 in list(datacache['data'][Z].keys()):
         datacache['data'][Z][z1]={}
     else:
-      if not 'misc' in datacache['data'].keys():
+      if not 'misc' in list(datacache['data'].keys()):
         datacache['data']['misc'] = {}
 
-    if not 'datasums' in datacache.keys():
+    if not 'datasums' in list(datacache.keys()):
       datacache['datasums']={}
     if not ismisc:
-      if not Z in datacache['datasums'].keys():
+      if not Z in list(datacache['datasums'].keys()):
         datacache['datasums'][Z]={}
-      if not z1 in datacache['datasums'][Z].keys():
+      if not z1 in list(datacache['datasums'][Z].keys()):
         datacache['datasums'][Z][z1]={}
     else:
-      if not 'misc' in datacache['datasums'].keys():
+      if not 'misc' in list(datacache['datasums'].keys()):
         datacache['datasums']['misc'] = {}
 
     if ismisc:
@@ -4248,17 +4250,17 @@ def get_data(Z, z1, ftype, datacache=False, \
 
 
       if ftype.upper() =='EIGEN':
-        if not 'EIGEN' in datacache['data']['misc'].keys():
+        if not 'EIGEN' in list(datacache['data']['misc'].keys()):
           datacache['data']['misc']['EIGEN']={}
           datacache['datasums']['misc']['EIGEN']={}
           havedata = False
 
       if ftype.upper() =='EIGEN':
-        if Z in datacache['data']['misc']['EIGEN'].keys():
+        if Z in list(datacache['data']['misc']['EIGEN'].keys()):
           havedata=True
 
 
-      elif ((ftype.upper() in datacache['data']['misc'].keys()) &\
+      elif ((ftype.upper() in list(datacache['data']['misc'].keys())) &\
             (ftype.upper() != 'EIGEN')):
       # this means we have the data cached, no need to fetch it
         havedata=True
@@ -4297,7 +4299,7 @@ def get_data(Z, z1, ftype, datacache=False, \
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.4.fits'%(atomic.Ztoelsymb(Z).lower())
             else:
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.7.fits'%(atomic.Ztoelsymb(Z).lower())
-            if not 'EIGEN' in datacache['data']['misc'].keys():
+            if not 'EIGEN' in list(datacache['data']['misc'].keys()):
               datacache['data']['misc'][ftype.upper()]={}
               datacache['datasums']['misc'][ftype.upper()]={}
           else:
@@ -4313,36 +4315,36 @@ def get_data(Z, z1, ftype, datacache=False, \
             d = pyfits.open(fname)
           except IOError:
             try:
-              d = pyfits.open(fname+'.gz')
+              d = pyfits.open(fname+b'.gz')
             except IOError:
               if offline:
                 d = False
               else:
                 url = re.sub(os.path.expandvars(atomdbroot),\
-                             'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
+                             'ftp://sao-ftp.harvard.edu/AtomDB',fname)+b'.gz'
                 try:
                   d = pyfits.open(url, cache=False)
                   didurl=True
                   util.record_upload(re.sub(os.path.expandvars(atomdbroot),'',fname))
-                except urllib2.URLError:
-                  print "Error trying to open file %s. Not found locally or on"%(fname)+\
-                      " server."
+                except urllib.error.URLError:
+                  print("Error trying to open file %s. Not found locally or on"%(fname)+\
+                      " server.")
                   d=False
 #          datacache['data']['misc'][ftype.upper()] = False
 
 
 
     else:
-      if ftype.upper() in datacache['data'][Z][z1].keys():
+      if ftype.upper() in list(datacache['data'][Z][z1].keys()):
       # this means we have the data cached, no need to fetch it
         pass
       else:
       # check for file location overrides
         if settings:
-          if 'filemap' in settings.keys():
+          if 'filemap' in list(settings.keys()):
             if settings['filemap']:
               fmapfile = settings['filemap']
-          if 'atomdbroot' in settings.keys():
+          if 'atomdbroot' in list(settings.keys()):
             if settings['atomdbroot']:
               atomdbroot = settings['atomdbroot']
 
@@ -4365,20 +4367,20 @@ def get_data(Z, z1, ftype, datacache=False, \
             d = pyfits.open(fname)
           except IOError:
             try:
-              d = pyfits.open(fname+'.gz')
+              d = pyfits.open(fname+b'.gz')
             except IOError:
               if offline:
                 d = False
               else:
                 url = re.sub(os.path.expandvars(atomdbroot),\
-                             'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
+                             'ftp://sao-ftp.harvard.edu/AtomDB',fname)+b'.gz'
                 try:
                   d = pyfits.open(url, cache=False)
                   didurl=True
                   util.record_upload(re.sub(os.path.expandvars(atomdbroot),'',fname))
-                except urllib2.URLError:
-                  print "Error trying to open file %s. Not found locally or on"%(fname)+\
-                      " server."
+                except urllib.error.URLError:
+                  print("Error trying to open file %s. Not found locally or on"%(fname)+\
+                      " server.")
                   d=False
 
 
@@ -4387,7 +4389,7 @@ def get_data(Z, z1, ftype, datacache=False, \
     if settings:
       if settings['filemap']:
         fmapfile = settings['filemap']
-      if 'atomdbroot' in settings.keys():
+      if 'atomdbroot' in list(settings.keys()):
         if settings['atomdbroot']:
           atomdbroot = settings['atomdbroot']
 
@@ -4432,7 +4434,9 @@ def get_data(Z, z1, ftype, datacache=False, \
       else:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.7.fits'%(atomic.Ztoelsymb(Z).lower())
 
-
+    if 'bytes' in str(type(fname)):
+      fname = fname.decode()
+    
     if fname=='':
           # This is expected if it's an ionbal file
       pass
@@ -4445,6 +4449,7 @@ def get_data(Z, z1, ftype, datacache=False, \
         d = pyfits.open(fname)
       except IOError:
         try:
+          print(fname)
           d = pyfits.open(fname+'.gz')
         except IOError:
           if offline:
@@ -4452,14 +4457,14 @@ def get_data(Z, z1, ftype, datacache=False, \
           else:
             url = re.sub(os.path.expandvars(atomdbroot),\
                          'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
-            print "trying URL %s"%(url)
+            print("trying URL %s"%(url))
             try:
               d = pyfits.open(url, cache=False)
               didurl=True
               util.record_upload(re.sub(os.path.expandvars(atomdbroot),'',fname))
-            except urllib2.URLError:
-              print "Error trying to open file %s. Not found locally or on"%(fname)+\
-                    " server."
+            except urllib.error.URLError:
+              print("Error trying to open file %s. Not found locally or on"%(fname)+\
+                    " server.")
               d=False
 
   if didurl:
@@ -4468,7 +4473,7 @@ def get_data(Z, z1, ftype, datacache=False, \
     util.mkdir_p(fname.rsplit('/',1)[0])
     # save file
     d.writeto(fname, output_verify='warn')
-    print "wrote file locally to %s"%(fname)
+    print("wrote file locally to %s"%(fname))
 
   if d:
     if indexzero:
@@ -4497,7 +4502,7 @@ def get_data(Z, z1, ftype, datacache=False, \
         d[1].data.field('lev_init')[:] -= 1
         d[1].data.field('lev_final')[:] -= 1
       else:
-        print "Unknown filetype: %s"%(ftype)
+        print("Unknown filetype: %s"%(ftype))
 
     # rename columns in older versions of EC & PC files
     if ftype.upper() in ['PC','EC']:
@@ -4510,7 +4515,7 @@ def get_data(Z, z1, ftype, datacache=False, \
     if datacache:
       if ismisc:
         if ftype.upper()=='EIGEN':
-          if not Z in datacache['data']['misc']['EIGEN'].keys():
+          if not Z in list(datacache['data']['misc']['EIGEN'].keys()):
             datacache['data']['misc']['EIGEN'][Z]=d
             datacache['datasums']['misc']['EIGEN'][Z] = d[1].header['DATASUM']
             return datacache['data']['misc'][ftype.upper()][Z]
@@ -4590,8 +4595,8 @@ def sort_pi_data(pidat, lev_init, lev_final):
 
   n_found = sum(energy>0)
   if n_found != n_expected:
-    print "WARNING: we do not have the same length of expected and found parameters"
-    print "Expected: %i, found %i"%(n_expected, n_found)
+    print("WARNING: we do not have the same length of expected and found parameters")
+    print("Expected: %i, found %i"%(n_expected, n_found))
   pi_param = pi_param[energy>0]
   energy = energy[energy>0]/1000.0 # convert to keV
 
@@ -4676,7 +4681,7 @@ def rrc_ph_value(E, Z, z1, rrc_ph_factor, IonE, kT, levdat, \
   ifinite = numpy.isfinite(E[igood]**2*numpy.exp(-(E[igood] - IonE)/kT))
   #print kT
   if sum(ifinite)!=len(igood):
-    print "found %i not finite indices!"%(len(igood)-sum(ifinite))
+    print("found %i not finite indices!"%(len(igood)-sum(ifinite)))
   if levdat['PHOT_TYPE']==const.HYDROGENIC:
     levdat['PHOT_PAR'][0] = levdat['n_quan']
     levdat['PHOT_PAR'][1] = levdat['l_quan']
@@ -4828,7 +4833,7 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
       # get the data
       pidat = get_data(Z, z1, 'PI', settings=settings, datacache=datacache)
       if not pidat:
-        print "ERROR: cannot find photoionization data requested"
+        print("ERROR: cannot find photoionization data requested")
         return False
     # just filename
 
@@ -4836,7 +4841,7 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
       sig_coeffts = xstardata
 
     else:
-      if isinstance(xstardata, basestring):
+      if isinstance(xstardata, str):
       #yay.
         pidat = pyfits.open(xstardata)
         initlevel = int(pi_coeffts[0])
@@ -4920,7 +4925,7 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
       result[ifin] = 1e-18  * numpy.exp(tmp2[ifin])
 
   else:
-    print "Error"
+    print("Error")
   if not isvec:
     result=result[0]
   return result
@@ -5135,9 +5140,9 @@ def interpol_huntd(x, y, z):
   inc = x[-1] > x[0]
   if (( inc & ((z < x[0]) | (z > x[-1]))) |\
       (-inc & ((z > x[0]) | (z < x[-1])))):
-    print "interpol_huntd: Asking for %e, min is %e, max is %e"%\
-          (z,x[0],x[-1])
-    print "interpol_huntd: Cannot extrapolate"
+    print("interpol_huntd: Asking for %e, min is %e, max is %e"%\
+          (z,x[0],x[-1]))
+    print("interpol_huntd: Cannot extrapolate")
     return numpy.nan
 
   jl = 0
@@ -5214,14 +5219,14 @@ def get_oscillator_strength(Z, z1, upperlev, lowerlev, datacache=False):
                     (ladat[1].data['lower_lev']==upperlev))[0]
 
     if len(i) > 0:
-      print "WARNING: no transition information found for transition %i->%i"%\
-       (upperlev, lowerlev),
-      print " but found data for reverse transition. Using this instead."
+      print("WARNING: no transition information found for transition %i->%i"%\
+       (upperlev, lowerlev), end=' ')
+      print(" but found data for reverse transition. Using this instead.")
       up = lowerlev
       lo = upperlev
     else:
-      print "WARNING: no transition information found for transition %i->%i"%\
-       (upperlev, lowerlev),
+      print("WARNING: no transition information found for transition %i->%i"%\
+       (upperlev, lowerlev), end=' ')
       return 0.0
   else:
     up = upperlev
@@ -5366,12 +5371,12 @@ def lorentz_power(version):
     if iT == 0:
       kT+=1
     ses.return_spectra(kT, teunit='K', nearest=True)
-    print iT
+    print(iT)
 
   for Z in Zlist:
     tot_e = numpy.zeros(51)
     s = "%2i"%(Z)
-    print Z
+    print(Z)
     for iT in range(2,53):
       spec = ses.spectra[iT].spectrum_by_Z[Z]
       e = spec*energy
@@ -5467,12 +5472,12 @@ def lorentz_stronglines(version):
     f.write('Indx Lambda Z Ion Flux\n')
 
     for i in range(100):
-      print "%3i %14f %2i %2i %10.6f"%\
+      print("%3i %14f %2i %2i %10.6f"%\
             (i+1,\
              llist_out['Lambda'][i],\
              llist_out['Z'][i],\
              llist_out['Ion'][i],\
-             numpy.log10(llist_out['Flux'][i]*0.8365*1e6))
+             numpy.log10(llist_out['Flux'][i]*0.8365*1e6)))
 
       f.write("%3i %14f %2i %2i %10.6f\n"%\
             (i+1,\
@@ -5507,7 +5512,7 @@ def lorentz_neicsd(version):
   f.write('# CSD of plasma ionizing from 1e4K to 2.321e7K for ne*t = 1e10 cm^-3 s\n')
   f.write('Z Ion Pop\n')
   for Z in [1,2,6,7,8,10,12,14,16,18,20,26,28]:
-    print Z
+    print(Z)
     ionbal = apec.solve_ionbal_eigen(Z, Te_final,  tau=tau, Te_init=Te_init, \
                          teunit='K')
 
@@ -5539,7 +5544,7 @@ def lorentz_neilines(version):
   ag89=get_abundance(abundset='AG89')
 
   abund = numpy.zeros(len(ag89)+1)
-  for i in lodd.keys():
+  for i in list(lodd.keys()):
     abund[i]=lodd[i]/ag89[i]
   Te_init_list = [1e4, 3.5/const.KBOLTZ]
   Te_final_list = [2.321e7, 1.5/const.KBOLTZ]
@@ -5568,19 +5573,19 @@ def lorentz_neilines(version):
 
     upind = numpy.where(ldat[1].data['kT']>Te_final*const.KBOLTZ)[0][0]+2
     loind = upind-1
-    print "upind = %i, %eK" %(upind, ldat[upind].header['TEMPERATURE'])
-    print "loind = %i, %eK"%(loind, ldat[loind].header['TEMPERATURE'])
-    print "Te_final = %eK"%(Te_final)
+    print("upind = %i, %eK" %(upind, ldat[upind].header['TEMPERATURE']))
+    print("loind = %i, %eK"%(loind, ldat[loind].header['TEMPERATURE']))
+    print("Te_final = %eK"%(Te_final))
 
 
     t1 = numpy.log(ldat[1].data['kT'][loind-2])
     t2 = numpy.log(ldat[1].data['kT'][upind-2])
-    print "t1 = ", t1
-    print "t2 = ", t2
-    print "log(tefinal)", numpy.log(Te_final*const.KBOLTZ)
+    print("t1 = ", t1)
+    print("t2 = ", t2)
+    print("log(tefinal)", numpy.log(Te_final*const.KBOLTZ))
     r1 = 1- (numpy.log(Te_final*const.KBOLTZ)-t1)/(t2-t1)
     r2 = 1- r1
-    print "r1= ",r1, "r2  ", r2
+    print("r1= ",r1, "r2  ", r2)
 
 
 
@@ -5606,18 +5611,18 @@ def lorentz_neilines(version):
     scale = abund[llist_lo['ELEMENT']] * ionbal_square[llist_lo['ELEMENT'],llist_lo['ION_DRV']-1]
     llist_lo['EPSILON'] *= scale
 
-    print "max scale:", max(scale)
-    print "max eps:", max(llist_lo['EPSILON'])
+    print("max scale:", max(scale))
+    print("max eps:", max(llist_lo['EPSILON']))
 
     scale = abund[llist_up['ELEMENT']] * ionbal_square[llist_up['ELEMENT'],llist_up['ION_DRV']-1]
     llist_up['EPSILON'] *= scale
-    print "max scale:", max(scale)
-    print "max eps:", max(llist_up['EPSILON'])
+    print("max scale:", max(scale))
+    print("max eps:", max(llist_up['EPSILON']))
       # remove weak lines
     llist_lo = llist_lo[llist_lo['EPSILON']>1e-30]
     llist_up = llist_up[llist_up['EPSILON']>1e-30]
-    print "len lo = ", len(llist_lo)
-    print "len up = ", len(llist_up)
+    print("len lo = ", len(llist_lo))
+    print("len up = ", len(llist_up))
 
 
 #    llist_lo = numpy.array(llist_lo)
@@ -5627,7 +5632,7 @@ def lorentz_neilines(version):
                                  'formats':[float, int, int, int, int, float]})
     llist_lo_out = numpy.zeros(len(llist_lo), dtype=llist_out_dtype)
     iline = -1
-    print "summing NEI lines for lo ind"
+    print("summing NEI lines for lo ind")
     for i in range(len(llist_lo)):
 
       if ( (llist_lo['Element'][i] == llist_lo_out['Element'][iline]) &\
@@ -5649,7 +5654,7 @@ def lorentz_neilines(version):
     llist_lo_out=llist_lo_out[llist_lo_out['Epsilon']>1e-20]
     llist_lo_out.sort(order='Epsilon')
 
-    print "summing NEI lines for up ind"
+    print("summing NEI lines for up ind")
 
     llist_up.sort(order = ['Element','Ion','UpperLev','LowerLev', 'Ion_drv'])
     llist_up_out = numpy.zeros(len(llist_up), dtype=llist_out_dtype)
@@ -5676,15 +5681,15 @@ def lorentz_neilines(version):
     llist_up_out=llist_up_out[llist_up_out['Epsilon']>1e-20]
     llist_up_out.sort(order='Epsilon')
 
-    print "Combining emissivities"
+    print("Combining emissivities")
 
     # trim to 1000 strongest lines
     llist_up_out = llist_up_out[-1000:]
     llist_lo_out = llist_lo_out[-1000:]
 
-    print 'saving llist_up_out to llist_up_out.pkl'
+    print('saving llist_up_out to llist_up_out.pkl')
     pickle.dump(llist_up_out, open('llist_up_out_%i.pkl'%(irun),'w'))
-    print 'saving llist_lo_out to llist_lo_out.pkl'
+    print('saving llist_lo_out to llist_lo_out.pkl')
     pickle.dump(llist_lo_out, open('llist_lo_out_%i.pkl'%(irun),'w'))
 
 
@@ -5708,11 +5713,11 @@ def lorentz_neilines(version):
         llist_out['Epsilon'][iline] = llist_up_out['Epsilon'][i]*r2
         iline+=1
       else:
-        print "adding epsilon=%e to %e line"%(llist_up_out['Epsilon'][i]*r2,\
-                llist_out['Epsilon'][j[0]])
+        print("adding epsilon=%e to %e line"%(llist_up_out['Epsilon'][i]*r2,\
+                llist_out['Epsilon'][j[0]]))
         llist_out['Epsilon'][j[0]] += llist_up_out['Epsilon'][i]*r2
-        print llist_out[j[0]]
-    print "Final filtering, keep %i lines"%(iline)
+        print(llist_out[j[0]])
+    print("Final filtering, keep %i lines"%(iline))
     llist_out = llist_out[:iline]
 
     llist_out.sort(order='Epsilon')
@@ -5725,7 +5730,7 @@ def lorentz_neilines(version):
     llist_out['Epsilon']*=0.8365*1e6
 
     for i in range(len(llist_out)):
-      print llist_out[i]
+      print(llist_out[i])
       f.write('%9.5f %2i %2i %e\n'%\
               (llist_out['Lambda'][i],\
                llist_out['Element'][i],\
@@ -5773,7 +5778,7 @@ def lorentz_neicont(version):
   loind = upind-1
 
   for Z in range(1,31):
-    print "starting element %s"%(atomic.Ztoelname(Z))
+    print("starting element %s"%(atomic.Ztoelname(Z)))
     ionbal = apec.solve_ionbal_eigen(Z, Te_final,  tau=tau, Te_init=Te_init, \
                            teunit='K')
 
@@ -5792,12 +5797,12 @@ def lorentz_neicont(version):
   # now interpolate
   t1 = numpy.log(ldat[1].data['kT'][loind-2])
   t2 = numpy.log(ldat[1].data['kT'][upind-2])
-  print "t1 = ", t1
-  print "t2 = ", t2
-  print "log(tefinal)", numpy.log(Te_final*const.KBOLTZ)
+  print("t1 = ", t1)
+  print("t2 = ", t2)
+  print("log(tefinal)", numpy.log(Te_final*const.KBOLTZ))
   r1 = 1- (numpy.log(Te_final*const.KBOLTZ)-t1)/(t2-t1)
   r2 = 1- r1
-  print "r1= ",r1, "r2  ", r2
+  print("r1= ",r1, "r2  ", r2)
   spec = speclo*r1+specup*r2
 
   # now scale spectrum by NH to get correct norm, and 1e6 to get to 1m^3
@@ -5843,15 +5848,15 @@ def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
 
   i = numpy.where((la_rates_up==up-1) &\
                   (la_rates_lo != up-1))[0]
-  print la_rates_rates[i]
+  print(la_rates_rates[i])
   out = sum(la_rates_rates[i])
-  print "calc out from LA file %e " %(out)
+  print("calc out from LA file %e " %(out))
   if 'ARAD_TOT' in lvdat[1].data.names:
     out = lvdat[1].data['ARAD_TOT'][up-1]
-    print "calc out from LV file %e " %(out)
+    print("calc out from LV file %e " %(out))
   i = numpy.where((ec_rates_up==up-1) &\
                   (ec_rates_lo != up-1))[0]
-  print "calc out from EC file %e " %(sum(ec_rates_rates[i]))
+  print("calc out from EC file %e " %(sum(ec_rates_rates[i])))
   out += sum(ec_rates_rates[i])
 
 
@@ -5867,12 +5872,12 @@ def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
     lev_pop *= abund*ioniz_ionpop
 
     for i in range(len(lev_pop)):
-      print i, lev_pop[i]
+      print(i, lev_pop[i])
 
     lvdat = get_data(Z,z1-1,'LV', datacache=datacache)
     if 'AAUT_TOT' in lvdat[1].data.names:
       iaut = numpy.where(lvdat[1].data['AAUT_TOT']>0)[0]
-      print iaut
+      print(iaut)
     aidat = get_data(Z,z1-1,'AI', datacache=datacache)
     lvdat2 = get_data(Z,z1,'LV', datacache=datacache)
 
@@ -5923,7 +5928,7 @@ def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
                           do_ec=True, do_pc=False,  do_ir=False)
 
     k = numpy.where((ecup==0) & (eclo==up-1))[0]
-    print ecrates[k]
+    print(ecrates[k])
 
     laup, lalo, larates = apec.gather_rates(Z, z1, Te, Ne, datacache=datacache,\
                                       settings=settings, do_la=True, \
@@ -5943,10 +5948,10 @@ def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
 
     eexcin = 0.0
     edexin = 0.0
-    print ecup[iec]
-    print eclo[iec]
-    print len(lvdat[1].data)
-    print "HMM"
+    print(ecup[iec])
+    print(eclo[iec])
+    print(len(lvdat[1].data))
+    print("HMM")
     for ii in iec:
       if eclo[ii]==ecup[ii]: continue
       if lvdat[1].data['ENERGY'][ecup[ii]] < lvdat[1].data['ENERGY'][eclo[ii]]:
@@ -5992,7 +5997,7 @@ def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
 
     for iila in ila:
       if larates[iila] * lev_pop[laup[iila]] > 1e-17:
-        print larates[iila], laup[iila], lalo[iila], lev_pop[laup[iila]], larates[iila] * lev_pop[laup[iila]]
+        print(larates[iila], laup[iila], lalo[iila], lev_pop[laup[iila]], larates[iila] * lev_pop[laup[iila]])
 
   else:
     lain = 0.0
@@ -6020,7 +6025,7 @@ def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
                             settings['NumGrid'])
     # do the DR satellite lines
     if settings['DRSatellite']:
-      print "Start calc_satellte run_apec_ion at %s"%(time.asctime())
+      print("Start calc_satellte run_apec_ion at %s"%(time.asctime()))
 
       linelist_dr, drlevrates = apec.calc_satellite(Z, z1, Te, \
                                 datacache=datacache, settings=settings)
@@ -6029,8 +6034,8 @@ def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
     else:
       linelist_dr = numpy.zeros(0, dtype= generate_datatypes(linetype))
       drlevrates = 0.0
-    print "drlevrates"
-    print drlevrates
+    print("drlevrates")
+    print(drlevrates)
     # Radiative Recombination
     if settings['RRC']:
       rrc, rrlevrates = calc_rad_rec_cont(Z, z1, z1+1, Te, \
@@ -6039,8 +6044,8 @@ def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
 
     else:
       rrlevrates=0.0
-    print "rrlevrates"
-    print rrlevrates
+    print("rrlevrates")
+    print(rrlevrates)
 
     # if there is recombination to process:
     tmpdrlevrates,xxx = util.make_vec(drlevrates)
@@ -6049,7 +6054,7 @@ def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
     sum_rr_out=0.0
     sum_dr_out = 0.0
     if sum(tmpdrlevrates) + sum(tmprrlevrates)>0:
-      print "Start calc_recomb_popn at %s"%(time.asctime())
+      print("Start calc_recomb_popn at %s"%(time.asctime()))
 
       levpop_dr=apec.calc_recomb_popn(levpop, Z, z1,\
                                       z1+1, Te, Ne, drlevrates,\
@@ -6069,11 +6074,11 @@ def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
       ladat = get_data(Z,z1,'LA', datacache=datacache)
 
       j = numpy.where(ladat[1].data['LOWER_LEV']==lo)[0]
-      print "levpop_rr, levopo_dr"
+      print("levpop_rr, levopo_dr")
       for i in range(len(levpop_rr)):
-        print i, levpop_rr[i], levpop_dr[i]
+        print(i, levpop_rr[i], levpop_dr[i])
 
-      print "levpop", levpop
+      print("levpop", levpop)
       sum_rr_in = sum(ladat[1].data['EINSTEIN_A'][j] *\
                       levpop_rr[ladat[1].data['UPPER_LEV'][j]-1])
 
@@ -6081,8 +6086,8 @@ def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
                       levpop_dr[ladat[1].data['UPPER_LEV'][j]-1])
 
       j = numpy.where(ladat[1].data['UPPER_LEV']==up)[0]
-      print "up=", up
-      print ladat[1].data['EINSTEIN_A'][j]
+      print("up=", up)
+      print(ladat[1].data['EINSTEIN_A'][j])
       sum_rr_out = sum(ladat[1].data['EINSTEIN_A'][j] *\
                       levpop_rr[up-1])
 
@@ -6090,11 +6095,11 @@ def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
                       levpop_dr[up-1])
       rate_out = sum(ladat[1].data['EINSTEIN_A'][j])
 
-      print sum_rr_in
-      print sum_dr_in
-      print sum_rr_out
-      print sum_dr_out
-      print rate_out
+      print(sum_rr_in)
+      print(sum_dr_in)
+      print(sum_rr_out)
+      print(sum_dr_out)
+      print(rate_out)
 
 
 
@@ -6110,22 +6115,22 @@ def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
 
 
 
-  print "ionbal", ionbal
+  print("ionbal", ionbal)
 #  print "levpop = %e"%(lev_pop[up-1])
-  print "DI in = %e"%(direction)
-  print "Excit-Auto in = %e"%(excitauto)
-  print "Rad in = %e"%(lain)
-  print "Rad out = %e" %(out)
-  print "E_excite in = %e" %(eexcin)
-  print "E_excite out = %e"%(eexcout)
-  print "E_dexcite in = %e"%(edexin)
-  print "E_dexcite out = %e"%(edexout)
-  print "P_excite in = %e"%(pexcin)
-  print "P_excite out = %e"%(pexcout)
-  print "P_dexcite in = %e"%(pdexin)
-  print "P_dexcite out = %e"%(pdexout)
-  print "RR in = %e"%(sum_rr_out)
-  print "DR in = %e"%(sum_dr_out)
+  print("DI in = %e"%(direction))
+  print("Excit-Auto in = %e"%(excitauto))
+  print("Rad in = %e"%(lain))
+  print("Rad out = %e" %(out))
+  print("E_excite in = %e" %(eexcin))
+  print("E_excite out = %e"%(eexcout))
+  print("E_dexcite in = %e"%(edexin))
+  print("E_dexcite out = %e"%(edexout))
+  print("P_excite in = %e"%(pexcin))
+  print("P_excite out = %e"%(pexcout))
+  print("P_dexcite in = %e"%(pdexin))
+  print("P_dexcite out = %e"%(pdexout))
+  print("RR in = %e"%(sum_rr_out))
+  print("DR in = %e"%(sum_dr_out))
 
   cfactor = 0.8365
 
@@ -6136,7 +6141,7 @@ def get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
        sum_rr_out * cfactor, sum_dr_out*cfactor, \
        (direction+excitauto)*cfactor)
 
-  print s
+  print(s)
   return s
 
 def lorentz_levpop(version):

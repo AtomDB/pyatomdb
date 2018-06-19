@@ -7,10 +7,10 @@ Adam Foster July 17th 2015
 """
 
 import numpy, os, errno, hashlib
-import requests, urllib, time, subprocess, shutil, wget, glob
+import requests, urllib.request, urllib.parse, urllib.error, time, subprocess, shutil, wget, glob
 import datetime
-import const, atomic, atomdb
-from StringIO import StringIO
+from . import const, atomic, atomdb
+from io import StringIO
 import ftplib
 try:
   import astropy.io.fits as pyfits
@@ -126,7 +126,7 @@ def unique(s):
      except TypeError:
          del u  # move on to the next method
      else:
-         return u.keys()
+         return list(u.keys())
 
      # We can't hash all the elements.  Second fastest is to sort,
      # which brings the equal elements together; then duplicates are
@@ -216,13 +216,13 @@ def question(question, default, multichoice  = []):
     qstring+=') [%s]'%(default)
 
     while True:
-      ans = raw_input(qstring)
+      ans = input(qstring)
       if ans=='':
         ans=default
       if ans.lower() in mclower:
         break
   else:
-    ans = raw_input("%s [%s] :" %(question, default))
+    ans = input("%s [%s] :" %(question, default))
     if ans =='':
       ans = default
   return ans
@@ -254,7 +254,7 @@ def record_upload(fname):
     tmp = load_user_prefs()
     userid = tmp['USERID']
   except KeyError:
-    print load_user_prefs()
+    print(load_user_prefs())
 
   if int(userid) > 0:
     postform = {  'TYPE' : const.FILEDOWNLOAD,\
@@ -345,30 +345,30 @@ def download_atomdb_emissivity_files(adbroot, userid, version):
     tmpdir = adbroot+'/installtmp'
 
 
-  print "making directory %s"%(tmpdir)
+  print("making directory %s"%(tmpdir))
   mkdir_p(tmpdir)
 
   # get the files
-  urllib.urlcleanup()
+  urllib.request.urlcleanup()
 
   fnameout = wget.download('ftp://sao-ftp.harvard.edu/AtomDB/releases/%s'%(fname), out="%s/%s"%(tmpdir, fname))
   # collect user statistics if allowed.
   record_upload(fname)
 
   #uncompress
-  print ""
-  print "Uncompressing ... ",
+  print("")
+  print("Uncompressing ... ", end=' ')
 
   tf = tarfile.open(name=fnameout, mode='r:bz2')
   tf.extractall(path=tmpdir)
-  print "Uncompressed"
+  print("Uncompressed")
   # copy the files
   dirname = 'atomdb_v%s'%(version)
   for l in os.listdir('%s/%s'%(tmpdir, dirname)):
-    print "moving %s/%s/%s to %s/%s"%(tmpdir, dirname, l, adbroot, l)
+    print("moving %s/%s/%s to %s/%s"%(tmpdir, dirname, l, adbroot, l))
     shutil.move("%s/%s/%s"%(tmpdir, dirname, l), "%s/%s"%(adbroot, l))
 
-  print "...done"
+  print("...done")
 
   shutil.rmtree(tmpdir)
 
@@ -422,27 +422,27 @@ def download_atomdb_nei_emissivity_files(adbroot, userid, version):
   mkdir_p(tmpdir)
 
   # get the files
-  urllib.urlcleanup()
+  urllib.request.urlcleanup()
 
   fnameout = wget.download('ftp://sao-ftp.harvard.edu/AtomDB/releases/%s'%(fname), out="%s/%s"%(tmpdir, fname))
 
   # collect user statistics if allowed.
   record_upload(fname)
 
-  print ""
-  print "Uncompressing ... ",
+  print("")
+  print("Uncompressing ... ", end=' ')
 
   tf = tarfile.open(name=fnameout, mode='r:bz2')
   tf.extractall(path=tmpdir)
-  print "Uncompressed"
+  print("Uncompressed")
   # copy the files
   dirname = 'atomdb_v%s'%(version)
   for l in os.listdir('%s/%s'%(tmpdir, dirname)):
-    print "moving %s/%s/%s to %s/%s"%(tmpdir, dirname, l, adbroot, l)
+    print("moving %s/%s/%s to %s/%s"%(tmpdir, dirname, l, adbroot, l))
     shutil.move("%s/%s/%s"%(tmpdir, dirname, l), "%s/%s"%(adbroot, l))
 
   shutil.rmtree(tmpdir)
-  print "... done"
+  print("... done")
 
 #-------------------------------------------------------------------------------
 
@@ -478,7 +478,7 @@ def load_user_prefs(adbroot="$ATOMDB"):
       if len(ls) > 0:
         ls = ls.split('=')
         if len(ls) != 2:
-          print "Error: cannot parse line in userdata file: %s\n%s"%(fname, l)
+          print("Error: cannot parse line in userdata file: %s\n%s"%(fname, l))
         else:
           ret[ls[0].strip()]=ls[1].strip()
   return ret
@@ -514,7 +514,7 @@ def write_user_prefs(prefs, adbroot="$ATOMDB"):
 
     l =  open(fname,'w')
       #remove trailing/leading whitespace
-    for i in prefs.keys():
+    for i in list(prefs.keys()):
       l.write("%s = %s\n" %(i,prefs[i]))
     l.close()
     return
@@ -550,39 +550,39 @@ def initialize():
   while not anondat in ['yes','no']:
     anondat = question("Allow reporting of anonymous usage statistics","yes",multichoice=["yes","no","info"])
     if anondat=='info':
-      print "We like to know how many of users use our data. To enable this, we will generate a random number which will be transmitted with your requests to download data files in the future. We will record and transmit no other data beyond this number and what files you are downloading, and we will have no way of connecting this number to you. If you decline, this number will be set to 0"
+      print("We like to know how many of users use our data. To enable this, we will generate a random number which will be transmitted with your requests to download data files in the future. We will record and transmit no other data beyond this number and what files you are downloading, and we will have no way of connecting this number to you. If you decline, this number will be set to 0")
   if anondat == 'no':
     userid = '00000000'
   else:
     userid = "%08i"%(numpy.random.randint(1e8))
 
-  print "You are about to install:"
-  print "AtomDB installation location: %s"%(adbroot)
-  print "Transmit anonymous user data: %s"%(anondat)
-  print "Randomly generated userid: %s"%(userid)
+  print("You are about to install:")
+  print("AtomDB installation location: %s"%(adbroot))
+  print("Transmit anonymous user data: %s"%(anondat))
+  print("Randomly generated userid: %s"%(userid))
 
   proceed = question("Is this ok?","y",\
                           multichoice=["y","n"])
 
   if proceed == 'n':
-    print "Aborting"
+    print("Aborting")
     return
 
   if proceed == 'y':
 
-    print "Temporarily setting $ATOMDB environment variable to %s."%(adbroot),
-    print " It is *strongly* recommended that you add this to your environment ",
-    print " permanently."
+    print("Temporarily setting $ATOMDB environment variable to %s."%(adbroot), end=' ')
+    print(" It is *strongly* recommended that you add this to your environment ", end=' ')
+    print(" permanently.")
     os.environ['ATOMDB'] = adbroot
 
-    print "creating directory %s"%(adbroot),
+    print("creating directory %s"%(adbroot), end=' ')
     mkdir_p(adbroot)
-    print "...done"
+    print("...done")
 
-    print "creating user data file %s/userdata"%(adbroot),
+    print("creating user data file %s/userdata"%(adbroot), end=' ')
     userdatafname = "%s/userdata"%(adbroot)
     if os.path.exists(userdatafname):
-      print "... user data file already exists. Will update, not overwrite",
+      print("... user data file already exists. Will update, not overwrite", end=' ')
       userprefs = load_user_prefs(adbroot=adbroot)
     else:
       userprefs={}
@@ -590,9 +590,9 @@ def initialize():
       userprefs['LASTVERSIONCHECK'] = time.time()
     write_user_prefs(userprefs, adbroot=adbroot)
 
-    print "...done"
+    print("...done")
 
-    print "finding current version of AtomDB. ",
+    print("finding current version of AtomDB. ", end=' ')
 #    a=curl.Curl()
 #    version=a.get('ftp://sao-ftp.harvard.edu/AtomDB/releases/LATEST')
 #    a.close()
@@ -600,10 +600,11 @@ def initialize():
     ftp = ftplib.FTP('sao-ftp.harvard.edu')
     x = ftp.login()
     r = StringIO()
-    x = ftp.retrbinary('RETR /AtomDB/releases/LATEST', r.write)
-    version = r.getvalue()[:-1]
+#    ftp.retrbinary('RETR README', open('README', 'wb').write)
+    x = ftp.retrlines('RETR /AtomDB/releases/LATEST', r.write)
+    version = r.getvalue().strip()
     x = ftp.quit()
-    print "Latest version is %s"%(version)
+    print("Latest version is %s"%(version))
 
     get_new_files=question(\
       "Do you wish to download the emissivity data for these files (recommended)?",\
@@ -638,7 +639,7 @@ def check_version():
   try:
     adbroot_init = os.environ['ATOMDB']
   except KeyError:
-    print "You must set the ATOMDB environment variable for this to work!"
+    print("You must set the ATOMDB environment variable for this to work!")
     raise
 
   ftp = ftplib.FTP('sao-ftp.harvard.edu')
@@ -668,7 +669,7 @@ def check_version():
       if get_new_nei_files=='y':
         download_atomdb_nei_emissivity_files(adbroot, userid, version)
   else:
-    print "Current version %s is up to date" %(curversion)
+    print("Current version %s is up to date" %(curversion))
 
   # now update the time the last version check happened.
   userprefs = load_user_prefs()
@@ -704,21 +705,21 @@ def switch_version(version):
   try:
     adbroot_init = os.environ['ATOMDB']
   except keyError:
-    print "You must set the ATOMDB environment variable for this to work!"
+    print("You must set the ATOMDB environment variable for this to work!")
     raise
 
 
   # check the AtomDB version string is a suitable string
 
   if not re.match('^\d\.\d\.\d$',version):
-    print "Error: version number must be of format %i.%i.%i, e.g. 3.0.2"
+    print("Error: version number must be of format %i.%i.%i, e.g. 3.0.2")
     return
 
   # check current version
   curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
 
   if curversion == version:
-    print "Already using version %s. Not changing anything!" %(version)
+    print("Already using version %s. Not changing anything!" %(version))
     return
 
   # ok, otherwise we must do things!
@@ -737,11 +738,11 @@ def switch_version(version):
     fname_test = re.sub('VERSION',version, os.path.expandvars("$ATOMDB/%s"%(f)))
 
     if os.path.exists(fname_test):
-      print "%s already exists"%(fname_test)
+      print("%s already exists"%(fname_test))
       pass
 
     else:
-      print "We are missing some files for this version, downloading now"
+      print("We are missing some files for this version, downloading now")
       mustdownload = True
 
   if mustdownload:
@@ -760,7 +761,7 @@ def switch_version(version):
     mkdir_p(os.path.expandvars("$ATOMDB/tmp"))
 
 
-    print "Attempting to download %s to %s"%('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile)
+    print("Attempting to download %s to %s"%('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile))
 
     if os.path.isfile(localfile):
       os.remove(localfile)
@@ -768,10 +769,10 @@ def switch_version(version):
     try:
       wget.download('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile)
     except IOError:
-      print "Cannot find file ftp://%s/%s/%s on server. Please check that version %s is a valid version."%(ftproot,dirname,fname, version)
+      print("Cannot find file ftp://%s/%s/%s on server. Please check that version %s is a valid version."%(ftproot,dirname,fname, version))
       return
     # ok, now open up the relevant file and copy the things we need
-    print "\nUncompressing %s..." %(localfile)
+    print("\nUncompressing %s..." %(localfile))
 
     cwd=os.getcwd()
     os.chdir(os.path.expandvars("$ATOMDB/tmp"))
@@ -780,8 +781,8 @@ def switch_version(version):
     elif fname.split('.')[-1] == 'bz2':
       subprocess.call(["tar", "-xvjf", "%s"%(fname)])
 
-    print "...done"
-    urllib.urlcleanup()
+    print("...done")
+    urllib.request.urlcleanup()
 
     if version[0] =='3':
       fname = re.sub('VERSION',version,'atomdb_vVERSION_nei.tar.bz2')
@@ -792,7 +793,7 @@ def switch_version(version):
       mkdir_p(os.path.expandvars("$ATOMDB/tmp"))
 
 
-      print "Attempting to download %s to %s"%('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile)
+      print("Attempting to download %s to %s"%('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile))
     # get the file
       if os.path.isfile(localfile):
         os.remove(localfile)
@@ -800,10 +801,10 @@ def switch_version(version):
       try:
         wget.download('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile)
       except IOError:
-        print "Cannot find file ftp://%s/%s/%s on server. Please check that version %s is a valid version."%(ftproot,dirname,fname, version)
+        print("Cannot find file ftp://%s/%s/%s on server. Please check that version %s is a valid version."%(ftproot,dirname,fname, version))
         return
     # ok, now open up the relevant file and copy the things we need
-      print "\nUncompressing %s..." %(localfile)
+      print("\nUncompressing %s..." %(localfile))
 
       cwd=os.getcwd()
       os.chdir(os.path.expandvars("$ATOMDB/tmp"))
@@ -814,7 +815,7 @@ def switch_version(version):
 
     os.chdir(os.path.expandvars(re.sub('VERSION',version, "$ATOMDB/tmp/atomdb_vVERSION")))
 
-    urllib.urlcleanup()
+    urllib.request.urlcleanup()
 
     for ifile in glob.glob('*%s*'%(version)):
 
@@ -822,12 +823,12 @@ def switch_version(version):
       if os.path.exists(outfile):
         try:
           if md5Checksum(outfile) == md5Checksum(ifile):
-            print "file %s already exists, not overwriting"%(ifile)
+            print("file %s already exists, not overwriting"%(ifile))
         # these files are the same, don't bother copying or
         # asking about copying them.
             continue
         except IOError:
-          print "outfile = %s, ifile = %s"%(outfile, ifile)
+          print("outfile = %s, ifile = %s"%(outfile, ifile))
           raise
 
         overwrite = question("file %s already exists. Overwrite?"%(outfile),"y",["y","n"])
@@ -840,7 +841,7 @@ def switch_version(version):
 
         shutil.move(ifile,outfile)
 
-    print "...done"
+    print("...done")
 
     os.chdir(os.path.expandvars("$ATOMDB"))
     # delete temporary directory
@@ -863,7 +864,7 @@ def switch_version(version):
 #      os.remove(re.sub('VERSION',version,flist))
 #      print "REMOVING LINK1!"
     # add new link
-    print flist
+    print(flist)
     if os.path.islink(re.sub('_vVERSION','',flist)):
       os.remove(re.sub('_vVERSION','',flist))
 
@@ -965,7 +966,7 @@ def write_lv_file(fname, dat, clobber=False):
     fileversion = '1.1.0'
   else:
     fileversion = '1.0.0'
-  print now.strftime('%d/%m/%y')
+  print(now.strftime('%d/%m/%y'))
   hdu0.header['DATE']= now.strftime('%d/%m/%y')
   hdu0.header['E_LEVEL']= "Atomic Energy Levels"
   hdu0.header['FILENAME']="Python routine"
@@ -977,7 +978,7 @@ def write_lv_file(fname, dat, clobber=False):
 
   # do a key case conversion
   datakey=''
-  for i in dat.keys():
+  for i in list(dat.keys()):
     if i.lower()=='data':
       datakey=i
   keys={}
@@ -1125,7 +1126,7 @@ def write_lv_file(fname, dat, clobber=False):
   hdu1.header['HDUVERS1'] = ('1.1.0',
            'Version of datafile')
 
-  if 'comments' in dat.keys():
+  if 'comments' in list(dat.keys()):
     for icmt in dat['comments']:
       hdu1.header.add_comment(icmt)
 
@@ -1145,7 +1146,7 @@ def write_lv_file(fname, dat, clobber=False):
   except TypeError:
     hdulist.writeto(fname, clobber=clobber)
 
-  print "file written: "+fname
+  print("file written: "+fname)
 
 #-------------------------------------------------------------------------------
 
@@ -1198,7 +1199,7 @@ def write_la_file(fname, dat, clobber=False):
 
   # do a key case conversion
   datakey=''
-  for i in dat.keys():
+  for i in list(dat.keys()):
     if i.lower()=='data':
       datakey=i
   keys={}
@@ -1284,13 +1285,13 @@ def write_la_file(fname, dat, clobber=False):
   hdu1.header['HDUVERS1']=('1.0.0',
            'Version of datafile')
 
-  if  'comments' in dat.keys():
-    print 'adding comments'
+  if  'comments' in list(dat.keys()):
+    print('adding comments')
     for icmt in dat['comments']:
       hdu1.header.add_comment(icmt)
 
   # combine hdus
-  print 'combining HDUs'
+  print('combining HDUs')
   hdulist = pyfits.HDUList([hdu0,hdu1])
 
   # write out file (overwrite any existing file)
@@ -1300,13 +1301,13 @@ def write_la_file(fname, dat, clobber=False):
     except OSError:
       pass
 
-  print 'writing lafile'
+  print('writing lafile')
   try:
     hdulist.writeto(fname, checksum=True, clobber=clobber)
   except TypeError:
     hdulist.writeto(fname, clobber=clobber)
 
-  print "file written: "+fname
+  print("file written: "+fname)
 
 #-------------------------------------------------------------------------------
 
@@ -1406,13 +1407,13 @@ def write_ai_file(fname, dat, clobber=False):
   # combine hdus
 
 
-  if 'comments' in dat.keys():
-    print 'adding comments'
+  if 'comments' in list(dat.keys()):
+    print('adding comments')
     for icmt in dat['comments']:
       hdu1.header.add_comment(icmt)
 
   # combine hdus
-  print 'combining HDUs'
+  print('combining HDUs')
   hdulist = pyfits.HDUList([hdu0,hdu1])
 
   # write out file (overwrite any existing file)
@@ -1422,13 +1423,13 @@ def write_ai_file(fname, dat, clobber=False):
     except OSError:
       pass
 
-  print 'writing lafile'
+  print('writing lafile')
   try:
     hdulist.writeto(fname, checksum=True, clobber=clobber)
   except TypeError:
     hdulist.writeto(fname, clobber=clobber)
 
-  print "file written: "+fname
+  print("file written: "+fname)
 
 #-------------------------------------------------------------------------------
 
@@ -1483,7 +1484,7 @@ def write_ec_file(fname, dat, clobber=False):
     if i.lower() in keylist:
       keys[i.lower()] = i
     else:
-      print "Error: didn't find key %s" %(i.lower())
+      print("Error: didn't find key %s" %(i.lower()))
 
 
 
@@ -1503,7 +1504,7 @@ def write_ec_file(fname, dat, clobber=False):
   hdu0.header.update('HDUCLAS1', "COLL_STR",comment="e + p Collision Strengths")
   hdu0.header.update('HDUVERS', version,comment="Version of datafile")
 
-  print keys
+  print(keys)
   #secondary HDU, hdu1:
   if version == '1.2.0':
     hdu1 = pyfits.new_table(pyfits.ColDefs(
@@ -1588,8 +1589,8 @@ def write_ec_file(fname, dat, clobber=False):
   hdu1.header.update('HDUVERS1', version,
            comment='Version of datafile', before="TTYPE1")
 
-  if 'comments' in dat.keys():
-    print 'adding comments'
+  if 'comments' in list(dat.keys()):
+    print('adding comments')
     for icmt in dat['comments']:
       hdu1.header.add_comment(icmt)
 
@@ -1605,12 +1606,12 @@ def write_ec_file(fname, dat, clobber=False):
     except OSError:
       pass
 
-  print 'writing lafile'
+  print('writing lafile')
   try:
     hdulist.writeto(fname, checksum=True, clobber=clobber)
   except TypeError:
     hdulist.writeto(fname, clobber=clobber)
-  print "file written: "+fname
+  print("file written: "+fname)
 
 #-------------------------------------------------------------------------------
 
@@ -1693,10 +1694,10 @@ def write_ir_file(fname, dat, clobber=False):
     if i.lower() in keylist:
       keys[i.lower()] = i
     else:
-      print "Error: didn't find key %s" %(i.lower())
+      print("Error: didn't find key %s" %(i.lower()))
   #secondary HDU, hdu1:
 
-  print keys
+  print(keys)
   hdu1 = pyfits.new_table(pyfits.ColDefs(
         [pyfits.Column(name='ELEMENT',
            format='1J',
@@ -1787,18 +1788,18 @@ def write_ir_file(fname, dat, clobber=False):
            comment='Number of rates', before="TTYPE1")
   hdu1.header.update('HDUVERS1', '1.0.0',
            comment='Version of datafile', before="TTYPE1")
-  if 'ionpot' in dat.keys():
+  if 'ionpot' in list(dat.keys()):
     hdu1.header.update('IONPOT', dat['ionpot'],
              comment='Ionization Potential (eV)', before="TTYPE1")
   else:
-    print "WARNING: ionpot keyword not found in list"
-  if 'ip_dere' in dat.keys():
+    print("WARNING: ionpot keyword not found in list")
+  if 'ip_dere' in list(dat.keys()):
     hdu1.header.update('IP_DERE', dat['ip_dere'],
              comment='Ionization Potential for Dere Ionization Rates', \
              before="TTYPE1")
 
-  if 'comments' in dat.keys():
-    print 'adding comments'
+  if 'comments' in list(dat.keys()):
+    print('adding comments')
     for icmt in dat['comments']:
       hdu1.header.add_comment(icmt)
   # combine hdus
@@ -1812,13 +1813,13 @@ def write_ir_file(fname, dat, clobber=False):
     except OSError:
       pass
 
-  print 'writing irfile'
+  print('writing irfile')
   try:
     hdulist.writeto(fname, checksum=True, clobber=clobber)
   except TypeError:
     hdulist.writeto(fname, clobber=clobber)
 
-  print "file written: "+fname
+  print("file written: "+fname)
 
 
 
@@ -1881,7 +1882,7 @@ def write_dr_file(fname, dat, clobber=False):
 
   # do a key case conversion
   datakey=''
-  for i in dat.keys():
+  for i in list(dat.keys()):
     if i.lower()=='data':
       datakey=i
   keys={}
@@ -1990,13 +1991,13 @@ def write_dr_file(fname, dat, clobber=False):
   hdu1.header['HDUVERS1']=('1.0.0',
            'Version of datafile')
 
-  if  'comments' in dat.keys():
-    print 'adding comments'
+  if  'comments' in list(dat.keys()):
+    print('adding comments')
     for icmt in dat['comments']:
       hdu1.header.add_comment(icmt)
 
   # combine hdus
-  print 'combining HDUs'
+  print('combining HDUs')
   hdulist = pyfits.HDUList([hdu0,hdu1])
 
   # write out file (overwrite any existing file)
@@ -2006,13 +2007,13 @@ def write_dr_file(fname, dat, clobber=False):
     except OSError:
       pass
 
-  print 'writing drfile'
+  print('writing drfile')
   try:
     hdulist.writeto(fname, checksum=True, clobber=clobber)
   except TypeError:
     hdulist.writeto(fname, clobber=clobber)
 
-  print "file written: "+fname
+  print("file written: "+fname)
 
 
 #-------------------------------------------------------------------------------
@@ -2094,7 +2095,7 @@ def write_develop_data(data, filemapfile, Z, z1, ftype, folder, froot):
   j = numpy.where((ret['Z']==Z) & \
                   (ret['z1']==z1))[0]
   if len(j)==0:
-    print "Hmm... this data doesn't exist?"
+    print("Hmm... this data doesn't exist?")
 
   else:
     ret[ftype.lower()][j[0]] = fname
@@ -2213,7 +2214,7 @@ def generate_xspec_ionbal_files(Z, filesuffix, settings = False):
 
     w,vr=numpy.linalg.eig(AA)
     if (w.dtype!='float64'):
-      print "nooooooooooO", w.dtype
+      print("nooooooooooO", w.dtype)
     leftevec = numpy.zeros(Z**2)
     rightevec = numpy.zeros(Z**2)
 
@@ -2314,16 +2315,16 @@ def make_release_filetree(filemapfile_in, filemapfile_out, \
         fout = re.sub('XXX',destination, fmapf)
         tmp = open(fin, 'rb')
         tmpd = tmp.read()
-        print "writing %s ..."%(fout+'.gz'),
+        print("writing %s ..."%(fout+'.gz'), end=' ')
         tmpo = gzip.open(fout+'.gz', 'wb')
         tmpo.write(tmpd)
         tmp.close()
-        print "done"
+        print("done")
 
         fmap[key][i] = fmapf
 
   atomdb.write_filemap(fmap, filemapfile_out, atomdbroot='XXX')
-  print "Wrote filemap %s"%(filemapfile_out)
+  print("Wrote filemap %s"%(filemapfile_out))
 
 #-------------------------------------------------------------------------------
 
@@ -2402,7 +2403,7 @@ def make_linelist(linefile, outfile):
 
   for z0 in range(1,31):
     # go by element
-    print "Starting Element %s"%(atomic.z0toelsymb(z0))
+    print("Starting Element %s"%(atomic.z0toelsymb(z0)))
     ldat_list = {}
     ildat_list = {}
     for z1 in range(1,z0+1):
@@ -2412,7 +2413,7 @@ def make_linelist(linefile, outfile):
     tstart = time.time()
     for it in range(0,nte):
       i = it + 2
-      print "it = %i, nlines = %i"%(it, len(ldat_list))
+      print("it = %i, nlines = %i"%(it, len(ldat_list)))
       dens = d[i].header['density']
       # filter the data by element
       delem = d[i].data[d[i].data['element']==z0]
@@ -2476,13 +2477,13 @@ def make_linelist(linefile, outfile):
           ldat_list[z1]['Emissivity'][imatch][ind] = il['Epsilon']
           ldat_list[z1]['Arraysize'][imatch] += 1
 
-    for z1 in ldat_list.keys():
+    for z1 in list(ldat_list.keys()):
       ldat_list[z1] = ldat_list[z1][:ildat_list[z1]]
       ldat_all = numpy.append(ldat_all, ldat_list[z1])
     tend = time.time()
     tdiff = tend-tstart
-    print 'Element %s took %d min %d sec'%(atomic.z0toelsymb(z0),\
-                                           int(tdiff)/60, int(tdiff)%60)
+    print('Element %s took %d min %d sec'%(atomic.z0toelsymb(z0),\
+                                           int(tdiff)/60, int(tdiff)%60))
 
   # now go through and sort out the peaks
   for line in ldat_all:
@@ -2693,7 +2694,7 @@ def make_linelist(linefile, outfile):
 
   hdulist.writeto(outfile, checksum=True)
 
-  print "file written: "+outfile
+  print("file written: "+outfile)
 
 #-------------------------------------------------------------------------------
 
@@ -2720,7 +2721,7 @@ def write_ionbal_file(Te, dens, ionpop, filename, Te_linear = False, dens_linear
   """
 
   # get list of elements
-  Zlist = unique(ionpop.keys())
+  Zlist = unique(list(ionpop.keys()))
   Zlist.sort()
 
   # ok, have a sorted list of elements
@@ -2920,7 +2921,7 @@ def make_release_tarballs(ciefileroot, neifileroot, filemap, versionname, \
   tar.add('atomdb_v%s'%(versionname))
   tar.close()
 
-  print "Tarballs written"
+  print("Tarballs written")
 
 
 
@@ -3022,7 +3023,7 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_lineid.tar.bz2'):
 
   if version == '':
     version = curversion
-    print "Version not specified, so using version %s"%(version)
+    print("Version not specified, so using version %s"%(version))
   else:
     if version != curversion:
       switch_version(version)
@@ -3087,8 +3088,8 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_lineid.tar.bz2'):
                        (ladat[1].data['Lower_lev']==ik['LowerLev']))[0]
       if len(ii) == 0:
         if ik['UpperLev'] < 10000:
-          print "ERROR: no match for Z=%i, z1=%i, up=%i, lo=%i"%\
-                (Z,z1,ik['UpperLev'], ik['LowerLev'])
+          print("ERROR: no match for Z=%i, z1=%i, up=%i, lo=%i"%\
+                (Z,z1,ik['UpperLev'], ik['LowerLev']))
       else:
         isgood[ii[0]]=True
 
@@ -3096,8 +3097,8 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_lineid.tar.bz2'):
     ladat[1].header['N_LINES']=sum(isgood)
 
     ladat.writeto(lafnameout, checksum=True, clobber=True)
-    print "wrote %s with %i lines instead of %i"%\
-          (lafnameout, sum(isgood), len(isgood))
+    print("wrote %s with %i lines instead of %i"%\
+          (lafnameout, sum(isgood), len(isgood)))
 
     f['la'][i] = re.sub(foldername, \
                         os.path.expandvars('$ATOMDB'), \
@@ -3109,16 +3110,16 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_lineid.tar.bz2'):
   ionbal.writeto('%s/APED/ionbal/v%s_ionbal.fits'%\
                 (foldername, version), clobber=True, checksum=True)
 
-  print "Ionbal writen to %s/APED/ionbal/v%s_ionbal.fits"%\
-                (foldername, version)
+  print("Ionbal writen to %s/APED/ionbal/v%s_ionbal.fits"%\
+                (foldername, version))
   # and the abundances
   abund = atomdb.get_data(False, False, 'abund')
   shutil.copytree(os.path.expandvars('$ATOMDB/APED/misc'), \
               '%s/APED/misc'%(foldername))
-  print "Misc writen to %s/APED/misc"%(foldername)
+  print("Misc writen to %s/APED/misc"%(foldername))
 
   atomdb.write_filemap(f, "%s/filemap"%(foldername))
-  print "Wrote filemap %s/filemap"%(foldername)
+  print("Wrote filemap %s/filemap"%(foldername))
 
   d = open("%s/VERSION"%(foldername),"w")
   d.write('%s\n'%(version))
@@ -3146,12 +3147,12 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_lineid.tar.bz2'):
 
 
 
-  print "Compressing..."
+  print("Compressing...")
   os.chdir('tmp')
   tar = tarfile.open(name='atomdb_v%s_lineid.tar.bz2'%(version), mode='w:bz2')
   tar.add('atomdb_v%s_lineid'%(version))
   tar.close()
-  print "Done"
+  print("Done")
   os.chdir('../')
 
 
@@ -3183,7 +3184,7 @@ def generate_web_fitsfiles(version='', outdir=''):
 
   if version == '':
     version = curversion
-    print "Version not specified, so using version %s"%(version)
+    print("Version not specified, so using version %s"%(version))
   else:
     if version != curversion:
       switch_version(version)
@@ -3198,14 +3199,14 @@ def generate_web_fitsfiles(version='', outdir=''):
   ldat = pyfits.open(linefile)
   nlines = len(ldat[1].data)
 
-  print ldat[1].header['NAXIS2']
-  print len(ldat[1].data[51])
+  print(ldat[1].header['NAXIS2'])
+  print(len(ldat[1].data[51]))
 
   #print ldat[1].data[0]
   linesperfile = 1000
 
   nfiles = nlines/linesperfile + 1
-  print "nfiles = ", nfiles, "nlines = ", nlines, "linesperfile = ", linesperfile
+  print("nfiles = ", nfiles, "nlines = ", nlines, "linesperfile = ", linesperfile)
   rangedatatype = numpy.dtype({'names':['Lambda_lo','Lambda_hi','filename'],\
                                'formats':[float, float, '|S40']})
 
@@ -3219,7 +3220,7 @@ def generate_web_fitsfiles(version='', outdir=''):
     # create the lines we need.
     d1 = ldat[1].data[ifile*linesperfile:min([(ifile+1)*linesperfile, nlines])]
     d2 = ldat[2].data[ifile*linesperfile:min([(ifile+1)*linesperfile, nlines])]
-    print "Creating file %i of %i"%(ifile+1, nfiles)
+    print("Creating file %i of %i"%(ifile+1, nfiles))
     hdu1 = pyfits.BinTableHDU(d1)
     hdu1.header=ldat[1].header
 
@@ -3247,7 +3248,7 @@ def generate_web_fitsfiles(version='', outdir=''):
   hdulist = pyfits.HDUList([prihdu, hdu])
   hdulist.writeto('%s/apec_v%s_linelist_split_index.fits'%\
                    (outdir, version), checksum=True, clobber=True)
-  print "Finished"
+  print("Finished")
   return
 
 

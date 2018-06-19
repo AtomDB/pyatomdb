@@ -16,7 +16,7 @@ except ImportError:
 
 import numpy, os
 # other pystomdb modules
-import atomic, util, const, atomdb, apec
+from . import atomic, util, const, atomdb, apec
 
 def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
                   cocofile="$ATOMDB/apec_coco.fits",\
@@ -90,7 +90,7 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
 
   # set up the bins
   if (sum((bins[1:]-bins[:-1])<0) > 0):
-    print "*** ERROR: bins must be monotonically increasing. Exiting ***"
+    print("*** ERROR: bins must be monotonically increasing. Exiting ***")
     return -1
 
   if binunits.lower()=='kev':
@@ -100,8 +100,8 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
     ebins = const.HC_IN_KEV_A/bins[::-1]
     flipspectrum=True
   else:
-    print "*** ERROR: unknown binning unit %s, Must be keV or A. Exiting ***"%\
-          (binunits)
+    print("*** ERROR: unknown binning unit %s, Must be keV or A. Exiting ***"%\
+          (binunits))
 
 
 
@@ -110,31 +110,31 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
   if util.keyword_check(linefile):
     # ok, we should do something with this
     # if it is a string, look for the file name
-    if isinstance(linefile, basestring):
+    if isinstance(linefile, str):
       lfile = os.path.expandvars(linefile)
       if not os.path.isfile(lfile):
-        print "*** ERROR: no such file %s. Exiting ***" %(lfile)
+        print("*** ERROR: no such file %s. Exiting ***" %(lfile))
         return -1
       ldat = pyfits.open(lfile)
     elif isinstance(linefile, pyfits.hdu.hdulist.HDUList):
       # no need to do anything, file is already open
       ldat = linefile
     else:
-      print "Unknown data type for linefile. Please pass a string or an HDUList"
+      print("Unknown data type for linefile. Please pass a string or an HDUList")
       return -1
 
   if util.keyword_check(cocofile):
-    if isinstance(cocofile, basestring):
+    if isinstance(cocofile, str):
       cfile = os.path.expandvars(cocofile)
       if not os.path.isfile(cfile):
-        print "*** ERROR: no such file %s. Exiting ***" %(cfile)
+        print("*** ERROR: no such file %s. Exiting ***" %(cfile))
         return -1
       cdat = pyfits.open(cfile)
     elif isinstance(cocofile, pyfits.hdu.hdulist.HDUList):
       # no need to do anything, file is already open
       cdat = cocofile
     else:
-      print "Unknown data type for cocofile. Please pass a string or an HDUList"
+      print("Unknown data type for cocofile. Please pass a string or an HDUList")
       return
 
 
@@ -290,7 +290,7 @@ def make_ion_spectrum(bins, index, Z,z1, linefile="$ATOMDB/apec_nei_line.fits",\
 
   # set up the bins
   if (sum((bins[1:]-bins[:-1])<0) > 0):
-    print "*** ERROR: bins must be monotonically increasing. Exiting ***"
+    print("*** ERROR: bins must be monotonically increasing. Exiting ***")
     return -1
 
   if binunits.lower()=='kev':
@@ -298,43 +298,43 @@ def make_ion_spectrum(bins, index, Z,z1, linefile="$ATOMDB/apec_nei_line.fits",\
   elif binunits.lower() in ['a', 'angstrom', 'angstroms']:
     ebins = const.HC_IN_KEV_A/bins[::-1]
   else:
-    print "*** ERROR: unknown binning unit %s, Must be keV or A. Exiting ***"%\
-          (binunits)
+    print("*** ERROR: unknown binning unit %s, Must be keV or A. Exiting ***"%\
+          (binunits))
 
   # check the files exist
   # first, check if the line file is set
   if util.keyword_check(linefile):
     # ok, we should do something with this
     # if it is a string, look for the file name
-    if isinstance(linefile, basestring):
+    if isinstance(linefile, str):
       if ((linefile == "$ATOMDB/apec_nei_line.fits") & (nei==False)):
         linefile = "$ATOMDB/apec_line.fits"
       lfile = os.path.expandvars(linefile)
       if not os.path.isfile(lfile):
-        print "*** ERROR: no such file %s. Exiting ***" %(lfile)
+        print("*** ERROR: no such file %s. Exiting ***" %(lfile))
         return -1
       ldat = pyfits.open(lfile)
     elif isinstance(linefile, pyfits.hdu.hdulist.HDUList):
       # no need to do anything, file is already open
       ldat = linefile
     else:
-      print "Unknown data type for linefile. Please pass a string or an HDUList"
+      print("Unknown data type for linefile. Please pass a string or an HDUList")
       return -1
 
   if util.keyword_check(cocofile):
-    if isinstance(cocofile, basestring):
+    if isinstance(cocofile, str):
       if ((cocofile == "$ATOMDB/apec_nei_comp.fits") & (nei==False)):
         cocofile = "$ATOMDB/apec_coco.fits"
       cfile = os.path.expandvars(cocofile)
       if not os.path.isfile(cfile):
-        print "*** ERROR: no such file %s. Exiting ***" %(cfile)
+        print("*** ERROR: no such file %s. Exiting ***" %(cfile))
         return -1
       cdat = pyfits.open(cfile)
     elif isinstance(cocofile, pyfits.hdu.hdulist.HDUList):
       # no need to do anything, file is already open
       cdat = cocofile
     else:
-      print "Unknown data type for cocofile. Please pass a string or an HDUList"
+      print("Unknown data type for cocofile. Please pass a string or an HDUList")
       return
 
 
@@ -457,8 +457,8 @@ def add_lines(Z, abund, lldat, ebins, z1=False, z1_drv=False, \
   elif broadenunits.lower() =='kev':
     bunits = 'kev'
   else:
-    print "Error: unknown broadening unit %s, Must be keV or A. Exiting ***"%\
-          (broadenunits)
+    print("Error: unknown broadening unit %s, Must be keV or A. Exiting ***"%\
+          (broadenunits))
     return -1
   if broadening:
     if bunits == 'a':
@@ -541,8 +541,8 @@ def get_index(te, filename='$ATOMDB/apec_line.fits', \
   elif teunits.lower() == 'k':
     teval = te*const.KBOLTZ
   else:
-    print "*** ERROR: unknown temeprature unit %s. Must be keV or K. Exiting ***"%\
-          (teunits)
+    print("*** ERROR: unknown temeprature unit %s. Must be keV or K. Exiting ***"%\
+          (teunits))
   if type(filename) == pyfits.hdu.hdulist.HDUList:
     a = filename[1].data
   elif type(filename) == pyfits.hdu.table.BinTableHDU:
@@ -664,8 +664,8 @@ def list_lines(specrange, lldat=False, index=False, linefile=False,\
   elif units.lower() in ['a', 'angstrom', 'angstroms']:
     specrange = specrange
   else:
-    print "*** ERROR: unknown unit %s, Must be keV or A. Exiting ***"%\
-          (units)
+    print("*** ERROR: unknown unit %s, Must be keV or A. Exiting ***"%\
+          (units))
 
   # open the line file if only specified by a name
   if lldat==False:
@@ -685,14 +685,14 @@ def list_lines(specrange, lldat=False, index=False, linefile=False,\
     elif teunit.lower() == 'k':
       kT = Te*const.KBOLTZ
     else:
-      print "*** ERROR: unknown teunit %s, Must be keV or K. Exiting ***"%\
-          (teunit)
+      print("*** ERROR: unknown teunit %s, Must be keV or K. Exiting ***"%\
+          (teunit))
 
   # if the temperature is specified, get the index
   if index != False:
 
     if Te != False:
-      print "Warning: both index and Te specified. Using index"
+      print("Warning: both index and Te specified. Using index")
     else:
       # everything is fine!
       pass
@@ -704,7 +704,7 @@ def list_lines(specrange, lldat=False, index=False, linefile=False,\
               teunits='keV', logscale=True)
     else:
       if not type(lldat) in [pyfits.fitsrec.FITS_rec, numpy.ndarray]:
-        print "Error: did not specify index or Te"
+        print("Error: did not specify index or Te")
         return False
     # index is specified, so we'll use it.
     pass
@@ -723,18 +723,18 @@ def list_lines(specrange, lldat=False, index=False, linefile=False,\
 
     if type(lldat) == pyfits.hdu.hdulist.HDUList:
       if not(index):
-        print "*** ERROR. lldat provided as HDUList, but no index specified."
-        print " Exiting"
+        print("*** ERROR. lldat provided as HDUList, but no index specified.")
+        print(" Exiting")
       llist = numpy.array(lldat[index].data)
     elif type(lldat) == pyfits.hdu.table.BinTableHDU:
       llist = numpy.array(lldat.data)
     elif type(lldat) in [pyfits.fitsrec.FITS_rec, numpy.ndarray]:
       llist = numpy.array(lldat)
     else:
-      print "ERROR: unkonwn llist type!"
+      print("ERROR: unkonwn llist type!")
   else:
     # there should now be no way to get here. commenting out this section
-    print "ERROR: I SHOULD NEVER BE HERE"
+    print("ERROR: I SHOULD NEVER BE HERE")
     pass
     # no line data supplied.
     #if linefile==False:
@@ -868,8 +868,8 @@ def list_nei_lines(specrange, Te, tau, Te_init=False,  lldat=False, linefile=Fal
   elif units.lower() in ['a', 'angstrom', 'angstroms']:
     specrange = specrange
   else:
-    print "*** ERROR: unknown unit %s, Must be keV or A. Exiting ***"%\
-          (units)
+    print("*** ERROR: unknown unit %s, Must be keV or A. Exiting ***"%\
+          (units))
 
   # convert Te into keV
 
@@ -880,8 +880,8 @@ def list_nei_lines(specrange, Te, tau, Te_init=False,  lldat=False, linefile=Fal
   elif teunit.lower() == 'k':
     kT = Te*const.KBOLTZ
   else:
-    print "*** ERROR: unknown teunit %s, Must be keV or K. Exiting ***"%\
-          (teunit)
+    print("*** ERROR: unknown teunit %s, Must be keV or K. Exiting ***"%\
+          (teunit))
 
 
   if Te_init != False:
@@ -892,8 +892,8 @@ def list_nei_lines(specrange, Te, tau, Te_init=False,  lldat=False, linefile=Fal
     elif teunit.lower() == 'k':
       kT_init = Te_init*const.KBOLTZ
     else:
-      print "*** ERROR: unknown teunit %s, Must be keV or K. Exiting ***"%\
-          (teunit)
+      print("*** ERROR: unknown teunit %s, Must be keV or K. Exiting ***"%\
+          (teunit))
   else:
   # Te_init was not set:
     kT_init = 1e4*const.KBOLTZ
@@ -926,8 +926,8 @@ def list_nei_lines(specrange, Te, tau, Te_init=False,  lldat=False, linefile=Fal
     if linefile==False:
       linefile = os.path.expandvars('$ATOMDB/apec_nei_line.fits')
     if not os.path.isfile(linefile):
-      print "*** ERROR. Linefile %s is "%(linefile),
-      print " not a file. Exiting"
+      print("*** ERROR. Linefile %s is "%(linefile), end=' ')
+      print(" not a file. Exiting")
     else:
       lldat = pyfits.open(os.path.expandvars(linefile))
       te_index = get_index(kT, filename=lldat, \
@@ -998,8 +998,8 @@ def print_lines(llist, specunits = 'A', do_cfg=False):
   elif specunits.lower() in ['a', 'angstrom', 'angstroms']:
     specunits = 'A'
   else:
-    print "*** ERROR: unknown unit %s, Must be keV or A. Exiting ***"%\
-          (specunits)
+    print("*** ERROR: unknown unit %s, Must be keV or A. Exiting ***"%\
+          (specunits))
 
 
   # now print the header lines
@@ -1011,7 +1011,7 @@ def print_lines(llist, specunits = 'A', do_cfg=False):
     else:
       s= "%-10s %-10s %-10s %-10s %-10s %-10s" %\
          ('Energy','Epsilon','Element','Ion','UpperLev','LowerLev')
-    print s
+    print(s)
 
     if 'Ion_drv' in llist.dtype.names:
       s= "%-10s %-10s %-10s %-10s %-10s %-10s %-10s" %\
@@ -1019,7 +1019,7 @@ def print_lines(llist, specunits = 'A', do_cfg=False):
     else:
       s= "%-10s %-10s %-10s %-10s %-10s %-10s" %\
          ('keV','ph cm3 s-1','','','','')
-    print s
+    print(s)
 
   else:
     if 'Ion_drv' in llist.dtype.names:
@@ -1028,7 +1028,7 @@ def print_lines(llist, specunits = 'A', do_cfg=False):
     else:
       s= "%-10s %-10s %-10s %-10s %-10s %-10s" %\
          ('Lambda','Epsilon','Element','Ion','UpperLev','LowerLev')
-    print s
+    print(s)
 
     if 'Ion_drv' in llist.dtype.names:
       s= "%-10s %-10s %-10s %-10s %-10s %-10s %-10s" %\
@@ -1036,7 +1036,7 @@ def print_lines(llist, specunits = 'A', do_cfg=False):
     else:
       s= "%-10s %-10s %-10s %-10s %-10s %-10s" %\
          ('A','ph cm3 s-1','','','','')
-    print s
+    print(s)
 
   # now print the data
   d={}
@@ -1167,16 +1167,16 @@ def make_ion_index_continuum(bins,  element, \
   elif binunits.lower() in ['a','angstrom','angstroms']:
     angstrom = True
   else:
-    print "*** ERROR: unknown units %s for continuum spectrum. Exiting" %\
-          (binunits)
+    print("*** ERROR: unknown units %s for continuum spectrum. Exiting" %\
+          (binunits))
 
   if fluxunits.lower() in ['ph', 'photon','photons', 'p']:
     ergs = False
   elif fluxunits.lower() in ['erg','ergs']:
     ergs = true
   else:
-    print "*** ERROR: unknown units %s for continuum flux. Exiting" %\
-          (fluxunits)
+    print("*** ERROR: unknown units %s for continuum flux. Exiting" %\
+          (fluxunits))
 
     return -1
 
@@ -1195,7 +1195,7 @@ def make_ion_index_continuum(bins,  element, \
   elif type(cocofile) == type('somestring'):
     cdat = pyfits.open(os.path.expandvars(cocofile))[index].data
   else:
-    print "*** ERROR: unable to parse cocofile = %s" %repr(cocofile)
+    print("*** ERROR: unable to parse cocofile = %s" %repr(cocofile))
     return -1
 
 
@@ -1334,8 +1334,8 @@ def broaden_continuum(bins, spectrum, binunits = 'keV', \
   elif binunits.lower() in ['a','angstrom','angstroms']:
     angstrom = True
   else:
-    print "*** ERROR: unknown units %s for continuum spectrum. Exiting" %\
-          (binunits)
+    print("*** ERROR: unknown units %s for continuum spectrum. Exiting" %\
+          (binunits))
 
   if angstrom:
     bins = const.HC_IN_KEV_A/bins[::-1]
@@ -1347,8 +1347,8 @@ def broaden_continuum(bins, spectrum, binunits = 'keV', \
     elif broadenunits.lower() in ['kev']:
       bunits = 'kev'
     else:
-      print "*** ERROR: unknown units %s for continuum broadening. Exiting" %\
-            (broadenunits)
+      print("*** ERROR: unknown units %s for continuum broadening. Exiting" %\
+            (broadenunits))
       return -1
     # do the broadening
     spec = numpy.zeros(len(spectrum))
@@ -1402,7 +1402,7 @@ def apply_response(spectrum, rmf, arf=False):
     elif type(arf) == pyfits.hdu.hdulist.HDUList:
       arfdat = arf
     else:
-      print "ERROR: unknown arf type, %s"%(repr(type(arf)))
+      print("ERROR: unknown arf type, %s"%(repr(type(arf))))
       return
     res = spectrum * arfdat['SPECRESP'].data['SPECRESP']
   else:
@@ -1414,7 +1414,7 @@ def apply_response(spectrum, rmf, arf=False):
   elif type(rmf) == pyfits.hdu.hdulist.HDUList:
     rmfdat = rmf
   else:
-    print "ERROR: unknown rmf type, %s"%(repr(type(rmf)))
+    print("ERROR: unknown rmf type, %s"%(repr(type(rmf))))
     return
 
   ebins = rmfdat['EBOUNDS'].data['E_MIN']
@@ -1430,7 +1430,7 @@ def apply_response(spectrum, rmf, arf=False):
       k=rmfdat.index_of('SPECRESP MATRIX')
       matrixname = 'SPECRESP MATRIX'
     except KeyError:
-      print "Cannot find index for matrix in this data"
+      print("Cannot find index for matrix in this data")
       raise
 
   # bugfix: not all missions index from 0 (or 1).
@@ -1490,7 +1490,7 @@ def get_response_ebins(rmf):
   elif type(rmf) == pyfits.hdu.hdulist.HDUList:
     rmfdat = rmf
   else:
-    print "ERROR: unknown rmf type, %s"%(repr(type(rmf)))
+    print("ERROR: unknown rmf type, %s"%(repr(type(rmf))))
     return
 #  ret = rmfdat['EBOUNDS'].data['E_MIN']
 #  ret = numpy.append(ret, rmfdat['EBOUNDS'].data['E_MAX'][-1])
@@ -1502,7 +1502,7 @@ def get_response_ebins(rmf):
       k=rmfdat.index_of('SPECRESP MATRIX')
       matrixname = 'SPECRESP MATRIX'
     except KeyError:
-      print "Cannot find index for matrix in this data"
+      print("Cannot find index for matrix in this data")
       raise
 
 
@@ -1541,7 +1541,7 @@ def get_effective_area(rmf, arf=False):
     elif type(arf) == pyfits.hdu.hdulist.HDUList:
       arfdat = arf
     else:
-      print "ERROR: unknown arf type, %s"%(repr(type(arf)))
+      print("ERROR: unknown arf type, %s"%(repr(type(arf))))
       return
     arfarea = arfdat['SPECRESP'].data['SPECRESP']
   else:
@@ -1553,7 +1553,7 @@ def get_effective_area(rmf, arf=False):
   elif type(rmf) == pyfits.hdu.hdulist.HDUList:
     rmfdat = rmf
   else:
-    print "ERROR: unknown rmf type, %s"%(repr(type(rmf)))
+    print("ERROR: unknown rmf type, %s"%(repr(type(rmf))))
     return
 
   ebins = get_response_ebins(rmf)
@@ -1569,14 +1569,14 @@ def get_effective_area(rmf, arf=False):
       k=rmfdat.index_of('SPECRESP MATRIX')
       matrixname = 'SPECRESP MATRIX'
     except KeyError:
-      print "Cannot find index for matrix in this data"
+      print("Cannot find index for matrix in this data")
       raise
 
   matname = 'MATRIX'
   if not matname in rmfdat[matrixname].data.names:
     matname ='SPECRESP MATRIX'
     if not matname in rmfdat[matrixname].data.names:
-      print "Error: Cannot find Matrix in rmf data"
+      print("Error: Cannot find Matrix in rmf data")
       return
   for ibin, i in enumerate(rmfdat[matrixname].data):
     area[ibin] = sum(i[matname])
@@ -1666,7 +1666,7 @@ class Session():
     if util.keyword_check(elements):
       self.elements = elements
     else:
-      self.elements=range(1,31)
+      self.elements=list(range(1,31))
 
     # set the abundances:
     #   (1) the initial vector is whatever set AtomDB was calculated on,
@@ -1738,13 +1738,13 @@ class Session():
     elif teunit.lower() == 'k':
       teval = te*const.KBOLTZ
     else:
-      print "*** ERROR: unknown temeprature unit %s. Must be eV, keV or K. Exiting ***"%\
-            (teunits)
+      print("*** ERROR: unknown temeprature unit %s. Must be eV, keV or K. Exiting ***"%\
+            (teunits))
 
 
     if nearest:
       index = numpy.argmin(numpy.abs(self.linedata[1].data['kT']-teval))+2
-      if not (index in self.spectra.keys()):
+      if not (index in list(self.spectra.keys())):
         self.spectra[index] = Spec(self, index)
         self.spectra[index].calc_spectrum(self)
       te_nearest = self.linedata[1].data['kT'][index-2]
@@ -1769,8 +1769,8 @@ class Session():
     else:
       if ((teval > self.linedata[1].data['kT'][-1]) |\
           (teval < self.linedata[1].data['kT'][0])):
-        print "*** ERROR: temperature %f keV is out of range %f-%f ***" %\
-              (teval, self.linedata[1].data['kT'][0], self.linedata[1].data['kT'][-1])
+        print("*** ERROR: temperature %f keV is out of range %f-%f ***" %\
+              (teval, self.linedata[1].data['kT'][0], self.linedata[1].data['kT'][-1]))
         return
     # find the 2 nearest temperatures
 
@@ -1781,10 +1781,10 @@ class Session():
       upind = index+2
 
       # get the spectra at these temperatures
-      if not (loind in self.spectra.keys()):
+      if not (loind in list(self.spectra.keys())):
         self.spectra[loind] = Spec(self, loind)
         self.spectra[loind].calc_spectrum(self)
-      if not (upind in self.spectra.keys()):
+      if not (upind in list(self.spectra.keys())):
         self.spectra[upind] = Spec(self, upind)
         self.spectra[upind].calc_spectrum(self)
 
@@ -1885,7 +1885,7 @@ class Session():
         self.arf = arf
         self.arffile = arf.filename()
       else:
-        print "ERROR: unknown arf type, %s"%(repr(type(arf)))
+        print("ERROR: unknown arf type, %s"%(repr(type(arf))))
         return
 #      res   = spectrum * arfdat['SPECRESP'].data['SPECRESP']
     #else:
@@ -1899,7 +1899,7 @@ class Session():
       self.rmf = rmf
       self.rmffile = rmf.filename()
     else:
-      print "ERROR: unknown rmf type, %s"%(repr(type(rmf)))
+      print("ERROR: unknown rmf type, %s"%(repr(type(rmf))))
       return
 
     self.ebins_response = get_response_ebins(self.rmf)
@@ -1931,10 +1931,10 @@ class Session():
     Updates self.linefile, self.linedata, self.cocofile and self.cocodata
     """
     if util.keyword_check(linefile):
-      if isinstance(linefile, basestring):
+      if isinstance(linefile, str):
         lfile = os.path.expandvars(linefile)
         if not os.path.isfile(lfile):
-          print "*** ERROR: no such file %s. Exiting ***" %(lfile)
+          print("*** ERROR: no such file %s. Exiting ***" %(lfile))
           return -1
         self.linedata = pyfits.open(lfile)
         self.linefile = lfile
@@ -1945,15 +1945,15 @@ class Session():
         self.linefile=linefile.filename()
 
       else:
-        print "Unknown data type for linefile. Please pass a string or an HDUList"
+        print("Unknown data type for linefile. Please pass a string or an HDUList")
 
     if util.keyword_check(cocofile):
 
-      if isinstance(cocofile, basestring):
+      if isinstance(cocofile, str):
 
         cfile = os.path.expandvars(cocofile)
         if not os.path.isfile(cfile):
-          print "*** ERROR: no such file %s. Exiting ***" %(cfile)
+          print("*** ERROR: no such file %s. Exiting ***" %(cfile))
           return -1
         self.cocodata=pyfits.open(cfile)
         self.cocofile=cfile
@@ -1964,7 +1964,7 @@ class Session():
         self.cocofile=cocofile.filename()
 
       else:
-        print "Unknown data type for cocofile. Please pass a string or an HDUList"
+        print("Unknown data type for cocofile. Please pass a string or an HDUList")
 
   def set_abund(self, elements, abund):
     """
@@ -2003,8 +2003,8 @@ class Session():
     if (aisvec):
       if len(abundvec)!= len(elementvec):
 
-        print "abundance vector and element vector must have same number"+\
-              " of elements"
+        print("abundance vector and element vector must have same number"+\
+              " of elements")
       else:
 
         self.abund[elementvec] = abundvec
@@ -2038,7 +2038,7 @@ class Session():
     modifies
     self.spectrum
     """
-    for index in self.spectra.keys():
+    for index in list(self.spectra.keys()):
       self.spectra[index].recalc(self)
     #if self.ready:
       #self.spectrum = numpy.zeros(len(self.specbins)-1)
@@ -2073,7 +2073,7 @@ class Session():
     new = atomdb.get_abundance(abundset=abundstring)
 
     # divide the 2, store the replacement ratio to self.abundsetvector
-    for Z in self.abundsetvector.keys():
+    for Z in list(self.abundsetvector.keys()):
       self.abundsetvector[Z]=new[Z]/old[Z]
 
     # update the current abundance string to represent your input
@@ -2137,8 +2137,8 @@ class Spec():
       elif teunit.lower() == 'k':
         teval = te*const.KBOLTZ
       else:
-        print "*** ERROR: unknown temeprature unit %s. Must be eV, keV or K. Exiting ***"%\
-              (teunits)
+        print("*** ERROR: unknown temeprature unit %s. Must be eV, keV or K. Exiting ***"%\
+              (teunits))
 
       if logscale:
         i = numpy.argmin(numpy.abs(numpy.log(self.linedata[1].data['kT'])-numpy.log(teval)))
@@ -2300,7 +2300,7 @@ class NEISession(Session):
 
   def __init__(self, linefile="$ATOMDB/apec_nei_line.fits",\
                      cocofile="$ATOMDB/apec_nei_comp.fits",\
-                     elements=range(1,31), abundset='AG89'):
+                     elements=list(range(1,31)), abundset='AG89'):
     """
     Initialization routine. Can set the line and continuum files here
 
@@ -2404,8 +2404,8 @@ class NEISession(Session):
       te_i = Te_init*const.KBOLTZ
       te_f = Te*const.KBOLTZ
     else:
-      print "*** ERROR: unknown temeprature unit %s. Must be eV, keV or K. Exiting ***"%\
-            (teunits)
+      print("*** ERROR: unknown temeprature unit %s. Must be eV, keV or K. Exiting ***"%\
+            (teunits))
 
     ret={}
     for Z in self.elements:
@@ -2463,18 +2463,18 @@ class NEISession(Session):
     elif teunit.lower() == 'k':
       teval = te*const.KBOLTZ
     else:
-      print "*** ERROR: unknown temeprature unit %s. Must be eV, keV or K. Exiting ***"%\
-            (teunits)
+      print("*** ERROR: unknown temeprature unit %s. Must be eV, keV or K. Exiting ***"%\
+            (teunits))
 
     if not self.ready:
-      print "*** ERROR: not ready to calculate spectrum. Need to supply an ionization ***"
-      print "*** balance (see calc_ionbal) *** "
+      print("*** ERROR: not ready to calculate spectrum. Need to supply an ionization ***")
+      print("*** balance (see calc_ionbal) *** ")
 
       return
 
     if nearest:
       index = numpy.argmin(numpy.abs(self.linedata[1].data['kT']-teval))+2
-      if not (index in self.spectra.keys()):
+      if not (index in list(self.spectra.keys())):
         self.spectra[index] = NEISpec(self, index)
         self.spectra[index].calc_spectrum(self)
       te_nearest = self.linedata[1].data['kT'][index-2]
@@ -2499,8 +2499,8 @@ class NEISession(Session):
     else:
       if ((teval > self.linedata[1].data['kT'][-1]) |\
           (teval < self.linedata[1].data['kT'][0])):
-        print "*** ERROR: temperature %f keV is out of range %f-%f ***" %\
-              (teval, self.linedata[1].data['kT'][0], self.linedata[1].data['kT'][-1])
+        print("*** ERROR: temperature %f keV is out of range %f-%f ***" %\
+              (teval, self.linedata[1].data['kT'][0], self.linedata[1].data['kT'][-1]))
         return
     # find the 2 nearest temperatures
 
@@ -2511,10 +2511,10 @@ class NEISession(Session):
       upind = index+2
 
       # get the spectra at these temperatures
-      if not (loind in self.spectra.keys()):
+      if not (loind in list(self.spectra.keys())):
         self.spectra[loind] = NEISpec(self, loind)
         self.spectra[loind].calc_spectrum(self)
-      if not (upind in self.spectra.keys()):
+      if not (upind in list(self.spectra.keys())):
         self.spectra[upind] = NEISpec(self, upind)
         self.spectra[upind].calc_spectrum(self)
 
@@ -2718,7 +2718,7 @@ class NEISpec(Spec):
 
           self.spectrum = numpy.zeros(len(session.specbins)-1)
           for Z in session.elements:
-            if not Z in session.ionbal.keys():
+            if not Z in list(session.ionbal.keys()):
               continue
             for z in range(Z+1):
               z1 = z+1
@@ -2728,7 +2728,7 @@ class NEISpec(Spec):
         if session.response_set:
           self.spectrum_withresp = numpy.zeros(len(session.ebins_response)-1)
           for Z in session.elements:
-            if not Z in session.ionbal.keys():
+            if not Z in list(session.ionbal.keys()):
               continue
             for z in range(Z+1):
               z1 = z+1
@@ -2863,7 +2863,7 @@ class CXSession(Session):
     if util.keyword_check(elements):
       self.elements = elements
     else:
-      self.elements=range(1,31)
+      self.elements=list(range(1,31))
 
     # set the abundances:
     #   (1) the initial vector is whatever set AtomDB was calculated on,
@@ -2913,8 +2913,8 @@ class CXSession(Session):
     # make sure we are in title case
     donor = elem.title()
     if not donor in ['H','He']:
-      print "Can only use H or He donor at this time"
-      print "Exiting without setting donor"
+      print("Can only use H or He donor at this time")
+      print("Exiting without setting donor")
       return
 
 
@@ -3052,7 +3052,7 @@ class CXSession(Session):
         collenergy[Z] = collision/1000.0
         velocity[Z] = 1e5* numpy.sqrt(4786031.3*collenergy[Z]*1e-3/25.)
       else:
-        print "*** ERROR: Unknown collision unit %s: should be kev/amu or cm/s ***" %(self.collisionunits)
+        print("*** ERROR: Unknown collision unit %s: should be kev/amu or cm/s ***" %(self.collisionunits))
         return
 
 
@@ -3088,8 +3088,8 @@ class CXSession(Session):
               index = numpy.where(evec > collenergy[Z])[0]
               if len(index)==0:
                 index = len(evec)-1
-                print "WARNING: %e kev/amu is above the maximum energy in the CX file of %e keV/amu"%\
-                     (collenergy[Z], max(evec))
+                print("WARNING: %e kev/amu is above the maximum energy in the CX file of %e keV/amu"%\
+                     (collenergy[Z], max(evec)))
               else:
                 index = index[0]
 
@@ -3102,9 +3102,9 @@ class CXSession(Session):
             for ind in [loind, upind]:
               if not ind in self.spectra:
                 self.spectra[ind]={}
-              if not Z in self.spectra[ind].keys():
+              if not Z in list(self.spectra[ind].keys()):
                 self.spectra[ind][Z]={}
-              if not z1 in self.spectra[ind][Z].keys():
+              if not z1 in list(self.spectra[ind][Z].keys()):
                 self.spectra[ind][Z][z1] = CXSpec(self, ind, Z, z1)
                 self.spectra[ind][Z][z1].calc_spectrum(self)
 
@@ -3145,9 +3145,9 @@ class CXSession(Session):
               stot+=s
 
           else: # Use ACX models
-            if not Z in self.spectra['ACX'].keys():
+            if not Z in list(self.spectra['ACX'].keys()):
               self.spectra['ACX'][Z] = {}
-            if not z1 in self.spectra['ACX'][Z].keys():
+            if not z1 in list(self.spectra['ACX'][Z].keys()):
               self.spectra['ACX'][Z][z1] = ACXSpec(self, Z, z1)
               self.spectra['ACX'][Z][z1].calc_spectrum(self)
             if not self.response_set:
@@ -3240,7 +3240,7 @@ class CXSession(Session):
         self.arf = arf
         self.arffile = arf.filename()
       else:
-        print "ERROR: unknown arf type, %s"%(repr(type(arf)))
+        print("ERROR: unknown arf type, %s"%(repr(type(arf))))
         return
 #      res   = spectrum * arfdat['SPECRESP'].data['SPECRESP']
     #else:
@@ -3254,7 +3254,7 @@ class CXSession(Session):
       self.rmf = rmf
       self.rmffile = rmf.filename()
     else:
-      print "ERROR: unknown rmf type, %s"%(repr(type(rmf)))
+      print("ERROR: unknown rmf type, %s"%(repr(type(rmf))))
       return
 
     self.ebins_response = get_response_ebins(self.rmf)
@@ -3290,10 +3290,10 @@ class CXSession(Session):
     Updates self.linefile, self.linedata, self.cocofile and self.cocodata
     """
     if util.keyword_check(linefile):
-      if isinstance(linefile, basestring):
+      if isinstance(linefile, str):
         lfile = os.path.expandvars(linefile)
         if not os.path.isfile(lfile):
-          print "*** ERROR: no such file %s. Exiting ***" %(lfile)
+          print("*** ERROR: no such file %s. Exiting ***" %(lfile))
           return -1
         self.linedata = pyfits.open(lfile)
         self.linefile = lfile
@@ -3304,13 +3304,13 @@ class CXSession(Session):
         self.linefile=linefile.filename()
 
       else:
-        print "Unknown data type for linefile. Please pass a string or an HDUList"
+        print("Unknown data type for linefile. Please pass a string or an HDUList")
 
     if util.keyword_check(cocofile):
-      if isinstance(cocofile, basestring):
+      if isinstance(cocofile, str):
         cfile = os.path.expandvars(cocofile)
         if not os.path.isfile(cfile):
-          print "*** ERROR: no such file %s. Exiting ***" %(cfile)
+          print("*** ERROR: no such file %s. Exiting ***" %(cfile))
           return -1
         self.cocodata=pyfits.open(cfile)
         self.cocofile=cfile
@@ -3320,17 +3320,17 @@ class CXSession(Session):
         self.cocodata=cocofile
         self.cocofile=cocofile.filename()
       else:
-        print "Unknown data type for cocofile. Please pass a string or an HDUList"
+        print("Unknown data type for cocofile. Please pass a string or an HDUList")
 
 
 
 
 
     if util.keyword_check(acxlinefile):
-      if isinstance(acxlinefile, basestring):
+      if isinstance(acxlinefile, str):
         acxlfile = os.path.expandvars(acxlinefile)
         if not os.path.isfile(acxlfile):
-          print "*** ERROR: no such file %s. Exiting ***" %(acxlfile)
+          print("*** ERROR: no such file %s. Exiting ***" %(acxlfile))
           return -1
         self.acxlinedata = pyfits.open(acxlfile)
         self.acxlinefile = acxlfile
@@ -3341,13 +3341,13 @@ class CXSession(Session):
         self.acxlinefile=acxlinefile.filename()
 
       else:
-        print "Unknown data type for acxlinefile. Please pass a string or an HDUList"
+        print("Unknown data type for acxlinefile. Please pass a string or an HDUList")
 
     if util.keyword_check(acxcocofile):
-      if isinstance(acxcocofile, basestring):
+      if isinstance(acxcocofile, str):
         acxcfile = os.path.expandvars(acxcocofile)
         if not os.path.isfile(acxcfile):
-          print "*** ERROR: no such file %s. Exiting ***" %(acxcfile)
+          print("*** ERROR: no such file %s. Exiting ***" %(acxcfile))
           return -1
         self.acxcocodata=pyfits.open(acxcfile)
         self.acxcocofile=acxcfile
@@ -3357,7 +3357,7 @@ class CXSession(Session):
         self.acxcocodata=acxcocofile
         self.acxcocofile=acxcocofile.filename()
       else:
-        print "Unknown data type for acxcocofile. Please pass a string or an HDUList"
+        print("Unknown data type for acxcocofile. Please pass a string or an HDUList")
 
 
   def set_abund(self, elements, abund):
@@ -3397,8 +3397,8 @@ class CXSession(Session):
     if (aisvec):
       if len(abundvec)!= len(elementvec):
 
-        print "abundance vector and element vector must have same number"+\
-              " of elements"
+        print("abundance vector and element vector must have same number"+\
+              " of elements")
       else:
 #        print elementvec
 #        print abundvec
@@ -3434,9 +3434,9 @@ class CXSession(Session):
     modifies
     self.spectrum
     """
-    for index in self.spectra.keys():
-      for Z in self.spectra[index].keys():
-        for z1 in self.spectra[index][Z].keys():
+    for index in list(self.spectra.keys()):
+      for Z in list(self.spectra[index].keys()):
+        for z1 in list(self.spectra[index][Z].keys()):
           self.spectra[index][Z][z1].recalc(self)
     #if self.ready:
       #self.spectrum = numpy.zeros(len(self.specbins)-1)
@@ -3471,7 +3471,7 @@ class CXSession(Session):
     new = atomdb.get_abundance(abundset=abundstring)
 
     # divide the 2, store the replacement ratio to self.abundsetvector
-    for Z in self.abundsetvector.keys():
+    for Z in list(self.abundsetvector.keys()):
       self.abundsetvector[Z]=new[Z]/old[Z]
 
     # update the current abundance string to represent your input
@@ -3547,8 +3547,8 @@ class CXSpec(Spec):
 #        elif teunit.lower() == 'k':
 #          teval = te*const.KBOLTZ
       else:
-        print "*** ERROR: unknown energy unit %s. Must be keV/amu. Exiting ***"%\
-              (Eunit)
+        print("*** ERROR: unknown energy unit %s. Must be keV/amu. Exiting ***"%\
+              (Eunit))
 
       if logscale:
         i = numpy.argmin(numpy.abs(numpy.log(self.linedata[1].data['Energy'])-numpy.log(teval)))
