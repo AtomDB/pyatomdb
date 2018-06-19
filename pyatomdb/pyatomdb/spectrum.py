@@ -3504,7 +3504,7 @@ class CXSpec(Spec):
                          (session.linedata[1].data['z1']==z1))[0][0]
 #      print session.linedata[1].data['Energy'][itmp]
 #      print index-1
-      self.energy = session.linedata[1].data['Energy'][itmp][index-1]
+      self.energy = session.linedata[1].data['Energy'][itmp][index-2]
       self.index = index
       self.Z = Z
       self.z1 = z1
