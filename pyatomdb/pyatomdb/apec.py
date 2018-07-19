@@ -27,7 +27,7 @@ def calc_full_ionbal(Te, tau=False, init_pop=False, Te_init=False, Zlist=False, 
   Te : float
     electron temperature in keV or K (default K)
   tau : float
-    N_e * t for the non-equilibrium ioniziation (default 1e14)
+    N_e * t for the non-equilibrium ioniziation (default False, i.e. off)
   init_pop : dict of float arrays, indexed by Z
     initial populations. E.g. init_pop[6]=[0.1,0.2,0.3,0.2,0.2,0.0,0.0]
   Te_init : float
