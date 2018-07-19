@@ -13,7 +13,7 @@ import scipy, ctypes
 import astropy.io.fits as pyfits
 from joblib import Parallel, delayed
 
-def calc_full_ionbal(Te, tau=1e14, init_pop=False, Te_init=False, Zlist=False, teunit='K',\
+def calc_full_ionbal(Te, tau=False, init_pop=False, Te_init=False, Zlist=False, teunit='K',\
                     extrap=True, cie=True, settings=False):
   """
   Calculate the ionization balance for all the elements in Zlist.
@@ -92,7 +92,15 @@ def calc_full_ionbal(Te, tau=1e14, init_pop=False, Te_init=False, Zlist=False, t
 
   datacache={}
 
-  if not init_pop:
+
+  if cie:
+    # do some error checking
+    if util.keyword_check(Te_init):
+      print("Warning: you have specified both Te and Te_init for a CIE calculation. "+\
+            "Using Te for ionization balance calculation")
+
+
+  if (not init_pop) | (cie):
     init_pop = {}
     for Z in Zlist:
       ionrate = numpy.zeros(Z, dtype=float)
@@ -110,9 +118,13 @@ def calc_full_ionbal(Te, tau=1e14, init_pop=False, Te_init=False, Zlist=False, t
       # now solve
 
       init_pop[Z] = solve_ionbal(ionrate, recrate)
-      print "initial pop: ", init_pop
   if cie:
+    # Exit here if the inital
+
     return init_pop
+
+
+
 
   # now solve the actual ionization balance we want.
   pop = {}
@@ -3532,7 +3544,8 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
   continuum['twophot'] = numpy.zeros(settings['NumGrid'], dtype=float)
   continuum['rrc'] = numpy.zeros(settings['NumGrid'], dtype=float)
 
-
+  ionfrac[:15]=0
+  ionfrac[16:]=0
   ## FIXME CUTOFF FOR MIN IONPOP
   if ionfrac[z1_drv-1] < const.MIN_IONPOP:
     print "OMITTING Z=%i, z1=%i as ionfrac %e is below threshold of %e"%\
