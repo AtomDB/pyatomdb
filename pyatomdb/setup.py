@@ -23,10 +23,10 @@ readme = open('README.txt', 'r')
 README_TEXT = readme.read()
 readme.close()
 
-linapprox =  Extension('linear_approx',\
+linapprox =  Extension("linear_approx",['linear_approx.c'],\
                        define_macros = [('MAJOR_VERSION', '1'),\
-                                        ('MINOR_VERSION','0')],\
-                       sources=['linear_approx.c'])
+                                        ('MINOR_VERSION','0')])
+
 
 
 
