@@ -127,3 +127,7 @@ May 10th 2018: Bugfixes, including one where angstrom spectra where generated ba
 
 0.5.3
 June 14th 2018: Bugfixes: NEI spectrum session fixed to assign bin units correctly when using a response file
+
+0.5.4
+September 03rd 2018: Bugfix: NEI spectrum.Session.set_specbins now correctly resets the spectra when changed. Thanks to Shinya Nakashima for discovering this bug.
+
