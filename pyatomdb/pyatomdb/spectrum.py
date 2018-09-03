@@ -18,6 +18,8 @@ import numpy, os
 # other pystomdb modules
 import atomic, util, const, atomdb, apec
 
+import time
+
 def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
                   cocofile="$ATOMDB/apec_coco.fits",\
                   binunits='keV', broadening=False, broadenunits='keV', \
@@ -1395,7 +1397,8 @@ def apply_response(spectrum, rmf, arf=False):
 #
 # Changed to return the energy grid and the spectrum, as apparently in some
 # instruments these are not the same as the input energy grid.
-
+  print("starting apply response at %s"%( time.asctime()))
+  t1 = time.time()
   if arf:
     if type(arf)==str:
       arfdat = pyfits.open(arf)
@@ -1407,6 +1410,7 @@ def apply_response(spectrum, rmf, arf=False):
     res = spectrum * arfdat['SPECRESP'].data['SPECRESP']
   else:
     res = spectrum*1.0
+  t2 = time.time()
 
 
   if type(rmf)==str:
@@ -1416,11 +1420,14 @@ def apply_response(spectrum, rmf, arf=False):
   else:
     print "ERROR: unknown rmf type, %s"%(repr(type(rmf)))
     return
+  t3 = time.time()
 
   ebins = rmfdat['EBOUNDS'].data['E_MIN']
   ebins = numpy.append(ebins, rmfdat['EBOUNDS'].data['E_MAX'][-1])
+  t4 = time.time()
 
   ret = numpy.zeros(len(ebins)-1, dtype=float)
+  t5 = time.time()
 
   try:
     k=rmfdat.index_of('MATRIX')
@@ -1432,6 +1439,7 @@ def apply_response(spectrum, rmf, arf=False):
     except KeyError:
       print "Cannot find index for matrix in this data"
       raise
+  t6 = time.time()
 
   # bugfix: not all missions index from 0 (or 1).
   # Use chanoffset to correct for this.
@@ -1457,6 +1465,15 @@ def apply_response(spectrum, rmf, arf=False):
       ihi = fchan[j] + nchan[j]
       ret[ilo:ihi] += res[ibin]*i['MATRIX'][lobound:lobound+nchan[j]]
       lobound += nchan[j]
+  t7 = time.time()
+
+  print("2: %f\n3: %f\n4: %f\n5: %f\n6: %f\n7: %f\n"%(t2-t1,\
+                                                      t3-t2,\
+                                                      t4-t3,\
+                                                      t5-t4,\
+                                                      t6-t5,\
+                                                      t7-t6))
+
 
 #  print spectrum[:100]
 #  print ret[:100]
@@ -1843,6 +1860,10 @@ class Session():
     self.specbins=specbins
     self.binunits=specunits
     self.specbins_set=True
+
+    # reset the spectrum
+    self.spectra={}
+
 
 
   def set_response(self, rmf, arf=False):
