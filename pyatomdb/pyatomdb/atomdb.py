@@ -805,7 +805,8 @@ def get_filemap_file(ftype, Z, z1, fmapfile="$ATOMDB/filemap",\
             print("WARNING: no data of type "+ftype+" exists for ion "+\
                 atomic.spectroscopic_name(Z,z1))
 
-  return ret
+  # convert from binary string to text filename
+  return ret.decode()
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -4436,7 +4437,7 @@ def get_data(Z, z1, ftype, datacache=False, \
 
     if 'bytes' in str(type(fname)):
       fname = fname.decode()
-    
+
     if fname=='':
           # This is expected if it's an ionbal file
       pass
