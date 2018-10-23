@@ -3562,52 +3562,56 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
   linelist_dr = numpy.zeros(0, dtype= generate_datatypes('linetype'))
   linelist_rec = numpy.zeros(0, dtype= generate_datatypes('linetype'))
   if lvdat!= False:
-
     # find the number of levels
     nlev = len(lvdat[1].data)
 
+    # check if we need to do any of the line-related calculations
+
+    if (settings['EmissionLines'] or settings['TwoPhoton']):
+
+
     # gather all the level to level rates
-    print "calling gather_rates from run_apec_ion"
-    up, lo, rates = gather_rates(Z, z1, te, dens, datacache=datacache, settings=settings)
-    print "finished calling gather_rates from run_apec_ion"
+      print "calling gather_rates from run_apec_ion"
+      up, lo, rates = gather_rates(Z, z1, te, dens, datacache=datacache, settings=settings)
+      print "finished calling gather_rates from run_apec_ion"
     # purge the datacache here, as this often requires heavy memory use
-    datacache={}
+      datacache={}
     # solve everything
-    print "calling solve_level_pop from run_apec_ion"
-    lev_pop = solve_level_pop(up,lo,rates, settings)
-    print "finished calling solve_level_pop from run_apec_ion"
+      print "calling solve_level_pop from run_apec_ion"
+      lev_pop = solve_level_pop(up,lo,rates, settings)
+      print "finished calling solve_level_pop from run_apec_ion"
 
     # just in case, add zeros to lengthen the lev_pop appropriately
-    if len(lev_pop) < nlev:
-      lev_pop = numpy.append(lev_pop, numpy.zeros(nlev-len(lev_pop), dtype=float))
+      if len(lev_pop) < nlev:
+        lev_pop = numpy.append(lev_pop, numpy.zeros(nlev-len(lev_pop), dtype=float))
 
     # fix any sub-zero level populations
-    lev_pop[lev_pop<0] = 0.0
+      lev_pop[lev_pop<0] = 0.0
 
   # now we have the level populations, make a line list for each ion
 
   # scale lev_pop by the ion and element abundance.
-    print "lev_pop Z=%i, z1=%i,z1_drv=%i, abund*ionfrac=%e, sum(pop)=%e:"%(Z,z1, z1, abund*ionfrac[z1-1], sum(lev_pop)*abund*ionfrac[z1-1])
+      print "lev_pop Z=%i, z1=%i,z1_drv=%i, abund*ionfrac=%e, sum(pop)=%e:"%(Z,z1, z1, abund*ionfrac[z1-1], sum(lev_pop)*abund*ionfrac[z1-1])
 #    for i in range(len(lev_pop)):
 #      print i, lev_pop[i]
-    lev_pop *= abund*ionfrac[z1-1]
-    for i in range(len(lev_pop)):
-      print i, lev_pop[i]
+      lev_pop *= abund*ionfrac[z1-1]
+      for i in range(len(lev_pop)):
+        print i, lev_pop[i]
 
-    print "calling do_lines from run_apec_ion"
-    linelist_exc,  continuum['twophot'] = do_lines(Z, z1, lev_pop, dens, datacache=datacache, settings=settings, z1_drv_in=z1_drv)
-    print "finished calling do_lines from run_apec_ion"
+      print "calling do_lines from run_apec_ion"
+      linelist_exc,  continuum['twophot'] = do_lines(Z, z1, lev_pop, dens, datacache=datacache, settings=settings, z1_drv_in=z1_drv)
+      print "finished calling do_lines from run_apec_ion"
 
 
-    print "Excitation Z=%i z1=%i z1_drv=%i created %i lines"%(Z, z1, z1_drv, len(linelist_exc))
+      print "Excitation Z=%i z1=%i z1_drv=%i created %i lines"%(Z, z1, z1_drv, len(linelist_exc))
   # remove this as this conversion now done to lev_pop before calling do_lines
     #linelist_exc['epsilon']*=ionfrac[z1-1]*abund
     #continuum['twophot']*=ionfrac[z1-1]*abund
+    else:
+      lev_pop = numpy.zeros(nlev, dtype=float)
+      lev_pop[0] = 1.0*abund*ionfrac[z1-1]
   else:
     lev_pop=numpy.ones(1, dtype=float)*abund*ionfrac[z1-1]
-    print "lev_pop Z=%i, z1=%i,z1_drv=%i, abund*ionfrac=%e, sum(pop)=%e: (ZEROS)"%(Z,z1, z1, abund*ionfrac[z1-1], sum(lev_pop)*abund*ionfrac[z1-1])
-    for i in range(len(lev_pop)):
-       print i, lev_pop[i]
 
   # calculate some continuum processes: brems
 
@@ -3676,55 +3680,57 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
       print "Finish calc_recomb_popn at %s"%(time.asctime())
 
       #zzz=raw_input()
-      print "Start do_lines Z=%i, z1=%i, z1_drv=%i at %s"%(Z,z1,z1_drv,time.asctime())
-      linelist_rec, tmptwophot = \
-               do_lines(Z, z1, levpop_recomb , dens, datacache=datacache, settings=settings, z1_drv_in=z1_drv)
-      continuum['twophot']+= tmptwophot
+      # do the lines if required
+      if (settings['EmissionLines'] or settings['TwoPhoton']):
 
-      print "linelist_rec Z=%i, z1=%i,z1_drv=%i, nlines=%i:"%(Z,z1, z1_drv, len(linelist_rec))
-      print "Finish do_lines Z=%i, z1=%i, z1_drv=%i at %s"%(Z,z1,z1_drv,time.asctime())
+        print "Start do_lines Z=%i, z1=%i, z1_drv=%i at %s"%(Z,z1,z1_drv,time.asctime())
+        linelist_rec, tmptwophot = \
+                 do_lines(Z, z1, levpop_recomb , dens, datacache=datacache, settings=settings, z1_drv_in=z1_drv)
+        continuum['twophot']+= tmptwophot
+
 
 
   # now do the ionizing cases
   linelist_ion = numpy.zeros(0,dtype= generate_datatypes('linetype'))
-  if z1_drv < Z:
-    datacache={}
-    z1=z1_drv+1
-    lev_pop_parent = lev_pop*1.0
+  if (settings['EmissionLines'] or settings['TwoPhoton']):
+    if z1_drv < Z:
+      datacache={}
+      z1=z1_drv+1
+      lev_pop_parent = lev_pop*1.0
 
-    print "Sum lev_pop_parent[1:] = %e"%(sum(lev_pop_parent[1:]))
-    while (sum(lev_pop_parent[1:]) > 1e-40) &\
-          (z1 <= Z):
-      print "Processing ionization into  Z=%i, z1=%i, z1_drv=%i at %s"%(Z,z1,z1_drv,time.asctime())
+      print "Sum lev_pop_parent[1:] = %e"%(sum(lev_pop_parent[1:]))
+      while (sum(lev_pop_parent[1:]) > 1e-40) &\
+            (z1 <= Z):
+        print "Processing ionization into  Z=%i, z1=%i, z1_drv=%i at %s"%(Z,z1,z1_drv,time.asctime())
 
-      # do we need to include collisional ionzation here?
-      # only in first ion
-      if z1== z1_drv+1:
-        do_xi = True
-      else:
-        do_xi = False
+        # do we need to include collisional ionzation here?
+        # only in first ion
+        if z1== z1_drv+1:
+          do_xi = True
+        else:
+          do_xi = False
 
-      print "Calling calc_ioniz_popn at %s"%(time.asctime())
-      lev_pop=calc_ioniz_popn(lev_pop_parent, Z, z1, z1_drv, te, dens, \
-                             settings=settings, datacache=datacache, \
-                             do_xi=do_xi)
+        print "Calling calc_ioniz_popn at %s"%(time.asctime())
+        lev_pop=calc_ioniz_popn(lev_pop_parent, Z, z1, z1_drv, te, dens, \
+                               settings=settings, datacache=datacache, \
+                               do_xi=do_xi)
 
-      print "Finished calc_ioniz_popn at %s"%(time.asctime())
+        print "Finished calc_ioniz_popn at %s"%(time.asctime())
 
-      lev_pop[lev_pop<const.MIN_LEVPOP] = 0.0
-      if sum(lev_pop[1:]) > 0:
-        print "Start do_lines Z=%i, z1=%i, z1_drv=%i at %s"%(Z,z1,z1_drv,time.asctime())
+        lev_pop[lev_pop<const.MIN_LEVPOP] = 0.0
+        if sum(lev_pop[1:]) > 0:
+          print "Start do_lines Z=%i, z1=%i, z1_drv=%i at %s"%(Z,z1,z1_drv,time.asctime())
 
-        linelist_ion_tmp, tmptwophot = \
-               do_lines(Z, z1, lev_pop, dens, datacache=datacache, settings=settings,   z1_drv_in=z1_drv)
-        print "linelist_ion Z=%i, z1=%i,z1_drv=%i, nlines=%i:"%(Z,z1, z1_drv, len(linelist_ion_tmp))
-        print "Finished do_lines Z=%i, z1=%i, z1_drv=%i at %s"%(Z,z1,z1_drv,time.asctime())
+          linelist_ion_tmp, tmptwophot = \
+                 do_lines(Z, z1, lev_pop, dens, datacache=datacache, settings=settings,   z1_drv_in=z1_drv)
+          print "linelist_ion Z=%i, z1=%i,z1_drv=%i, nlines=%i:"%(Z,z1, z1_drv, len(linelist_ion_tmp))
+          print "Finished do_lines Z=%i, z1=%i, z1_drv=%i at %s"%(Z,z1,z1_drv,time.asctime())
 
-        linelist_ion = numpy.append(linelist_ion, linelist_ion_tmp)
-        continuum['twophot']+=tmptwophot
+          linelist_ion = numpy.append(linelist_ion, linelist_ion_tmp)
+          continuum['twophot']+=tmptwophot
 
-      lev_pop_parent = lev_pop
-      z1+=1
+        lev_pop_parent = lev_pop
+        z1+=1
 
   # generate return data
   print "Start merging linelist at %s"%(time.asctime())
