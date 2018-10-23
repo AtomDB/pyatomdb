@@ -3544,8 +3544,6 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
   continuum['twophot'] = numpy.zeros(settings['NumGrid'], dtype=float)
   continuum['rrc'] = numpy.zeros(settings['NumGrid'], dtype=float)
 
-  ionfrac[:15]=0
-  ionfrac[16:]=0
   ## FIXME CUTOFF FOR MIN IONPOP
   if ionfrac[z1_drv-1] < const.MIN_IONPOP:
     print "OMITTING Z=%i, z1=%i as ionfrac %e is below threshold of %e"%\
