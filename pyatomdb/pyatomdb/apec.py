@@ -3642,7 +3642,7 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
       print "Finished calc_satellte run_apec_ion at %s"%(time.asctime())
 
     else:
-      linelist_dr = numpy.zeros(0, dtype= generate_datatypes(linetype))
+      linelist_dr = numpy.zeros(0, dtype= generate_datatypes('linetype'))
       drlevrates = 0.0
 
     # Radiative Recombination
