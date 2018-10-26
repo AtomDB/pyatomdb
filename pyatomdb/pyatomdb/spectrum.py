@@ -1441,8 +1441,8 @@ def apply_response(spectrum, rmf, arf=False):
     if res[ibin]==0.0: continue
     lobound = 0
 
-    fchan = i['F_CHAN']
-    nchan = i['N_CHAN']
+    fchan = i['F_CHAN']*1
+    nchan = i['N_CHAN']*1
 
     if numpy.isscalar(fchan):
       fchan = numpy.array([fchan])
@@ -1888,7 +1888,8 @@ class Session():
         print("ERROR: unknown arf type, %s"%(repr(type(arf))))
         return
 #      res   = spectrum * arfdat['SPECRESP'].data['SPECRESP']
-    #else:
+    else:
+      self.arf=False
       #res = spectrum*1.0
 
 
@@ -2209,8 +2210,8 @@ class Spec():
                               docont =session.docont,\
                               dopseudo =session.dopseudo)
 
-          e,self.spectrum_by_Z_withresp[Z] = apply_response(tmp, session.rmf, arf=session.arf)
-
+          session.ebins_response_out,self.spectrum_by_Z_withresp[Z] = apply_response(tmp, session.rmf, arf=session.arf)
+          print session.ebins_response_out
       self.recalc(session)
 
 
@@ -2686,8 +2687,8 @@ class NEISpec(Spec):
                                                 dopseudo=session.dopseudo,\
                                                 broadening=session.broaden, broadenunits=session.binunits)
 
-            e,self.spectrum_by_ion_withresp[Z][z1] = apply_response(tmp, session.rmf, arf=session.arf)
-
+            session.ebins_response_out,self.spectrum_by_ion_withresp[Z][z1] = apply_response(tmp, session.rmf, arf=session.arf)
+            print session.ebins_response_out
       self.recalc(session)
 
 
@@ -3243,8 +3244,8 @@ class CXSession(Session):
         print("ERROR: unknown arf type, %s"%(repr(type(arf))))
         return
 #      res   = spectrum * arfdat['SPECRESP'].data['SPECRESP']
-    #else:
-      #res = spectrum*1.0
+    else:
+      self.arf=False
 
 
     if type(rmf)==str:
@@ -3623,9 +3624,7 @@ class CXSpec(Spec):
                             docont = docont,\
                             dopseudo = dopseudo,\
                             broadening=session.broaden, broadenunits=session.binunits)
-
-        e,self.spectrum_withresp = apply_response(tmp, session.rmf, arf=session.arf)
-
+        session.ebins_response_out,self.spectrum_withresp = apply_response(tmp, session.rmf, arf=session.arf)
       self.recalc(session)
 
 
@@ -3753,8 +3752,8 @@ class ACXSpec(Spec):
                             dopseudo = dopseudo,\
                             broadening=session.broaden, broadenunits=session.binunits)
 
-        e,self.spectrum_withresp = apply_response(tmp, session.rmf, arf=session.arf)
-
+        session.ebins_response_out,self.spectrum_withresp = apply_response(tmp, session.rmf, arf=session.arf)
+        print session.ebins_response_out
       self.recalc(session)
 
 

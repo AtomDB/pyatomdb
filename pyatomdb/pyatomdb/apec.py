@@ -14,7 +14,7 @@ import scipy, ctypes
 import astropy.io.fits as pyfits
 from joblib import Parallel, delayed
 
-def calc_full_ionbal(Te, tau=1e14, init_pop=False, Te_init=False, Zlist=False, teunit='K',\
+def calc_full_ionbal(Te, tau=False, init_pop=False, Te_init=False, Zlist=False, teunit='K',\
                     extrap=True, cie=True, settings=False):
   """
   Calculate the ionization balance for all the elements in Zlist.
@@ -28,7 +28,7 @@ def calc_full_ionbal(Te, tau=1e14, init_pop=False, Te_init=False, Zlist=False, t
   Te : float
     electron temperature in keV or K (default K)
   tau : float
-    N_e * t for the non-equilibrium ioniziation (default 1e14)
+    N_e * t for the non-equilibrium ioniziation (default False, i.e. off)
   init_pop : dict of float arrays, indexed by Z
     initial populations. E.g. init_pop[6]=[0.1,0.2,0.3,0.2,0.2,0.0,0.0]
   Te_init : float
@@ -93,7 +93,15 @@ def calc_full_ionbal(Te, tau=1e14, init_pop=False, Te_init=False, Zlist=False, t
 
   datacache={}
 
-  if not init_pop:
+
+  if cie:
+    # do some error checking
+    if util.keyword_check(Te_init):
+      print("Warning: you have specified both Te and Te_init for a CIE calculation. "+\
+            "Using Te for ionization balance calculation")
+
+
+  if (not init_pop) | (cie):
     init_pop = {}
     for Z in Zlist:
       ionrate = numpy.zeros(Z, dtype=float)
@@ -111,9 +119,13 @@ def calc_full_ionbal(Te, tau=1e14, init_pop=False, Te_init=False, Zlist=False, t
       # now solve
 
       init_pop[Z] = solve_ionbal(ionrate, recrate)
-      print("initial pop: ", init_pop)
   if cie:
+    # Exit here if the inital
+
     return init_pop
+
+
+
 
   # now solve the actual ionization balance we want.
   pop = {}
