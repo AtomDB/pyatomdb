@@ -4213,10 +4213,16 @@ def wrap_run_apec_element(settings, te, dens, Z, ite, idens, writepickle=False, 
   """
 
   if readpickle:
-      setpicklefname = "%s_Z_%i_elem_iT_%iiN_%i.pkl"%(settings['OutputFileStem'],Z,ite,idens)
+    setpicklefname = "%s_Z_%i_elem_iT_%iiN_%i.pkl"%(settings['OutputFileStem'],Z,ite,idens)
+
+    print("Trying to read in the whole element pickle file %s"%(setpicklefname))
+    if os.path.exists(setpicklefname):
       ret = pickle.load(open(setpicklefname,'rb'))
       print "read %s"%(setpicklefname)
       return ret
+    else:
+      print("Not found. Going to assemble it.")
+
 
   linelist = numpy.zeros(0, dtype=generate_datatypes('linetype'))
   contlist = {}
@@ -4226,7 +4232,11 @@ def wrap_run_apec_element(settings, te, dens, Z, ite, idens, writepickle=False, 
 
 
   # now go through each ion and assemble the data
-  ebins = numpy.linspace(0.01,100,100001)
+  ebins =  make_vector_nbins(settings['LinearGrid'], \
+                             settings['GridMinimum'], \
+                             settings['GridMaximum'], \
+                             settings['NumGrid'])
+
   ecent = (ebins[1:]+ebins[:-1])/2
 
   for z1_drv in range(1,Z+2):
