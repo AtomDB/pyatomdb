@@ -3956,7 +3956,7 @@ def wrap_ion_directly(fname, ind, Z, z1):
 
 
 
-def wrap_run_apec(fname, readpickle=False):
+def wrap_run_apec(fname, readpickle=False, writepickle=False):
   """
   After running the APEC code ion by ion, use this to combine into
   FITS files.
@@ -4027,7 +4027,7 @@ def wrap_run_apec(fname, readpickle=False):
 
       for Z in Zlist:
         print "Calling run_apec_element for Z=%i Te=%e dens=%e at %s"%(Z, te, dens, time.asctime())
-        dat = wrap_run_apec_element(settings, te, dens, Z,iTe,iDens, readpickle=readpickle)
+        dat = wrap_run_apec_element(settings, te, dens, Z,iTe,iDens, readpickle=readpickle, writepickle=writepickle)
         # append this data to the output
         #pickle.dump(dat, open('dump_%i.pkl'%(Z),'wb'))
         linedata = numpy.append(linedata, dat['lines'])
@@ -4286,7 +4286,8 @@ def wrap_run_apec_element(settings, te, dens, Z, ite, idens, writepickle=False, 
       print "wrote %s"%(setpicklefname)
     return cieout
   elif settings['Ionization']=='NEI':
-    ionftmp= calc_full_ionbal(te, 1e14, Te_init=te, Zlist=[Z], extrap=True)
+    ionftmp= calc_full_ionbal(te, extrap=True, cie=True, settings=settings, Zlist=[Z])
+
     ionfrac_nei = ionftmp[Z]
     neiout = generate_nei_outputs(settings, Z, linelist, contlist, pseudolist, ionfrac_nei)
     if writepickle:
