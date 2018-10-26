@@ -2343,7 +2343,7 @@ class NEISession(Session):
     self.ready=False
 
     # Open up the APEC files
-    self.set_apec_files(linefile, cocofile)
+    self.set_apec_files(linefile=linefile, cocofile=cocofile)
 
     # Set both the current and the default abundances to those that
     # the apec data was calculated on
