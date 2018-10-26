@@ -1474,9 +1474,13 @@ def get_response_ebins(rmf):
 
   Returns
   -------
-  array(float)
+  specbins_in : array(float)
     input energy bins used. nbins+1 length, with the last item being the final bin
     This is the array on which the input spectrum should be calculated
+  specbins_out : array(float)
+    output energy bins used. nbins+1 length, with the last item being the final bin
+    This is the array on which the output spectrum will be returned. Often (but not
+    always) the same as specbins_in
   """
   #
   # Update 2016-05-25
@@ -1492,8 +1496,6 @@ def get_response_ebins(rmf):
   else:
     print("ERROR: unknown rmf type, %s"%(repr(type(rmf))))
     return
-#  ret = rmfdat['EBOUNDS'].data['E_MIN']
-#  ret = numpy.append(ret, rmfdat['EBOUNDS'].data['E_MAX'][-1])
   try:
     k=rmfdat.index_of('MATRIX')
     matrixname = 'MATRIX'
@@ -1506,10 +1508,15 @@ def get_response_ebins(rmf):
       raise
 
 
-  ret = rmfdat[matrixname].data['ENERG_LO']
-  ret = numpy.append(ret, rmfdat[matrixname].data['ENERG_HI'][-1])
+  specbins_in = rmfdat[matrixname].data['ENERG_LO']
+  specbins_in = numpy.append(specbins_in, rmfdat[matrixname].data['ENERG_HI'][-1])
 
-  return ret
+
+  specbins_out = rmfdat['EBOUNDS'].data['E_MIN']
+  specbins_out = numpy.append(specbins_out , rmfdat['EBOUNDS'].data['E_MAX'][-1])
+
+
+  return specbins_in, specbins_out
 
 
 def get_effective_area(rmf, arf=False):
@@ -1556,9 +1563,9 @@ def get_effective_area(rmf, arf=False):
     print("ERROR: unknown rmf type, %s"%(repr(type(rmf))))
     return
 
-  ebins = get_response_ebins(rmf)
+  ebins_in, ebins_out = get_response_ebins(rmf)
 
-  area = numpy.zeros(len(ebins)-1, dtype=float)
+  area = numpy.zeros(len(ebins_in)-1, dtype=float)
 
 
   try:
@@ -1582,7 +1589,7 @@ def get_effective_area(rmf, arf=False):
     area[ibin] = sum(i[matname])
 
   area *= arfarea
-  return ebins, area
+  return ebins_in, area
 
 
 class Session():
@@ -1903,7 +1910,8 @@ class Session():
       print("ERROR: unknown rmf type, %s"%(repr(type(rmf))))
       return
 
-    self.ebins_response = get_response_ebins(self.rmf)
+
+    self.specbins, self.ebins_response = get_response_ebins(self.rmf)
     self.binunits='keV'
     self.response_set = True
 
@@ -2203,15 +2211,14 @@ class Spec():
                                                 broadening=session.broaden, broadenunits=session.binunits)
       # make the spectrum on the response grid
         if session.response_set:
-          tmp = make_spectrum(session.ebins_response, self.index,\
+          tmp = make_spectrum(session.specbins, self.index,\
                               session.linedata, session.cocodata,\
                               'keV',elements=[Z],\
                               dolines=session.dolines,\
                               docont =session.docont,\
                               dopseudo =session.dopseudo)
 
-          session.ebins_response_out,self.spectrum_by_Z_withresp[Z] = apply_response(tmp, session.rmf, arf=session.arf)
-          print session.ebins_response_out
+          xxx,self.spectrum_by_Z_withresp[Z] = apply_response(tmp, session.rmf, arf=session.arf)
       self.recalc(session)
 
 
@@ -2679,7 +2686,7 @@ class NEISpec(Spec):
           self.spectrum_by_ion_withresp[Z] = {}
 
           for z1 in range(1, Z+2):
-            tmp = make_ion_spectrum(session.ebins_response, self.index,\
+            tmp = make_ion_spectrum(session.specbins, self.index,\
                                                 Z, z1, session.linedata, session.cocodata,\
                                                 'kev',\
                                                 dolines=session.dolines,\
@@ -2687,8 +2694,7 @@ class NEISpec(Spec):
                                                 dopseudo=session.dopseudo,\
                                                 broadening=session.broaden, broadenunits=session.binunits)
 
-            session.ebins_response_out,self.spectrum_by_ion_withresp[Z][z1] = apply_response(tmp, session.rmf, arf=session.arf)
-            print session.ebins_response_out
+            xxx,self.spectrum_by_ion_withresp[Z][z1] = apply_response(tmp, session.rmf, arf=session.arf)
       self.recalc(session)
 
 
@@ -3258,7 +3264,7 @@ class CXSession(Session):
       print("ERROR: unknown rmf type, %s"%(repr(type(rmf))))
       return
 
-    self.ebins_response = get_response_ebins(self.rmf)
+    self.specbins, self.ebins_response = get_response_ebins(self.rmf)
 
     self.binunits='keV'
     self.response_set = True
@@ -3624,7 +3630,7 @@ class CXSpec(Spec):
                             docont = docont,\
                             dopseudo = dopseudo,\
                             broadening=session.broaden, broadenunits=session.binunits)
-        session.ebins_response_out,self.spectrum_withresp = apply_response(tmp, session.rmf, arf=session.arf)
+        xxx,self.spectrum_withresp = apply_response(tmp, session.rmf, arf=session.arf)
       self.recalc(session)
 
 
@@ -3752,8 +3758,7 @@ class ACXSpec(Spec):
                             dopseudo = dopseudo,\
                             broadening=session.broaden, broadenunits=session.binunits)
 
-        session.ebins_response_out,self.spectrum_withresp = apply_response(tmp, session.rmf, arf=session.arf)
-        print session.ebins_response_out
+        xxx,self.spectrum_withresp = apply_response(tmp, session.rmf, arf=session.arf)
       self.recalc(session)
 
 
