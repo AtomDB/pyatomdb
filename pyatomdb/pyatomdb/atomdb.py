@@ -478,7 +478,7 @@ def dr_badnell(Te, c):
   Te_in, wasvec = util.make_vec(Te)
 
   ret = numpy.zeros(len(Te_in))
-  for i in range(len(c)/2):
+  for i in range(len(c)//2):
     if c[2*i] != 0.0:
       ret += c[2*i] * numpy.exp(-c[2*i+1]/Te_in)
   ret *= Te_in**-1.5
@@ -806,7 +806,10 @@ def get_filemap_file(ftype, Z, z1, fmapfile="$ATOMDB/filemap",\
                 atomic.spectroscopic_name(Z,z1))
 
   # convert from binary string to text filename
-  return ret.decode()
+  try:
+    return ret.decode()
+  except AttributeError:
+    return ret
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -1108,7 +1111,8 @@ def get_ion_lines(linefile, Z, z1, fullinfo=False):
 
 def get_line_emissivity( Z, z1, upind, loind, \
                          linefile="$ATOMDB/apec_line.fits",\
-                         ion_drv=False, elem_drv=False, use_nei=False):
+                         ion_drv=False, elem_drv=False, use_nei=False,\
+                         use_nei_raw=False):
 
   """
   Get the emissivity of a line as fn of temperature from APEC line file
@@ -1138,6 +1142,10 @@ def get_line_emissivity( Z, z1, upind, loind, \
     by default and an ionization balance applied. This should give the
     same results as normal for strong emissivities, but go to a lower
     emissivity before being set to zero. Use with caution...
+  use_nei_raw : bool
+    Return the emissivities by driving ion. This changes the epsilon returned
+    to no longer be a single array, but a dict where e.g. epsilon[5] is an
+    array of the spectrum with driving ion 5 (e.g. C V or similar)
 
   Returns
   -------
@@ -1163,7 +1171,7 @@ def get_line_emissivity( Z, z1, upind, loind, \
   #
 
 
-  if use_nei:
+  if use_nei | use_nei_raw:
     if linefile=="$ATOMDB/apec_line.fits":
       linefile = "$ATOMDB/apec_nei_line.fits"
 
@@ -1173,38 +1181,51 @@ def get_line_emissivity( Z, z1, upind, loind, \
   dens = a[1].data.field('eDensity')
   time = a[1].data.field('time')
 
-  epsilon = numpy.zeros(len(kT), dtype=float)
+  if use_nei_raw:
+    epsilon={}
+  else:
+    epsilon = numpy.zeros(len(kT), dtype=float)
 
   datacache={}
 
   for ikT in range(len(kT)):
 
     iikT = ikT + 2
+
+    aa=a[iikT].data
     if use_nei:
-      j = numpy.where((a[iikT].data.field("element") == Z) &\
-                      (a[iikT].data.field("ion") == z1) &\
-                      (a[iikT].data.field("UpperLev") == upind) &
-                      (a[iikT].data.field("LowerLev") == loind))[0]
+      j = aa[(aa["element"] == Z) &\
+             (aa["ion"] == z1) &\
+             (aa["UpperLev"] == upind) &
+             (aa["LowerLev"] == loind)]
       if len(j) == 0: continue
       ionbal = apec.solve_ionbal_eigen(Z,kT[ikT],teunit='keV', datacache=datacache)
       for jj in j:
-        print(ikT, a[iikT].data['Ion_drv'][jj], a[iikT].data['Epsilon'][jj], ionbal[a[iikT].data['Ion_drv'][jj]-1])
+        epsilon[ikT]+= jj['Epsilon']* ionbal[jj['Ion_drv']-1]
+    elif use_nei_raw:
+      j = aa[(aa["element"] == Z) &\
+             (aa["ion"] == z1) &\
+             (aa["UpperLev"] == upind) &
+             (aa["LowerLev"] == loind)]
+      for jj in j:
+        if not jj['Ion_drv'] in epsilon.keys():
+          epsilon[jj['Ion_drv']] = numpy.zeros(len(kT), dtype=float)
 
-        epsilon[ikT]+= a[iikT].data['Epsilon'][jj] * ionbal[a[iikT].data['Ion_drv'][jj]-1]
+        epsilon[jj['Ion_drv']][ikT]= jj['Epsilon']
     else:
       if ion_drv:
-        j = numpy.where((a[iikT].data.field("element") == Z) &\
-                        (a[iikT].data.field("ion") == z1) &\
-                        (a[iikT].data.field("ion_drv") == ion_drv) &\
-                        (a[iikT].data.field("UpperLev") == upind) &
-                        (a[iikT].data.field("LowerLev") == loind))[0]
+        j = aa[(aa["element"] == Z) &\
+               (aa["ion"] == z1) &\
+               (aa["ion_drv"] == ion_drv) &\
+               (aa["UpperLev"] == upind) &\
+               (aa["LowerLev"] == loind)]
       else:
-        j = numpy.where((a[iikT].data.field("element") == Z) &\
-                        (a[iikT].data.field("ion") == z1) &\
-                        (a[iikT].data.field("UpperLev") == upind) &
-                        (a[iikT].data.field("LowerLev") == loind))[0]
+        j = aa[(aa["element"] == Z) &\
+               (aa["ion"] == z1) &\
+               (aa["UpperLev"] == upind) &
+               (aa["LowerLev"] == loind)]
       if len(j) > 0:
-        epsilon[ikT] += sum(a[iikT].data.field("Epsilon")[j])
+        epsilon[ikT] += sum(j["Epsilon"])
   ret = {}
   ret['kT'] = kT
   ret['dens'] = dens
@@ -1215,6 +1236,7 @@ def get_line_emissivity( Z, z1, upind, loind, \
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
+
 def get_burgess_tully_transition_type(lolev, uplev, Aval):
 
   ll=lolev['l_quan']
@@ -4436,7 +4458,10 @@ def get_data(Z, z1, ftype, datacache=False, \
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.7.fits'%(atomic.Ztoelsymb(Z).lower())
 
     if 'bytes' in str(type(fname)):
-      fname = fname.decode()
+      try:
+        fname = fname.decode()
+      except AttributeError:
+        pass
 
     if fname=='':
           # This is expected if it's an ionbal file
