@@ -347,8 +347,6 @@ def calc_brems_gaunt(E, T, z1, brems_type, datacache=False, \
 
       iii = numpy.where(gaunt_ff > 0.99)[0]
       if len(iii) > 0:
-#        print "u too large at %i locations"%(len(iii))
-#        print Evec[iii]
          pass
         #zzz=raw_input()
       j = numpy.where(gaunt_ff<1.0)[0]
@@ -637,31 +635,11 @@ def extract_gauntff(Z, gamma2, gaunt_U, gaunt_Z, gaunt_Ng, gaunt_g2, gaunt_gf):
     # find the :"goo", interpolable values
   ii = numpy.where((gamma2>gaunt_g2[i,0]) &\
                    (gamma2<gaunt_g2[i,gaunt_Ng[i]-1]))[0]
-#    print "i=",i, "len(i)=", len(i)
-#    print "ii=",ii, "len(ii)=", len(ii)
-#    print "i[ii]=",i[ii]
-#    print "into the interpolation:"
   for iii in ii:
-#      print "---"
-#      print "iii=",iii
-#      print "i[iii]=",i[iii]
-#      print "gaunt_g2[i[iii]]", gaunt_g2[i[iii]]
-#      print "gaunt_gf[i[iii]]", gaunt_gf[i[iii]]
-#      print "gamma2", gamma2
-#
-#      print "len(GauntFFvec)", len(GauntFFvec)
-#      print "gamma2 = %e, "%(gamma2)
     ng = gaunt_Ng[i[iii]]
 
-#      for iv in xrange(len(gaunt_g2[i[iii]][:ng])):
-#        print "gaunt_g2[%i][%i] = %e, gaunt_gf[%i][%i]=%e"%(i[iii],iv,gaunt_g2[i[iii]][iv],\
-#                                                            i[iii],iv,gaunt_gf[i[iii]][iv])
-
-      #, gaunt_g2[i[iii]], gaunt_gf[i[iii]]
     GauntFFvec[iii] = 10**(numpy.interp(gamma2,gaunt_g2[i[iii]][:ng], \
                                         numpy.log10(gaunt_gf[i[iii]][:ng])))
-      #print "iii",iii, "GauntFFvec[iii]", GauntFFvec[iii]
-    #zzz=raw_input()
   ii = numpy.where(gamma2<gaunt_g2[i,0])[0]
   GauntFFvec[ii]=gaunt_gf[i[ii],0]
 
@@ -3573,15 +3551,15 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
 
 
     # gather all the level to level rates
-    print("calling gather_rates from run_apec_ion")
-    up, lo, rates = gather_rates(Z, z1, te, dens, datacache=datacache, settings=settings)
-    print("finished calling gather_rates from run_apec_ion")
-    # purge the datacache here, as this often requires heavy memory use
+      print("calling gather_rates from run_apec_ion")
+      up, lo, rates = gather_rates(Z, z1, te, dens, datacache=datacache, settings=settings)
+      print("finished calling gather_rates from run_apec_ion")
+      # purge the datacache here, as this often requires heavy memory use
       datacache={}
-    # solve everything
-    print("calling solve_level_pop from run_apec_ion")
-    lev_pop = solve_level_pop(up,lo,rates, settings)
-    print("finished calling solve_level_pop from run_apec_ion")
+      # solve everything
+      print("calling solve_level_pop from run_apec_ion")
+      lev_pop = solve_level_pop(up,lo,rates, settings)
+      print("finished calling solve_level_pop from run_apec_ion")
 
     # just in case, add zeros to lengthen the lev_pop appropriately
       if len(lev_pop) < nlev:
@@ -3593,23 +3571,20 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
   # now we have the level populations, make a line list for each ion
 
   # scale lev_pop by the ion and element abundance.
-    print("lev_pop Z=%i, z1=%i,z1_drv=%i, abund*ionfrac=%e, sum(pop)=%e:"%(Z,z1, z1, abund*ionfrac[z1-1], sum(lev_pop)*abund*ionfrac[z1-1]))
-#    for i in range(len(lev_pop)):
-#      print i, lev_pop[i]
-    lev_pop *= abund*ionfrac[z1-1]
-    for i in range(len(lev_pop)):
-      print(i, lev_pop[i])
+      print("lev_pop Z=%i, z1=%i,z1_drv=%i, abund*ionfrac=%e, sum(pop)=%e:"%(Z,z1, z1, abund*ionfrac[z1-1], sum(lev_pop)*abund*ionfrac[z1-1]))
+      lev_pop *= abund*ionfrac[z1-1]
+#      for i in range(len(lev_pop)):
+#        print(i, lev_pop[i])
 
-    print("calling do_lines from run_apec_ion")
-    linelist_exc,  continuum['twophot'] = do_lines(Z, z1, lev_pop, dens, datacache=datacache, settings=settings, z1_drv_in=z1_drv)
-    print("finished calling do_lines from run_apec_ion")
+      print("calling do_lines from run_apec_ion")
+      linelist_exc,  continuum['twophot'] = do_lines(Z, z1, lev_pop, dens, datacache=datacache, settings=settings, z1_drv_in=z1_drv)
+      print("finished calling do_lines from run_apec_ion")
 
 
-    print("Excitation Z=%i z1=%i z1_drv=%i created %i lines"%(Z, z1, z1_drv, len(linelist_exc)))
-  # remove this as this conversion now done to lev_pop before calling do_lines
-    #linelist_exc['epsilon']*=ionfrac[z1-1]*abund
-    #continuum['twophot']*=ionfrac[z1-1]*abund
+      print("Excitation Z=%i z1=%i z1_drv=%i created %i lines"%(Z, z1, z1_drv, len(linelist_exc)))
+
     else:
+      # skipping the exact level calculation, fill it with zeros, ground state with 1.
       lev_pop = numpy.zeros(nlev, dtype=float)
       lev_pop[0] = 1.0*abund*ionfrac[z1-1]
   else:
@@ -3729,8 +3704,8 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
         print("linelist_ion Z=%i, z1=%i,z1_drv=%i, nlines=%i:"%(Z,z1, z1_drv, len(linelist_ion_tmp)))
         print("Finished do_lines Z=%i, z1=%i, z1_drv=%i at %s"%(Z,z1,z1_drv,time.asctime()))
 
-          linelist_ion = numpy.append(linelist_ion, linelist_ion_tmp)
-          continuum['twophot']+=tmptwophot
+        linelist_ion = numpy.append(linelist_ion, linelist_ion_tmp)
+        continuum['twophot']+=tmptwophot
 
         lev_pop_parent = lev_pop
         z1+=1
@@ -4645,8 +4620,6 @@ def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
     frac_out = numpy.zeros([len(Te_vec),len(tau_vec),Z+1], dtype=float)
     for iTe, Te in enumerate(Te_vec):
       Tindex = numpy.argmin((telist-Te)**2)
-      print(d['EIGEN'].data[Tindex])
-      print(Tindex)
 
       lefteigenvec = numpy.zeros([Z,Z], dtype=float)
       righteigenvec = numpy.zeros([Z,Z], dtype=float)
@@ -4684,15 +4657,11 @@ def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
             frac[i+1] += worktmp[j]*righteigenvec[j][i]
           frac[i+1] += d['EIGEN'].data['FEQB'][Tindex][i+1]
 
-        print(frac)
-        print("sum(frac) pre -ve = ",sum(frac))
         if debug:
           frac_out[iTe, itau,:] = frac
         frac[frac<0.0] = 0.0
 
         if sum(frac)> 1.0:
-          print(frac)
-          print("sum(frac) pre norm = ",sum(frac))
           frac = frac/sum(frac)
         frac[0] = 1-sum(frac[1:])
         if not(debug):

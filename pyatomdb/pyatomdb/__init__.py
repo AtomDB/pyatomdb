@@ -5,8 +5,9 @@ from . import spectrum
 from . import atomic
 import ctypes
 from . import apec
-import sys
-__version__="0.5.4"
+import sys, glob
+
+__version__="0.6.0"
 
 try:
   PATH = os.path.dirname(__file__)
