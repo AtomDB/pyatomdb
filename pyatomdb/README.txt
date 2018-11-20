@@ -131,3 +131,6 @@ June 14th 2018: Bugfixes: NEI spectrum session fixed to assign bin units correct
 0.5.4
 September 03rd 2018: Bugfix: NEI spectrum.Session.set_specbins now correctly resets the spectra when changed. Thanks to Shinya Nakashima for discovering this bug.
 
+
+0.6.0
+November 20th 2018: Switch to python 3 support only. Python 2.7 support available for now through Github

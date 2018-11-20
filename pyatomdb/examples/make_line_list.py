@@ -34,7 +34,7 @@ Te = 1e7
 res = pyatomdb.spectrum.list_lines(wl,Te=Te, teunit='K', minepsilon=1e-18)
 
 # reprocess lines for printing
-print "Unsorted line list:"
+print("Unsorted line list:")
 pyatomdb.spectrum.print_lines(res)
 
 # re-sort lines, for a giggle
@@ -42,12 +42,12 @@ pyatomdb.spectrum.print_lines(res)
 # http://docs.scipy.org/doc/numpy/reference/generated/numpy.sort.html
 
 res.sort(order=['Epsilon'])
-print "sorted by Emissivity:"
+print("sorted by Emissivity:")
 pyatomdb.spectrum.print_lines(res)
 
 # re-sort by element, ion then emissivity
 res.sort(order=['Element','Ion','Epsilon'])
-print "sorted by Element, Ion, Emissivity:"
+print("sorted by Element, Ion, Emissivity:")
 pyatomdb.spectrum.print_lines(res)
 
 
@@ -58,7 +58,7 @@ res_nei = pyatomdb.spectrum.list_nei_lines(wl,Te=Te, teunit='K', \
                                            minepsilon=1e-18,\
                                            Te_init=Te_init,\
                                            tau = tau)
-print "NEI linelist (this takes a while):"
+print("NEI linelist (this takes a while):")
 pyatomdb.spectrum.print_lines(res_nei)
                         
 

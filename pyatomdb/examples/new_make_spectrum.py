@@ -39,9 +39,9 @@ data.set_abund([1,2,3,4,26],0.5)
 s2=data.return_spectra(4.1, teunit='keV')
 t2 = time.time()
 
-print "first spectrum took %g seconds" %(t1-t0)
-print "second spectrum took %g seconds" %(t2-t1)
-print "note how much faster the second one was as I didn't recalculate everything from scratch!"
+print("first spectrum took %g seconds" %(t1-t0))
+print("second spectrum took %g seconds" %(t2-t1))
+print("note how much faster the second one was as I didn't recalculate everything from scratch!")
 
 
 #linedata = pyatomdb.pyfits.open('/export1/atomdb_latest/apec_v3.0.8_line.fits')
@@ -71,4 +71,4 @@ ax.plot(ebins, s2, drawstyle='steps')
 #ax2.plot(elo, s/spec, drawstyle='steps')
 
 
-zzz=raw_input('Press enter to exit')
+zzz=input('Press enter to exit')
