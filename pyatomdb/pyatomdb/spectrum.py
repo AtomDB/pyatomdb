@@ -1467,12 +1467,12 @@ def apply_response(spectrum, rmf, arf=False):
       lobound += nchan[j]
   t7 = time.time()
 
-  print("2: %f\n3: %f\n4: %f\n5: %f\n6: %f\n7: %f\n"%(t2-t1,\
-                                                      t3-t2,\
-                                                      t4-t3,\
-                                                      t5-t4,\
-                                                      t6-t5,\
-                                                      t7-t6))
+#  print("2: %f\n3: %f\n4: %f\n5: %f\n6: %f\n7: %f\n"%(t2-t1,\
+#                                                      t3-t2,\
+#                                                      t4-t3,\
+#                                                      t5-t4,\
+#                                                      t6-t5,\
+#                                                      t7-t6))
 
 
 #  print spectrum[:100]

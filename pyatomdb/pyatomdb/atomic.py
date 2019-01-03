@@ -56,13 +56,13 @@ import re, numpy
 def Ztoelsymb(Z) :
   """
   Returns element symbol of element with nuclear charge Z.
-  
+
   INPUTS
   Z  - nuclear charge of element (e.g. 6 for carbon)
-  
+
   RETURNS
   element symbol (e.g. "C" for carbon)
-  
+
   Version 0.1 28 July 2009
   Adam Foster
   """
@@ -96,18 +96,18 @@ def z0toelsymb(z0):
   """
   Returns element symbol of element with nuclear charge z0.
   (wrapper to Ztoelsymb for compatibility purposes)
-  
+
   Parameters
   ----------
   z0 : int
     nuclear charge of element (e.g. 6 for carbon)
-  
+
   Returns
   -------
   str
     element symbol (e.g. "C" for carbon)
   """
-#  
+#
 #  Version 0.1 28 July 2009
 #  Adam Foster
 #
@@ -140,13 +140,13 @@ def z0toelname(z0):
   """
   Returns element name of element with nuclear charge z0.
   (wrapper to Ztoelname for compatibility purposes)
-  
+
   Parameters
   ----------
-  
+
   z0 :  int
     nuclear charge of element (e.g. 6 for carbon)
-  
+
   Returns
   -------
   str
@@ -163,13 +163,13 @@ def z0toelname(z0):
 def Ztoelname(Z):
   """
   Returns element name of element with nuclear charge Z.
-  
+
   Parameters
   ----------
-  
+
   Z :  int
     nuclear charge of element (e.g. 6 for carbon)
-  
+
   Returns
   -------
   str
@@ -348,25 +348,25 @@ def roman_to_int(input):
 def spectroscopic_name(Z,z1) :
   """
   Converts Z,z1 to spectroscopic name, e.g. 6,5 to "C V"
-  
+
   Parameters
   ----------
-  
+
   Z : int
     nuclear charge (e.g. 6 for C)
   z1 : int
     ion charge +1 (e.g. 5 for C4+)
-   
+
   Returns
   -------
   str
     spectroscopic symbol for ion (e.g. "C V" for C+4)
-  
+
   """
 #
 #  Version 0.1 28 July 2009
-#  Adam Foster 
-#    
+#  Adam Foster
+#
     # get element symbol
   elsymb = Ztoelsymb(Z)
 
@@ -400,10 +400,10 @@ def spectroscopic_name(Z,z1) :
 def spectroscopictoz0(name):
   """
   Converts spectroscopic name to Z, z1, e.g. "C V" to 6,5
-  
+
   Parameters
   ----------
-  
+
   name : str
     Ion name, e.g. "C V"
 
@@ -411,25 +411,25 @@ def spectroscopictoz0(name):
   -------
   int, int
     Z, z1 for the ion. (e.g. 6,5 for C V)
-  
+
   """
-#  
+#
 #  Version 0.1 28 July 2009
-#  Adam Foster 
+#  Adam Foster
 #
 # convert name (e.g. Fe VIII) to z0 & ioncharge (=0 for neutral)
 
     # get element symbol
   d = name.split()
-  
+
   elsymb = d[0]
   chargesymb = d[1]
-  
+
   z0 = elsymb_to_z0(elsymb)
-  
+
   z1 = roman_to_int(chargesymb)
   z=z1-1
-  
+
   return z0,z
 
 
@@ -469,12 +469,12 @@ def occup_to_cfg(occlist) :
       l += 1
     if (i > 0):
       cfgstr = cfgstr+' '+repr(n)+l_list[l]+repr(i)
-    
+
 # return minus leading blank
-  
+
   return cfgstr.strip()
-      
-    
+
+
 #*******************************************************************************
 #*******************************************************************************
 #*******************************************************************************
@@ -498,10 +498,10 @@ def occup_to_cfg(occlist) :
 def elsymb_to_Z(elsymb) :
   """
   Converts element symbol to nuclear charge, e.g. "C" -> 6
-  
+
   Parameters
   ----------
-  
+
   elsymb : str
     Element symbol, e.g. "C". Case insensitive.
 
@@ -510,9 +510,9 @@ def elsymb_to_Z(elsymb) :
   int
     Z for the ion. (e.g. 6 for C)
   """
-#  
+#
 #  Version 0.1 28 July 2009
-#  Adam Foster 
+#  Adam Foster
 #
   ellist=('h' , 'he', 'li', 'be', 'b' , 'c' , 'n' , 'o' , 'f' , 'ne',
           'na', 'mg', 'al', 'si', 'p' , 's' , 'cl', 'ar', 'k' , 'ca',
@@ -530,17 +530,17 @@ def elsymb_to_Z(elsymb) :
   except ValueError:
     print("elsymb_to_z0 error: invalid element symbol '"+elsymb+"', returning -1")
     ind=-1
-  
+
   return ind+1
-      
+
 def elsymb_to_z0(elsymb) :
   """
   Converts element symbol to nuclear charge, e.g. "C" -> 6
   (wrapper to elsymb_to_Z, retained for consistency)
-  
+
   Parameters
   ----------
-  
+
   elsymb : str
     Element symbol, e.g. "C". Case insensitive.
 
@@ -573,12 +573,12 @@ def elsymb_to_z0(elsymb) :
 def z0_to_mass(z0):
   """
   Converts element symbol to atomic mass, e.g. "C" -> 12.0107
-  
+
   (wrapper to Z_to_mass, retained for consistency)
-  
+
   Isotope fractions based on those found in earth's crust samples, your
   astrophysical object may vary.
-  
+
   Parameters
   ----------
   z0 : int
@@ -593,14 +593,14 @@ def z0_to_mass(z0):
   ----------
   Atomic masses are taken from:
   Pure Appl. Chem. 81 NO 11, 2131-2156 (2009)
-  Masses for Technetium, Promethium, Polonium, Astatine, Radon, 
+  Masses for Technetium, Promethium, Polonium, Astatine, Radon,
   Francium, Radium & Actinum are estimates. If you need these you
   probably aren't doing astronomy...
 
   """
-#  
+#
 #  Version 0.1 28 July 2009
-#  Adam Foster 
+#  Adam Foster
 #
   ret = Z_to_mass(z0)
   return ret
@@ -608,10 +608,10 @@ def z0_to_mass(z0):
 def Z_to_mass(Z):
   """
   Converts element symbol to atomic mass, e.g. "C" -> 12.0107
-  
+
   Isotope fractions based on those found in earth's crust samples, your
   astrophysical object may vary.
-  
+
   Parameters
   ----------
   Z : int
@@ -621,18 +621,18 @@ def Z_to_mass(Z):
   -------
   float
     mass in a.m.u. for the element. (e.g. 12.0107 for C)
-  
+
   References
   ----------
   Atomic masses are taken from:
   Pure Appl. Chem. 81 NO 11, 2131-2156 (2009)
-  Masses for Technetium, Promethium, Polonium, Astatine, Radon, 
+  Masses for Technetium, Promethium, Polonium, Astatine, Radon,
   Francium, Radium & Actinum are estimates. If you need these you
   probably aren't doing astronomy...
-  
+
   """
 #  Version 0.1 28 July 2009
-#  Adam Foster 
+#  Adam Foster
 #
   masslist=( 1.00794   ,   4.002602,   6.941    ,   9.012182 ,  10.811    ,
             12.0107    ,  14.0067  ,  15.9994   ,  18.9984032,  20.1797   ,
@@ -686,7 +686,7 @@ def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
     l.append(llist.index(ltmp.group(0)))
     otmp = re.search("[0-9]+$",cfg)
     o.append(int(otmp.group(0)))
-    
+
   # find the max nl shell
   if shlmax == -1:
     maxshl = -1
@@ -698,7 +698,7 @@ def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
       maxshl = max([maxshl, shlind])
   else:
     maxshl=shlmax
-#  print maxshl    
+#  print maxshl
   occup = numpy.zeros(maxshl, dtype=int)
 #  print occup
   for i in range(len(n)):
@@ -707,10 +707,10 @@ def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
       for iin in range(1,n[i]):
         shlind = shlind + iin
       shlind = shlind + l[i]
-#    print shlind, n[i], l[i], o[i]  
+#    print shlind, n[i], l[i], o[i]
 #    print occup, shlind
     occup[shlind] = occup[shlind] + o[i]
-       
+
   inext = 0
   lnext = 0
   nnext = 1
@@ -733,15 +733,15 @@ def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
   #          print occup
         else:
           break
-      
-        
+
+
         if nnext-lnext == 1:
           nnext += 1
           lnext = 0
-        else: 
+        else:
           lnext += 1
 
-  
+
     inext = 0
     lnext = 0
     nnext = 1
@@ -755,11 +755,11 @@ def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
           occup[inext] += nel-sum(occup)
         else:
           occup[inext] += onext
-      
+
       if nnext-lnext == 1:
         nnext += 1
         lnext = 0
-      else: 
+      else:
         lnext += 1
       onext = 4*lnext+2
       inext += 1
@@ -788,12 +788,12 @@ def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
 ##            (nel_tot, nnext, nel_targ)
       # if the number of electrons match
       if nel_tot == nel_targ: continue
-      
+
       if nel_tot > nel_targ:
         print("ERROR: more electron in n=%i shell than there should be for %s" %\
             (nnext, cfgstr))
         print("   %i vs %i" %(nel_tot, nel_targ))
-        
+
       while nel_tot< nel_targ:
 ##        print occup
         #find empty l shells
@@ -803,12 +803,12 @@ def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
 ##          print "shell_l[il]*4+2=%i, nel_targ-nel_tot=%i" % \
 ##                (shell_l[il]*4+2,nel_targ-nel_tot)
 ##          print "occup[%i] = %i" %(il, occup[il])
-          if ((occup[il]==0) &(shell_l[il]*4+2 <= (nel_targ-nel_tot))): 
+          if ((occup[il]==0) &(shell_l[il]*4+2 <= (nel_targ-nel_tot))):
             lposs.append(shell_l[il])
 ##            print "Good!"
         # get number of occupancies
         shell_occup = numpy.array(lposs)*4+2
-        
+
         delta_nel = nel_targ - nel_tot
         k = numpy.where(shell_occup == delta_nel)[0]
 ##        print "k=",k
@@ -823,17 +823,17 @@ def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
 ##          print nnext, lposs
           ind = numpy.where((shell_n==nnext) & (shell_l==lposs[0]))[0][0]
           occup[ind] = shell_occup[0]
-          
+
         nel_tot = sum(occup[i])
 ##        zzz=raw_input()
-      
-    
+
+
   if ((nel > 0) & (sum(occup) != nel)):
 #    print occup
     return occup,False
   else:
     return occup, True
-    
+
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
@@ -841,14 +841,14 @@ def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
 
 def occup_to_config(occup):
   llist='spdfghiklmnopqrstuvwxyz'
-  
+
   s = ''
   lnext = 0
   nnext = 1
   for i,j in enumerate(occup):
     if j > 0:
       s = s+ repr(nnext)+llist[lnext]+repr(j)+' '
-    
+
     if nnext-lnext==1:
       lnext = 0
       nnext += 1
@@ -863,7 +863,7 @@ def occup_to_config(occup):
 def parse_config(cfgstr):
  # returns n shell, l shell and occupancy for each part of the configuration
  # e.g. [[1,0,2],[2,1,1]] for 1s2 2p1
- 
+
   #split on space
   try:
     c = cfgstr.decode('ascii').split()
@@ -872,7 +872,7 @@ def parse_config(cfgstr):
 
 
   llist= 'spdfghiklmnoqrtuvwxyz'
-  
+
   ret=[]
   for ic in c:
     cfg = []
@@ -882,17 +882,17 @@ def parse_config(cfgstr):
     cfg.append(llist.index(ltmp.group(0)))
     otmp = re.search("[0-9]+$",ic)
     cfg.append(int(otmp.group(0)))
-   
-    ret.append(cfg)    
+
+    ret.append(cfg)
   return ret
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 def get_parity(cfgstr):
   d = parse_config(cfgstr)
-  
+
   evenparity = True
-  
+
   for i in d:
     if i[1]*i[2] % 2 == 1:
       evenparity = not(evenparity)
@@ -900,14 +900,14 @@ def get_parity(cfgstr):
   if evenparity:
     return 0
   else:
-    return 1      
+    return 1
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
-    
+
 def get_maxn(cfgstr):
   d = parse_config(cfgstr)
-  
+
   maxn = max([c[0] for c in d])
 
   return maxn
@@ -916,9 +916,9 @@ def get_maxn(cfgstr):
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
-    
+
 def parse_eissner(cfgstr, nel=0):
-  shelllist='123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxy'
+  shelllist='123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
   llist = 'spdfghiklmnoqrtuvwxyz'
   cfg = cfgstr.strip()
   try:
@@ -954,7 +954,7 @@ def parse_eissner(cfgstr, nel=0):
   i=0
   while i < len(cfg):
     cfgtmp = cfg[i:i+3]
-    print(cfgtmp)
+    #print(cfgtmp)
     if cfgtmp[-1].islower():
       if len(cfg)>=i+4:
         if cfg[i+3].islower():
@@ -962,13 +962,13 @@ def parse_eissner(cfgstr, nel=0):
     #if 'z' in cfgtmp:
     #  cfgtmp = cfg[i:i+4]
     i += len(cfgtmp)
-    
+
     nelec = int(cfgtmp[:2])-50
     if len(cfgtmp)==3:
       ishell = shelllist.index(cfgtmp[2])
     else:
       ishell = shelllist.index(cfgtmp[3])-9+len(shelllist)
-      
+
     n=1
     l=0
     for ii in range(ishell):
@@ -980,7 +980,7 @@ def parse_eissner(cfgstr, nel=0):
     lsymb = llist[l]
     ret += "%i%s%i "%(n,lsymb,nelec)
   ret = ret[:-1]
-  
+
   return ret
 
 
