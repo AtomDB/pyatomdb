@@ -927,11 +927,15 @@ def parse_eissner(cfgstr, nel=0):
     pass
   cfgcopy = cfg+' '
   cfgcopy = cfgcopy[:-1]
+
   # now deal with double letters
 #  for i in range(len(cfg)-1):
 #    if cfg[i].islower() and cfg[i+1].islower():
 #      cfg=cfg[:i]+'$^'+cfg[i+1:]
-  #cfg = re.sub('^', '', cfgcopy)
+#  cfg = re.sub('^', '', cfgcopy)
+
+#  print(cfg)
+
   if len(cfg)%3 == 0:
     # find the initial split. Want configuration to start with 5 (or 6, or 7)
     if cfg[0] in['5','6','7']:
@@ -959,7 +963,7 @@ def parse_eissner(cfgstr, nel=0):
       if len(cfg)>=i+4:
         if cfg[i+3].islower():
           cfgtmp=cfg[i:i+4]
-    #if 'z' in cfgtmp:
+    #if re.search('[a-z][a-zA-Z]',''):
     #  cfgtmp = cfg[i:i+4]
     i += len(cfgtmp)
 
@@ -967,7 +971,8 @@ def parse_eissner(cfgstr, nel=0):
     if len(cfgtmp)==3:
       ishell = shelllist.index(cfgtmp[2])
     else:
-      ishell = shelllist.index(cfgtmp[3])-9+len(shelllist)
+      ishell = shelllist.index(cfgtmp[3])-35+len(shelllist)
+
 
     n=1
     l=0
