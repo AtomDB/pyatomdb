@@ -19,7 +19,7 @@ Adam Foster August 28th 2015
 
 import os, datetime, numpy, re, time, getpass
 import urllib.request, urllib.error, urllib.parse
-from . import util, apec, const, atomic
+from . import util, apec, const, atomic, spectrum
 
 import astropy.io.fits as pyfits
 from scipy import stats, integrate
@@ -66,9 +66,16 @@ def write_filemap(d, filemap, atomdbroot=''):
     else:
       # see if the ATOMDB environment variable is set
       if 'ATOMDB' in list(os.environ.keys()):
-        d['misc'][i] = re.sub(os.environ['ATOMDB'],'$ATOMDB',d['misc'][i])
+        try:
+          d['misc'][i] = d['misc'][i].decode('ascii')
+        except:
+          pass
+        print(os.environ['ATOMDB'])
+        print('$ATOMDB')
+        print(d['misc'][i])
+        d['misc'][i] = re.sub(os.environ['ATOMDB'],'$ATOMDB',d['misc'][i].decode('ascii'))
     a.write('%2i %2i %2i ' % (d['misc_type'][i], 0, -1)+\
-                              d['misc'][i]+'\n')
+                              d['misc'][i].decode('ascii')+'\n')
 
   tlist = ['ir','lv','la','ec','pc','dr','em','pi','ai','ci']
   for i in range(0, len(d['Z'])):
@@ -86,15 +93,16 @@ def write_filemap(d, filemap, atomdbroot=''):
         else:
           # see if the ATOMDB environment variable is set
           if 'ATOMDB' in list(os.environ.keys()):
-            d[tt][i] = re.sub(os.environ['ATOMDB'],'$ATOMDB',d[tt][i])
+            d[tt][i] = re.sub(os.environ['ATOMDB'],'$ATOMDB',d[tt][i].decode('ascii'))
 
 
 
 
         y = t
         if t>=10: y+=10
-        a.write('%2i %2i %2i ' % (y, d['Z'][i], d['z1'][i])+\
-                              d[tt][i]+'\n')
+        if len(d[tt][i].decode('ascii')) > 0:
+          a.write('%2i %2i %2i ' % (y, d['Z'][i], d['z1'][i])+\
+                                d[tt][i].decode('ascii')+'\n')
 
   a.close()
   return
@@ -2832,6 +2840,7 @@ def get_ionrec_rate(Te_in, irdat_in, lvdat_in=False, Te_unit='K', \
     return -1
 
   if (z1>=0) &( Z>=0):
+
     lvdat = get_data(Z,z1, 'LV',settings=settings, datacache=datacache)
   elif isinstance(lvdat_in, str):
     #string (assumed filename)
@@ -3967,7 +3976,7 @@ def read_filemap(filemap="$ATOMDB/filemap", atomdbroot="$ATOMDB"):
   for i in f:
 #    print i
     splt = i.split()
-#    print splt
+    print( splt)
     fname = os.path.expandvars(splt[3])
     Z_tmp = int(splt[1])
     z1_tmp = int(splt[2])
@@ -4373,6 +4382,10 @@ def get_data(Z, z1, ftype, datacache=False, \
 
         fname = get_filemap_file(ftype, Z, z1, fmapfile=fmapfile,\
                                atomdbroot=atomdbroot, quiet=True)
+        try:
+          fname = fname.decode('ascii')
+        except:
+          pass
 
         if fname=='':
         # no data exists
@@ -4387,16 +4400,17 @@ def get_data(Z, z1, ftype, datacache=False, \
         # (3) atomdburl/filename+'.gz'
 
           try:
+            print("fname", fname)
             d = pyfits.open(fname)
-          except IOError:
+          except FileNotFoundError:
             try:
-              d = pyfits.open(fname+b'.gz')
-            except IOError:
+              d = pyfits.open(fname+'.gz')
+            except FileNotFoundError:
               if offline:
                 d = False
               else:
                 url = re.sub(os.path.expandvars(atomdbroot),\
-                             'ftp://sao-ftp.harvard.edu/AtomDB',fname)+b'.gz'
+                             'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
                 try:
                   d = pyfits.open(url, cache=False)
                   didurl=True
@@ -5714,9 +5728,9 @@ def lorentz_neilines(version):
     llist_lo_out = llist_lo_out[-1000:]
 
     print('saving llist_up_out to llist_up_out.pkl')
-    pickle.dump(llist_up_out, open('llist_up_out_%i.pkl'%(irun),'w'))
+    pickle.dump(llist_up_out, open('llist_up_out_%i.pkl'%(irun),'wb'))
     print('saving llist_lo_out to llist_lo_out.pkl')
-    pickle.dump(llist_lo_out, open('llist_lo_out_%i.pkl'%(irun),'w'))
+    pickle.dump(llist_lo_out, open('llist_lo_out_%i.pkl'%(irun),'wb'))
 
 
 
