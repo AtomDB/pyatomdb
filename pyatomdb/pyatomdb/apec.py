@@ -579,7 +579,7 @@ def calc_brems_gaunt(E, T, z1, brems_type, datacache=False, \
 
     #other energy
     i = numpy.where((u>=Uvec[0]) & (u <=Uvec[-1]))[0]
-    gaunt_ff[i] = numpy.interp(u,Uvec, GauntFFvec)
+    gaunt_ff[i] = numpy.interp(u[i],Uvec, GauntFFvec)
 
     if not Eisvec:
       gaunt_ff = gaunt_ff[0]
