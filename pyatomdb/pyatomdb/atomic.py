@@ -971,8 +971,7 @@ def parse_eissner(cfgstr, nel=0):
     if len(cfgtmp)==3:
       ishell = shelllist.index(cfgtmp[2])
     else:
-      ishell = shelllist.index(cfgtmp[3])-35+len(shelllist)
-
+      ishell = shelllist.index(cfgtmp[3])-35+len(shelllist)+(26*(shelllist.index(cfgtmp[2])-35))
 
     n=1
     l=0
