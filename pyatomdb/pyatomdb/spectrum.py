@@ -2973,26 +2973,26 @@ class CXSession(Session):
     -----
     Velocity types are described here in ACX manual.
 
-    +=====+===================+==================================+
-    |Value| n distribution    | l, L distribution                |
-    +-----+-------------------+----------------------------------+                                                                               |
-    |  1  | one n shell       | even distribution by  l.         |
-    |  2  | one n shell       | statistical distribution by l.   |
-    |  3  | one n shell       | Landau-Zener distribution by  l. |
-    |  4  | one n shell       | Separable distribution by l.     |
-    |  5  | weighted 2 shells | even distribution by  l.         |
-    |  6  | weighted 2 shells | statistical distribution by l.   |
-    |  7  | weighted 2 shells | Landau-Zener distribution by l.  |
-    |  8  | weighted 2 shells | Separable distribution by l.     |
-    |  9  | one n shell       | even distribution by L.          |
-    | 10  | one n shell       | statistical distribution by L.   |
-    | 11  | one n shell       | Landau-Zener distribution by L.  |
-    | 12  | one n shell       | Separable distribution by L.     |
-    | 13  | weighted 2 shells | even distribution by L.          |
-    | 14  | weighted 2 shells | statistical distribution by L.   |
-    | 15  | weighted 2 shells | Landau-Zener distribution by L.  |
-    | 16  | weighted 2 shells | Separable distribution by L.     |
-    +=====+===================+==================================+
+    ===== =================== ==================================  
+    Value  n distribution      l, L distribution                  
+    ===== =================== ==================================  
+      1    one n shell         even distribution by  l.           
+      2    one n shell         statistical distribution by l.     
+      3    one n shell         Landau-Zener distribution by  l.   
+      4    one n shell         Separable distribution by l.       
+      5    weighted 2 shells   even distribution by  l.           
+      6    weighted 2 shells   statistical distribution by l.     
+      7    weighted 2 shells   Landau-Zener distribution by l.    
+      8    weighted 2 shells   Separable distribution by l.       
+      9    one n shell         even distribution by L.            
+     10    one n shell         statistical distribution by L.     
+     11    one n shell         Landau-Zener distribution by L.    
+     12    one n shell         Separable distribution by L.       
+     13    weighted 2 shells   even distribution by L.            
+     14    weighted 2 shells   statistical distribution by L.     
+     15    weighted 2 shells   Landau-Zener distribution by L.    
+     16    weighted 2 shells   Separable distribution by L.       
+    ===== =================== ==================================  
     """
     self.acxmodel=dist
 
