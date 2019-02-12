@@ -19,7 +19,7 @@ try:
     liblinapprox_file = os.path.join(PATH,g[0])
 
   liblinapprox = ctypes.CDLL( liblinapprox_file, ctypes.RTLD_GLOBAL)
-except OSError:
+except OSError, IndexError:
   on_rtd=os.environ.get('READTHEDOCS')=='True'
   if on_rtd:
     pass
