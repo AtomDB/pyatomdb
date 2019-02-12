@@ -4,3 +4,5 @@ wget
 sphinx
 scipy
 requests
+joblib
+
