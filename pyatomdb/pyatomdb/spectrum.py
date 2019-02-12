@@ -3008,8 +3008,8 @@ class CXSession(Session):
     teunit : string
       Units for the temperature. keV or A.
 
-    Return
-    ------
+    Returns
+    -------
     none
 
     Notes

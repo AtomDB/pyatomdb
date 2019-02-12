@@ -57,10 +57,12 @@ def Ztoelsymb(Z) :
   """
   Returns element symbol of element with nuclear charge Z.
 
-  INPUTS
+  PARAMETERS
+  ----------
   Z  - nuclear charge of element (e.g. 6 for carbon)
 
   RETURNS
+  -------
   element symbol (e.g. "C" for carbon)
 
   Version 0.1 28 July 2009
@@ -996,8 +998,8 @@ def shorten_config(cfgstr, nel=0):
   """
   Shorten the configuration as required
 
-  INPUTS
-  ------
+  PARAMETERS
+  ----------
   cfgstr : string
     configuration string. Should be simplified already e.g. '1s2 2s2 3p1'
 
