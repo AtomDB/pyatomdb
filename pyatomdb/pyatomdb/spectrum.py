@@ -15,7 +15,7 @@ except ImportError:
   import pyfits
 
 import numpy, os
-# other pystomdb modules
+# other pyatomdb modules
 from . import atomic, util, const, atomdb, apec
 
 import time
@@ -3029,10 +3029,10 @@ class CXSession(Session):
 
   def return_spectra(self, collision, raw=False):
     """
-    Get the spectrum at an exact temperature.
-    Interpolates between 2 neighbouring spectra
+    Get the spectrum at an exact collision velocity or energy.
+    Interpolates between 2 neighbouring valules if required
 
-    Finds HDU with kT closest ro desired kT in given line or coco file.
+    Finds HDU with kT closest to desired kT in given line or coco file.
 
     Opens the line or coco file, and looks for the header unit
     with temperature closest to te. Use result as index input to make_spectrum
