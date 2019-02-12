@@ -5,4 +5,7 @@ sphinx
 scipy
 requests
 joblib
-
+getpass
+gzip
+tarfile
+ftplib
