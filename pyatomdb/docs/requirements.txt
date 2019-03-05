@@ -5,6 +5,5 @@ sphinx
 scipy
 requests
 joblib
-gzip
 tarfile
 ftplib
