@@ -3976,7 +3976,7 @@ def read_filemap(filemap="$ATOMDB/filemap", atomdbroot="$ATOMDB"):
   for i in f:
 #    print i
     splt = i.split()
-    print( splt)
+#    print( splt)
     fname = os.path.expandvars(splt[3])
     Z_tmp = int(splt[1])
     z1_tmp = int(splt[2])
@@ -4342,18 +4342,21 @@ def get_data(Z, z1, ftype, datacache=False, \
         # (1) filename
         # (2) filename+'.gz'
         # (3) atomdburl/filename+'.gz'
-
+          if isinstance(fname, str):
+            pass
+          else:
+            fname = fname.decode('ascii')
           try:
             d = pyfits.open(fname)
           except IOError:
             try:
-              d = pyfits.open(fname+b'.gz')
+              d = pyfits.open(fname+'.gz')
             except IOError:
               if offline:
                 d = False
               else:
                 url = re.sub(os.path.expandvars(atomdbroot),\
-                             'ftp://sao-ftp.harvard.edu/AtomDB',fname)+b'.gz'
+                             'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
                 try:
                   d = pyfits.open(url, cache=False)
                   didurl=True
