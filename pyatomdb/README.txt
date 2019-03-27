@@ -134,3 +134,6 @@ September 03rd 2018: Bugfix: NEI spectrum.Session.set_specbins now correctly res
 
 0.6.0
 November 20th 2018: Switch to python 3 support only. Python 2.7 support available for now through Github
+
+0.7.0
+Bug fixes aplenty, mostly due to python 3 conversion.
