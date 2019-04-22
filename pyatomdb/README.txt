@@ -137,3 +137,8 @@ November 20th 2018: Switch to python 3 support only. Python 2.7 support availabl
 
 0.7.0
 Bug fixes aplenty, mostly due to python 3 conversion.
+
+0.7.1
+April 22nd 2019: Fixed bug occuring with spectrum continuum broadening.
+
+

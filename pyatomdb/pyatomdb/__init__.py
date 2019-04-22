@@ -7,7 +7,7 @@ import ctypes
 from . import apec
 import sys, glob
 
-__version__="0.7.0"
+__version__="0.7.1"
 
 try:
   PATH = os.path.dirname(__file__)
