@@ -31,15 +31,15 @@ ax.set_xlabel('Energy (keV)')
 ax.set_ylabel('Emissivity (ph cm$^{3}$ s$^{-1}$ bin$^{-1}$)')
 ax.legend(loc=0)
 pylab.draw()
-zzz = raw_input("Press enter to continue")
+zzz = input("Press enter to continue")
 
-print "Listing lines between 1 and 2 A"
+print("Listing lines between 1 and 2 A")
 # now list the lines in a wavelength region
 llist = pyatomdb.spectrum.list_lines([1,2.0], index=ite)
 # print these to screen
 pyatomdb.spectrum.print_lines(llist)
 # print to screen, listing the energy, not the wavelength
-print "Listing lines between 1 and 2 A, using keV."
+print("Listing lines between 1 and 2 A, using keV.")
 
 pyatomdb.spectrum.print_lines(llist, specunits = 'keV')
 

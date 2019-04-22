@@ -24,7 +24,7 @@ pyatomdb.util.initialize()
 # this routine downloads a bunch of files and sets things up for you. It will 
 # take a few minutes, depending on your internet connection.
 
-print "Install complete!"
+print("Install complete!")
 
 #and that's it!
 

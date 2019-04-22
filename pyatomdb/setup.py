@@ -23,10 +23,10 @@ readme = open('README.txt', 'r')
 README_TEXT = readme.read()
 readme.close()
 
-linapprox =  Extension('linear_approx',\
+linapprox =  Extension("linear_approx",['linear_approx.c'],\
                        define_macros = [('MAJOR_VERSION', '1'),\
-                                        ('MINOR_VERSION','0')],\
-                       sources=['linear_approx.c'])
+                                        ('MINOR_VERSION','0')])
+
 
 
 
@@ -63,14 +63,14 @@ setup(name='pyatomdb',
                    'Intended Audience :: Science/Research',\
                    'Topic :: Scientific/Engineering :: Astronomy',\
                    'Topic :: Scientific/Engineering :: Physics',\
-                   'Programming Language :: Python',\
+                   'Programming Language :: Python :: 3',\
                    'Operating System :: POSIX'],
       zip_safe=False,
       long_description = README_TEXT,\
       install_requires=[
       "requests",\
       "wget",\
-      "numpy",\
+      "numpy>=1.9.0",\
       "scipy",\
       "joblib",\
       "mock",\

@@ -111,3 +111,29 @@ March 21st 2017: Several bug fixes and enhancements to the spectrum module. Upda
 
 0.0.3.3
 May 5th 2017: Several bug fixes and initial inclusion of charge exchange model
+
+0.0.3.4
+May 23rd 2017: Bug fix to spectrum.apply_response, now handles response files
+indexed from zero (thank you Lia Corrales for finding this issue)
+
+0.5.0
+January 9th 2018: Major updates to include CX models. Increased version number to something relevant to 3 decimal style.
+
+0.5.1
+February 14th 2018: Bugfix to use 64bit floats for ionization fraction calculation, which was occasionally causing issues.
+
+0.5.2
+May 10th 2018: Bugfixes, including one where angstrom spectra where generated backwards.
+
+0.5.3
+June 14th 2018: Bugfixes: NEI spectrum session fixed to assign bin units correctly when using a response file
+
+0.5.4
+September 03rd 2018: Bugfix: NEI spectrum.Session.set_specbins now correctly resets the spectra when changed. Thanks to Shinya Nakashima for discovering this bug.
+
+
+0.6.0
+November 20th 2018: Switch to python 3 support only. Python 2.7 support available for now through Github
+
+0.7.0
+Bug fixes aplenty, mostly due to python 3 conversion.

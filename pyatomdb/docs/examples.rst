@@ -49,3 +49,12 @@ interpolating between 2 temperatures etc). Note the example requires an
 RMF and ARF file - adjust to fit your available response.
 
 .. literalinclude:: ../examples/new_make_spectrum.py
+
+==================
+Make Cooling Curve
+==================
+
+Make a cooling curve, total emissivity in keV cm3 s-1, for each element
+in a specfied spectral range (e.g. 2 to 10 keV).
+
+.. literalinclude:: ../examples/calc_power.py

@@ -46,8 +46,8 @@ def get_version(relpath):
 #sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0,os.path.abspath('.'))
 sys.path.insert(0,os.path.abspath('..'))
-for i in sys.path:
-  print i
+#for i in sys.path:
+#  print i
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
