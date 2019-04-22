@@ -1358,10 +1358,10 @@ def broaden_continuum(bins, spectrum, binunits = 'keV', \
     emid = (bins[1:]+bins[:-1])/2
     if broadenunits == 'a':
       # convert to keV
-      broadenvec = const.HC_IN_KEV_A/emid
+      broadenvec = emin**2 *broadening/const.HC_IN_KEV_A
     else:
       broadenvec = numpy.zeros(len(emid))
-      broadenvec[:] = emid
+      broadenvec[:] = broadening
     for i in range(len(spec)):
 
       spec += atomdb.addline2(bins, emid[i], \
