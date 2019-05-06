@@ -141,4 +141,7 @@ Bug fixes aplenty, mostly due to python 3 conversion.
 0.7.1
 April 22nd 2019: Fixed bug occuring with spectrum continuum broadening.
 
+0.7.2
+May 6th 2019: Add option 'ALL' to get_data to download all the data files for
+an ion at once
 

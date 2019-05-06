@@ -4170,6 +4170,7 @@ def get_data(Z, z1, ftype, datacache=False, \
        *           'DR' - dielectronic recombination satellite line data
        *           'PI' - XSTAR photoionization data
        *           'AI' - autoionization data
+       *           'ALL' - reads all of the above. Does not return anything. Used for bulk downloading.
 
        Or, for non-ion-specific data (abundances and bremstrahlung coeffts)
        *           'ABUND' - abundance tables
@@ -4235,6 +4236,19 @@ def get_data(Z, z1, ftype, datacache=False, \
 #  Version 0.3 - Fixed fmapfile and atomdbroot use to avoid returning
 #  "False" and triggering errors
 #  Adam Foster October 27th 2015
+
+
+  if ftype=='ALL':
+    # call for each dtype
+    print("Fetching all data for Z=%i, z1=%i"%(Z, z1))
+    for ftype in ['IR','LV','LA','EC','PC','DR','AI','PI']:
+      tmp=get_data(Z, z1, ftype, datacache=datacache, \
+                   settings=settings, \
+		   indexzero=indexzero, \
+		   offline=offline)
+    print("All data successfully retrieved")
+    return True
+    
 
   d = False
   didurl=False
