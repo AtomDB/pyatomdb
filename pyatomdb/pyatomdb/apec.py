@@ -330,6 +330,7 @@ def calc_brems_gaunt(E, T, z1, brems_type, datacache=False, \
     gaunt_D=hdat['BR_GAUNT'].data['COEFFICIENT']
 
     gamma2 = z0**2 * const.RYDBERG/(const.KBOLTZ*T)
+
     if ((gamma2 < 1e-3) | (gamma2 > 1e3)):
       if (z0<10):
         print("brems_hummer: Warning, gamma^2 = %e is out of range."%(gamma2))
@@ -342,13 +343,12 @@ def calc_brems_gaunt(E, T, z1, brems_type, datacache=False, \
         print("brems_hummer: Warning, u is out of range: ", u[j])
         gaunt_ff[j]=1.0
 
-      #j = numpy.where(u>31.6227766)[0]
+
       gaunt_ff[u>31.6227766]=1.0
 
-      iii = numpy.where(gaunt_ff > 0.99)[0]
-      if len(iii) > 0:
-         pass
-        #zzz=raw_input()
+
+      # all out of range data points are set to 1.0 now. Do the good stuff.
+
       j = numpy.where(gaunt_ff<1.0)[0]
       if len(j) > 0:
         x_u = (2*numpy.log10(u[j])+2.5)/5.5
@@ -571,7 +571,7 @@ def calc_brems_gaunt(E, T, z1, brems_type, datacache=False, \
 
     # low energy
     i = numpy.where(u<Uvec[0])[0]
-    gaunt_ff[i]=-0.55133*(0.5*numpy.log(10.)*gamma2+numpy.log(10.)*u+0.056745)
+    gaunt_ff[i]=-0.55133*(0.5*numpy.log(10.)*gamma2+numpy.log(10.)*u[i]+0.056745)
 
     #high energy
     i = numpy.where(u>Uvec[-1])[0]
@@ -3707,8 +3707,8 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
         linelist_ion = numpy.append(linelist_ion, linelist_ion_tmp)
         continuum['twophot']+=tmptwophot
 
-        lev_pop_parent = lev_pop
-        z1+=1
+      lev_pop_parent = lev_pop
+      z1+=1
 
   # generate return data
   print("Start merging linelist at %s"%(time.asctime()))
