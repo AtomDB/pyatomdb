@@ -2925,7 +2925,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                      force_extrap=False, silent=True,\
                      finallev=False, initlev=False,\
                      Z=-1, z1=-1, dtype=False, exconly=False,\
-                     datacache=False, settings=False):
+                     datacache=False, settings=False, ladat=False):
   """
   Get the maxwellian rate for a transition from a file, typically for ionization,
   recombination or excitation.
@@ -3208,12 +3208,17 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
       degl =uplev['lev_deg']
       degu = lolev['lev_deg']
 
-    exc,dex = calc_maxwell_rates(ecdat['coeff_type'],\
+
+    exc,dex= calc_maxwell_rates(ecdat['coeff_type'],\
                                  ecdat['min_temp'],\
                                  ecdat['max_temp'],\
                                  ecdat['temperature'],\
                                  ecdat['effcollstrpar'],\
-                                 delta_E/1e3, Te_arr, Ztmp, degl, degu)
+                                 delta_E/1e3, Te_arr, Ztmp, degl, degu, \
+                                 force_extrap=force_extrap, ladat=ladat, \
+                                 levdat=lvdata)
+
+
 
     if numpy.isscalar(exc):
       if dex < 0:
