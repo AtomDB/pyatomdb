@@ -1649,7 +1649,10 @@ def run_apec_element(settings, te, dens, Z):
   pseudolist = {}
 
   # now go through each ion and assemble the data
-  ebins = numpy.linspace(0.01,100,100001)
+  ebins =  make_vector_nbins(settings['LinearGrid'], \
+                             settings['GridMinimum'], \
+                             settings['GridMaximum'], \
+                             settings['NumGrid'])
   ecent = (ebins[1:]+ebins[:-1])/2
 
   z1_drv_list = numpy.arange(1,Z+2, dtype=int)
