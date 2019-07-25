@@ -1831,24 +1831,45 @@ def calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
       rate_coeff[it] = numpy.exp(tmp)
     calc_type = E_RATE_COEFF
 
+
+
   elif ((coll_type >= const.INTERP_P_RATE_COEFF) & \
       (coll_type <= const.INTERP_P_RATE_COEFF + const.MAX_UPS)):
     N_interp = coll_type - const.INTERP_P_RATE_COEFF
-    it = numpy.where((T>=min(Tarr[:N_interp])) &\
-                     (T<=max(Tarr[:N_interp])))[0]
+
+    if force_extrap:
+      fill_value = 'extrapolate'
+    else:
+      fill_value= 0.0
+
     rate_coeff = numpy.zeros(len(T),dtype=float)
-    if len(it) > 0:
-      tmpfn = interpolate.interp1d(numpy.log(Tarr[:N_interp]), \
-                                 numpy.log(om[:N_interp]+1e-30), \
-                                 bounds_error=False, \
-                                 fill_value=fill_value)
+
+    if sum(om<0)>0:
+      om[om<0]=0.0
+
+    tmpfn = interpolate.interp1d(numpy.log(Tarr[:N_interp]), \
+                               numpy.log(om[:N_interp]+1e-30), \
+                               bounds_error=False, \
+                               fill_value=fill_value)(numpy.log(T))
+
+    rate_coeff=numpy.exp(tmpfn)-1e-30
+    rate_coeff[rate_coeff<0]=0.0
+
+#    inan = numpy.isnan(rate_coefft)
 
       # this is for values outside the range
-      for iit in it:
-        if T[iit] in Tarr[:N_interp]:
-          rate_coeff[iit]=om[Tarr[:N_interp]==T[iit]]
-        else:
-          rate_coeff[iit]=numpy.exp(tmpfn(numpy.log(T[iit])))-1e-30
+#    if sum(inan)>0:
+#      if force_extrap:
+
+#        for iit in range(len(inan)):
+#          if T[iit] < min(Tarr[:N_interp]):
+
+#          if T[iit] in Tarr[:N_interp]:
+#          rate_coeff[iit]=om[Tarr[:N_interp]==T[iit]]
+#        else:
+#          rate_coeff[iit]=numpy.exp(tmpfn(numpy.log(T[iit])))-1e-30
+#      else:
+#        rate_coeff[inan]=0.0
 
     calc_type = const.P_RATE_COEFF
 
@@ -4249,11 +4270,11 @@ def get_data(Z, z1, ftype, datacache=False, \
     for ftype in ['IR','LV','LA','EC','PC','DR','AI','PI']:
       tmp=get_data(Z, z1, ftype, datacache=datacache, \
                    settings=settings, \
-		   indexzero=indexzero, \
-		   offline=offline)
+       indexzero=indexzero, \
+       offline=offline)
     print("All data successfully retrieved")
     return True
-    
+
 
   d = False
   didurl=False
