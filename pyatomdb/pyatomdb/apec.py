@@ -3882,7 +3882,7 @@ def wrap_ion_directly(fname, ind, Z, z1):
                      settings['DensStep'], \
                      settings['NumDens'])
 
-  ite = ind /len(dens)
+  ite = ind //len(dens)
   idens = ind%len(dens)
   print(ite, idens)
   Te = te[ite]
