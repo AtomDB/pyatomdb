@@ -54,7 +54,7 @@ setup(name='pyatomdb',
       author='Adam Foster',
       author_email='afoster@cfa.harvard.edu',
       license='Smithsonian',
-      packages=['pyatomdb'],
+      packages=['pyatomdb','tests'],
       classifiers=['Development Status :: 2 - Pre-Alpha',\
                    'Environment :: Console',\
                    'Intended Audience :: Developers',\
