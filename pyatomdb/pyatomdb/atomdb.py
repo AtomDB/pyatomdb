@@ -4073,7 +4073,7 @@ def read_filemap(filemap="$ATOMDB/filemap", atomdbroot="$ATOMDB"):
   # restore the ATOMDB variable
   os.environ['ATOMDB']=os.environ['OLDATOMDB']
   x=os.environ.pop('OLDATOMDB')
-
+  f.close()
   return ret
 
 
