@@ -607,7 +607,7 @@ def z0_to_mass(z0):
   ret = Z_to_mass(z0)
   return ret
 
-def Z_to_mass(Z):
+def Z_to_mass(Z, raw = False):
   """
   Converts element symbol to atomic mass, e.g. "C" -> 12.0107
 
@@ -618,7 +618,9 @@ def Z_to_mass(Z):
   ----------
   Z : int
     nuclear charge, e.g 6 for C
-
+  raw : bool
+    if true, ignore Z, and return the entire mass list as an array with
+    a 0 at the beginning so ret[12] = mass of carbon.
   Returns
   -------
   float
@@ -656,6 +658,9 @@ def Z_to_mass(Z):
            222.000     , 223.000   , 226.000    , 227.00     , 232.03806  ,
            231.03588   , 238.02891)
 
+  if raw==True:
+    n = numpy.append(0,numpy.array(masslist))
+    return n
   if Z < 1 :
     print("Z must be between 1 and 92. You have given Z= " + repr(Z))
     ret=-1
