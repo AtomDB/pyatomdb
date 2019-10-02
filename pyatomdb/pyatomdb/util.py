@@ -61,7 +61,6 @@ def figcoords(lowxpix, lowypix, highxpix, highypix,
   dx = (hxval-lxval)/(highxpix-lowxpix)
   dy = (hyval-lyval)/(highypix-lowypix)
 
-#  print dx, dy
   xout = lxval + (xpix-lowxpix)*dx
   yout = lyval + (ypix-lowypix)*dy
 
@@ -864,7 +863,6 @@ def switch_version(version):
 #      os.remove(re.sub('VERSION',version,flist))
 #      print "REMOVING LINK1!"
     # add new link
-    print(flist)
     if os.path.islink(re.sub('_vVERSION','',flist)):
       os.remove(re.sub('_vVERSION','',flist))
 
@@ -3195,18 +3193,14 @@ def generate_web_fitsfiles(version='', outdir=''):
   mkdir_p(outdir)
 
   linefile = os.path.expandvars('$ATOMDB/apec_linelist.fits')
-  #print linefile
+
   ldat = pyfits.open(linefile)
   nlines = len(ldat[1].data)
 
-  print(ldat[1].header['NAXIS2'])
-  print(len(ldat[1].data[51]))
-
-  #print ldat[1].data[0]
   linesperfile = 1000
 
   nfiles = nlines/linesperfile + 1
-  print("nfiles = ", nfiles, "nlines = ", nlines, "linesperfile = ", linesperfile)
+
   rangedatatype = numpy.dtype({'names':['Lambda_lo','Lambda_hi','filename'],\
                                'formats':[float, float, '|S40']})
 
@@ -3253,4 +3247,8 @@ def generate_web_fitsfiles(version='', outdir=''):
 
 
 
+class UnitsError(ValueError):
+    pass
 
+class ReadyError(ValueError):
+    pass
