@@ -1984,8 +1984,6 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
   else:
     has_sum_lv = False
   print("has_sum_lv is ", has_sum_lv)
-  if has_sum_lv:
-    diagterms+= lvdat[1].data['AAUT_TOT']+lvdat[1].data['ARAD_TOT']
 
   laup = numpy.zeros(0, dtype=int)
   lalo = numpy.zeros(0, dtype=int)
@@ -1994,6 +1992,9 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
   if do_la:
     print("Starting Gather Rates do_la at %s"%(time.asctime()))
     t1=time.time()
+    if has_sum_lv:
+      diagterms+=lvdat[1].data['ARAD_TOT']
+
     ladat = atomdb.get_data(Z, z1, 'LA', datacache=datacache, \
                             settings = settings)
 
@@ -2019,6 +2020,10 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
   airate = numpy.zeros(0, dtype=float)
 
   if do_ai:
+    if has_sum_lv:
+      diagterms+= lvdat[1].data['AAUT_TOT']
+
+
     print("Starting Gather Rates do_ai at %s"%(time.asctime()))
     t1=time.time()
     aidat = atomdb.get_data(Z, z1, 'AI', datacache=datacache, \
