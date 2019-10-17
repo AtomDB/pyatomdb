@@ -3252,3 +3252,6 @@ class UnitsError(ValueError):
 
 class ReadyError(ValueError):
     pass
+
+class NotImplementedError(ValueError):
+    pass
