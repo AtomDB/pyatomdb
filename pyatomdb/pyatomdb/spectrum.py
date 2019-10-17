@@ -1512,6 +1512,10 @@ class CIESession():
     The line emissivity data file (either name or already open)
   cocofile : string or HDUList, optional
     The continuum emissivity data file (either name or already open)
+  elements : arraylike(int), optional
+    The atomic number of elements to include (default all)
+  abundset : string
+    The abundance set to use. Default AG89.
 
   Attributes
   ----------
@@ -1542,8 +1546,6 @@ class CIESession():
   velocity_broadening : float
     Apply velocity broadening with this velocity (km/s). If <=0, do not apply.
 
-
-
   Examples
   --------
 
@@ -1554,7 +1556,6 @@ class CIESession():
   Set up the responses, in this case a dummy response from 0.1 to 10 keV
 
   >>> ebins = numpy.linspace(0.1,10,1000)
-
   >>> s.set_response(ebins, raw=True)
 
   Turn on thermal broadening
@@ -1644,7 +1645,7 @@ class CIESession():
     Turn on or off thermal broadening, and the emissivity limit for
     thost lines
 
-    PARAMETERS
+    Parameters
     ----------
 
     thermal_broadening : bool
@@ -1657,6 +1658,10 @@ class CIESession():
     velocity_broadening_units : string
       Units of velocity_broadening. 'km/s' is default and only value so far.
 
+    Notes
+    -----
+    Updates attributes thermal_broadening, broaden_limit, velocity_broadening,
+    velocity_broadening_units
     """
 
     self.thermal_broadening = thermal_broadening
@@ -1727,6 +1732,7 @@ class CIESession():
       If true, the rmf variable contains the energy bin edges (keV) for all
       the bins, and each bin has a perfect response. This is effectively
       a dummy response
+
     Returns
     -------
     none
@@ -2038,7 +2044,7 @@ class CIESession():
   def set_apec_files(self, linefile="$ATOMDB/apec_line.fits",\
                      cocofile="$ATOMDB/apec_coco.fits"):
     """
-    Set the apec line and coco files
+    Set the apec line and coco files, and load up their data
 
     Parameters
     ----------
@@ -2046,17 +2052,6 @@ class CIESession():
       The filename of the line emissivity data, or the opened file.
     cocofile : str or HDUList
       The filename of the continuum emissivity data, or the opened file.
-
-    Modifies
-    --------
-    self.linedata : HDUList
-      The line emissivity data
-    self.linefile : string
-      The line emissivity data filename
-    self.cocodata : HDUList
-      The compressed continuum data
-    self.cocofile : string
-      The compressed continuuum data filename
 
     Returns
     -------
@@ -2191,14 +2186,15 @@ class CIESession():
     #self.recalc()
 
 
-  def return_line_emissivities(self, Te, specrange, specunit='A', teunit='keV', apply_aeff=False):
+  def return_line_emissivities(self, Te, specrange, specunit='A', \
+                               teunit='keV', apply_aeff=False):
     """
     Get the list of line emissivities vs wavelengths
 
 
     Parameters
     ----------
-    te : float
+    Te : float
       Temperature in keV or K
     specrange : [float, float]
       Minimum and maximum values for interval in which to search
@@ -2207,8 +2203,8 @@ class CIESession():
     teunit : {'keV' , 'K'}
       Units of te (kev or K, default keV)
     apply_aeff : bool
-      If set, and `nearest` set, return the nearest tabulated temperature
-      as well as the spectrum.
+      If true, apply the effective area to the lines in the linelist to
+      modify their intensities.
 
     Returns
     -------
@@ -2221,9 +2217,12 @@ class CIESession():
 
 
 
-    return self.spectra.return_linelist(kT, specrange=specrange, teunit='keV',\
+    s= self.spectra.return_linelist(kT, specrange=specrange, teunit='keV',\
                                         specunit=specunit)
+    if apply_aeff == True:
+      raise util.NotImplementedError('apply_aeff keyword not implemented yet')
 
+    return(s)
 
 def convert_temp(Te, teunit, teunitout):
   """
@@ -2340,10 +2339,47 @@ def convert_spec(spec, specunit, specunitout):
 
 class CIESpectrum():
   """
-  A class for the CIE case, holding all the spectral data
+  A class holding the emissivity data for CIE emission, and returning
+  spectra
+
+  Parameters
+  ----------
+  linefile : string or HDUList, optional
+    The line emissivity data file (either name or already open)
+  cocofile : string or HDUList, optional
+    The continuum emissivity data file (either name or already open)
+  elements : arraylike(int), optional
+    The atomic number of elements to include (default all)
+  abundset : string
+    The abundance set to use. Default AG89.
+
+  Attributes
+  ----------
+  session : CIESession
+    The parent CIESession
+  SessionType : string
+    "CIE"
+  spectra : dict of ElementSpectra
+    a dictionary containing the emissivity data for each HDU,
+    subdivided by element (spectra[12][18] is an ElementSpectrum object
+    containing the argon data for the 12th HDU)
+  kTlist : array
+    The temperatures for each emissivity HDU, in keV
+  logkTlist : array
+    log of kTlist
   """
 
   def __init__(self, session):
+    """
+    Initializes the code. Populates the line and emissivity data in all
+    temperature HDUs.
+
+    Parameters
+    ----------
+    session : CIESession
+      The parent CIESession
+    """
+
     self.session = session # pointer to parent, which has response information, etc
 
     self.SessionType = 'CIE'
@@ -2351,7 +2387,6 @@ class CIESpectrum():
     self.spectra={}
     self.kTlist = numpy.array(self.session.linedata[1].data['kT'].data)
     self.logkTlist=numpy.log(self.kTlist)
-    t1 = time.time()
     for ihdu in range(len(self.kTlist)):
       self.spectra[ihdu]={}
       self.spectra[ihdu]['kT'] = self.kTlist[ihdu]
@@ -2369,8 +2404,6 @@ class CIESpectrum():
         self.spectra[ihdu][Z]=ElementSpectrum(ldat[Zarr[:,Z]],\
                                               ccdat[0], \
                                               Z, parent=self)
-    t2 = time.time()
-    print('CIESpectrum init delta T: %f'%(t2-t1))
 
 
   def get_nearest_Tindex(self, Te, teunit='keV', nearest=False):
@@ -2426,11 +2459,11 @@ class CIESpectrum():
   def return_spectrum(self, Te, teunit='keV', nearest = False):
 
     """
-    Return the spectrum of the element
+    Return the spectrum of the element on the energy bins in
+    self.session.specbins
 
     Parameters
     ----------
-
     Te : float
       Electron temperature (default, keV)
     teunit : string
@@ -2440,7 +2473,10 @@ class CIESpectrum():
       If False, use the weighted average of the (log of) the 2 nearest indexes.
       default is False.
 
-
+    Returns
+    -------
+    spec : array(float)
+      The element's emissivity spectrum, in photons cm^3 s^-1 bin^-1
     """
 
     # get kT in keV
@@ -2492,6 +2528,10 @@ class CIESpectrum():
       If True, return spectrum for the nearest temperature index.
       If False, use the weighted average of the (log of) the 2 nearest indexes.
       default is False.
+    specrange : [float, float]
+      Minimum and maximum values for interval in which to search
+    specunit : {'Ansgtrom','keV'}
+      Units for specrange (default A)
 
 
     """
@@ -2542,267 +2582,290 @@ class CIESpectrum():
     return linelist
 
 
+# class NewSpec():
+    # """
+    # An individual spectrum, from a specifically
+    # tabulated temperature in a line/coco file.
 
-
-    return s
-
-
-
-class NewSpec():
-    """
-    An individual spectrum, from a specifically
-    tabulated temperature in a line/coco file.
-
-    Attributes
-    ----------
-    temperature : float
-      The temperature of this spectrum, in keV
-    index : int
-      The index in the line file for this spectrum
-    """
+    # Attributes
+    # ----------
+    # temperature : float
+      # The temperature of this spectrum, in keV
+    # index : int
+      # The index in the line file for this spectrum
+    # """
 
 
 
-    def __init__(self, session, index):
-      self.temperature = session.linedata[1].data['kT'][index-2]
-      self.index = index
-      self.spectra={}
-      self.session=session
-      self.linelist=False
+    # def __init__(self, session, index):
+      # self.temperature = session.linedata[1].data['kT'][index-2]
+      # self.index = index
+      # self.spectra={}
+      # self.session=session
+      # self.linelist=False
 
 
 
-    def set_index(T, teunit='K', logscale = False):
-      """
-      Finds HDU with kT closest to desired kT in given line or coco file.
+    # def set_index(T, teunit='K', logscale = False):
+      # """
+      # Finds HDU with kT closest to desired kT in given line or coco file.
 
-      Opens the line or coco file, and looks for the header unit
-      with temperature closest to te. Use result as index input to make_spectrum
+      # Opens the line or coco file, and looks for the header unit
+      # with temperature closest to te. Use result as index input to make_spectrum
 
-      Parameters
-      ----------
-      te : float
-        Temperature in keV or K
-      teunits : {'keV' , 'K', 'eV'}
-        Units of te (kev or K, default keV)
-      logscale : bool
-        Search on a log scale for nearest temperature if set.
+      # Parameters
+      # ----------
+      # te : float
+        # Temperature in keV or K
+      # teunits : {'keV' , 'K', 'eV'}
+        # Units of te (kev or K, default keV)
+      # logscale : bool
+        # Search on a log scale for nearest temperature if set.
 
-      Returns
-      -------
-      none
+      # Returns
+      # -------
+      # none
 
-      Notes
-      -----
-      modifies
-      self.index : int
-      Index in HDU file with nearest temperature to te.
+      # Notes
+      # -----
+      # modifies
+      # self.index : int
+      # Index in HDU file with nearest temperature to te.
 
-      """
+      # """
 
-      if teunit.lower() == 'kev':
-        teval = te
-      elif teunit.lower() == 'ev':
-        teval = te/1000.0
-      elif teunit.lower() == 'k':
-        teval = te*const.KBOLTZ
-      else:
-        print("*** ERROR: unknown temeprature unit %s. Must be eV, keV or K. Exiting ***"%\
-              (teunits))
+      # if teunit.lower() == 'kev':
+        # teval = te
+      # elif teunit.lower() == 'ev':
+        # teval = te/1000.0
+      # elif teunit.lower() == 'k':
+        # teval = te*const.KBOLTZ
+      # else:
+        # print("*** ERROR: unknown temeprature unit %s. Must be eV, keV or K. Exiting ***"%\
+              # (teunits))
 
-      if logscale:
-        i = numpy.argmin(numpy.abs(numpy.log(self.linedata[1].data['kT'])-numpy.log(teval)))
-      else:
-        i = numpy.argmin(numpy.abs(self.linedata[1].data['kT']-teval))
-      # need to increase the HDU by 2.
-      self.index = i+2
+      # if logscale:
+        # i = numpy.argmin(numpy.abs(numpy.log(self.linedata[1].data['kT'])-numpy.log(teval)))
+      # else:
+        # i = numpy.argmin(numpy.abs(self.linedata[1].data['kT']-teval))
+      # # need to increase the HDU by 2.
+      # self.index = i+2
 
-    def calc_spectrum(self, T, themalbroadening=False, broaden_limit=1e-18, velocity_broadening=0.0):
+    # def calc_spectrum(self, T, themalbroadening=False, broaden_limit=1e-18, velocity_broadening=0.0):
 
-      """
-      Calculates the spectrum for each element on a single temperature
+      # """
+      # Calculates the spectrum for each element on a single temperature
 
-      Parameters
-      ----------
-      session : Session
-        The parent Session
-      dolines : bool
-        Include lines in the spectrum
-      docont : bool
-        Include continuum in the spectrum
-      dopseudo : bool
-        Include pseudocontinuum in the spectrum
-      Outputs
-      -------
-      none
+      # Parameters
+      # ----------
+      # session : Session
+        # The parent Session
+      # dolines : bool
+        # Include lines in the spectrum
+      # docont : bool
+        # Include continuum in the spectrum
+      # dopseudo : bool
+        # Include pseudocontinuum in the spectrum
+      # Outputs
+      # -------
+      # none
 
-      Notes
-      -----
-      Modifies:\n
-      dict : self.spectrum_by_Z  the spectrum of each element\n
+      # Notes
+      # -----
+      # Modifies:\n
+      # dict : self.spectrum_by_Z  the spectrum of each element\n
 
-      Then calls `recalc()` to update the spectra
-      """
-      # now, we shall calculate the spectrum for each individual element
+      # Then calls `recalc()` to update the spectra
+      # """
+      # # now, we shall calculate the spectrum for each individual element
 
-      # set the linefile
-
-
-      self.temperature = self.session.linedata[1].data['kT'][self.index-2]
-
-  #    if util.keyword_check(elements):
-        #self.set_abund(elements, abund)
-
-      #if util.keyword_check(abund):
-        #self.set_abund(elements, abund)
-
-      # to hold the total spectrum
-      spec = numpy.zeros(len(self.session.specbins)-1)
-      ebins_checksum = hashlib.md5(self.session.specbins).hexdigest()
-      t0 = time.time()
-
-      for Z in self.session.elements:
-      # make the generic spectrum
-        if not Z in self.spectra.keys():
-          self.spectra[Z]=ElementSpectrum(self.session.linedata[self.index].data, \
-                                                   self.session.cocodata[self.index].data,\
-                                                   Z, parent=self)
-
-        # calculate the element's spectrum
-        self.spectra[Z].calc_spectrum(self.session.specbins, \
-                                                       T*const.KBOLTZ, \
-                                                       ebins_checksum=ebins_checksum,\
-                                                       thermal_broadening=thermal_broadening,\
-                                                       broaden_limit=broaden_limit,\
-                                                       velocity_broadening = velocity_broadening)
+      # # set the linefile
 
 
+      # self.temperature = self.session.linedata[1].data['kT'][self.index-2]
 
-      t1 = time.time()
-      if self.session.response_set:
-        for Z in self.session.elements:
-          self.spectra[Z].apply_response()
-      t2 = time.time()
+  # #    if util.keyword_check(elements):
+        # #self.set_abund(elements, abund)
 
-      print('Time to calculate spectra: %fs'%(t1-t0))
-      print('Time to apply response: %fs'%(t2-t1))
+      # #if util.keyword_check(abund):
+        # #self.set_abund(elements, abund)
 
+      # # to hold the total spectrum
+      # spec = numpy.zeros(len(self.session.specbins)-1)
+      # ebins_checksum = hashlib.md5(self.session.specbins).hexdigest()
+      # t0 = time.time()
 
-      self.recalc()
+      # for Z in self.session.elements:
+      # # make the generic spectrum
+        # if not Z in self.spectra.keys():
+          # self.spectra[Z]=ElementSpectrum(self.session.linedata[self.index].data, \
+                                                   # self.session.cocodata[self.index].data,\
+                                                   # Z, parent=self)
 
-
-    def calc_line_emissivities(self, apply_aeff=False):
-
-      """
-      Calculates the line emissivities
-
-      Parameters
-      ----------
-      apply_aeff : bool
-        apply effective area to the results
-      Outputs
-      -------
-      none
-
-      Notes
-      -----
-      Modifies:\n
-      dict : self.spectrum_by_Z  the spectrum of each element\n
-      Then calls `recalc()` to update the spectra
-      """
-      # now, we shall calculate the spectrum for each individual element
-
-      # set the linefile
+        # # calculate the element's spectrum
+        # self.spectra[Z].calc_spectrum(self.session.specbins, \
+                                                       # T*const.KBOLTZ, \
+                                                       # ebins_checksum=ebins_checksum,\
+                                                       # thermal_broadening=thermal_broadening,\
+                                                       # broaden_limit=broaden_limit,\
+                                                       # velocity_broadening = velocity_broadening)
 
 
-      self.temperature = self.session.linedata[1].data['kT'][self.index-2]
 
-  #    if util.keyword_check(elements):
-        #self.set_abund(elements, abund)
+      # t1 = time.time()
+      # if self.session.response_set:
+        # for Z in self.session.elements:
+          # self.spectra[Z].apply_response()
+      # t2 = time.time()
 
-      #if util.keyword_check(abund):
-        #self.set_abund(elements, abund)
-
-      # to hold the list of lines
-      if self.linelist == False:
-        self.linelist = numpy.zeros(len(self.session.linedata[self.index].data), dtype=\
-                                numpy.dtype({'names':   ['lambda','energy','epsilon','epsilon_aeff','ionsymb','upperlev','lowerlev'],\
-                                             'formats': [float, float, float, float, '|S10', int, int]}))
-
-        iline = 0
-
-        # if required, create the ElementSpectrum objects for each case
-        ebins_checksum = hashlib.md5(self.session.specbins).hexdigest()
-        for Z in self.session.elements:
-          if not Z in self.spectra.keys():
-            self.spectra[Z]=ElementSpectrum(self.session.linedata[self.index].data, \
-                                                     self.session.cocodata[self.index].data,\
-                                                     Z, parent=self)
-
-        # calculate the element's spectrum
-          nlines = len(self.spectra[Z].lines.lines)
-          self.linelist[iline:iline+nlines]['lambda'] = self.spectra[Z].lines.lines['lambda']
-          self.linelist[iline:iline+nlines]['energy'] = const.HC_IN_KEV_A/self.spectra[Z].lines.lines['lambda']
-          self.linelist[iline:iline+nlines]['epsilon'] = self.spectra[Z].lines.lines['epsilon']
-          self.linelist[iline:iline+nlines]['upperlev'] = self.spectra[Z].lines.lines['upperlev']
-          self.linelist[iline:iline+nlines]['lowerlev'] = self.spectra[Z].lines.lines['lowerlev']
-          for ii in range(iline, iline+nlines):
-            self.linelist[ii]['ionsymb'] = atomic.spectroscopic_name(Z, self.spectra[Z].lines.lines['ion'][ii-iline])
-          iline += nlines
-      nlines = len(self.linelist)
-
-      # apply the effective area
-
-      if apply_aeff:
-
-        if self.session.response_set:
-          self.linelist['epsilon_aeff'] = numpy.zeros(len(self.linelist))
-
-          igood = (self.linelist['energy'] >= self.session.specbins[0]) &\
-                  (self.linelist['energy'] < self.session.specbins[-1])
+      # print('Time to calculate spectra: %fs'%(t1-t0))
+      # print('Time to apply response: %fs'%(t2-t1))
 
 
-          aeffindex = numpy.digitize(self.linelist[igood]['energy'], self.session.specbins)-1
-          zzz = self.linelist[igood]['epsilon']*self.session.aeff[aeffindex]
-          self.linelist['epsilon_aeff'][igood]= zzz
+      # self.recalc()
 
-    def recalc(self):
-      """
-      Recalculate the spectrum - just for changing abundances etc.
-      Does not recalculate spectrum fully, just changes the multipliers.
-      Does nothing if self.ready is False, should be run after calc_spectrum.
 
-      Parameters
-      ----------
-      none
+    # def calc_line_emissivities(self, apply_aeff=False):
 
-      Returns
-      -------
-      none
+      # """
+      # Calculates the line emissivities
 
-      Notes
-      -----
-      Modifies:\n
-      self.spectrum : array_like (float)\n
-      """
-      print("recalc: ", self.session.ready, self.session.specbins_set)
-      if self.session.ready:
-        if self.session.specbins_set:
+      # Parameters
+      # ----------
+      # apply_aeff : bool
+        # apply effective area to the results
+      # Outputs
+      # -------
+      # none
 
-          self.spectrum = numpy.zeros(len(self.session.specbins)-1)
-          for Z in self.session.elements:
-            self.spectrum += self.spectra[Z].spectrum * self.session.abund[Z] * self.session.abundsetvector[Z]
+      # Notes
+      # -----
+      # Modifies:\n
+      # dict : self.spectrum_by_Z  the spectrum of each element\n
+      # Then calls `recalc()` to update the spectra
+      # """
+      # # now, we shall calculate the spectrum for each individual element
+
+      # # set the linefile
+
+
+      # self.temperature = self.session.linedata[1].data['kT'][self.index-2]
+
+  # #    if util.keyword_check(elements):
+        # #self.set_abund(elements, abund)
+
+      # #if util.keyword_check(abund):
+        # #self.set_abund(elements, abund)
+
+      # # to hold the list of lines
+      # if self.linelist == False:
+        # self.linelist = numpy.zeros(len(self.session.linedata[self.index].data), dtype=\
+                                # numpy.dtype({'names':   ['lambda','energy','epsilon','epsilon_aeff','ionsymb','upperlev','lowerlev'],\
+                                             # 'formats': [float, float, float, float, '|S10', int, int]}))
+
+        # iline = 0
+
+        # # if required, create the ElementSpectrum objects for each case
+        # ebins_checksum = hashlib.md5(self.session.specbins).hexdigest()
+        # for Z in self.session.elements:
+          # if not Z in self.spectra.keys():
+            # self.spectra[Z]=ElementSpectrum(self.session.linedata[self.index].data, \
+                                                     # self.session.cocodata[self.index].data,\
+                                                     # Z, parent=self)
+
+        # # calculate the element's spectrum
+          # nlines = len(self.spectra[Z].lines.lines)
+          # self.linelist[iline:iline+nlines]['lambda'] = self.spectra[Z].lines.lines['lambda']
+          # self.linelist[iline:iline+nlines]['energy'] = const.HC_IN_KEV_A/self.spectra[Z].lines.lines['lambda']
+          # self.linelist[iline:iline+nlines]['epsilon'] = self.spectra[Z].lines.lines['epsilon']
+          # self.linelist[iline:iline+nlines]['upperlev'] = self.spectra[Z].lines.lines['upperlev']
+          # self.linelist[iline:iline+nlines]['lowerlev'] = self.spectra[Z].lines.lines['lowerlev']
+          # for ii in range(iline, iline+nlines):
+            # self.linelist[ii]['ionsymb'] = atomic.spectroscopic_name(Z, self.spectra[Z].lines.lines['ion'][ii-iline])
+          # iline += nlines
+      # nlines = len(self.linelist)
+
+      # # apply the effective area
+
+      # if apply_aeff:
+
+        # if self.session.response_set:
+          # self.linelist['epsilon_aeff'] = numpy.zeros(len(self.linelist))
+
+          # igood = (self.linelist['energy'] >= self.session.specbins[0]) &\
+                  # (self.linelist['energy'] < self.session.specbins[-1])
+
+
+          # aeffindex = numpy.digitize(self.linelist[igood]['energy'], self.session.specbins)-1
+          # zzz = self.linelist[igood]['epsilon']*self.session.aeff[aeffindex]
+          # self.linelist['epsilon_aeff'][igood]= zzz
+
+    # def recalc(self):
+      # """
+      # Recalculate the spectrum - just for changing abundances etc.
+      # Does not recalculate spectrum fully, just changes the multipliers.
+      # Does nothing if self.ready is False, should be run after calc_spectrum.
+
+      # Parameters
+      # ----------
+      # none
+
+      # Returns
+      # -------
+      # none
+
+      # Notes
+      # -----
+      # Modifies:\n
+      # self.spectrum : array_like (float)\n
+      # """
+      # print("recalc: ", self.session.ready, self.session.specbins_set)
+      # if self.session.ready:
+        # if self.session.specbins_set:
+
+          # self.spectrum = numpy.zeros(len(self.session.specbins)-1)
+          # for Z in self.session.elements:
+            # self.spectrum += self.spectra[Z].spectrum * self.session.abund[Z] * self.session.abundsetvector[Z]
 
 
 
 
 class ElementSpectrum():
+ """
+  A class holding the emissivity data for an element in one HDU
+
+  Parameters
+  ----------
+  linedata : array(linedatatype)
+    array of line wavelengths and emissivities, from AtomDB files.
+    Should already be filtered to only be from one element.
+  cocodata : array(cocodatatype)
+    array of continuum wavelengths and emissivities, from AtomDB files
+    Should already be filtered to only be from one element.
+  Z : int
+    The atomic number of the element
+  z1_drv : int
+    The charge + 1 for the ion. 0 = whole element.
+  parent : CIESpectrum
+    Parent CIESpectrum object
+
+  Attributes
+  ----------
+  lines : LineData
+    A LineData object containing all the line information
+  continuum : ContinuumData
+    A ContinuumData object containing all the contrinuum information
+  parent : CIESpectrum
+    Parent CIESpectrum object
+  session : CIESession
+    Parent Session of parent CIESpectrum object
+  """
 
   def __init__(self, linedata, cocodata, Z, z1_drv=0, parent=False):
     """
     Initialization
 
-    PARAMETERS
+    Parameters
     ----------
     linedata : hdu
       the line data passed in
@@ -2812,8 +2875,8 @@ class ElementSpectrum():
       the atomic number of the element
     z1 : int
       the ion charge of the driving ion (0 for whole element)
-    parent : ???
-      Parent object
+    parent : CIESpectrum
+      Parent CIESpectrum object
 
     """
 
@@ -2841,47 +2904,47 @@ class ElementSpectrum():
     self.parent = parent
     self.session = self.parent.session
 
-  def calc_spectrum(self, eedges, T, ebins_checksum=False,\
-                    thermal_broadening=False,\
-                    broaden_limit=False,\
-                    velocity_broadening=0.0):
-    """
-    Calculate the spectrum
+  # def calc_spectrum(self, eedges, T, ebins_checksum=False,\
+                    # thermal_broadening=False,\
+                    # broaden_limit=False,\
+                    # velocity_broadening=0.0):
+    # """
+    # Calculate the spectrum
 
-    PARAMETERS
-    ----------
-    eedges : array
-      bin edges (keV)
-    T : float
-      temperature in Kelvin
-    ebins_checksum : string
-      the md5 checksum of eedges
-    thermal_broadening : bool
-      true to apply thermal broadening
-    broaden_limit : float
-      only broaden lines stronger than this.
-    velocity_broadening : float
-      velocity broadening to apply, km/s. Set <=0 for none (default)
-    """
-    if ebins_checksum == False:
-      # check the parent
-      if self.parentElementSpectrum != False:
-        ebins_checksum = self.parentElementSpectrum.ebins_checksum
+    # Parameters
+    # ----------
+    # eedges : array
+      # bin edges (keV)
+    # T : float
+      # temperature in Kelvin
+    # ebins_checksum : string
+      # the md5 checksum of eedges
+    # thermal_broadening : bool
+      # true to apply thermal broadening
+    # broaden_limit : float
+      # only broaden lines stronger than this.
+    # velocity_broadening : float
+      # velocity broadening to apply, km/s. Set <=0 for none (default)
+    # """
+    # if ebins_checksum == False:
+      # # check the parent
+      # if self.parentElementSpectrum != False:
+        # ebins_checksum = self.parentElementSpectrum.ebins_checksum
 
-      # check again, in case there was no parent
-      if ebins_checksum == False:
-        # generate the checksum
-        ebins_checksum = hashlib.md5(eedges).hexdigest()
-    self.ebins_checksum = ebins_checksum
-    self.T = T
+      # # check again, in case there was no parent
+      # if ebins_checksum == False:
+        # # generate the checksum
+        # ebins_checksum = hashlib.md5(eedges).hexdigest()
+    # self.ebins_checksum = ebins_checksum
+    # self.T = T
 
-    spec = self.lines.return_spec(eedges, T, ebins_checksum=ebins_checksum,\
-                                  thermal_broadening=thermal_broadening,\
-                                  broaden_limit=broaden_limit,\
-                                  velocity_broadening=velocity_broadening) +\
-           self.continuum.return_spec(eedges, ebins_checksum = ebins_checksum)
+    # spec = self.lines.return_spec(eedges, T, ebins_checksum=ebins_checksum,\
+                                  # thermal_broadening=thermal_broadening,\
+                                  # broaden_limit=broaden_limit,\
+                                  # velocity_broadening=velocity_broadening) +\
+           # self.continuum.return_spec(eedges, ebins_checksum = ebins_checksum)
 
-    self.spectrum = spec
+    # self.spectrum = spec
 
 
   def return_spectrum(self, eedges, Te, ebins_checksum=False,\
@@ -2892,7 +2955,7 @@ class ElementSpectrum():
     """
     Calculate the spectrum
 
-    PARAMETERS
+    Parameters
     ----------
     eedges : array
       bin edges (keV)
@@ -2908,6 +2971,11 @@ class ElementSpectrum():
       velocity broadening to apply, km/s. Set <=0 for none (default)
     teunit : string
       Temperature unit (K, keV, eV)
+
+    Returns
+    -------
+    spectrum : array(float)
+      The spectrum in ph cm^3 s^-1 bin^-1
     """
 
     T = convert_temp(Te, teunit, 'K')
@@ -2933,17 +3001,15 @@ class ElementSpectrum():
 
     return self.spectrum
 
-  def return_linelist(self, specrange, Te, specunit='A',
+  def return_linelist(self, specrange, specunit='A',
                       teunit = 'keV'):
     """
-    Calculate the spectrum
+    Return the list of lines in specrange
 
     Parameters
     ----------
     specrange : array
       spectral range to look for lines in
-    Te : float
-      temperature (keV by defult)
     specunits : string
       units of spectral range (A or keV)
     teunit : string
@@ -2955,58 +3021,88 @@ class ElementSpectrum():
       list of lines and epsilons
     """
 
-    T = convert_temp(Te, teunit, 'K')
     wave = convert_spec(specrange, specunit, 'A')
 
-    print(wave)
     llist = self.lines.lines[(self.lines.lines['Lambda']>=wave[0]) &\
                        (self.lines.lines['Lambda']<=wave[1])]
 
     return llist
 
-  def apply_response(self):
+  # def apply_response(self):
+    # """
+    # Apply a response to a spectrum
 
-    """
-    Apply a response to a spectrum
+    # Parameters
+    # ----------
+    # spectrum : array(float)
+      # The spectrum, in counts/bin/second, to have the response applied to. Must be
+      # binned on the same grid as the rmf.
+    # rmf : string or pyfits.hdu.hdulist.HDUList
+      # The filename of the rmf or the opened rmf file
+    # arf : string or pyfits.hdu.hdulist.HDUList
+      # The filename of the arf or the opened arf file
+    # Returns
+    # -------
+    # array(float)
+      # energy grid (keV) for returned spectrum
+    # array(float)
+      # spectrum folded through the response
+    # """
 
-    Parameters
-    ----------
-    spectrum : array(float)
-      The spectrum, in counts/bin/second, to have the response applied to. Must be
-      binned on the same grid as the rmf.
-    rmf : string or pyfits.hdu.hdulist.HDUList
-      The filename of the rmf or the opened rmf file
-    arf : string or pyfits.hdu.hdulist.HDUList
-      The filename of the arf or the opened arf file
-    Returns
-    -------
-    array(float)
-      energy grid (keV) for returned spectrum
-    array(float)
-      spectrum folded through the response
-    """
+    # arfdat = self.session.arf
 
-    arfdat = self.session.arf
+    # if arfdat:
+      # #arfdat = arf
+      # res = self.spectrum * arfdat['SPECRESP'].data['SPECRESP']
+    # else:
+      # res = self.spectrum*1.0
 
-    if arfdat:
-      #arfdat = arf
-      res = self.spectrum * arfdat['SPECRESP'].data['SPECRESP']
-    else:
-      res = self.spectrum*1.0
+    # ret = numpy.matmul(res,self.session.rmfmatrix)
 
-    ret = numpy.matmul(res,self.session.rmfmatrix)
-
-    self.spectrum_withresp=ret
+    # self.spectrum_withresp=ret
 
 class LineData():
+ """
+  A class holding the line data for an element in one HDU
+
+  Parameters
+  ----------
+  linelist : array(linedatatype)
+    array of line wavelengths and emissivities, from AtomDB files.
+  parentElementSpectrum : ElementSpectrum
+    Parent ElementSpectrum object
+
+  Attributes
+  ----------
+  lines : array(linedatatype)
+    List of lines, wavelength and emissivities
+  lineenergies : array(float)
+    list of line energies
+  parentElementSpectrum : ElementSpectrum
+    Parent ElementSpectrum object
+  spectrum_calculated : bool
+    True if spectrum has already been calculated, otherwise false
+  T: float
+    Temperature (K) last spectrum was calculated at (for broadening)
+  v : float
+    Velocity (km/s) last spectrum was calculated at (for broadening)
+  ebins_checksum : string
+    md5sum of the ebins the spectrum was last calculated on. Used to
+    identify if new calculations are required or can just return the
+    previous value.
+  """
+
+
   def __init__(self, linelist, parentElementSpectrum=False):
     """
     Initialization
 
-    PARAMETERS
+    Parameters
     ----------
     linelist : numpy array
       list of lines from AtomDB fits files
+    parentElementSpectrum : ElementSpectrum
+      Parent ElementSpectrum object
     """
 
     self.lines = linelist
@@ -3027,7 +3123,7 @@ class LineData():
     """
     return the line emission spectrum at tempterature T
 
-    PARAMETERS
+    Parameters
     ----------
 
     eedges : array
@@ -3042,6 +3138,11 @@ class LineData():
       velocity broadening to apply, km/s. Set <=0 for none (default)
     broaden_limit : float
       only broaden lines stronger than this.
+
+    Returns
+    -------
+    spectrum : array(float)
+      Emissivity on eedges spectral bins of the lines, in ph cm^3 s^-1 bin^-1
     """
 
     if ebins_checksum == False:
@@ -3058,7 +3159,7 @@ class LineData():
         (velocity_broadening == False)):
       if ((self.ebins_checksum==ebins_checksum) &\
           (self.spectrum_calculated == True)):
-
+        # no need to do anything.
         pass
 
       else:
@@ -3093,7 +3194,6 @@ class LineData():
           pass
         else:
           # recalculate!
-
           recalc = True
 
       if ((thermal_broadening == True) &\
@@ -3108,24 +3208,23 @@ class LineData():
           # recalculate!
           recalc = True
 
-
-
       if recalc==True:
-        #### HERE WE GO!!!
 
-        # all the weak lines
+        # ind = strong line indicies
+        # nonind = weak line indicies
         ind = self.lines['Epsilon']>broaden_limit
         nonind = ~ind
 
         # calculate the widths of the strong lines
         llist = self.lines[ind]
 
+        # get a raw dictionary of masses in amu
         masslist = atomic.Z_to_mass(1,raw=True)
+
         if thermal_broadening==False:
           T=0.0
           Tb = 0.0
         else:
-
           Tb = convert_temp(T, 'K','keV')*const.ERG_KEV/(masslist[llist['Element']]*1e3*const.AMUKG)
 
         if velocity_broadening <0:
@@ -3135,12 +3234,13 @@ class LineData():
           vb = (velocity_broadening * 1e5)**2
 
         wcoeff = numpy.sqrt(Tb+vb) / (const.LIGHTSPEED*1e2)
-        width = wcoeff*const.HC_IN_KEV_A/llist['Lambda']
+        #width = wcoeff*const.HC_IN_KEV_A/llist['Lambda']
+        elines = self.lineenergies[ind]
+        width = wcoeff*elines
 
 
         # Filter out lines more than NSIGMALIMIT sigma outside the range
         NSIGMALIMIT=4
-        elines = const.HC_IN_KEV_A/llist['Lambda']
         eplu = elines+NSIGMALIMIT*width
         eneg = elines-NSIGMALIMIT*width
         emax = max(eedges)
@@ -3157,11 +3257,10 @@ class LineData():
         spec = spec[1:]-spec[:-1]
 
 
-        # And the add on the weak lines
-
+        # Then add on the weak lines
         s,z = numpy.histogram(self.lineenergies[nonind], \
-                                bins = eedges,\
-                                weights = self.lines['Epsilon'][nonind])
+                              bins = eedges,\
+                              weights = self.lines['Epsilon'][nonind])
         spec+=s
         self.spectrum = spec
         self.spectrum_calculated = True
@@ -3176,14 +3275,49 @@ class LineData():
 
 
 class ContinuumData():
+  """
+  A class holding the continuum data for an element in one HDU
+
+  Parameters
+  ----------
+  cocoentry : array(cocodatatype)
+    A single row from the continuum data in an AtomDB file.
+  parentElementSpectrum : ElementSpectrum
+    Parent ElementSpectrum object
+
+  Attributes
+  ----------
+  ECont : array(float)
+    The continuum energies (keV)
+  EPseudo : array(float)
+    The pseudocontinuum energies (keV)
+  Cont : array(float)
+    The continuum emissivities (ph cm^3 s^-1 keV^-1)
+  Pseudo : array(float)
+    The pseudocontinuum energies (ph cm^3 s^-1 keV^-1)
+  parentElementSpectrum : ElementSpectrum
+    Parent ElementSpectrum object
+  spectrum_calculated : bool
+    True if spectrum has already been calculated, otherwise false
+  ebins_checksum : string
+    md5sum of the ebins the spectrum was last calculated on. Used to
+    identify if new calculations are required or can just return the
+    previous value.
+  docont : bool
+    Calculate the continuum emission
+  dopseudo : bool
+    Calculate the pseudocontinuum emission
+  """
   def __init__(self, cocoentry, parentElementSpectrum=False):
     """
     Initialization
 
-    PARAMETERS
+    Parameters
     ----------
     cocoentry : numrec
       The data for 1 element/ion
+    parentElementSpectrum : ElementSpectrum
+      Parent ElementSpectrum object
     """
 
     nEC = cocoentry['N_Cont']
@@ -3203,9 +3337,9 @@ class ContinuumData():
     self.ebins_checksum = False
 
 
-    ### HACK
-    self.docont=True
-    self.dopseudo=True
+
+    self.docont=self.parentElementSpectrum.session.docont
+    self.dopseudo=self.parentElementSpectrum.session.dopseudo
 
   def return_spec(self, eedges, ebins_checksum = False):
     import scipy.integrate
