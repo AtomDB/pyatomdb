@@ -4055,3 +4055,52 @@ class ACXSpec(Spec):
           self.spectrum_withresp = self.spectrum_withresp * session.abundsetvector[self.Z]
 
 
+def get_nei_line_emissivity(Z, z1, up, lo):
+  """
+  Return the line emissivity for a single line, separated out by the ion driving it
+  
+  PARAMETERS
+  ----------
+  Z : int
+    nuclear charge
+  z1 : int
+    ion charge +1 
+  up : int
+    the upper level
+  lo : int
+    the lower level
+    
+  RETURNS
+  -------
+  emiss : dict
+    a dictionary containing an array, one for each ion_drv, with the emissivity in it. 
+    E.g. emiss[6] is a 51 element array, with the emissivity due to z1=6 as a fn of temperature
+    Also emiss['Te'] is the tempearture in keV
+  """
+  
+  ldata= pyfits.open(os.path.expandvars("$ATOMDB/apec_nei_line.fits"))
+  
+  emiss={}
+  datacache = {}
+  emiss['Te'] = ldata[1].data['kT']
+  for i in range(len(emiss['Te'])):
+    j = ldata[i+2].data
+    j2 = j[ (j['Element']==Z) &\
+            (j['Ion']==z1) &\
+            (j['UpperLev']==up) &\
+            (j['LowerLev']==lo)]
+    if len(j2)>0:
+      ionbal = apec.solve_ionbal_eigen(Z, emiss['Te'][i],  \
+                       teunit='keV', \
+                       datacache=datacache)
+
+
+    for jj in j2:
+      if not jj['ion_drv'] in emiss.keys():
+        emiss[jj['Ion_drv']] = numpy.zeros(len(emiss['Te']))
+ 
+      emiss[jj['Ion_drv']][i] = jj['Epsilon'] * ionbal[jj['ion_drv']-1]
+      
+  return emiss
+            
+    
