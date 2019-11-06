@@ -2413,7 +2413,7 @@ class CIESpectrum():
       Zarr[numpy.arange(len(ldat), dtype=int), ldat['Element']]=True
 
 
-      for Z in range(1,30):
+      for Z in self.session.elements:
         ccdat = cdat[(cdat['Z']==Z) & (cdat['rmJ']==0)]
 
         self.spectra[ihdu][Z]=ElementSpectrum(ldat[Zarr[:,Z]],\
@@ -2503,7 +2503,7 @@ class CIESpectrum():
     s = 0.0
     for i in range(len(ikT)):
 
-      for Z in range(1,30):
+      for Z in self.session.elements:
         abund = self.session.abund[Z]*self.session.abundsetvector[Z]
         if abund > 0:
           epslimit =  self.session.broaden_limit/abund
@@ -2559,7 +2559,7 @@ class CIESpectrum():
 
     linelist = False
 
-    for Z in range(1,30):
+    for Z in self.session.elements:
       abund = self.session.abund[Z]*self.session.abundsetvector[Z]
       if abund > 0:
         elemlinelist = False
@@ -2895,14 +2895,8 @@ class ElementSpectrum():
       Parent CIESpectrum object
 
     """
-    print("INIT Z")
+
     # intialize
-
-    print("ES: Z = ", Z)
-    print("ES: z1_drv = ", z1_drv)
-#    print("ES: parent ", parent)
-
-
     if z1_drv != 0:
       tmp = linedata[(linedata['Element'] == Z) &\
                                (linedata['Ion_drv'] == z1_drv)]
@@ -2912,7 +2906,6 @@ class ElementSpectrum():
 #                     (cocodata['rmJ']==z1_drv)]
 #      print(tmp)
       self.continuum = ContinuumData(cocodata, parentElementSpectrum=self)
-      print("HUH")
     else:
 #      tmp = linedata[(linedata['Element'] == Z)]
       self.lines = LineData(linedata,parentElementSpectrum=self)
@@ -2923,11 +2916,8 @@ class ElementSpectrum():
 #      self.continuum = ContinuumData(tmp[0], parentElementSpectrum=self)
       self.continuum = ContinuumData(cocodata, parentElementSpectrum=self)
 
-    print("WUH")
     self.parent = parent
-    print("XUH")
     self.session = self.parent.session
-    print("YUH")
 
 
   def return_spectrum(self, eedges, Te, ebins_checksum=False,\
@@ -3003,9 +2993,7 @@ class ElementSpectrum():
     linelist : array
       list of lines and epsilons
     """
-    print("HI")
     wave = convert_spec(specrange, specunit, 'A')
-    print("HI specunit", specunit)
 
     llist = self.lines.lines[(self.lines.lines['Lambda']>=wave[0]) &\
                        (self.lines.lines['Lambda']<=wave[1])]
@@ -3128,7 +3116,7 @@ class LineData():
     spectrum : array(float)
       Emissivity on eedges spectral bins of the lines, in ph cm^3 s^-1 bin^-1
     """
-
+    print('in return_spec: thermal broadening =', thermal_broadening)
     if ebins_checksum == False:
       # check the parent
       if self.parentElementSpectrum != False:
@@ -3147,9 +3135,10 @@ class LineData():
         pass
 
       else:
+        print(self.lines.dtype.names)
         spec,z = numpy.histogram(self.lineenergies, \
                                  bins=eedges, \
-                                 weights = self.lines['epsilon'])
+                                 weights = self.lines['Epsilon'])
         self.spectrum = spec
         self.spectrum_calculated = True
 
@@ -3162,11 +3151,12 @@ class LineData():
             (self.spectrum_calculated == True) &\
             (self.T == T) &\
             (self.v <=0.0)):
-
-          pass
+          print('caseA')
+#          pass
         else:
           # recalculate!
           recalc = True
+          print('caseB')
 
       if ((thermal_broadening == False) &\
           (velocity_broadening > 0)):
@@ -3175,10 +3165,13 @@ class LineData():
             (self.spectrum_calculated == True) &\
             (self.T == T) &\
             (self.v == velocity_broadening)):
-          pass
+          print('caseC')
+
+#          pass
         else:
           # recalculate!
           recalc = True
+          print('caseD')
 
       if ((thermal_broadening == True) &\
           (velocity_broadening > 0)):
@@ -3187,11 +3180,14 @@ class LineData():
             (self.spectrum_calculated == True) &\
             (self.T == T) &\
             (self.v == velocity_broadening)):
-          pass
+          print('caseE')
+
+#          pass
         else:
           # recalculate!
           recalc = True
-
+          print('caseF')
+      zzz=input('recalc')
       if recalc==True:
 
         # ind = strong line indicies
@@ -3304,6 +3300,17 @@ class ContinuumData():
       Parent ElementSpectrum object
     """
 
+    if type(cocoentry)==bool:
+      if cocoentry == False:
+        cocoentry={}
+        cocoentry['N_Cont']=2
+        cocoentry['N_Pseudo']=2
+        cocoentry['E_Cont'] = numpy.array([0.0001,10000])
+        cocoentry['Continuum'] = numpy.array([0.0,0.0])
+        cocoentry['E_Pseudo'] = numpy.array([0.0001,10000])
+        cocoentry['Pseudo'] = numpy.array([0.0,0.0])
+
+
     nEC = cocoentry['N_Cont']
     nEP = cocoentry['N_Pseudo']
 
@@ -3396,8 +3403,6 @@ def apply_response(spectrum, rmf, arf=False):
 #
 # Changed to return the energy grid and the spectrum, as apparently in some
 # instruments these are not the same as the input energy grid.
-  print("starting apply response at %s"%( time.asctime()))
-  t1 = time.time()
   if arf:
     if type(arf)==str:
       arfdat = pyfits.open(arf)
@@ -3511,8 +3516,6 @@ class NEISession(CIESession):
     # Open up the APEC files
     self.set_apec_files(linefile, cocofile)
 
-    # a hold for the spectra
-    self.spectra=NEISpectrum(self)
 
     # if elements are specified, use them. Otherwise, use Z=1-30
     if util.keyword_check(elements):
@@ -3520,6 +3523,8 @@ class NEISession(CIESession):
     else:
       self.elements=list(range(1,31))
 
+    # a hold for the spectra
+    self.spectra=NEISpectrum(self)
 
 
     # Set both the current and the default abundances to those that
@@ -3693,7 +3698,7 @@ class NEISession(CIESession):
     if not self.response_set:
       raise util.ReadyError("Response not yet set: use set_response to set.")
 
-    s= self.spectra.return_spectrum(self, Te, tau, init_pop=init_pop, Te_init=Te_init, teunit=teunit, nearest = nearest)
+    s= self.spectra.return_spectrum(Te, tau, init_pop=init_pop, Te_init=Te_init, teunit=teunit, nearest = nearest)
 
     ss = self.apply_response(s)
 
@@ -3762,9 +3767,10 @@ class NEISpectrum(CIESpectrum):
       Zarr[numpy.arange(len(ldat), dtype=int), ldat['Element']]=True
 
 
-      for Z in range(6,30):
+      for Z in self.session.elements:
 
-
+        if not Z in self.spectra[ihdu].keys():
+          self.spectra[ihdu][Z] = {}
 
 
 #      for Z in range(1,30):
@@ -3778,8 +3784,8 @@ class NEISpectrum(CIESpectrum):
           isgood = isz1*Zarr[:,Z]
           ccdat = cdat[(cdat['Z']==Z) & (cdat['rmJ']==z1)]
 
-          print("Z=",Z)
-          print("z1_drv=",z1)
+          if len(ccdat)==0:
+            ccdat = [False]
           self.spectra[ihdu][Z][z1]=ElementSpectrum(ldat[isgood],\
                                                 ccdat[0], Z, z1_drv=z1,parent=self)
 #                                                Z, z1_drv=z1,\
@@ -3830,7 +3836,7 @@ class NEISpectrum(CIESpectrum):
     s = 0.0
     for i in range(len(ikT)):
 
-      for Z in range(1,30):
+      for Z in self.session.elements:
 
         abund = self.session.abund[Z]*self.session.abundsetvector[Z]
         if abund > 0:
@@ -3850,6 +3856,7 @@ class NEISpectrum(CIESpectrum):
 
 
               # return a broadened spectrum
+
               ss = self.spectra[ikT[i]][Z][z1].return_spectrum(self.session.specbins,\
                                   kT,\
                                   ebins_checksum = self.session.ebins_checksum,\
@@ -3897,7 +3904,7 @@ class NEISpectrum(CIESpectrum):
 
     linelist = False
 
-    for Z in range(1,30):
+    for Z in self.session.elements:
       abund = self.session.abund[Z]*self.session.abundsetvector[Z]
       if abund > 0:
         elemlinelist = False
