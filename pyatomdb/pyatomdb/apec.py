@@ -1492,9 +1492,15 @@ def continuum_append(a,b):
 def create_lhdu_cie(linedata):
 
   # sort the data
-  linedata.sort(order=['lambda'])
-  linedata = linedata[::-1]
-  linedata.sort(order=['element','ion'], kind='mergesort')
+
+  tmp = numpy.zeros(len(linedata), dtype=numpy.dtype({'names':['negLambda','Element','Ion'],\
+                                                       'formats':[float, float, float]}))
+  tmp['Element']= linedata['Element']
+  tmp['Ion']= linedata['Ion']
+  tmp['negLambda']= linedata['Lambda']*-1
+  
+  srt = numpy.argsort(tmp, order=['Element','Ion','negLambda'])
+  linedata = linedata[srt]
 
 
 
@@ -1515,11 +1521,16 @@ def create_lhdu_cie(linedata):
 
 def create_lhdu_nei(linedata):
 
-  # sort the data
-  linedata.sort(order=['lambda'])
-  linedata = linedata[::-1]
-  linedata.sort(order=['element','ion'], kind='mergesort')
+  # sort the data, as required by XSPEC. Cannot sort in reverse order, so hackery ensues.
 
+  tmp = numpy.zeros(len(linedata), dtype=numpy.dtype({'names':['negLambda','Element','Ion'],\
+                                                       'formats':[float, float, float]}))
+  tmp['Element']= linedata['Element']
+  tmp['Ion']= linedata['Ion']
+  tmp['negLambda']= linedata['Lambda']*-1
+
+  srt = numpy.argsort(tmp, order=['Element','Ion','negLambda'])
+  linedata = linedata[srt]
 
   cols = []
   cols.append(pyfits.Column(name='Lambda', format='1E', unit="A", array=linedata['lambda']))
