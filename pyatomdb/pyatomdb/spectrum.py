@@ -1596,8 +1596,7 @@ class CIESession():
     # Open up the APEC files
     self.set_apec_files(linefile, cocofile)
 
-    # a hold for the spectra
-    self.spectra=CIESpectrum(self)
+
 
     # if elements are specified, use them. Otherwise, use Z=1-30
     if util.keyword_check(elements):
@@ -1605,7 +1604,8 @@ class CIESession():
     else:
       self.elements=list(range(1,31))
 
-
+    # a hold for the spectra
+    self.spectra=CIESpectrum(self)
 
     # Set both the current and the default abundances to those that
     # the apec data was calculated on
@@ -2184,7 +2184,10 @@ class CIESession():
     # divide the 2, store the replacement ratio to self.abundsetvector
 
     for Z in range(1,31):
-      self.abundsetvector[Z]=new[Z]/old[Z]
+      try:
+        self.abundsetvector[Z]=new[Z]/old[Z]
+      except ZeroDivisionError:
+        self.abundsetvector[Z] = 0.0
 
     # update the current abundance string to represent your input
     self.abundset=abundstring
@@ -2416,8 +2419,12 @@ class CIESpectrum():
       for Z in self.session.elements:
         ccdat = cdat[(cdat['Z']==Z) & (cdat['rmJ']==0)]
 
+        if len(ccdat)==1:
+          c = ccdat[0]
+        else:
+          c = False
         self.spectra[ihdu][Z]=ElementSpectrum(ldat[Zarr[:,Z]],\
-                                              ccdat[0], \
+                                              c, \
                                               Z, parent=self)
 
 
@@ -2571,8 +2578,9 @@ class CIESpectrum():
 
           if len(ss) > 0:
             ss['Epsilon']*=abund*f[i]
-            if elemlinelist==False:
-              elemlinelist = ss
+            if type(elemlinelist)==bool:
+              if elemlinelist==False:
+                elemlinelist = ss
             else:
               isnew = numpy.zeros(len(ss), dtype=bool)
 
@@ -3187,7 +3195,7 @@ class LineData():
           # recalculate!
           recalc = True
           print('caseF')
-      zzz=input('recalc')
+#      zzz=input('recalc')
       if recalc==True:
 
         # ind = strong line indicies
