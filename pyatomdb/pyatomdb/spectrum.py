@@ -2520,7 +2520,7 @@ class CIESpectrum():
 
 
     # HERE RELOAD ALL THE SPECTRAL DATA OF FILL IT OUT, YOUR CALL
-    picklefname = os.expandvars('$ATOMDB/spectra_%s_%s.pkl'%\
+    picklefname = os.path.expandvars('$ATOMDB/spectra_%s_%s.pkl'%\
                                 (linedata[0].header['CHECKSUM'],\
                                  cocodata[0].header['CHECKSUM']))
     if os.path.isfile(picklefname):
