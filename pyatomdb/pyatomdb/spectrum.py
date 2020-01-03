@@ -1797,6 +1797,8 @@ class CIESession():
     # these are the *output* energy bins
       f=open('dump.txt','w')
       f.write(repr(self.rmf))
+      f.write(repr(self.arf))
+
       f.close()
       try:
         ebins = self.rmf['EBOUNDS'].data['E_MIN']
