@@ -2600,7 +2600,7 @@ class CIESpectrum():
 
       if log_interp:
         if nearest:
-          ikT = numpy.argmin(numpy.abs(self.logkTlist - numpy.log(kT)))
+          ikT = [numpy.argmin(numpy.abs(self.logkTlist - numpy.log(kT)))]
           f=[1.0]
         else:
           ikT = numpy.where(self.kTlist < kT)[0][-1]
@@ -2612,7 +2612,7 @@ class CIESpectrum():
 
       else:
         if nearest:
-          ikT = numpy.argmin(numpy.abs(self.kTlist - kT))
+          ikT = [numpy.argmin(numpy.abs(self.kTlist - kT))]
           f=[1.0]
         else:
           ikT = numpy.where(self.kTlist < kT)[0][-1]
