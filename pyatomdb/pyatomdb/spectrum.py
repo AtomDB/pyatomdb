@@ -1790,6 +1790,8 @@ class CIESession():
       # get the rmf matrix
 
     # alternate where we do matrix generation?
+
+    # these are the *output* energy bins
       ebins = self.rmf['EBOUNDS'].data['E_MIN']
       if ebins[-1] > ebins[0]:
         ebins = numpy.append(ebins, self.rmf['EBOUNDS'].data['E_MAX'][-1])
@@ -1812,9 +1814,9 @@ class CIESession():
     # Use chanoffset to correct for this.
       chanoffset = self.rmf['EBOUNDS'].data['CHANNEL'][0]
 
-      self.rmfmatrix = numpy.zeros([len(self.rmf['EBOUNDS'].data), len(self.rmf[matrixname].data)])
+      self.rmfmatrix = numpy.zeros([len(self.rmf[matrixname].data),len(self.rmf['EBOUNDS'].data)])
       for ibin, i in enumerate(self.rmf[matrixname].data):
-  #      if res[ibin]==0.0: continue
+
         lobound = 0
 
         fchan = i['F_CHAN']*1
@@ -1831,12 +1833,12 @@ class CIESession():
           if ilo < 0: continue
 
           ihi = fchan[j] + nchan[j]
-          self.rmfmatrix[ilo:ihi,ibin]=i['MATRIX'][lobound:lobound+nchan[j]]
+          self.rmfmatrix[ibin,ilo:ihi]=i['MATRIX'][lobound:lobound+nchan[j]]
           lobound = lobound+nchan[j]
 
       self.specbins, self.ebins_out = get_response_ebins(self.rmf)
       self.specbin_units='keV'
-      self.aeff = self.rmfmatrix.sum(0)
+      self.aeff = self.rmfmatrix.sum(1)
       if self.arf != False:
         self.aeff *=self.arf['SPECRESP'].data['SPECRESP']
       self.response_set = True
