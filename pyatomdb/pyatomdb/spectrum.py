@@ -1792,7 +1792,11 @@ class CIESession():
     # alternate where we do matrix generation?
 
     # these are the *output* energy bins
-      ebins = self.rmf['EBOUNDS'].data['E_MIN']
+      try:
+        ebins = self.rmf['EBOUNDS'].data['E_MIN']
+      except:
+        print(self.rmf)
+        raise
       if ebins[-1] > ebins[0]:
         ebins = numpy.append(ebins, self.rmf['EBOUNDS'].data['E_MAX'][-1])
       else:
