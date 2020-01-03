@@ -12,7 +12,7 @@ import os, time
 from . import util, atomdb, const, atomic
 import scipy, ctypes
 import astropy.io.fits as pyfits
-from joblib import Parallel, delayed
+#from joblib import Parallel, delayed
 
 def calc_full_ionbal(Te, tau=False, init_pop=False, Te_init=False, Zlist=False, teunit='K',\
                     extrap=True, cie=True, settings=False):
