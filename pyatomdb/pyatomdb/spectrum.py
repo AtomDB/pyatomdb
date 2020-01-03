@@ -1780,6 +1780,9 @@ class CIESession():
       if type(rmf)==str:
         self.rmffile = rmf
         self.rmf = pyfits.open(rmf)
+
+
+
       elif type(rmf) == pyfits.hdu.hdulist.HDUList:
         self.rmf = rmf
         self.rmffile = rmf.filename()
@@ -1792,6 +1795,9 @@ class CIESession():
     # alternate where we do matrix generation?
 
     # these are the *output* energy bins
+      f=open('dump.txt','w')
+      f.write(repr(self.rmf))
+      f.close()
       try:
         ebins = self.rmf['EBOUNDS'].data['E_MIN']
       except:
