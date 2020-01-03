@@ -2674,6 +2674,7 @@ class CIESpectrum():
 
            # go caclulate the spectrum, with broadening as assigned.
         sss=0.0
+        print("ikT", ikT, 'f', f)
         for i in range(len(ikT)):
 
 
