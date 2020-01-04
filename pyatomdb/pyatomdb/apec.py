@@ -2361,7 +2361,23 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                    numpy.int,\
                                    numpy.int,\
                                    numpy.int]})
-
+  elif dtype =='linelist_cie_spectrum':
+    ret = numpy.dtype({'names':['Lambda',\
+                                 'Lambda_Err',\
+                                 'Epsilon',\
+                                 'Epsilon_Err',\
+                                 'Element',\
+                                 'Ion', \
+                                 'UpperLev',\
+                                 'LowerLev'],\
+                        'formats':[numpy.float32,\
+                                   numpy.float32,\
+                                   numpy.float32,\
+                                   numpy.float32,\
+                                   numpy.int32,\
+                                   numpy.int32,\
+                                   numpy.int32,\
+                                   numpy.int32]})
   elif dtype == 'linetype_cap':
     ret = numpy.dtype({'names':['Lambda',\
                                  'Lambda_Err',\

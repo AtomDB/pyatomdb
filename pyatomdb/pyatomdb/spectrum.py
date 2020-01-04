@@ -1795,16 +1795,8 @@ class CIESession():
     # alternate where we do matrix generation?
 
     # these are the *output* energy bins
-      f=open('dump.txt','w')
-      f.write(repr(self.rmf))
-      f.write(repr(self.arf))
 
-      f.close()
-      try:
-        ebins = self.rmf['EBOUNDS'].data['E_MIN']
-      except:
-        print(self.rmf)
-        raise
+      ebins = self.rmf['EBOUNDS'].data['E_MIN']
       if ebins[-1] > ebins[0]:
         ebins = numpy.append(ebins, self.rmf['EBOUNDS'].data['E_MAX'][-1])
       else:
@@ -2322,7 +2314,7 @@ class CIESession():
 
 
   def return_linelist(self, Te, specrange, specunit='A', \
-                               teunit='keV', apply_aeff=False):
+                               teunit='keV', apply_aeff=False, nearest=False):
     """
     Get the list of line emissivities vs wavelengths
 
@@ -2360,7 +2352,7 @@ class CIESession():
 
     s= self.spectra.return_linelist(kT, specrange=specrange, teunit='keV',\
                                         specunit=specunit, elements=el_list,\
-                                        abundances = ab)
+                                        abundances = ab, nearest=nearest)
 
     # do the response thing
     #resp  = s.response()
@@ -2688,7 +2680,7 @@ class CIESpectrum():
 
            # go caclulate the spectrum, with broadening as assigned.
         sss=0.0
-        print("ikT", ikT, 'f', f)
+
         for i in range(len(ikT)):
 
 
@@ -2754,25 +2746,28 @@ class CIESpectrum():
       for Z in elements:
         abundances[Z] = 1.0
 
+    linelist = numpy.zeros(0, dtype = apec.generate_datatypes('linelist_cie_spectrum'))
 
-    linelist = False
-
+    print('ikT', ikT)
     for Z in elements:
       abund = abundances[Z]
       if abund > 0:
-        elemlinelist = False
+        elemlinelist = numpy.zeros(0, dtype = apec.generate_datatypes('linelist_cie_spectrum'))
+
         for i in range(len(ikT)):
 
 
           ss = self.spectra[ikT[i]][Z].return_linelist(specrange,\
                                   teunit='keV', specunit=specunit)
 
+
+
           if len(ss) > 0:
             ss['Epsilon']*=abund*f[i]
-            if type(elemlinelist)==bool:
-              if elemlinelist==False:
-                elemlinelist = ss
-            else:
+
+
+            # if this is a 2nd or higher temperaure, look for line matches
+            if i > 0:
               isnew = numpy.zeros(len(ss), dtype=bool)
 
               for inew, new in enumerate(ss):
@@ -2785,14 +2780,22 @@ class CIESpectrum():
                 else:
                   isnew[inew]=True
 
+              # merge new lines onto the end of the list
               s = sum(isnew)
               if s > 0:
-                elemlinelist = numpy.append(elemlinelist, ss[isnew])
-        if elemlinelist != False:
-          if linelist==False:
-            linelist = elemlinelist
-          else:
-            linelist =  numpy.append(linelist, elemlinelist)
+                try:
+                  elemlinelist = numpy.append(elemlinelist, ss[isnew])
+                except:
+                  print(ss)
+                  print(ss[isnew],ss.dtype)
+                  print(elemlinelist, elemlinelist.dtype)
+                  raise
+
+        # append this element's line list onto the total line list
+        if len(linelist)==0:
+          linelist=elemlinelist
+        else:
+          linelist =  numpy.append(linelist, elemlinelist)
 
     return linelist
 
@@ -3217,7 +3220,6 @@ class ElementSpectrum():
       list of lines and epsilons
     """
 
-    print(self.lines.lines.dtype.names)
     llist = self.lines.lines[(self.lines.lines['Element']==Z) &\
                              (self.lines.lines['Ion']==z1) &\
                              (self.lines.lines['UpperLev']==up) &\
@@ -4237,7 +4239,7 @@ class NEISpectrum(CIESpectrum):
       Wavelength or Energy of line, depending on specunit
     """
     kT = convert_temp(Te, teunit, 'keV')
-    print("LOG INTERP", log_interp)
+
     ikT, f = self.get_nearest_Tindex(kT, \
                                      teunit='keV', \
                                      nearest=False, \
@@ -4257,7 +4259,7 @@ class NEISpectrum(CIESpectrum):
 
     eps = 0.0
     lam = 0.0
-    print('--------')
+
 
       # find lines which match
     for z1_drv in range(1,Z+2):
@@ -4286,7 +4288,6 @@ class NEISpectrum(CIESpectrum):
           eps_out += f[i]*eps_in[i]
         eps += eps_out*abundance * ionfrac[z1_drv-1]
 
-    print('epsilon',  eps)
 
     if specunit == 'keV':
       lam = const.HC_IN_KEV_A/lam
