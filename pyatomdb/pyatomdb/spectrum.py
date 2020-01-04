@@ -1632,6 +1632,11 @@ class CIESession():
     self.docont=True # Include continuum in spectrum
     self.dopseudo=True # Include pseudo continuum in spectrum
 
+    # no response set yet
+    self.rmffile=False
+    self.arffile=False
+
+
     #self.broaden_limit = 1e-18
     #self.thermal_broadening=True
     #self.velocity_broadening=0.0
