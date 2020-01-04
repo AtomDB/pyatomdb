@@ -2795,7 +2795,8 @@ class CIESpectrum():
                   print(ss[isnew],ss.dtype)
                   print(elemlinelist, elemlinelist.dtype)
                   raise
-
+            else:
+              elemlinelist = ss
         # append this element's line list onto the total line list
         if len(linelist)==0:
           linelist=elemlinelist
