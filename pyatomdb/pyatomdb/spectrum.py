@@ -2363,12 +2363,19 @@ class CIESession():
     #resp  = s.response()
 
     if apply_aeff == True:
-      ibin = numpy.zeros(len(s), dtype=int)
+      factor = numpy.zeros(len(s), dtype=float)
       for i, ss in enumerate(s):
         e = const.HC_IN_KEV_A/ss['Lambda']
-        ibin[i] = numpy.where(self.specbins<e)[0][-1]
+        if e>self.specbins[-1]:
+          factor[i] = 0.0
+        elif e<self.specbins[0]:
+          factor[i] = 0.0
+        else:
+          ibin = numpy.where(self.specbins<e)[0][-1]
+          factor[i]=self.aeff[ibin]
 
-      s["Epsilon_Err"] = s['Epsilon']*self.aeff[ibin]
+
+      s["Epsilon_Err"] = s['Epsilon']*factor
 
     return(s)
 
