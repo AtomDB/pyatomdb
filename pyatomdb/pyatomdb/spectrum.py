@@ -1906,7 +1906,6 @@ class CIESession():
     self.spectra.ebins = self.specbins
     self.spectra.ebins_checksum=hashlib.md5(self.spectra.ebins).hexdigest()
     s= self.spectra.return_spectrum(te, teunit=teunit, nearest=nearest,elements = el_list, abundances=ab)
-
     ss = self.apply_response(s)
 
     return ss
@@ -2319,7 +2318,8 @@ class CIESession():
 
 
   def return_linelist(self, Te, specrange, specunit='A', \
-                               teunit='keV', apply_aeff=False, nearest=False):
+                               teunit='keV', apply_aeff=False, nearest=False,\
+                               apply_binwidth=False):
     """
     Get the list of line emissivities vs wavelengths
 
@@ -2361,22 +2361,41 @@ class CIESession():
 
     # do the response thing
     #resp  = s.response()
-
     if apply_aeff == True:
-      factor = numpy.zeros(len(s), dtype=float)
-      for i, ss in enumerate(s):
-        e = const.HC_IN_KEV_A/ss['Lambda']
-        if e>self.specbins[-1]:
-          factor[i] = 0.0
-        elif e<self.specbins[0]:
-          factor[i] = 0.0
-        else:
-          ibin = numpy.where(self.specbins<e)[0][-1]
-          factor[i]=self.aeff[ibin]
+      if specunit.lower()=='kev':
+        binwidth = self.ebins_out[1:]-self.ebins_out[:-1]
+        factor = numpy.zeros(len(s), dtype=float)
+        for i, ss in enumerate(s):
+          e = const.HC_IN_KEV_A/ss['Lambda']
+          if e>self.specbins[-1]:
+            factor[i] = 0.0
+          elif e<self.specbins[0]:
+            factor[i] = 0.0
+          else:
+            ibin = numpy.where(self.specbins<e)[0][-1]
+            factor[i]=self.aeff[ibin]
+            if apply_binwidth:
+              factor[i] /= binwidth[ibin]
+
+        s["Epsilon_Err"] = s['Epsilon']*factor
 
 
-      s["Epsilon_Err"] = s['Epsilon']*factor
-
+      elif specunit.lower()=='a':
+        wvbins=12.398425/self.ebins_out[::-1]
+        binwidth = wvbins[1:]-wvbins[:-1]
+        factor = numpy.zeros(len(s), dtype=float)
+        for i, ss in enumerate(s):
+          e = ss['Lambda']
+          if e>wvbins[-1]:
+            factor[i] = 0.0
+          elif e<wvbins[0]:
+            factor[i] = 0.0
+          else:
+            ibin = numpy.where(wvbins<e)[0][-1]
+            factor[i]=self.aeff[::-1][ibin]
+            if apply_binwidth:
+              factor[i] /= binwidth[ibin]
+        s["Epsilon_Err"] = s['Epsilon']*factor
     return(s)
 
 def convert_temp(Te, teunit, teunitout):
@@ -2695,7 +2714,6 @@ class CIESpectrum():
 
         for i in range(len(ikT)):
 
-
           ss = self.spectra[ikT[i]][Z].return_spectrum(self.ebins,\
                                   kT,\
                                   ebins_checksum = self.ebins_checksum,\
@@ -2703,17 +2721,18 @@ class CIESpectrum():
                                   broaden_limit = epslimit,\
                                   velocity_broadening = self.velocity_broadening) *\
                                   abund
-
           if log_interp:
             sss += numpy.log(ss+const.MINEPSOFFSET) *f[i]
           else:
             sss += ss*f[i]
         # get the interp
         if log_interp:
-          s += numpy.exp(sss)-const.MINEPSOFFSET*len(ikT)
+          add = numpy.exp(sss)-const.MINEPSOFFSET*len(ikT)
+          add[add<0]=0.0
         else:
-          s += sss
-
+          add = sss
+          add[add<0]=0.0
+        s+=add
     return s
 
 
@@ -2760,7 +2779,7 @@ class CIESpectrum():
 
     linelist = numpy.zeros(0, dtype = apec.generate_datatypes('linelist_cie_spectrum'))
 
-    print('ikT', ikT)
+
     for Z in elements:
       abund = abundances[Z]
       if abund > 0:
@@ -2798,9 +2817,6 @@ class CIESpectrum():
                 try:
                   elemlinelist = numpy.append(elemlinelist, ss[isnew])
                 except:
-                  print(ss)
-                  print(ss[isnew],ss.dtype)
-                  print(elemlinelist, elemlinelist.dtype)
                   raise
             else:
               elemlinelist = ss
@@ -3174,7 +3190,7 @@ class ElementSpectrum():
 
     self.ebins_checksum = ebins_checksum
     self.T = T
-
+    print("X ", velocity_broadening)
     spec = self.lines.return_spec(eedges, T, ebins_checksum=ebins_checksum,\
                                   thermal_broadening=thermal_broadening,\
                                   broaden_limit=broaden_limit,\
@@ -3355,7 +3371,8 @@ class LineData():
     if ebins_checksum == False:
         # generate the checksum
       ebins_checksum = hashlib.md5(eedges).hexdigest()
-
+    if velocity_broadening==None:
+      velocity_broadening=0.0
     if ((thermal_broadening == False) & \
         (velocity_broadening == False)):
       if ((self.ebins_checksum==ebins_checksum) &\
@@ -3434,7 +3451,7 @@ class LineData():
           vb = (velocity_broadening * 1e5)**2
 
         wcoeff = numpy.sqrt(Tb+vb) / (const.LIGHTSPEED*1e2)
-        #width = wcoeff*const.HC_IN_KEV_A/llist['Lambda']
+
         elines = self.lineenergies[ind]
         width = wcoeff*elines
 
