@@ -6,7 +6,7 @@ Adam Foster July 17th 2015
 """
 
 #PHYSICAL CONSTANTS
-KBOLTZ = 8.617385e-8#  /*!< in units of keV/K */
+KBOLTZ = 8.617385e-8#  /*!< in units of keV/K *== 1/(11604.5*1000)/
 M_E = 2.7182818284590452354 # /*!< Euler e */
 UPSILON_COLL_COEFF = 8.629e-6 # /*!< sqrt{2 pi / kB} hbar^2/m_e^{1.5} */
 ERG_KEV = 1.60219e-9
@@ -17,6 +17,11 @@ BREMS_COEFF = 1.6542996e-20
 HC_IN_KEV_A = 12.398425 #  hc for converting keV to And
 HC_IN_ERG_A = 1.9862e-8  # /* = hc (erg A) = 12398.425 * 1.602e-12 */
 SAF_COEFF = 3.30e-24
+
+LIGHTSPEED = 299792458. # m/s
+
+AMUKG = 1.66054E-27
+
 
 # APEC SPECIFIC CONSTANTS
 MAX_UPS = 20
@@ -114,8 +119,8 @@ BREMS_NONE = 4
 
 #MISCfile types in FILEMAP files
 ABUNDANCE = 10
-HUMMER_TYPE = 11   
-GAUNT_FF_TYPE = 13 
+HUMMER_TYPE = 11
+GAUNT_FF_TYPE = 13
 
 
 RRC_COEFF =  1.31e8
@@ -141,6 +146,8 @@ NLEV_NOSPARSE = 11000
 MIN_IONPOP = 1e-10
 MIN_LEVPOP = 1e-40
 
+# MISC
+MAXZ_CIE = 30
+MAXZ_NEI = 28
 
-AMUKG = 1.66054E-27
-
+MINEPSOFFSET=1e-40

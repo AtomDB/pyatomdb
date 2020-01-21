@@ -998,7 +998,11 @@ def get_abundance(abundfile=False, abundset='AG89', element=[-1],\
   ret = {}
   for Z in element:
     elsymb = atomic.Ztoelsymb(Z)
-    ret[Z]=10**(abunddata[1].data.field(elsymb)[ind[0]])/1e12
+    try:
+      ret[Z]=10**(abunddata[1].data.field(elsymb)[ind[0]])/1e12
+    except KeyError:
+      # case element doesn't exists
+      ret[Z] = 0.0
   return ret
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -4073,7 +4077,7 @@ def read_filemap(filemap="$ATOMDB/filemap", atomdbroot="$ATOMDB"):
   # restore the ATOMDB variable
   os.environ['ATOMDB']=os.environ['OLDATOMDB']
   x=os.environ.pop('OLDATOMDB')
-
+  f.close()
   return ret
 
 

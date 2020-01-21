@@ -12,7 +12,7 @@ import os, time
 from . import util, atomdb, const, atomic
 import scipy, ctypes
 import astropy.io.fits as pyfits
-from joblib import Parallel, delayed
+#from joblib import Parallel, delayed
 
 def calc_full_ionbal(Te, tau=False, init_pop=False, Te_init=False, Zlist=False, teunit='K',\
                     extrap=True, cie=True, settings=False):
@@ -2377,7 +2377,23 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                    numpy.int,\
                                    numpy.int,\
                                    numpy.int]})
-
+  elif dtype =='linelist_cie_spectrum':
+    ret = numpy.dtype({'names':['Lambda',\
+                                 'Lambda_Err',\
+                                 'Epsilon',\
+                                 'Epsilon_Err',\
+                                 'Element',\
+                                 'Ion', \
+                                 'UpperLev',\
+                                 'LowerLev'],\
+                        'formats':[numpy.float32,\
+                                   numpy.float32,\
+                                   numpy.float32,\
+                                   numpy.float32,\
+                                   numpy.int32,\
+                                   numpy.int32,\
+                                   numpy.int32,\
+                                   numpy.int32]})
   elif dtype == 'linetype_cap':
     ret = numpy.dtype({'names':['Lambda',\
                                  'Lambda_Err',\
