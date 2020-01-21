@@ -1553,10 +1553,13 @@ class CIESession():
 
   >>> s=CIESession()
 
-  Set up the responses, in this case a dummy response from 0.1 to 10 keV
+  Set up the responses, in this case a dummy response from 0.1 to 10 keV,
+  with area 1cm^2 in each bin
 
   >>> ebins = numpy.linspace(0.1,10,1000)
   >>> s.set_response(ebins, raw=True)
+
+  (Alternatively, for a real response file, s.set_response(rmffile, arf=arffile)
 
   Turn on thermal broadening
 
@@ -1567,7 +1570,7 @@ class CIESession():
 
   >>> spec = s.return_spectrum(1.0)
 
-  spec is in photons cm^3 s^-1 bin^-1; ebins are the bin edges (so spec is
+  spec is in photons cm^5 s^-1 bin^-1; ebins are the bin edges (so spec is
   1 element shorter than ebins)
   """
 
@@ -1596,8 +1599,6 @@ class CIESession():
 
     # Open up the APEC files
     self.set_apec_files(linefile, cocofile)
-
-
 
     # if elements are specified, use them. Otherwise, use Z=1-30
     if util.keyword_check(elements):
@@ -1635,7 +1636,7 @@ class CIESession():
     # no response set yet
     self.rmffile=False
     self.arffile=False
-
+    self.raw_response=False
 
     #self.broaden_limit = 1e-18
     #self.thermal_broadening=True
@@ -1685,8 +1686,8 @@ class CIESession():
     allowed_velocity_broadening_units= ['km/s']
 
     if not velocity_broadening_units.lower() in ['km/s']:
-      print("Error: velocity broadening units of %s is not in allowed set "%\
-             (velocity_broadening_units), allowed_velocity_broadening_units)
+      raise util.UnitsError("Error: velocity broadening units of %s is not in allowed set %s."%\
+             (velocity_broadening_units, repr(allowed_velocity_broadening_units)))
       return
 
     self.velocity_broadening_units=velocity_broadening_units
@@ -1757,31 +1758,36 @@ class CIESession():
       self.ebins_out = rmf
       self.specbin_units='keV'
 
-      self.rmfmatrix = numpy.zeros([len(rmf)-1, len(rmf)-1])
-      for i in range(len(rmf)-1):
-        self.rmfmatrix[i,i] = 1.0
-      self.aeff = self.rmfmatrix.sum(1)
+#      self.rmfmatrix = numpy.zeros([len(rmf)-1, len(rmf)-1])
+ #     for i in range(len(rmf)-1):
+#        self.rmfmatrix[i,i] = 1.0
+      self.aeff = numpy.ones(len(rmf)-1)
 
       self.response_set = True
       self.specbins_set = True
       self.arf = False
       self.ebins_checksum =hashlib.md5(self.specbins).hexdigest()
+      self.raw_response=True
     else:
 
       if util.keyword_check(arf):
         if type(arf)==str:
           self.arffile = arf
-          self.arf = pyfits.open(arf)
+          self.arfdat = pyfits.open(arf)
         elif type(arf) == pyfits.hdu.hdulist.HDUList:
-          self.arf = arf
+          self.arfdat = arf
           self.arffile = arf.filename()
         else:
           print("ERROR: unknown arf type, %s"%(repr(type(arf))))
           return
+
+        self.arf = numpy.array(self.arfdat['SPECRESP'].data['SPECRESP'])
+
       else:
         self.arf=False
 
 
+      self.raw_response=False
       if type(rmf)==str:
         self.rmffile = rmf
         self.rmf = pyfits.open(rmf)
@@ -1848,8 +1854,8 @@ class CIESession():
       self.specbins, self.ebins_out = get_response_ebins(self.rmf)
       self.specbin_units='keV'
       self.aeff = self.rmfmatrix.sum(1)
-      if self.arf != False:
-        self.aeff *=self.arf['SPECRESP'].data['SPECRESP']
+      if util.keyword_check(self.arf):
+        self.aeff *=self.arf
       self.response_set = True
       self.specbins_set = True
 
@@ -1929,17 +1935,22 @@ class CIESession():
       spectrum folded through the response
     """
 
+    # if the response is raw, no need to matrix multiply (diagonal response, effectively)
+    if self.raw_response:
+      return spectrum
+
+
     arfdat = self.arf
 
-    if arfdat:
-      res = spectrum * arfdat['SPECRESP'].data['SPECRESP']
-    else:
-      res = spectrum*1.0
-
+#    if arfdat:
+ #     res = spectrum * arfdat['SPECRESP'].data['SPECRESP']
+ #   else:
+  #    res = spectrum*1.0
+    ret = spectrum*self.arf
     try:
-      ret = numpy.matmul(res,self.rmfmatrix)
+      ret = numpy.matmul(ret,self.rmfmatrix)
     except ValueError:
-      ret = numpy.matmul(res,self.rmfmatrix.transpose())
+      ret = numpy.matmul(ret,self.rmfmatrix.transpose())
 
     return ret
 
@@ -3263,7 +3274,6 @@ class ElementSpectrum():
 
     self.ebins_checksum = ebins_checksum
     self.T = T
-    print("X ", velocity_broadening)
     spec = self.lines.return_spec(eedges, T, ebins_checksum=ebins_checksum,\
                                   thermal_broadening=thermal_broadening,\
                                   broaden_limit=broaden_limit,\
