@@ -1501,6 +1501,67 @@ def get_effective_area(rmf, arf=False):
   area *= arfarea
   return ebins_in, area
 
+class Gaussian_CDF():
+  """
+  For fast interpolation, pre-calculate the CDF and interpolate it when
+  broadening lines
+
+  Parameters
+  ----------
+  None
+
+  Examples
+  --------
+
+  Create a CDF instance:
+
+  >>> s=Gaussian_CDF()
+
+  Broaden a line on ebins grid, with centroid and width.
+
+  >>> cdf = a.broaden(centroid, width, ebins)
+
+  Convert to flux in each bin
+
+  >>> flux= cdf[1:]-cdf[:-1]
+
+
+  """
+
+
+  def __init__(self):
+    self.x = numpy.linspace(-6,6,2400)
+    self.cdf = norm.cdf(self.x)
+    print("ARGH")
+
+  def broaden(self, centroid, width, ebins):
+    """
+    Broaden a line, return CDF
+
+    Parameters
+    ----------
+    centroid : float
+      The line energy (keV)
+    width : float
+      The sigma of the normal distribution, in keV
+    ebins : array(float)
+      Energy grid to return CDF on
+
+    Returns
+    -------
+    CDF : array(float)
+      cumulative flux distribution of linen at each bin edge.
+    """
+
+    # move the energy grid
+    etmp = (ebins-centroid)/width
+
+    # interpolate to get the appropriate CDF values
+    ret=numpy.interp(etmp, self.x, self.cdf)
+
+    return ret
+
+
 
 class CIESession():
   """
@@ -1643,6 +1704,7 @@ class CIESession():
     #self.velocity_broadening=0.0
 
     self.set_broadening(False, broaden_limit=1e-18)
+    self.cdf = Gaussian_CDF()
 
 
   def set_broadening(self, thermal_broadening, broaden_limit=False, \
@@ -1697,6 +1759,7 @@ class CIESession():
 
     self.spectra.velocity_broadening=self.velocity_broadening
     self.spectra.velocity_broadening_units=self.velocity_broadening_units
+
 
 
 
@@ -1911,7 +1974,7 @@ class CIESession():
 
     self.spectra.ebins = self.specbins
     self.spectra.ebins_checksum=hashlib.md5(self.spectra.ebins).hexdigest()
-    s= self.spectra.return_spectrum(te, teunit=teunit, nearest=nearest,elements = el_list, abundances=ab)
+    s= self.spectra.return_spectrum(te, teunit=teunit, nearest=nearest,elements = el_list, abundances=ab, broaden_object = self.cdf)
     ss = self.apply_response(s)
 
     return ss
@@ -1929,8 +1992,6 @@ class CIESession():
       binned on the same grid as the rmf.
     Returns
     -------
-    array(float)
-      energy grid (keV) for returned spectrum
     array(float)
       spectrum folded through the response
     """
@@ -2236,7 +2297,7 @@ class CIESession():
     #self.recalc()
 
 
-  def return_line_emissivity(self, Telist, Z, z1, up, lo, \
+  def return_line_emissivity(self, Te, Z, z1, up, lo, \
                              specunit='A', teunit='keV', \
                              apply_aeff=False, apply_abund=True,\
                              log_interp = True):
@@ -2246,7 +2307,7 @@ class CIESession():
 
     Parameters
     ----------
-    Telist : float or array(float)
+    Te : float or array(float)
       Temperature(s) in keV or K
     Z : int
       nuclear charge of element
@@ -2259,7 +2320,7 @@ class CIESession():
     specunit : {'Angstrom','keV'}
       Units for wavelength or energy (a returned value)
     teunit : {'keV' , 'K'}
-      Units of Telist (kev or K, default keV)
+      Units of Te (kev or K, default keV)
     apply_aeff : bool
       If true, apply the effective area to the line emissivity in the
       linelist to modify their intensities.
@@ -2281,7 +2342,7 @@ class CIESession():
 
     """
 
-    Tevec, Teisvec = util.make_vec(Telist)
+    Tevec, Teisvec = util.make_vec(Te)
 
     kTlist = convert_temp(Tevec, teunit, 'keV')
     if apply_abund:
@@ -2304,7 +2365,7 @@ class CIESession():
       else:
         ret['wavelength'] = None
 
-    ret['Te'] = Telist
+    ret['Te'] = Te
     ret['teunit'] = teunit
     if ret['wavelength'] != None:
       ret['energy'] = const.HC_IN_KEV_A/ret['wavelength']
@@ -2341,7 +2402,7 @@ class CIESession():
       Temperature in keV or K
     specrange : [float, float]
       Minimum and maximum values for interval in which to search
-    specunit : {'Ansgtrom','keV'}
+    specunit : {'Angstrom','keV'}
       Units for specrange
     teunit : {'keV' , 'K'}
       Units of te (kev or K, default keV)
@@ -2675,7 +2736,8 @@ class CIESpectrum():
 #-----------------------------------------------------------------------
 
   def return_spectrum(self, Te, teunit='keV', nearest = False,
-                             elements=False, abundances=False, log_interp=True):
+                             elements=False, abundances=False, log_interp=True,\
+                             broaden_object=False):
 
     """
     Return the spectrum of the element on the energy bins in
@@ -2730,7 +2792,8 @@ class CIESpectrum():
                                   ebins_checksum = self.ebins_checksum,\
                                   thermal_broadening = self.thermal_broadening,\
                                   broaden_limit = epslimit,\
-                                  velocity_broadening = self.velocity_broadening) *\
+                                  velocity_broadening = self.velocity_broadening,\
+                                  broaden_object=broaden_object) *\
                                   abund
           if log_interp:
             sss += numpy.log(ss+const.MINEPSOFFSET) *f[i]
@@ -3233,7 +3296,8 @@ class ElementSpectrum():
                     thermal_broadening=False,\
                     broaden_limit=False,\
                     velocity_broadening=0.0,\
-                    teunit = 'keV'):
+                    teunit = 'keV',\
+                    broaden_object=False):
     """
     Calculate the spectrum
 
@@ -3277,7 +3341,8 @@ class ElementSpectrum():
     spec = self.lines.return_spec(eedges, T, ebins_checksum=ebins_checksum,\
                                   thermal_broadening=thermal_broadening,\
                                   broaden_limit=broaden_limit,\
-                                  velocity_broadening=velocity_broadening) +\
+                                  velocity_broadening=velocity_broadening,\
+                                  broaden_object=broaden_object) +\
            self.continuum.return_spec(eedges, ebins_checksum = ebins_checksum)
 
     self.spectrum = spec
@@ -3426,7 +3491,8 @@ class LineData():
   def return_spec(self, eedges, T, ebins_checksum = False,\
                   thermal_broadening = False, \
                   velocity_broadening = 0.0, \
-                  broaden_limit = 1e-18):
+                  broaden_limit = 1e-18,\
+                  broaden_object=False):
     """
     return the line emission spectrum at tempterature T
 
@@ -3549,11 +3615,14 @@ class LineData():
         igood = numpy.where(((elines >= emin) & (eneg < emax))  |\
                   ((elines < emin) & (eplu < emin)))[0]
         spec = numpy.zeros(len(eedges))
+        t0 = time.time()
         for iline in igood:
 
-          spec += norm.cdf(eedges, loc=const.HC_IN_KEV_A/llist['Lambda'][iline],\
-                           scale=width[iline])*llist['Epsilon'][iline]
+          spec += broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
+                           width[iline],eedges)*llist['Epsilon'][iline]
 
+        t1 = time.time()
+#        print("Broadeninging %i lines, in %f seconds"%(len(igood), t1-t0))
         spec = spec[1:]-spec[:-1]
 
 
