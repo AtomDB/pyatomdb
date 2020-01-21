@@ -2737,6 +2737,79 @@ class CIESpectrum():
 
 
 
+  def return_line_emissivity(self, Te, Z, z1, up, lo, specunit='A',
+                             teunit='keV', abundance=1.0,
+                             log_interp = True):
+    """
+    Return the emissivity of a line at kT, tau. Assumes ionization from neutral for now
+
+
+    Parameters
+    ----------
+    Te : float
+      Temperature in keV or K
+    Z : int
+      nuclear charge of element
+    z1 : int
+      ion charge +1 of ion
+    up : int
+      upper level for transition
+    lo : int
+      lower level for transition
+    specunit : {'Angstrom','keV'}
+      Units for wavelength or energy (a returned value)
+    teunit : {'keV' , 'K'}
+      Units of Telist (kev or K, default keV)
+    abundance : float
+      Abundance to multiply the emissivity by
+
+    Returns
+    -------
+    Emissivity : float
+      Emissivity in photons cm^3 s^-1
+    spec : float
+      Wavelength or Energy of line, depending on specunit
+    """
+
+
+    kT = convert_temp(Te, teunit, 'keV')
+
+    ikT, f = self.get_nearest_Tindex(kT, \
+                                     teunit='keV', \
+                                     nearest=False, \
+                                     log_interp=log_interp)
+    #ikT has the 2 nearest temperature indexes
+    # f has the fraction for each
+
+      # find lines which match
+    eps_in = numpy.zeros(len(ikT))
+    eps = 0.0
+    lam = 0.0
+    for i in range(len(ikT)):
+      iikT =ikT[i]
+
+      llist = self.spectra[iikT][Z].return_linematch(Z,z1,up,lo)
+      for line in llist:
+        # add emissivity
+        eps_in[i] += line['Epsilon']
+        lam = line['Lambda']
+
+    if log_interp:
+      eps_out = 0.0
+      for i in range(len(ikT)):
+        eps_out += f[i]*numpy.log(eps_in[i]+const.MINEPSOFFSET)
+      eps += numpy.exp(eps_out-const.MINEPSOFFSET)*abundance
+    else:
+      eps_out = 0.0
+      for i in range(len(ikT)):
+        eps_out += f[i]*eps_in[i]
+      eps += eps_out*abundance
+
+
+    if specunit == 'keV':
+      lam = const.HC_IN_KEV_A/lam
+    return eps, lam
+
   def return_linelist(self, Te, teunit='keV', nearest = False,\
                       specrange=False, specunit='A', elements=False, abundances=False):
 
@@ -3894,7 +3967,7 @@ class NEISession(CIESession):
   def return_line_emissivity(self, Telist, taulist, Z, z1, up, lo, \
                              specunit='A', teunit='keV', \
                              apply_aeff=False, apply_abund=True,\
-                             log_interp = True):
+                             log_interp = True, init_pop='ionizing'):
     """
     Get line emissivity as function of Te, tau. Assumes ionization from neutral.
 
@@ -3950,15 +4023,18 @@ class NEISession(CIESession):
 
     eps = numpy.zeros([len(Tevec), len(tauvec)])
     ret={}
-
+    ret['wavelength'] = None
     for itau, tau in enumerate(tauvec):
       for ikT, kT in enumerate(kTlist):
         e, lam = self.spectra.return_line_emissivity(kT, tau, Z, z1, \
                                                      up, lo, \
                                                      specunit='A', \
                                                      teunit='keV', \
-                                                     abundance=ab)
+                                                     abundance=ab,\
+                                                     init_pop=init_pop)
+
         eps[ikT, itau] = e
+        print("eps[%i,%i] = %e"%(ikT, itau, e))
         if lam != False:
           ret['wavelength'] = lam * 1.0
         else:
@@ -4235,7 +4311,7 @@ class NEISpectrum(CIESpectrum):
 
   def return_line_emissivity(self, Te, tau, Z, z1, up, lo, specunit='A',
                              teunit='keV', abundance=1.0,
-                             log_interp = True):
+                             log_interp = True, init_pop = 'ionizing'):
     """
     Return the emissivity of a line at kT, tau. Assumes ionization from neutral for now
 
@@ -4261,6 +4337,13 @@ class NEISpectrum(CIESpectrum):
     abundance : float
       Abundance to multiply the emissivity by
 
+    init_pop : string or float
+      If string:
+        if 'ionizing' : all ionizing from neutral (so [1,0,0,0...])
+        if 'recombining': all recombining from ionized (so[...0,0,1])
+        if array of length (Z+1) : the acutal fractional populations
+        if single float : the temperature (same units as Te)
+
     Returns
     -------
     Emissivity : float
@@ -4268,6 +4351,9 @@ class NEISpectrum(CIESpectrum):
     spec : float
       Wavelength or Energy of line, depending on specunit
     """
+
+    import collections
+
     kT = convert_temp(Te, teunit, 'keV')
 
     ikT, f = self.get_nearest_Tindex(kT, \
@@ -4277,12 +4363,32 @@ class NEISpectrum(CIESpectrum):
     #ikT has the 2 nearest temperature indexes
     # f has the fraction for each
 
-    init_pop = numpy.zeros(Z+1)
-    init_pop[0] = 1.0
+    if type(init_pop) == str:
+      if init_pop == 'ionizing':
+        # everything neutral
+        ipop = numpy.zeros(Z+1)
+        ipop[0] = 1.0
+      elif init_pop == 'recombining':
+        # everything ionizing
+        ipop = numpy.zeros(Z+1)
+        ipop[-1] = 1.0
+    else:
+      if isinstance(init_pop, (collections.Sequence, numpy.ndarray)):
+        if len(init_pop)==Z+1:
+          ipop = init_pop
+        else:
+          pass
+      else:
+        kT_in = convert_temp(init_pop, teunit, 'keV')
+        ipop = apec.solve_ionbal_eigen(Z, \
+                                      kT_in, \
+                                      teunit='keV', \
+                                      datacache=self.datacache)
+
 
     ionfrac = apec.solve_ionbal_eigen(Z, \
                                       kT, \
-                                      init_pop=init_pop, \
+                                      init_pop=ipop, \
                                       tau=tau, \
                                       teunit='keV', \
                                       datacache=self.datacache)
@@ -4323,9 +4429,10 @@ class NEISpectrum(CIESpectrum):
       lam = const.HC_IN_KEV_A/lam
     return eps, lam
 
-  def return_linelist(self,  Te, tau, init_pop=False, Te_init=False,
+  def return_linelist(self,  Te, tau, Te_init=False,
                       teunit='keV', nearest = False, specrange=False,
-                      specunit='A', elements=False, abundances=False):
+                      specunit='A', elements=False, abundances=False,\
+                      init_pop = 'ionizing'):
 
     """
     Return the linelist of the element
