@@ -4400,7 +4400,7 @@ def get_data(Z, z1, ftype, datacache=False, \
                 d = False
               else:
                 url = re.sub(os.path.expandvars(atomdbroot),\
-                             'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
+                             pyatomdb.const.FTPPATH,fname)+'.gz'
                 try:
                   d = pyfits.open(url, cache=False)
                   didurl=True
@@ -4457,7 +4457,7 @@ def get_data(Z, z1, ftype, datacache=False, \
                 d = False
               else:
                 url = re.sub(os.path.expandvars(atomdbroot),\
-                             'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
+                             pyatomdb.const.FTPPATH,fname)+'.gz'
                 try:
                   d = pyfits.open(url, cache=False)
                   didurl=True
@@ -4543,7 +4543,7 @@ def get_data(Z, z1, ftype, datacache=False, \
             d = False
           else:
             url = re.sub(os.path.expandvars(atomdbroot),\
-                         'ftp://sao-ftp.harvard.edu/AtomDB',fname)+'.gz'
+                         const.FTPPATH,fname)+'.gz'
             print("trying URL %s"%(url))
             try:
               d = pyfits.open(url, cache=False)

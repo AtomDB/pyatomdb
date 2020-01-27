@@ -151,3 +151,6 @@ MAXZ_CIE = 30
 MAXZ_NEI = 28
 
 MINEPSOFFSET=1e-40
+
+
+FTPPATH = 'https://hea-www.cfa.harvard.edu/AtomDB'

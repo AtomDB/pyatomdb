@@ -14,6 +14,48 @@ Initial installation
 
 .. literalinclude:: ../examples/first_installation.py
 
+=====================
+Examples with Spectra
+=====================
+The spectrum.py module contains routines for taking the spectrum generated from the
+apec model and extracting line emissivities or continuum emission.
+
+++++++++++++++++
+CIESession Class
+++++++++++++++++
+The heart of the spectral analysis is the spectrum.py class. This reads in the results of an apec run (by default, $ATOMDB/apec_line.fits and $ATOMDB/apec_coco.fits) and allows the user to obtain spectra at a range of temperatures accounting for instrument responses, thermal and velocity broadening,  abundance changes and other issues.
+
+-----------------
+Making a Spectrum
+-----------------
+
+.. literalinclude:: ../examples/spectrum_session_examples.py
+
+--------------------
+Showing Line Details
+--------------------
+
+.. literalinclude:: ../examples/spectrum_session_linelist_examples.py
+
+++++++++++++++++
+NEISession Class
+++++++++++++++++
+Derived from the CIESession class, this handles non-equilibrium spectra. As such, 
+a few extra parameters should be set. The ionization timescale (tau) and the initial ionization fraction should be specified. This can either be as an initial temperature or an exact specified input distribution of ion populations.
+
+-----------------
+Making a spectrum
+-----------------
+
+.. literalinclude:: ../examples/spectrum_NEIsession_examples.py
+
+--------------------
+Showing Line Details
+--------------------
+
+.. literalinclude:: ../examples/spectrum_NEIsession_linelist_examples.py
+
+
 ==============
 Make Line List
 ==============

@@ -349,8 +349,7 @@ def download_atomdb_emissivity_files(adbroot, userid, version):
 
   # get the files
   urllib.request.urlcleanup()
-
-  fnameout = wget.download('ftp://sao-ftp.harvard.edu/AtomDB/releases/%s'%(fname), out="%s/%s"%(tmpdir, fname))
+  fnameout = wget.download('%s/releases/%s'%(const.FTPPATH,fname), out="%s/%s"%(tmpdir, fname))
   # collect user statistics if allowed.
   record_upload(fname)
 
@@ -423,7 +422,7 @@ def download_atomdb_nei_emissivity_files(adbroot, userid, version):
   # get the files
   urllib.request.urlcleanup()
 
-  fnameout = wget.download('ftp://sao-ftp.harvard.edu/AtomDB/releases/%s'%(fname), out="%s/%s"%(tmpdir, fname))
+  fnameout = wget.download('%s/releases/%s'%(const.FTPPATH,fname), out="%s/%s"%(tmpdir, fname))
 
   # collect user statistics if allowed.
   record_upload(fname)
@@ -537,6 +536,7 @@ def initialize():
   None
 
   """
+  import curl
 
   if 'ATOMDB' in os.environ:
     adbroot_init = os.environ['ATOMDB']
@@ -549,7 +549,7 @@ def initialize():
   while not anondat in ['yes','no']:
     anondat = question("Allow reporting of anonymous usage statistics","yes",multichoice=["yes","no","info"])
     if anondat=='info':
-      print("We like to know how many of users use our data. To enable this, we will generate a random number which will be transmitted with your requests to download data files in the future. We will record and transmit no other data beyond this number and what files you are downloading, and we will have no way of connecting this number to you. If you decline, this number will be set to 0")
+      print("We like to know how many people use our data. To enable this, we will generate a random number which will be transmitted with your requests to download data files in the future. We will record and transmit no other data beyond this number and what files you are downloading, and we will have no way of connecting this number to you. If you decline, this number will be set to 0")
   if anondat == 'no':
     userid = '00000000'
   else:
@@ -592,17 +592,18 @@ def initialize():
     print("...done")
 
     print("finding current version of AtomDB. ", end=' ')
-#    a=curl.Curl()
-#    version=a.get('ftp://sao-ftp.harvard.edu/AtomDB/releases/LATEST')
-#    a.close()
+    a=curl.Curl()
+    version=a.get('%s/releases/LATEST'%(const.FTPPATH))[:-1].decode(encoding='ascii')
 
-    ftp = ftplib.FTP('sao-ftp.harvard.edu')
-    x = ftp.login()
-    r = StringIO()
+    a.close()
+
+#    ftp = ftplib.FTP('sao-ftp.harvard.edu')
+#    x = ftp.login()
+#    r = StringIO()
 #    ftp.retrbinary('RETR README', open('README', 'wb').write)
-    x = ftp.retrlines('RETR /AtomDB/releases/LATEST', r.write)
-    version = r.getvalue().strip()
-    x = ftp.quit()
+#    x = ftp.retrlines('RETR /AtomDB/releases/LATEST', r.write)
+#    version = r.getvalue().strip()
+#    x = ftp.quit()
     print("Latest version is %s"%(version))
 
     get_new_files=question(\
@@ -641,15 +642,12 @@ def check_version():
     print("You must set the ATOMDB environment variable for this to work!")
     raise
 
-  ftp = ftplib.FTP('sao-ftp.harvard.edu')
-  x = ftp.login()
-  r = StringIO()
-  x = ftp.retrbinary('RETR /AtomDB/releases/LATEST', r.write)
-  newversion = r.getvalue()[:-1]
-  x = ftp.quit()
+  a=curl.Curl()
+  newversion=a.get('%s/releases/LATEST'%(const.FTPPATH))[:-1].decode(encoding='ascii')
+
+  a.close()
 
   curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
-
   if (curversion != newversion):
     ans = question("New version %s is available. Upgrade?"%(newversion),"y",["y","n"])
 
@@ -746,7 +744,7 @@ def switch_version(version):
 
   if mustdownload:
     # go find the files
-    ftproot = 'sao-ftp.harvard.edu'
+    ftproot = const.FTPPATH
     # get the filename
     if version[0] =='2':
       fname = re.sub('VERSION',version,'atomdb_vVERSION_runs.tar.gz')
@@ -760,15 +758,15 @@ def switch_version(version):
     mkdir_p(os.path.expandvars("$ATOMDB/tmp"))
 
 
-    print("Attempting to download %s to %s"%('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile))
+    print("Attempting to download %s to %s"%('https://%s/%s/%s'%(ftproot,dirname,fname), localfile))
 
     if os.path.isfile(localfile):
       os.remove(localfile)
     # get the file
     try:
-      wget.download('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile)
+      wget.download('https://%s/%s/%s'%(ftproot,dirname,fname), localfile)
     except IOError:
-      print("Cannot find file ftp://%s/%s/%s on server. Please check that version %s is a valid version."%(ftproot,dirname,fname, version))
+      print("Cannot find file https://%s/%s/%s on server. Please check that version %s is a valid version."%(ftproot,dirname,fname, version))
       return
     # ok, now open up the relevant file and copy the things we need
     print("\nUncompressing %s..." %(localfile))
@@ -792,15 +790,15 @@ def switch_version(version):
       mkdir_p(os.path.expandvars("$ATOMDB/tmp"))
 
 
-      print("Attempting to download %s to %s"%('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile))
+      print("Attempting to download %s to %s"%('https://%s/%s/%s'%(ftproot,dirname,fname), localfile))
     # get the file
       if os.path.isfile(localfile):
         os.remove(localfile)
 
       try:
-        wget.download('ftp://%s/%s/%s'%(ftproot,dirname,fname), localfile)
+        wget.download('https:///%s/%s/%s'%(ftproot,dirname,fname), localfile)
       except IOError:
-        print("Cannot find file ftp://%s/%s/%s on server. Please check that version %s is a valid version."%(ftproot,dirname,fname, version))
+        print("Cannot find file https://%s/%s/%s on server. Please check that version %s is a valid version."%(ftproot,dirname,fname, version))
         return
     # ok, now open up the relevant file and copy the things we need
       print("\nUncompressing %s..." %(localfile))
@@ -3130,7 +3128,7 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_lineid.tar.bz2'):
                "%s/"%(foldername))
 
   # Need the MM89 ionization balance for some reason?
-  fnameout = wget.download('ftp://sao-ftp.harvard.edu/AtomDB/APED/ionbal/MM98_ionbal.fits',\
+  fnameout = wget.download('%s/APED/ionbal/MM98_ionbal.fits'%(const.FTPPATH),\
                             out="%s/APED/ionbal/%s"%(foldername, 'MM98_ionbal.fits'))
 
   # Need to make a link to the abundance file
