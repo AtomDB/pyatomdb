@@ -145,3 +145,7 @@ April 22nd 2019: Fixed bug occuring with spectrum continuum broadening.
 May 6th 2019: Add option 'ALL' to get_data to download all the data files for
 an ion at once
 
+0.8.0
+January 27th 2020: Major overhaul of Spectrum module.
+Updated paths for the FTP server due to file move.
+
