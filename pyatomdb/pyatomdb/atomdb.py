@@ -4400,7 +4400,7 @@ def get_data(Z, z1, ftype, datacache=False, \
                 d = False
               else:
                 url = re.sub(os.path.expandvars(atomdbroot),\
-                             pyatomdb.const.FTPPATH,fname)+'.gz'
+                             const.FTPPATH,fname)+'.gz'
                 try:
                   d = pyfits.open(url, cache=False)
                   didurl=True
