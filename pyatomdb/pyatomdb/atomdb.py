@@ -1023,7 +1023,7 @@ def get_emissivity(linefile, elem, ion, upper, lower, kT=[-1], \
     interpKt = True
     hdulist = []
     if kTunits.lower() == "k":
-      kT_keV = numpy.array(kT)/(1e3*11604.5)
+      kT_keV = numpy.array(kT)*const.KBOLTZ
     elif kTunits.lower()== "kev":
       kT_keV = numpy.array(kT)
     else:
@@ -1284,8 +1284,8 @@ def get_burgess_tully_transition_type(lolev, uplev, Aval):
 def get_burgess_tully_extrap(bttype, lolev, uplev, Aval, Tarr, om, TTarg):
   from scipy import interpolate
   dE = (uplev['energy']-lolev['energy'])/13.6058
-  Tarr_ryd = (Tarr/11604.5)/13.6058
-  TTarg_ryd = (TTarg/11604.5)/13.6058
+  Tarr_ryd = (Tarr*const.KBOLTZ*1000)/13.6058
+  TTarg_ryd = (TTarg*const.KBOLTZ*1000)/13.6058
   if dE<1e-10: dE=1e-10
 
   C = 1.5
@@ -3041,9 +3041,9 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
 
 #  Te_arr = numpy.array(Te)
   if Te_unit.lower()=='ev':
-    Te_arr = Te_arr*11604.505
+    Te_arr = Te_arr*1000/const.KBOLTZ
   elif Te_unit.lower() == 'kev':
-    Te_arr = Te_arr*11604.505*1000.0
+    Te_arr = Te_arr/const.KBOLTZ
   elif Te_unit.lower() == 'k':
     Te_arr = 1.0* Te_arr
   else:
