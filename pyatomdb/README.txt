@@ -149,3 +149,6 @@ an ion at once
 January 27th 2020: Major overhaul of Spectrum module.
 Updated paths for the FTP server due to file move.
 
+0.8.1
+February 5th 2020: Corrections to NEISpectrum. Spectrum summation much faster and
+bugs in logic fixed.
