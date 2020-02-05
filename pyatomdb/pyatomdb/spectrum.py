@@ -2160,7 +2160,7 @@ class CIESession():
 
 
   def return_spectrum(self, te, teunit='keV', nearest=False,\
-                      get_nearest_t=False):
+                      get_nearest_t=False, log_interp=True):
     """
     Get the spectrum at an exact temperature.
     Interpolates between 2 neighbouring spectra
@@ -2208,7 +2208,7 @@ class CIESession():
 
     self.spectra.ebins = self.specbins
     self.spectra.ebins_checksum=hashlib.md5(self.spectra.ebins).hexdigest()
-    s= self.spectra.return_spectrum(te, teunit=teunit, nearest=nearest,elements = el_list, abundances=ab, broaden_object = self.cdf)
+    s= self.spectra.return_spectrum(te, teunit=teunit, nearest=nearest,elements = el_list, abundances=ab, broaden_object = self.cdf, log_interp=log_interp)
     ss = self.apply_response(s)
 
     return ss
@@ -4051,7 +4051,7 @@ class NEISession(CIESession):
   ----------
   datacache : dict
     Any Atomdb FITS files which have to be opened are stored here
-  spectra : CIESpectra
+  spectra : NEISpectra
     Object storing the actual spectral data
   elements : list(int)
     Nuclear charge of elements to include.
@@ -4391,7 +4391,7 @@ class NEISession(CIESession):
     return ret
 
   def return_spectrum(self,  Te, tau, init_pop=False, Te_init=False, teunit='keV', nearest=False,\
-                      get_nearest_t=False, log_interp=True):
+                      get_nearest_t=False, log_interp=True, freeze_ion_pop=False):
     """
     Get the spectrum at an exact temperature.
     Interpolates between 2 neighbouring spectra
@@ -4442,7 +4442,8 @@ class NEISession(CIESession):
                                     Te_init=Te_init, teunit=teunit, \
                                     nearest = nearest,elements = el_list, \
                                     abundances=ab, log_interp=True,\
-                                    broaden_object=self.cdf)
+                                    broaden_object=self.cdf, \
+                                    freeze_ion_pop = freeze_ion_pop)
 
     ss = self.apply_response(s)
 
@@ -4544,7 +4545,8 @@ class NEISpectrum(CIESpectrum):
 
 
   def return_spectrum(self, Te, tau, init_pop=False, Te_init=False, teunit='keV', nearest = False,
-                             elements=False, abundances=False, log_interp=True, broaden_object=False):
+                             elements=False, abundances=False, log_interp=True, broaden_object=False,\
+                             freeze_ion_pop = False):
 
     """
     Return the spectrum of the element on the energy bins in
@@ -4584,51 +4586,73 @@ class NEISpectrum(CIESpectrum):
       for Z in elements:
         abundances[Z] = 1.0
 
-    s = 0.0
+    totspec = 0.0
 
     for Z in elements:
 
       abund = abundances[Z]
       if abund > 0:
-        if Te_init != False:
-          kT_init= convert_temp(Te_init, teunit, 'keV')
+        if freeze_ion_pop:
+          ionfrac = init_pop[Z]
 
-          # calculate the ion fraction
-        ionfrac = apec.solve_ionbal_eigen(Z, kT, init_pop=init_pop, tau=tau, Te_init=Te_init, \
-                     teunit='keV', datacache=self.datacache)
+        else:
+          if Te_init != False:
+            kT_init= convert_temp(Te_init, teunit, 'keV')
+          else:
+            kT_init=False
+          ionfrac = apec.solve_ionbal_eigen(Z, kT, init_pop=init_pop, \
+                                            tau=tau, Te_init=kT_init, \
+                                            teunit='keV', \
+                                            datacache=self.datacache)
 
-        for z1 in range(1, Z+2):
-          if ionfrac[z1-1]>1e-10:
+        elspec = 0.0
+        for i in range(len(ikT)):
 
+          ikTspec = 0.0
+
+          for z1 in range(1, Z+2):
+            ionspec = 0.0
+
+            if ionfrac[z1-1]>1e-10:
               # calculate minimum emissivitiy to broaden, accounting for ion
               # and element abundance.
-            epslimit =  self.broaden_limit/(abund*ionfrac[z1-1])
-
-
+              epslimit =  self.broaden_limit/(abund*ionfrac[z1-1])
 
               # return a broadened spectrum
-            ss=0.0
-            for i in range(len(ikT)):
-              ss=0.0
-              sss = self.spectra[ikT[i]][Z][z1].return_spectrum(self.ebins,\
+
+              ionspec = self.spectra[ikT[i]][Z][z1].return_spectrum(self.ebins,\
                                   kT,\
                                   ebins_checksum = self.ebins_checksum,\
                                   thermal_broadening = self.thermal_broadening,\
                                   broaden_limit = epslimit,\
                                   velocity_broadening = self.velocity_broadening,\
                                   broaden_object=broaden_object) *\
-                                  abund*ionfrac[z1-1]*f[i]
+                                  ionfrac[z1-1]
 
-              # This may slow everythign down and should be moved outside the loop?
-              if log_interp:
-                ss += numpy.log(sss+const.MINEPSOFFSET)
-              else:
-                ss += sss
+
+
+              ikTspec += ionspec
+
+          if len(ikTspec) > 1:
+            # add appropriately
             if log_interp:
-              ss = numpy.exp(ss)-const.MINEPSOFFSET*len(ikT)
+              elspec += numpy.log(ikTspec+const.MINEPSOFFSET)*f[i]
+            else:
+              elspec += ikTspec*f[i]
+          else:
+            # if just one then no need to interpolate on log scale
+            elspec += ikTspec*f[i]
 
-            s += ss
-    return s
+        # now we have the spectrum of the whole element. Un-log scale if
+        # required.
+
+        if log_interp:
+          elspec = numpy.exp(elspec)-const.MINEPSOFFSET
+
+        # add the element's spectrum to the whole, including abundance
+        totspec += elspec* abund
+
+    return totspec
 
 
   def return_line_emissivity(self, Te, tau, Z, z1, up, lo, specunit='A',
