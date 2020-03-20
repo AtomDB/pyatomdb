@@ -152,3 +152,6 @@ Updated paths for the FTP server due to file move.
 0.8.1
 February 5th 2020: Corrections to NEISpectrum. Spectrum summation much faster and
 bugs in logic fixed.
+
+0.9.0
+March 20th 2020: Added PShockSession class to specturm module, mimicking XSPEC pshock (parallel shock) model. Other minor bugfixes.
