@@ -748,25 +748,25 @@ def switch_version(version):
     # get the filename
     if version[0] =='2':
       fname = re.sub('VERSION',version,'atomdb_vVERSION_runs.tar.gz')
-      dirname = 'AtomDB/releases/old'
+      dirname = 'releases/old'
     elif version[0] =='3':
       fname = re.sub('VERSION',version,'atomdb_vVERSION.tar.bz2')
-      dirname = 'AtomDB/releases'
+      dirname = 'releases'
 
     localfile = os.path.expandvars("$ATOMDB/tmp/%s"%(fname))
       # create temporary folder
     mkdir_p(os.path.expandvars("$ATOMDB/tmp"))
 
 
-    print("Attempting to download %s to %s"%('https://%s/%s/%s'%(ftproot,dirname,fname), localfile))
+    print("Attempting to download %s to %s"%('%s/%s/%s'%(ftproot,dirname,fname), localfile))
 
     if os.path.isfile(localfile):
       os.remove(localfile)
     # get the file
     try:
-      wget.download('https://%s/%s/%s'%(ftproot,dirname,fname), localfile)
+      wget.download('%s/%s/%s'%(ftproot,dirname,fname), localfile)
     except IOError:
-      print("Cannot find file https://%s/%s/%s on server. Please check that version %s is a valid version."%(ftproot,dirname,fname, version))
+      print("Cannot find file %s/%s/%s on server. Please check that version %s is a valid version."%(ftproot,dirname,fname, version))
       return
     # ok, now open up the relevant file and copy the things we need
     print("\nUncompressing %s..." %(localfile))
@@ -783,22 +783,22 @@ def switch_version(version):
 
     if version[0] =='3':
       fname = re.sub('VERSION',version,'atomdb_vVERSION_nei.tar.bz2')
-      dirname = 'AtomDB/releases'
+      dirname = 'releases'
 
       localfile = os.path.expandvars("$ATOMDB/tmp/%s"%(fname))
         # create temporary folder
       mkdir_p(os.path.expandvars("$ATOMDB/tmp"))
 
 
-      print("Attempting to download %s to %s"%('https://%s/%s/%s'%(ftproot,dirname,fname), localfile))
+      print("Attempting to download %s to %s"%('%s/%s/%s'%(ftproot,dirname,fname), localfile))
     # get the file
       if os.path.isfile(localfile):
         os.remove(localfile)
 
       try:
-        wget.download('https:///%s/%s/%s'%(ftproot,dirname,fname), localfile)
+        wget.download('%s/%s/%s'%(ftproot,dirname,fname), localfile)
       except IOError:
-        print("Cannot find file https://%s/%s/%s on server. Please check that version %s is a valid version."%(ftproot,dirname,fname, version))
+        print("Cannot find file %s/%s/%s on server. Please check that version %s is a valid version."%(ftproot,dirname,fname, version))
         return
     # ok, now open up the relevant file and copy the things we need
       print("\nUncompressing %s..." %(localfile))
