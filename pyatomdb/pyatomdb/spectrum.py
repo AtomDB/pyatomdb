@@ -4279,7 +4279,7 @@ class NEISession(CIESession):
         print("Unknown data type for cocofile. Please pass a string or an HDUList")
 
 
-  def return_linelist(self, Te, tau, specrange, specunit='A', \
+  def return_linelist(self,Te, tau, specrange, init_pop='ionizing',specunit='A', \
                                teunit='keV', apply_aeff=False, develop=False):
     """
     Get the list of line emissivities vs wavelengths
@@ -4309,12 +4309,6 @@ class NEISession(CIESession):
 
     """
 
-    print("WARNING: THIS IS IN DEVELOPMENT AND DOESN'T WORK YET")
-
-    if not develop:
-      print('exiting as not functional')
-      return
-
     kT = convert_temp(Te, teunit, 'keV')
 
     el_list = self.elements
@@ -4324,9 +4318,10 @@ class NEISession(CIESession):
 
 
 
-    s= self.spectra.return_linelist(kT, tau, specrange=specrange, teunit='keV',\
-                                        specunit=specunit, elements=self.elements,\
-                                        abundances = ab)
+    s= self.spectra.return_linelist(kT, tau, init_pop=init_pop, \
+                                    specrange=specrange, teunit='keV',\
+                                    specunit=specunit, elements=self.elements,\
+                                    abundances = ab)
 
     # do the response thing
     #resp  = s.response()
@@ -4412,7 +4407,6 @@ class NEISession(CIESession):
                                                      init_pop=init_pop)
 
         eps[ikT, itau] = e
-        print("eps[%i,%i] = %e"%(ikT, itau, e))
         if lam != False:
           ret['wavelength'] = lam * 1.0
         else:
@@ -4448,7 +4442,7 @@ class NEISession(CIESession):
 
     return ret
 
-  def return_spectrum(self,  Te, tau, init_pop=False, Te_init=False, teunit='keV', nearest=False,\
+  def return_spectrum(self,  Te, tau, init_pop='ionizing', teunit='keV', nearest=False,\
                       get_nearest_t=False, log_interp=True, freeze_ion_pop=False):
     """
     Get the spectrum at an exact temperature.
@@ -4497,7 +4491,7 @@ class NEISession(CIESession):
     self.spectra.ebins = self.specbins
     self.spectra.ebins_checksum=hashlib.md5(self.spectra.ebins).hexdigest()
     s= self.spectra.return_spectrum(Te, tau, init_pop=init_pop, \
-                                    Te_init=Te_init, teunit=teunit, \
+                                    teunit=teunit, \
                                     nearest = nearest,elements = el_list, \
                                     abundances=ab, log_interp=True,\
                                     broaden_object=self.cdf, \
@@ -4600,9 +4594,81 @@ class NEISpectrum(CIESpectrum):
     self.logkTlist=numpy.log(self.kTlist)
 
 
+  def calc_ionfrac(self, Te, tau, init_pop='ionizing', teunit='keV', freeze_ion_pop = False,\
+                   elements=False):
+    """
+    Calculate the ion fractions in an NEI case
+
+    Parameters
+    ----------
+    Te : float
+      Electron temperature (default, keV)
+    tau : float
+      ionization timescale, ne * t (cm^-3 s).
+    init_pop : string or float
+      If string:
+        if 'ionizing' : all ionizing from neutral (so [1,0,0,0...])
+        if 'recombining': all recombining from ionized (so[...0,0,1])
+        if dict of arrays : the acutal fractional populations (so init_pop[6] is the array for carbon)
+        if single float : the temperature (same units as Te)
+    teunit : string
+      Units of kT (keV by default, K also allowed)
+    freeze_ion_pop : bool
+      If True, return the initial ionization fraction as the final
+
+    Returns
+    -------
+    ionfrac : dict of arrays
+      Array of all the ion fractions.
+  """
+    init_pop_calc={}
+    if elements==False:
+      elements = self.elements
+    # check the format of init_pop
+    if isinstance(init_pop, str):
+      if init_pop.lower() == 'ionizing':
+        for Z in elements:
+          init_pop_calc[Z] = numpy.zeros(Z+1)
+          init_pop_calc[Z][0] = 1.0
+      elif init_pop.lower() == 'recombining':
+        for Z in elements:
+          init_pop_calc[Z] = numpy.zeros(Z+1)
+          init_pop_calc[Z][-1] = 1.0
+      else:
+        raise util.OptionError("Error: init_pop is set as a string, must be 'ionizing' or 'recombining'. Currently %s."%\
+             (init_pop))
+    elif isinstance(init_pop, float):
+      # this is an initial temperature
+      kT_init = convert_temp(init_pop, teunit, 'keV')
+      for Z in elements:
+        init_pop_calc[Z] = apec.solve_ionbal_eigen(Z, kT_init, \
+                                            teunit='keV', \
+                                            datacache=self.datacache)
+    elif isinstance(init_pop, dict):
+      for Z in elements:
+        init_pop_calc[Z] = init_pop[Z]
+    else:
+      raise util.OptionError("Error: invalid type for init_pop")
 
 
-  def return_spectrum(self, Te, tau, init_pop=False, Te_init=False, teunit='keV', nearest = False,
+    ionfrac = {}
+
+    if freeze_ion_pop:
+      for Z in elements:
+        ionfrac[Z] = init_pop_calc[Z]
+
+    else:
+    # no calculate the output
+      kT = convert_temp(Te, teunit, 'keV')
+      for Z in elements:
+        ionfrac[Z] = apec.solve_ionbal_eigen(Z, kT, init_pop=init_pop_calc[Z], \
+                                          tau=tau, \
+                                          teunit='keV', \
+                                          datacache=self.datacache)
+    return ionfrac
+
+
+  def return_spectrum(self, Te, tau, init_pop='ionizing', teunit='keV', nearest = False,
                              elements=False, abundances=False, log_interp=True, broaden_object=False,\
                              freeze_ion_pop = False):
 
@@ -4646,23 +4712,32 @@ class NEISpectrum(CIESpectrum):
 
     totspec = 0.0
 
+    # only do the elements where abundance > 0
+    el = []
+    for Z in elements:
+      if abundances[Z]>0.0:
+        el.append(Z)
+
+    ionfrac_all = self.calc_ionfrac(kT, tau, init_pop=init_pop, teunit='keV', \
+                                    freeze_ion_pop = freeze_ion_pop,\
+                                    elements = el)
     for Z in elements:
 
       abund = abundances[Z]
       if abund > 0:
-        if freeze_ion_pop:
-          ionfrac = init_pop[Z]
-
-        else:
-          if Te_init != False:
-            kT_init= convert_temp(Te_init, teunit, 'keV')
-          else:
-            kT_init=False
-          ionfrac = apec.solve_ionbal_eigen(Z, kT, init_pop=init_pop, \
-                                            tau=tau, Te_init=kT_init, \
-                                            teunit='keV', \
-                                            datacache=self.datacache)
-
+        ionfrac=ionfrac_all[Z]
+#        if freeze_ion_pop:
+#          ionfrac = init_pop[Z]
+#
+#        else:
+#          if Te_init != False:
+#            kT_init= convert_temp(Te_init, teunit, 'keV')
+#          else:
+#            kT_init=False
+#          ionfrac = apec.solve_ionbal_eigen(Z, kT, init_pop=init_pop, \
+#                                            tau=tau, Te_init=kT_init, \
+#                                            teunit='keV', \
+#                                            datacache=self.datacache)
         elspec = 0.0
         for i in range(len(ikT)):
 
@@ -4715,7 +4790,8 @@ class NEISpectrum(CIESpectrum):
 
   def return_line_emissivity(self, Te, tau, Z, z1, up, lo, specunit='A',
                              teunit='keV', abundance=1.0,
-                             log_interp = True, init_pop = 'ionizing'):
+                             log_interp = True, init_pop = 'ionizing',\
+                             freeze_ion_pop=False):
     """
     Return the emissivity of a line at kT, tau. Assumes ionization from neutral for now
 
@@ -4767,35 +4843,12 @@ class NEISpectrum(CIESpectrum):
     #ikT has the 2 nearest temperature indexes
     # f has the fraction for each
 
-    if type(init_pop) == str:
-      if init_pop == 'ionizing':
-        # everything neutral
-        ipop = numpy.zeros(Z+1)
-        ipop[0] = 1.0
-      elif init_pop == 'recombining':
-        # everything ionizing
-        ipop = numpy.zeros(Z+1)
-        ipop[-1] = 1.0
-    else:
-      if isinstance(init_pop, (collections.Sequence, numpy.ndarray)):
-        if len(init_pop)==Z+1:
-          ipop = init_pop
-        else:
-          pass
-      else:
-        kT_in = convert_temp(init_pop, teunit, 'keV')
-        ipop = apec.solve_ionbal_eigen(Z, \
-                                      kT_in, \
-                                      teunit='keV', \
-                                      datacache=self.datacache)
+    ionfrac_all = self.calc_ionfrac(kT, tau, init_pop=init_pop, teunit='keV', \
+                                    freeze_ion_pop = freeze_ion_pop,\
+                                    elements = [Z])
 
 
-    ionfrac = apec.solve_ionbal_eigen(Z, \
-                                      kT, \
-                                      init_pop=ipop, \
-                                      tau=tau, \
-                                      teunit='keV', \
-                                      datacache=self.datacache)
+    ionfrac = ionfrac_all[Z]
 
     eps = 0.0
     lam = 0.0
@@ -4833,10 +4886,10 @@ class NEISpectrum(CIESpectrum):
       lam = const.HC_IN_KEV_A/lam
     return eps, lam
 
-  def return_linelist(self,  Te, tau, Te_init=False,
+  def return_linelist(self,  Te, tau,init_pop='ionizing',
                       teunit='keV', nearest = False, specrange=False,
                       specunit='A', elements=False, abundances=False,\
-                      init_pop = 'ionizing', log_interp=True):
+                      log_interp=True, freeze_ion_pop=False):
 
     """
     Return the linelist of the element
@@ -4859,69 +4912,62 @@ class NEISpectrum(CIESpectrum):
 
 
     """
+
     # get kT in keV
     kT = convert_temp(Te, teunit, 'keV')
 
+    ikT, f = self.get_nearest_Tindex(kT, teunit='keV', nearest=nearest, log_interp=log_interp)
 
-    ikT, f = self.get_nearest_Tindex(kT, teunit='keV', nearest=nearest)
+    # check the params:
+    if elements==False:
+      elements=range(1,const.MAXZ_NEI+1)
+
 
     if abundances == False:
       abundances = {}
       for Z in elements:
         abundances[Z] = 1.0
 
-    linelist = False
+    totspec = 0.0
 
+    # only do the elements where abundance > 0
+    el = []
+    for Z in elements:
+      if abundances[Z]>0.0:
+        el.append(Z)
+
+    ionfrac_all = self.calc_ionfrac(kT, tau, init_pop=init_pop, teunit='keV', \
+                                    freeze_ion_pop = freeze_ion_pop,\
+                                    elements = el)
+
+    linelist = numpy.zeros(0, dtype=apec.generate_datatypes('linelist_cie_spectrum'))
 
     # Cycle through each element
     for Z in elements:
-
-
       abund = abundances[Z]
 
       # Skip if abundance is low
       if abund > 0:
         elemlinelist = {}
 
-
         # Get initial ion population for element
-        if type(init_pop) == str:
-          if init_pop == 'ionizing':
-            # everything neutral
-            ipop = numpy.zeros(Z+1)
-            ipop[0] = 1.0
-          elif init_pop == 'recombining':
-            # everything ionizing
-            ipop = numpy.zeros(Z+1)
-            ipop[-1] = 1.0
-        else:
-          if isinstance(init_pop, (collections.Sequence, numpy.ndarray)):
-            if len(init_pop)==Z+1:
-              ipop = init_pop
-            else:
-              pass
-          else:
-            kT_in = convert_temp(init_pop, teunit, 'keV')
-            ipop = apec.solve_ionbal_eigen(Z, \
-                                          kT_in, \
-                                          teunit='keV', \
-                                          datacache=self.datacache)
-
-
+        ionfrac= ionfrac_all[Z]
 
 
         # calculate final ion population for element
-        ionfrac = apec.solve_ionbal_eigen(Z, \
-                                          kT, \
-                                          init_pop=ipop, \
-                                          tau=tau, \
-                                          teunit='keV', \
-                                          datacache=self.datacache)
+#        ionfrac = apec.solve_ionbal_eigen(Z, \
+#                                          kT, \
+#                                          init_pop=ipop, \
+#                                          tau=tau, \
+#                                          teunit='keV', \
+#                                          datacache=self.datacache)
 
         # go through the 2 nearest emissivity temperatures
         for i in range(len(ikT)):
           iikT = ikT[i]
-          elemlinelist[iikT] = False
+          elemlinelist[iikT] = {}
+          for z1 in range(1,Z+2):
+            elemlinelist[iikT][z1] = numpy.zeros(0, dtype=apec.generate_datatypes('linelist_cie_spectrum'))
 
           # go ion by ion
           for z1_drv in range(1, Z+2):
@@ -4934,95 +4980,88 @@ class NEISpectrum(CIESpectrum):
                                     teunit='keV', specunit=specunit)
 
             # if 1 or more lines found, do something
-            print("Found %i lines"%(len(ss)))
             if len(ss) > 0:
 
               # adjust line emissivty by abundance and ion fraction
               ss['Epsilon']*=abund*ionfrac[z1_drv-1]
+              z1opt = util.unique(ss['Ion'])
+              for z1 in z1opt:
 
-              # if this is the first set of lines, add them
-              if elemlinelist[iikT]==False:
-                elemlinelist[iikT] = ss
-              else:
-              # otherwise, merge them in. No separation by driving ion.
-                isnew = numpy.zeros(len(ss), dtype=bool)
+                tmpss = ss[ss['Ion']==z1]
+                tmp = numpy.zeros(len(tmpss), dtype=apec.generate_datatypes('linelist_cie_spectrum'))
 
-                for inew, new in enumerate(ss):
-                  imatch = numpy.where((new['Element']==elemlinelist[iikT]['Element']) &\
-                                       (new['Ion']==elemlinelist[iikT]['Ion']) &\
-                                       (new['UpperLev']==elemlinelist[iikT]['UpperLev']) &\
-                                       (new['LowerLev']==elemlinelist[iikT]['LowerLev']))[0]
-                  if len(imatch)==1:
-                    # if the same line already exists, add to its flux
-                    elemlinelist[iikT][imatch[0]]['Epsilon']+=new['Epsilon']
-                  else:
-                    # otherwise, declare it as a new line, ready to append
-                    isnew[inew]=True
+                for key in tmp.dtype.names:
+                  tmp[key] = tmpss[key]
 
-                s = sum(isnew)
-                if s > 0:
-                  # append any new lines to the end of elemlinelist
-                  elemlinelist[iikT] = numpy.append(elemlinelist[iikT], ss[isnew])
+                elemlinelist[iikT][z1] = numpy.append(elemlinelist[iikT][z1], tmp)
 
-          # At this point, elemlinelist[ikT] contains the flux in each line for a single ikT.
-          # We need to adjust these, and then ultimately merge them with the next ikT with
-          # a suitbale multiplicative factor.
 
-          # OK, so now multiply all the line emissivities by the appropriate factor
-          if elemlinelist[iikT] == False: continue
+          # now merge duplicates
+          for z1 in range(1, Z+2):
+            # skip if there are no lines
+            if len(elemlinelist[iikT][z1])==0: continue
 
-          if log_interp:
-            elemlinelist[iikT]['Epsilon'] = f[i] * numpy.log(elemlinelist[iikT]['Epsilon']+ const.MINEPSOFFSET)
+            # note for all the lines
+            keep = numpy.ones(len(elemlinelist[iikT][z1]), dtype=bool)
 
-          else:
-            elemlinelist[iikT]['Epsilon'] = f[i] * elemlinelist[iikT]['Epsilon']
+            # check if there are duplicates
 
-        # now merge these 2 temperature results
-        ikTlist = ikT*1
-        ikTkeep = numpy.ones(len(ikTlist), dtype=bool)
-        for i,iikT in enumerate(ikT):
-          if elemlinelist[iikT]==False:
-            ikTkeep[i] = False
+            #   order the array
+            elemlinelist[iikT][z1] = numpy.sort(elemlinelist[iikT][z1], order=['UpperLev','LowerLev'])
 
-        if sum(ikTkeep)==0: continue
-
-        if sum(ikTkeep)==1:
-          ikTlist = ikTlist[ikTkeep]
-
-        if len(ikTlist) > 1:
-          # find matches for each line
-          iikT = ikTlist[1]
-          hasmatch = numpy.zeros(len(elemlinelist[iikT]), dtype=bool)
-
-          for iline, line in enumerate(elemlinelist[iikT]):
-
-            imatch = numpy.where((elemlinelist[ikTlist[0]]['Element']==line['Element']) &\
-                                 (elemlinelist[ikTlist[0]]['Ion']==line['Ion']) &\
-                                 (elemlinelist[ikTlist[0]]['UpperLev']==line['UpperLev']) &\
-                                 (elemlinelist[ikTlist[0]]['LowerLev']==line['LowerLev']))[0]
-            if len(imatch)==0:
-              line['Epsilon'] = numpy.exp(line['Epsilon']-const.MINEPSOFFSET)
+            #   see where the levels are matched
+            j = numpy.where((elemlinelist[iikT][z1][1:]['UpperLev']==elemlinelist[iikT][z1][:-1]['UpperLev']) &\
+                            (elemlinelist[iikT][z1][1:]['LowerLev']==elemlinelist[iikT][z1][:-1]['LowerLev']))[0]
+            if len(j) == 0:
+              # no matches, pass onwards
+              pass
             else:
-              hasmatch[iline] = True
-              itmp = imatch[0]
-              elemlinelist[ikTlist[0]][itmp]['Epsilon'] += line['Epsilon']
+              # add emissivity
+              for jj in j:
+                elemlinelist[iikT][z1]['Epsilon'][jj+1]+=elemlinelist[iikT][z1]['Epsilon'][jj]
+              # turn off the bad ones I cloned
+              keep[j]=False
+              # trim
+              elemlinelist[iikT][z1]= elemlinelist[iikT][z1][keep]
 
-          if log_interp:
-            elemlinelist[ikTlist[0]]['Epsilon'] = numpy.exp(elemlinelist[ikTlist[0]]['Epsilon']- const.MINEPSOFFSET)
-
-          # now append the unmatched
-          elemlinelist = numpy.append(elemlinelist[ikTlist[0]], elemlinelist[ikTlist[1]][~hasmatch])
-
-        else:
-          if log_interp:
-            elemlinelist = numpy.exp(elemlinelist[ikTlist[0]]['Epsilon']- const.MINEPSOFFSET)
+            if log_interp:
+              elemlinelist[iikT][z1]['Epsilon'] = numpy.log(elemlinelist[iikT][z1]['Epsilon']+const.MINEPSOFFSET) *f[i]
+            else:
+              elemlinelist[iikT][z1]['Epsilon'] = elemlinelist[iikT][z1]['Epsilon'] *f[i]
 
 
-        if linelist == False:
-          linelist = numpy.zeros(0, dtype=elemlinelist.dtype)
+        # Here we now merge across temperature
 
-        linelist=numpy.append(linelist, elemlinelist)
+        # I am only going to keep lines which appear in both temperatures
+        elemlinelist['out'] =  numpy.zeros(0,  dtype=apec.generate_datatypes('linelist_cie_spectrum'))
+        for z1 in range(1, Z+2):
+          # to hold the outputs
+          tmplinelist =  numpy.zeros(0,  dtype=apec.generate_datatypes('linelist_cie_spectrum'))
 
+          # add in the data
+          for i in range(len(ikT)):
+            iikT = ikT[i]
+            tmplinelist = numpy.append(tmplinelist, elemlinelist[iikT][z1])
+           # now sort and merge as before
+          if len(tmplinelist) > 0:
+            tmplinelist = numpy.sort(tmplinelist, order=['UpperLev','LowerLev'])
+
+            keep = numpy.zeros(len(tmplinelist), dtype=bool)
+            j = numpy.where((tmplinelist[1:]['UpperLev']==tmplinelist[:-1]['UpperLev']) &\
+                            (tmplinelist[1:]['LowerLev']==tmplinelist[:-1]['LowerLev']))[0]
+            if len(j) > 0:
+              for jj in j:
+                tmplinelist['Epsilon'][jj+1]+=tmplinelist['Epsilon'][jj]
+              keep[j+1] = True
+
+              tmplinelist = tmplinelist[keep]
+
+            elemlinelist['out']= numpy.append(elemlinelist['out'], tmplinelist)
+
+        if log_interp:
+          elemlinelist['out']['Epsilon'] = numpy.exp(elemlinelist['out']['Epsilon'])-const.MINEPSOFFSET
+
+        linelist = numpy.append(linelist, elemlinelist['out'])
 
     return linelist
 
