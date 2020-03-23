@@ -3253,3 +3253,6 @@ class ReadyError(ValueError):
 
 class NotImplementedError(ValueError):
     pass
+
+class OptionError(ValueError):
+    pass
