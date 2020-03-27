@@ -1889,7 +1889,28 @@ class CIESession():
       for list of options.
     """
 
+    self.session_initialise1(linefile, cocofile, elements, abundset)
 
+    # a hold for the spectra
+    self.spectra=CIESpectrum(self.linedata, self.cocodata)
+
+    self.session_initialise2()
+
+
+  def session_initialise1(self, linefile, cocofile, elements, abundset):
+    """
+    This routine does all the initialization which is the same for all
+    the different session classes, separates them out from the
+    instance specific ones
+
+    Parameters
+    ----------
+    None
+
+    Return
+    ------
+    None
+    """
     self.datacache={}
 
     # Open up the APEC files
@@ -1900,9 +1921,6 @@ class CIESession():
       self.elements = elements
     else:
       self.elements=list(range(1,const.MAXZ_CIE+1))
-
-    # a hold for the spectra
-    self.spectra=CIESpectrum(self.linedata, self.cocodata)
 
     # Set both the current and the default abundances to those that
     # the apec data was calculated on
@@ -1933,9 +1951,21 @@ class CIESession():
     self.arffile=False
     self.raw_response=False
 
-    #self.broaden_limit = 1e-18
-    #self.thermal_broadening=True
-    #self.velocity_broadening=0.0
+
+  def session_initialise2(self):
+    """
+    This routine does the remaining initialization which is the same for all
+    the different session classes, separates them out from the
+    instance specific ones, after the Spectrum class has been generated
+
+    Parameters
+    ----------
+    None
+
+    Return
+    ------
+    None
+    """
 
     self.set_broadening(False, broaden_limit=1e-18)
     self.cdf = Gaussian_CDF()
@@ -2435,8 +2465,7 @@ class CIESession():
 
 
 
-  def set_apec_files(self, linefile="$ATOMDB/apec_line.fits",\
-                     cocofile="$ATOMDB/apec_coco.fits"):
+  def set_apec_files(self, linefile, cocofile):
     """
     Set the apec line and coco files, and load up their data
 
@@ -4178,109 +4207,15 @@ class NEISession(CIESession):
       for list of options.
     """
 
+    self.session_initialise1(linefile, cocofile, elements, abundset)
 
-    self.datacache={}
-
-    # Open up the APEC files
-    self.set_apec_files(linefile, cocofile)
-
-
-    # if elements are specified, use them. Otherwise, use Z=1-30
-    if util.keyword_check(elements):
-      self.elements = elements
-    else:
-      self.elements=list(range(1,const.MAXZ_NEI+1))
-
-    # a hold for the spectra
     self.spectra=NEISpectrum(self.linedata, self.cocodata)
 
-
-    # Set both the current and the default abundances to those that
-    # the apec data was calculated on
-    self.abundset=self.linedata[0].header['SABUND_SOURCE']
-    self.default_abundset=self.linedata[0].header['SABUND_SOURCE']
-
-    self.abundsetvector = numpy.zeros(const.MAXZ_NEI+1)
-    for Z in self.elements:
-      self.abundsetvector[Z] = 1.0
-
-    #  but if another vector was already specified, use this instead
-    if util.keyword_check(abundset):
-      self.set_abundset(abundset)
-
-    self.abund = numpy.zeros(const.MAXZ_NEI+1)
-
-    for Z in self.elements:
-      self.abund[Z]=1.0
-
-    # Set a range of parameters which can be overwritten later
-    self.response_set = False # have we loaded a response file?
-    self.dolines=True # Include lines in spectrum
-    self.docont=True # Include continuum in spectrum
-    self.dopseudo=True # Include pseudo continuum in spectrum
-    self.set_broadening(False, broaden_limit=1e-18)
-    self.cdf = Gaussian_CDF()
-
-
-  def set_apec_files(self, linefile="$ATOMDB/apec_nei_line.fits",\
-                     cocofile="$ATOMDB/apec_nei_comp.fits"):
-    """
-    Set the apec line and coco files, and load up their data
-
-    Parameters
-    ----------
-    linefile : str or HDUList
-      The filename of the line emissivity data, or the opened file.
-    cocofile : str or HDUList
-      The filename of the continuum emissivity data, or the opened file.
-
-    Returns
-    -------
-    None
-
-    Notes
-    -----
-    Updates self.linefile, self.linedata, self.cocofile and self.cocodata
-    """
-    if util.keyword_check(linefile):
-      if isinstance(linefile, str):
-        lfile = os.path.expandvars(linefile)
-        if not os.path.isfile(lfile):
-          print("*** ERROR: no such file %s. Exiting ***" %(lfile))
-          return -1
-        self.linedata = pyfits.open(lfile)
-        self.linefile = lfile
-
-      elif isinstance(linefile, pyfits.hdu.hdulist.HDUList):
-        # no need to do anything, file is already open
-        self.linedata=linefile
-        self.linefile=linefile.filename()
-
-      else:
-        print("Unknown data type for linefile. Please pass a string or an HDUList")
-
-    if util.keyword_check(cocofile):
-
-      if isinstance(cocofile, str):
-
-        cfile = os.path.expandvars(cocofile)
-        if not os.path.isfile(cfile):
-          print("*** ERROR: no such file %s. Exiting ***" %(cfile))
-          return -1
-        self.cocodata=pyfits.open(cfile)
-        self.cocofile=cfile
-
-      elif isinstance(cocofile, pyfits.hdu.hdulist.HDUList):
-        # no need to do anything, file is already open
-        self.cocodata=cocofile
-        self.cocofile=cocofile.filename()
-
-      else:
-        print("Unknown data type for cocofile. Please pass a string or an HDUList")
+    self.session_initialise2()
 
 
   def return_linelist(self,Te, tau, specrange, init_pop='ionizing',specunit='A', \
-                               teunit='keV', apply_aeff=False, develop=False):
+                               teunit='keV', apply_aeff=False):
     """
     Get the list of line emissivities vs wavelengths
 
@@ -4892,7 +4827,7 @@ class NEISpectrum(CIESpectrum):
                       log_interp=True, freeze_ion_pop=False):
 
     """
-    Return the linelist of the element
+    Return the lines in a spectral range for a given Te, tau
 
     Parameters
     ----------
@@ -5205,7 +5140,7 @@ class PShockSession(NEISession):
 
 
 
-  def return_spectrum(self,  Te, tau_u, tau_l=0.0, init_pop=False, Te_init=False, teunit='keV', nearest=False,\
+  def return_spectrum(self,  Te, tau_u, tau_l=0.0, init_pop='ionizing',  teunit='keV', nearest=False,\
                       get_nearest_t=False, log_interp=True):
     """
     Get the spectrum at an exact temperature.
@@ -5254,7 +5189,7 @@ class PShockSession(NEISession):
     self.spectra.ebins = self.specbins
     self.spectra.ebins_checksum=hashlib.md5(self.spectra.ebins).hexdigest()
     s= self.spectra.return_spectrum(Te, tau_u, tau_l=tau_l, init_pop=init_pop, \
-                                    Te_init=Te_init, teunit=teunit, \
+                                    teunit=teunit, \
                                     nearest = nearest,elements = el_list, \
                                     abundances=ab, log_interp=True,\
                                     broaden_object=self.cdf)
@@ -5361,8 +5296,133 @@ class PShockSpectrum(NEISpectrum):
 
 
 
+  def calc_ionfrac(self, Te, tau_u, tau_l=0.0, init_pop='ionizing', teunit='keV', freeze_ion_pop = False,\
+                   elements=False):
+    """
+    Calculate the ion fractions in an NEI case
 
-  def return_spectrum(self, Te, tau_u, tau_l=0.0, init_pop=False, Te_init=False, teunit='keV', nearest = False,
+    Parameters
+    ----------
+    Te : float
+      Electron temperature (default, keV)
+    tau : float
+      ionization timescale, ne * t (cm^-3 s).
+    init_pop : string or float
+      If string:
+        if 'ionizing' : all ionizing from neutral (so [1,0,0,0...])
+        if 'recombining': all recombining from ionized (so[...0,0,1])
+        if dict of arrays : the acutal fractional populations (so init_pop[6] is the array for carbon)
+        if single float : the temperature (same units as Te)
+    teunit : string
+      Units of kT (keV by default, K also allowed)
+    freeze_ion_pop : bool
+      If True, return the initial ionization fraction as the final
+
+    Returns
+    -------
+    ionfrac : dict of arrays
+      Array of all the ion fractions.
+  """
+    init_pop_calc={}
+    if elements==False:
+      elements = self.elements
+    # check the format of init_pop
+    if isinstance(init_pop, str):
+      if init_pop.lower() == 'ionizing':
+        for Z in elements:
+          init_pop_calc[Z] = numpy.zeros(Z+1)
+          init_pop_calc[Z][0] = 1.0
+      elif init_pop.lower() == 'recombining':
+        for Z in elements:
+          init_pop_calc[Z] = numpy.zeros(Z+1)
+          init_pop_calc[Z][-1] = 1.0
+      else:
+        raise util.OptionError("Error: init_pop is set as a string, must be 'ionizing' or 'recombining'. Currently %s."%\
+             (init_pop))
+    elif isinstance(init_pop, float):
+      # this is an initial temperature
+      kT_init = convert_temp(init_pop, teunit, 'keV')
+      for Z in elements:
+        init_pop_calc[Z] = apec.solve_ionbal_eigen(Z, kT_init, \
+                                            teunit='keV', \
+                                            datacache=self.datacache)
+    elif isinstance(init_pop, dict):
+      for Z in elements:
+        init_pop_calc[Z] = init_pop[Z]
+    else:
+      raise util.OptionError("Error: invalid type for init_pop: ", init_pop)
+
+
+    ionfrac = {}
+    kT = convert_temp(Te, teunit, 'keV')
+
+    if freeze_ion_pop:
+      for Z in elements:
+        ionfrac[Z] = init_pop_calc[Z]
+
+    else:
+      #####
+      if tau_l < 1.0:
+        nzones = 200
+
+        taulist = numpy.logspace(numpy.log10(1e8), numpy.log10(tau_u),nzones+1)
+        taulist = numpy.append(0, taulist[:-1])
+        weight = (taulist[1:]-taulist[:-1])/tau_u
+        taulist = (taulist[1:]+taulist[:-1])/2
+
+      elif tau_l == tau_u:
+        nzones=1
+        weight = numpy.array([1.0])
+        taulist = numpy.array([tau_u])
+
+      else:
+        nzones=40
+        taulist = numpy.linspace(tau_l, tau_u, nzones+1)[:-1]
+        weight = numpy.zeros(nzones)
+        weight[:] = 0.025
+        taulist[1:] = 0.5*(taulist[1:]+taulist[:-1])
+
+      for Z in elements:
+        # now need to make new ion fractions
+
+        # cycle through the assorted tau values, to get new ionfrac
+
+        # tau_l is zero:
+
+        #now calculate cumulative ionfrac
+
+        ionfractmp = apec.solve_ionbal_eigen(Z,kT,init_pop = init_pop_calc[Z],\
+                                             tau = taulist,teunit='keV', \
+                                            datacache=self.datacache)
+        for i in range(nzones):
+          ionfractmp[i,:]*=weight[i]
+
+        ionfrac[Z] = numpy.sum(ionfractmp,0)
+        elspec = 0.0
+        #####
+
+
+
+
+
+
+
+
+
+
+
+
+    # no calculate the output
+#      kT = convert_temp(Te, teunit, 'keV')
+#      for Z in elements:
+#        ionfrac[Z] = apec.solve_ionbal_eigen(Z, kT, init_pop=init_pop_calc[Z], \
+#                                          tau=tau, \
+#                                          teunit='keV', \
+#                                          datacache=self.datacache)
+    return ionfrac
+
+
+  def return_spectrum(self, Te, tau_u, tau_l=0.0, init_pop='ionizing', teunit='keV', nearest = False,
                              elements=False, abundances=False, log_interp=True, broaden_object=False,\
                              freeze_ion_pop=False):
 
@@ -5406,69 +5466,18 @@ class PShockSpectrum(NEISpectrum):
 
     totspec = 0.0
 
+    ionfrac_all = self.calc_ionfrac(kT, tau_u, tau_l=tau_l, init_pop=init_pop, teunit=teunit, freeze_ion_pop=freeze_ion_pop, elements=elements)
+
     for Z in elements:
-      print(Z)
+
       abund = abundances[Z]
       if abund > 0:
 
         # find the initial ionfrac (before anything changes)
 
-        if Te_init != False:
-          # an initial temperature is specified. Apply this
-          kT_init= convert_temp(Te_init, teunit, 'keV')
-          ionfrac_init=apec.solve_ionbal_eigen(Z,kT_init, teunit='keV', \
-                                              datacache=self.datacache)
-        else:
-          # no initial temperature provided
-          kT_init=False
-          if init_pop == False:
-            # no initial population is set. Therefore set to neutral.
-            ionfrac_init = numpy.zeros(Z+1)
-            ionfrac_init[0] = 1.0
-          else:
-            # copy initial population
-            ionfrac_init = init_pop[Z]
 
-        # now need to make new ion fractions
-        ionfrac = numpy.zeros(Z+1)
 
-        # cycle through the assorted tau values, to get new ionfrac
-
-        # tau_l is zero:
-        if tau_l < 1.0:
-          nzones = 200
-
-          taulist = numpy.logspace(numpy.log10(1e8), numpy.log10(tau_u),nzones+1)
-          taulist = numpy.append(0, taulist[:-1])
-          weight = (taulist[1:]-taulist[:-1])/tau_u
-          taulist = (taulist[1:]+taulist[:-1])/2
-
-        elif tau_l == tau_u:
-          nzones=1
-          weight = numpy.array([1.0])
-          taulist = numpy.array([tau_u])
-
-        else:
-          nzones=40
-          taulist = numpy.linspace(tau_l, tau_u, nzones+1)[:-1]
-          weight = numpy.zeros(nzones)
-          weight[:] = 0.025
-          taulist[1:] = 0.5*(taulist[1:]+taulist[:-1])
-
-        #now calculate cumulative ionfrac
-
-        ionfrac = apec.solve_ionbal_eigen(Z,kT,init_pop = ionfrac_init,\
-                                             tau = taulist,teunit='keV', \
-                                            datacache=self.datacache)#*weight
-#        for itau in range(nzones):
-#          print(itau)
-#          ionfrac += apec.solve_ionbal_eigen(Z,kT,init_pop = ionfrac_init,\
-#                                             tau = taulist[itau],teunit='keV', \
-#                                            datacache=self.datacache)*weight[itau]
-        for i in range(nzones):
-          ionfrac[i,:]*=weight[i]
-
-        ionfrac = numpy.sum(ionfrac,0)
+        ionfrac = ionfrac_all[Z]
         elspec = 0.0
         for i in range(len(ikT)):
 
@@ -5740,7 +5749,6 @@ class PShockSpectrum(NEISpectrum):
                                     teunit='keV', specunit=specunit)
 
             # if 1 or more lines found, do something
-            print("Found %i lines"%(len(ss)))
             if len(ss) > 0:
 
               # adjust line emissivty by abundance and ion fraction
