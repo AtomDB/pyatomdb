@@ -2198,7 +2198,8 @@ class CIESession():
 
 
   def return_spectrum(self, te, teunit='keV', nearest=False,\
-                      get_nearest_t=False, log_interp=True):
+                      get_nearest_t=False, log_interp=True,\
+                      dolines=True, docont=True, dopseudo=True):
     """
     Get the spectrum at an exact temperature.
     Interpolates between 2 neighbouring spectra
@@ -2246,7 +2247,11 @@ class CIESession():
 
     self.spectra.ebins = self.specbins
     self.spectra.ebins_checksum=hashlib.md5(self.spectra.ebins).hexdigest()
-    s= self.spectra.return_spectrum(te, teunit=teunit, nearest=nearest,elements = el_list, abundances=ab, broaden_object = self.cdf, log_interp=log_interp)
+    s= self.spectra.return_spectrum(te, teunit=teunit, nearest=nearest,\
+                                    elements = el_list, abundances=ab, \
+                                    broaden_object = self.cdf, \
+                                    log_interp=log_interp, dolines=dolines,\
+                                    dopseudo=dopseudo, docont=docont)
     ss = self.apply_response(s)
 
     return ss
@@ -3055,9 +3060,10 @@ class CIESpectrum():
 
 #-----------------------------------------------------------------------
 
-  def return_spectrum(self, Te, teunit='keV', nearest = False,
+  def return_spectrum(self, Te, teunit='keV', nearest = False,\
                              elements=False, abundances=False, log_interp=True,\
-                             broaden_object=False):
+                             broaden_object=False,\
+                             dolines=True, docont=True, dopseudo=True):
 
     """
     Return the spectrum of the element on the energy bins in
@@ -3113,7 +3119,10 @@ class CIESpectrum():
                                   thermal_broadening = self.thermal_broadening,\
                                   broaden_limit = epslimit,\
                                   velocity_broadening = self.velocity_broadening,\
-                                  broaden_object=broaden_object) *\
+                                  broaden_object=broaden_object,\
+                                  dolines=dolines,\
+                                  docont=docont,\
+                                  dopseudo=dopseudo) *\
                                   abund
           if log_interp:
             sss += numpy.log(ss+const.MINEPSOFFSET) *f[i]
@@ -3617,7 +3626,10 @@ class ElementSpectrum():
                     broaden_limit=False,\
                     velocity_broadening=0.0,\
                     teunit = 'keV',\
-                    broaden_object=False):
+                    broaden_object=False,\
+                    dolines = True,\
+                    docont = True,\
+                    dopseudo = True):
     """
     Calculate the spectrum
 
@@ -3658,12 +3670,17 @@ class ElementSpectrum():
 
     self.ebins_checksum = ebins_checksum
     self.T = T
-    spec = self.lines.return_spec(eedges, T, ebins_checksum=ebins_checksum,\
+    spec = 0.0
+
+    if dolines:
+      spec+=self.lines.return_spec(eedges, T, ebins_checksum=ebins_checksum,\
                                   thermal_broadening=thermal_broadening,\
                                   broaden_limit=broaden_limit,\
                                   velocity_broadening=velocity_broadening,\
-                                  broaden_object=broaden_object) +\
-           self.continuum.return_spec(eedges, ebins_checksum = ebins_checksum)
+                                  broaden_object=broaden_object)
+    if dopseudo+docont > 0:
+      spec+=self.continuum.return_spec(eedges, ebins_checksum = ebins_checksum,\
+                                       dopseudo=dopseudo, docont=docont)
 
     self.spectrum = spec
 
@@ -3997,7 +4014,7 @@ class ContinuumData():
   dopseudo : bool
     Calculate the pseudocontinuum emission
   """
-  def __init__(self, cocoentry, docont=True, dopseudo=True):
+  def __init__(self, cocoentry):
     """
     Initialization
 
@@ -4034,11 +4051,7 @@ class ContinuumData():
     self.ebins_checksum = False
 
 
-    self.docont = docont
-    self.dopseudo=dopseudo
-
-
-  def return_spec(self, eedges, ebins_checksum = False):
+  def return_spec(self, eedges, ebins_checksum = False, docont=True, dopseudo=True):
     import scipy.integrate
 
 
@@ -4050,25 +4063,24 @@ class ContinuumData():
     # see if the current checksum matches the stored one: if it does
     # do nothing, return existing data
 
+#    if ((self.ebins_checksum==ebins_checksum) &\
+#        (self.spectrum_calculated == True)):
+#      pass
 
-    if ((self.ebins_checksum==ebins_checksum) &\
-        (self.spectrum_calculated == True)):
-      pass
 
+#    else:
+    if docont:
+      cont = expand_E_grid(eedges, len(self.ECont), self.ECont, self.Cont)
     else:
-      if self.docont:
-        cont = expand_E_grid(eedges, len(self.ECont), self.ECont, self.Cont)
-      else:
-        cont = 0.0
+      cont = 0.0
 
-      if self.dopseudo:
-        pseudo = expand_E_grid(eedges, len(self.EPseudo), self.EPseudo, self.Pseudo)
-      else:
-        pseudo = 0.0
+    if dopseudo:
+      pseudo = expand_E_grid(eedges, len(self.EPseudo), self.EPseudo, self.Pseudo)
+    else:
+      pseudo = 0.0
 
-      self.ebins_checksum = ebins_checksum
-      self.spectrum = cont+pseudo
-      self.spectrum_calculated = True
+    self.ebins_checksum = ebins_checksum
+    self.spectrum = cont+pseudo
 
     return self.spectrum
 
