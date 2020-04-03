@@ -2489,41 +2489,39 @@ class CIESession():
     -----
     Updates self.linefile, self.linedata, self.cocofile and self.cocodata
     """
-    if util.keyword_check(linefile):
-      if isinstance(linefile, str):
-        lfile = os.path.expandvars(linefile)
-        if not os.path.isfile(lfile):
-          print("*** ERROR: no such file %s. Exiting ***" %(lfile))
-          return -1
-        self.linedata = pyfits.open(lfile)
-        self.linefile = lfile
+    if isinstance(linefile, str):
+      lfile = os.path.expandvars(linefile)
+      if not os.path.isfile(lfile):
+        print("*** ERROR: no such file %s. Exiting ***" %(lfile))
+        return -1
+      self.linedata = pyfits.open(lfile)
+      self.linefile = lfile
 
-      elif isinstance(linefile, pyfits.hdu.hdulist.HDUList):
-        # no need to do anything, file is already open
-        self.linedata=linefile
-        self.linefile=linefile.filename()
+    elif isinstance(linefile, pyfits.hdu.hdulist.HDUList):
+      # no need to do anything, file is already open
+      self.linedata=linefile
+      self.linefile=linefile.filename()
 
-      else:
-        print("Unknown data type for linefile. Please pass a string or an HDUList")
+    else:
+      print("Unknown data type for linefile. Please pass a string or an HDUList")
 
-    if util.keyword_check(cocofile):
 
-      if isinstance(cocofile, str):
+    if isinstance(cocofile, str):
 
-        cfile = os.path.expandvars(cocofile)
-        if not os.path.isfile(cfile):
-          print("*** ERROR: no such file %s. Exiting ***" %(cfile))
-          return -1
-        self.cocodata=pyfits.open(cfile)
-        self.cocofile=cfile
+      cfile = os.path.expandvars(cocofile)
+      if not os.path.isfile(cfile):
+        print("*** ERROR: no such file %s. Exiting ***" %(cfile))
+        return -1
+      self.cocodata=pyfits.open(cfile)
+      self.cocofile=cfile
 
-      elif isinstance(cocofile, pyfits.hdu.hdulist.HDUList):
-        # no need to do anything, file is already open
-        self.cocodata=cocofile
-        self.cocofile=cocofile.filename()
+    elif isinstance(cocofile, pyfits.hdu.hdulist.HDUList):
+      # no need to do anything, file is already open
+      self.cocodata=cocofile
+      self.cocofile=cocofile.filename()
 
-      else:
-        print("Unknown data type for cocofile. Please pass a string or an HDUList")
+    else:
+      print("Unknown data type for cocofile. Please pass a string or an HDUList")
 
   def set_abund(self, elements, abund):
     """
@@ -2677,18 +2675,19 @@ class CIESession():
 
     eps = numpy.zeros(len(Tevec))
     ret={}
-
+    ret['wavelength']=None
     for ikT, kT in enumerate(kTlist):
       e, lam = self.spectra.return_line_emissivity(kT, Z, z1,\
                                                    up, lo,\
                                                    specunit='A',\
                                                    teunit='keV',\
                                                    abundance=ab)
+
       eps[ikT] = e
       if lam != False:
         ret['wavelength'] = lam * 1.0
-      else:
-        ret['wavelength'] = None
+      #else:
+#        ret['wavelength'] = None
 
     ret['Te'] = Te
     ret['teunit'] = teunit
@@ -3196,6 +3195,7 @@ class CIESpectrum():
         # add emissivity
         eps_in[i] += line['Epsilon']
         lam = line['Lambda']
+
 
     if log_interp:
       eps_out = 0.0
