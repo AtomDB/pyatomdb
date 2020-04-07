@@ -14,7 +14,8 @@ ME_KEV = 510.0
 RYDBERG = 0.013605804
 BREMS_COEFF = 1.6542996e-20
 
-HC_IN_KEV_A = 12.398425 #  hc for converting keV to And
+HC_IN_KEV_A = 12.398425 #  hc for converting keV to Ang
+
 HC_IN_ERG_A = 1.9862e-8  # /* = hc (erg A) = 12398.425 * 1.602e-12 */
 SAF_COEFF = 3.30e-24
 
