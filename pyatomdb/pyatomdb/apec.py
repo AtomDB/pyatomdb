@@ -1498,7 +1498,7 @@ def create_lhdu_cie(linedata):
   tmp['Element']= linedata['Element']
   tmp['Ion']= linedata['Ion']
   tmp['negLambda']= linedata['Lambda']*-1
-  
+
   srt = numpy.argsort(tmp, order=['Element','Ion','negLambda'])
   linedata = linedata[srt]
 
@@ -2390,6 +2390,27 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                    numpy.float32,\
                                    numpy.float32,\
                                    numpy.float32,\
+                                   numpy.int32,\
+                                   numpy.int32,\
+                                   numpy.int32,\
+                                   numpy.int32]})
+  elif dtype =='linelist_nei_spectrum':
+    ret = numpy.dtype({'names':['Lambda',\
+                                 'Lambda_Err',\
+                                 'Epsilon',\
+                                 'Epsilon_Err',\
+                                 'Element',\
+                                 'Elem_drv',\
+                                 'Ion', \
+                                 'Ion_drv', \
+                                 'UpperLev',\
+                                 'LowerLev'],\
+                        'formats':[numpy.float32,\
+                                   numpy.float32,\
+                                   numpy.float32,\
+                                   numpy.float32,\
+                                   numpy.int32,\
+                                   numpy.int32,\
                                    numpy.int32,\
                                    numpy.int32,\
                                    numpy.int32,\
