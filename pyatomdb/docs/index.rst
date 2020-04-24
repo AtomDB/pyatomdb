@@ -3,20 +3,73 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-PyAtomDB
-====================================
+PyAtomDB & AtomDB
+=================
+The `AtomDB Project <https://www.atomdb.org>`_ consists of a large atomic database
+designed for creating spectra of collisionally excited plasmas in the UV and
+X-ray wavebands for use in astronomy and astrophysics research.
+It has been successfully used for some time within several
+different spectral analysis suites, such as `XSPEC <https://heasarc.gsfc.nasa.gov/xanadu/xspec/>`_
+and `Sherpa <https://cxc.cfa.harvard.edu/sherpa/>`_.
+
+There are two main parts to AtomDB:
+
+The Astrophysical Plasma Emission Database (APED)
+  A series of `FITS <https://heasarc.gsfc.nasa.gov/docs/heasarc/fits.html>`_
+  files which store the atomic data necessary for modelling emission from collisional plasmas
+  from elements from H through to Zn.
+
+The Astrophysical Plasma Emission Code (APEC)
+  Code which takes the APED and uses it to model a collisional
+  plasma, creating emissivity files for line and continuum emission. These output files are
+  then used in a range of models such as the ``apec``, ``nei`` and ``pshock`` models amongst others.
+
+Starting in 2015, PyAtomDB was developed to achieve a number of goals:
+
+  #. To replace the APEC code (formerly in C) with a more flexible tool for larger data sets
+  #. To allow interactive user access to the underlying database, which was always freely
+     available but sometimes difficult to use
+  #. To enable creating more flexible spectra based on the outputs of AtomDB
+  #. To enhance the types of spectra which can be modeled in AtomDB, and astronomer interaction
+     with these models
+  #. To facililtate inclusion of AtomDB models in other software (often python based).
+
+Contact
+=======
+This module is still in very active development. If you have feature requests, bug
+reports or any other questions, please contact us through the project's
+`GitHub <https://github.com/AtomDB/pyatomdb>`_ page.
 
 
-============
-Introduction
-============
+Contents
+========
+
+.. contents::
+   :depth: 2
+   :backlinks: entry
+
+.. toctree::
+   :maxdepth: 1
+
+   apec
+   atomic
+   atomdb
+   const
+   spectrum
+   util
+   examples
+   license
 
 
 
+
+=======
+Outline
+=======
 
 
 PyAtomDB is a selection of utilities designed to interact with the `AtomDB
-database <https://www.atomdb.org>`_ . These utilities started life as routines scattered around my laptop, so some produce lots of unhelpful onscreen output.
+database <https://www.atomdb.org>`_ . These utilities are under constant development. Please get in touch with any issues that arise.
 
 
 There are several different modules currently. These are:
@@ -28,62 +81,124 @@ There are several different modules currently. These are:
 - :doc:`util </util>`    : sumple utility codes (sorting etc) that pyatomdb relies on.
 - :doc:`apec </apec>`  : ultimately, the full apec code. For now, incomplete.
 
-Expect bugs. Report those bugs! Make feature requests! Email the code authors or raise an issue at the `github page <https://github.com/jagophile/atomdb/issues>`_  
+Expect bugs. Report those bugs! Make feature requests! Email the code authors or raise an issue at the `github page <https://github.com/jagophile/atomdb/issues>`_
 
 
-Contents
-========
 
-.. contents::
-   :depth: 2
-   :backlinks: entry
-   
-.. toctree:: 
-   :maxdepth: 1
-   
-   apec
-   atomic
-   atomdb
-   const
-   spectrum
-   util
-   examples
-   
+============
+Installation
+============
 
-=======
-License
-=======
+.. warning::
+  PyAtomDB runs only under Python 3. It will not work on Python 2. If you
+  need to install Python 3 in your system, you can use your package manager
+  or there are many other sources which
+  can help you including `Anaconda <https://www.anaconda.com/>`_.
 
-Pyatomdb is released under the Smithsonian License:
-
-Copyright 2015-16 Smithsonian Institution. Permission is granted to use, copy, 
-modify, and distribute this software and its documentation for educational,
-research and non-profit purposes, without fee and without a signed
-licensing agreement, provided that this notice, including the following
-two paragraphs, appear in all copies, modifications and distributions.
-For commercial licensing, contact the Office of the Chief Information
-Officer, Smithsonian Institution, 380 Herndon Parkway, MRC 1010, Herndon,
-VA. 20170, 202-633-5256.
-
-This software and accompanying documentation is supplied "as is" without
-warranty of any kind. The copyright holder and the Smithsonian
-Institution: (1) expressly disclaim any warranties, express or implied,
-including but not limited to any implied warranties of merchantability,
-fitness for a particular purpose, title or non-infringement; (2) do not
-assume any legal liability or responsibility for the accuracy,
-completeness, or usefulness of the software; (3) do not represent that use
-of the software would not infringe privately owned rights; (4) do not
-warrant that the software is error-free or will be maintained, supported,
-updated or enhanced; (5) will not be liable for any indirect, incidental,
-consequential special or punitive damages of any kind or nature,
-including but not limited to lost profits or loss of data, on any basis
-arising from contract, tort or otherwise, even if any of the parties has
-been warned of the possibility of such loss or damage.
+  Once you have Python 3 installed, you may (depending on your system)
+  have to add a ``3`` to many
+  of the command line commands, e.g. ``python`` becomes ``python3``, or
+  ``pip`` becomes ``pip3``. Commands in this guide omit the ``3``. Note
+  that actual Python code is unaffected.
 
 
-=====
-Usage
-=====
+
+PyAtomDB can be installed in two ways:
+
+  #. From `PyPI <https://pypi.org/>`_ , using the simple ``pip install pyatomdb`` command.
+  #. From `GitHub`_ , using the command ``git clone https://github.com/AtomDB/pyatomdb.git``
+     to get the source, then ``python setup.py develop`` to install links to the source
+     in your Python path.
+
+Note that for both of these options the ``--user`` option can be useful, as it will install
+software in your local path if you do not have administrator priviledges on your machine.
+
+You can check that the installation was successful by running:
+
+.. code-block:: python
+
+  >>> import pyatomdb
+
+If it does not immediately throw out an error, it has been successful. It will
+then start asking about installing the AtomDB files, see the next section. Note
+that there is no longer a need to run the initialize script.
+
+----------------
+ATOMDB Directory
+----------------
+Whenever you import the PyAtomDB module, it performs a check for the $ATOMDB directory.
+This directory is where the AtomDB data files will be stored. These are not
+distributed with the python package as they are large and most people will only need
+a few. PyAtomDB will download the APED data files on demand as you require them, and
+they are then stored in this directory until you manually delete them. If you need to
+recover disk space, you can delete anything in the $ATOMDB/APED directory without
+repercussions - PyAtomDB will re-download the files if it needs them in the future.
+
+You will be asked to select a directory for installation and then whether to download
+the emissivity files. It is important that this directory is one where you have write
+access, as in the future further files will be added there by the code automatically.
+
+Once installation is complete, ensure that you add the ATOMDB variable to your
+shell startup file. Assuming you have installed into /home/username/atomdb,
+in bash, add this line to your ~/.bashrc or ~/.bash_profile files
+(depends on which one is sourced by your system):
+
+.. code-block:: bash
+
+  export ATOMDB=/home/username/atomdb
+
+or for csh, add this to your ~/.cshrc or ~/.cshrc.login:
+
+.. code-block:: csh
+
+  setenv ATOMDB /home/username/atomdb
+
+Recent version of Mac OS have moved to zsh, in which case modify your ~/.zshrc file as for bash above.
+
+---------------------
+Usage Data Collection
+---------------------
+
+You will also be asked about anonymous usage data. In order to track roughly how many
+people are using PyAtomDB, a randomly generated number is created when you install
+PyAtomDB and stored in your ``$ATOMDB/userdata`` file. Whenever PyAtomDB has to fetch
+a new file this number, the filename and the current timestamp is stored on our
+system so we can estimate how many users there are. We have no way to connect this
+to actual individuals, it simply tells us roughly how many unique active users
+there are.
+
+If you decline, this number is set to 00000000, and otherwise PyAtomDB functions
+as normal.
+
+
+
+
+Note that it requires python 3 to run. On some systems, this will require calling ``pip3`` instead of ``pip``.
+In all the examples in this guide, we assume python 3 is running. Again,
+depending on your system this can be invoked by either ``python`` or ``python3``.
+
+For PyAtomDB to be useful, it requires access to a range of AtomDB database files. The database has two broad types of files, emissivity files (APEC) and fundamental atomic data files (APED, the Astrophysical Plasma Emission Database).
+
+The emissivity files are needed for things such as producing spectra. The APED files are underlying atomic data and are not strictly needed for creating a spectrum, but can be useful for getting later information out.
+
+In order for PyAtomDB to work efficiently, you should choose a location to store all of these files (e.g. /home/username/atomdb). It is strongly recommended that you set the environment variable ATOMDB to point to this, i.e. for bash add the following line to your .bashrc file::
+
+  export ATOMDB=/home/username/atomdb
+
+or for csh, add this to your .cshrc or .cshrc.login::
+
+  setenv ATOMDB /home/username/atomdb
+
+If you run the following code within a python shell, PyAtomDB will download the files you need to get started::
+
+  import pyatomdb
+  pyatomdb.util.initialize()
+
+This will prompt you for an install location (defaulting to `$ATOMDB`) and whether to download the emissivity files. It is suggested that you say yes. It will also ask if you mind sharing anonymous download information with us. We would appreciate it if you say yes, but it is not necessary for the functioning of the software.
+
+
+
+
 
 --------
 Examples
@@ -94,46 +209,26 @@ Note: there are example routines demonstrating use of these features in the exam
 ------------
 Installation
 ------------
-PyAtomDB can be installed from pypi, using the simple ``pip install pyatomdb`` command.
-
-For PyAtomDB to be useful, it requires access to a range of AtomDB database files (these are all `FITS <fits.gsfc.nasa.gov>`_ files). The database has two broad types of files, emissivity files (APEC) and fundamental atomic data files (APED, the Astrophysical Plasma Emission Database). 
-
-The emissivity files are needed for things such as producing spectra. The APED files are underlying atomic data and are not strictly needed for creating a spectrum, but can be useful for getting later information out.
-
-In order for PyAtomDB to work efficiently, you should choose a location to store all of these files (e.g. /home/username/atomdb). It is strongly recommended that you set the environment variable ATOMDB to point to this, i.e. for bash add the following line to your .bashrc file::
-
-  export ATOMDB=/home/username/atomdb
-  
-or for csh, add this to your .cshrc or .cshrc.login::
-  
-  setenv ATOMDB /home/username/atomdb   
-
-If you run the following code within a python shell, PyAtomDB will download the files you need to get started::
-
-  import pyatomdb
-  pyatomdb.util.initialize()
-
-This will prompt you for an install location (defaulting to `$ATOMDB`) and whether to download the emissivity files. It is suggested that you say yes. It will also ask if you mind sharing anonymous download information with us. We would appreciate it if you say yes, but it is not necessary for the functioning of the software.
 
 --------------------------
 Example: Making a Spectrum
 --------------------------
 These functions are in the ``spectrum`` module::
-  
+
   import pyatomdb, numpy, pylab
-  
+
   # set up a grid of energy bins to model the spectrum on:
   ebins=numpy.linspace(0.3,10,1000)
-  
+
   # define a broadening, in keV, for the lines
   de = 0.01
-  
+
   # define the temperature at which to plot (keV)
   te = 3.0
-  
+
   # find the index which is closest to this temperature
   ite = pyatomdb.spectrum.get_index( te, teunits='keV', logscale=False)
-  
+
   # create both a broadened and an unbroadened spectrum
   a = pyatomdb.spectrum.make_spectrum(ebins, ite,dummyfirst=True)
   b = pyatomdb.spectrum.make_spectrum(ebins, ite, broadening=de, \
@@ -141,12 +236,12 @@ These functions are in the ``spectrum`` module::
   # The dummyfirst argument adds an extra 0 at teh beginning of the
   # returned array so it is the same length as ebins. It allows
   # accurate plotting using the "drawstyle='steps'" flag to plot.
-  
+
   # plot the results
   fig = pylab.figure()
   fig.show()
   ax = fig.add_subplot(111)
-  
+
   ax.loglog(ebins, a, drawstyle='steps', label='Unbroadened')
   ax.loglog(ebins, b, drawstyle='steps', label='sigma = %.2f'%(de))
   ax.set_xlabel('Energy (keV)')
@@ -154,7 +249,7 @@ These functions are in the ``spectrum`` module::
   ax.legend(loc=0)
   pylab.draw()
   zzz = raw_input("Press enter to continue")
-  
+
   print "Listing lines between 1 and 2 A"
   # now list the lines in a wavelength region
   llist = pyatomdb.spectrum.list_lines([1,2.0], index=ite)
@@ -162,7 +257,7 @@ These functions are in the ``spectrum`` module::
   pyatomdb.spectrum.print_lines(llist)
   # print to screen, listing the energy, not the wavelength
   print "Listing lines between 1 and 2 A, using keV."
-  
+
   pyatomdb.spectrum.print_lines(llist, specunits = 'keV')
 
 
@@ -190,14 +285,14 @@ This will try to open the file locally if it exists, and if it does not it will 
 - ``AI``: autoionization data
 
 So to open the energy levels for oxygen with 2 electrons (O 6+, or O VII)::
-  
+
  lvdata = pyatomdb.atomdb.get_data(8,7,'LV')
 
 Downloaded data files are stored in ``$ATOMDB/APED/<elsymb>/<elsymb>_<ionnum>/``. You can delete them if you need to free up space, whenever a code needs the data it will reload them. There are many routines in the atomdb module which relate to extracting the data from the files, i.e. getting collisional excitation rates or line wavelengths. If you have trouble finding a routine to do what you want, please contact us and we'll be happy to write one if we can (this is how this module will grow - through user demand!)
 
 
 
-   
+
 Indices and tables
 ==================
 
