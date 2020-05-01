@@ -1,7 +1,22 @@
 
 """
-This module contains methods for creating spectra from the AtomDB files. Some
-are more primitive than others...
+The modules is separated by the type of spectrum you wish to model. For
+now, the CIE, NEI and PShock models are implemented.
+
+Roughly speaking, you load a [Modelname]Session, and you can then
+obtain:
+
+   linelist :
+     list of lines in a certain wavelength interval)
+
+   line_emissivity :
+     the emissivity of a specific line as a function of temperature,
+     line intensity and more.
+
+   spectrum :
+     the emissivity in photons cm^3 bin^-1 s^-1. This requires a
+     response be set first
+
 """
 
 # Adam Foster
@@ -22,7 +37,7 @@ from scipy.stats import norm
 import time
 import warnings
 
-def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
+def __make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
                   cocofile="$ATOMDB/apec_coco.fits",\
                   binunits='keV', broadening=False, broadenunits='keV', \
                   elements=False, abund=False, dummyfirst=False,\
@@ -217,7 +232,7 @@ def make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
 
 
 
-def make_ion_spectrum(bins, index, Z,z1, linefile="$ATOMDB/apec_nei_line.fits",\
+def __make_ion_spectrum(bins, index, Z,z1, linefile="$ATOMDB/apec_nei_line.fits",\
                   cocofile="$ATOMDB/apec_nei_comp.fits",\
                   binunits='keV', broadening=False, broadenunits='keV', \
                   abund=False, dummyfirst=False, nei = True,\
@@ -415,7 +430,7 @@ def make_ion_spectrum(bins, index, Z,z1, linefile="$ATOMDB/apec_nei_line.fits",\
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
-def add_lines(Z, abund, lldat, ebins, z1=False, z1_drv=False, \
+def __add_lines(Z, abund, lldat, ebins, z1=False, z1_drv=False, \
               broadening=False, broadenunits='A'):
   """
   DEPRECATED
@@ -515,7 +530,7 @@ def add_lines(Z, abund, lldat, ebins, z1=False, z1_drv=False, \
 #-------------------------------------------------------------------------------
 
 
-def get_index(te, filename='$ATOMDB/apec_line.fits', \
+def __get_index(te, filename='$ATOMDB/apec_line.fits', \
               teunits='keV', logscale=False):
   """
   Finds HDU with kT closest ro desired kT in given line or coco file.
@@ -576,7 +591,7 @@ def get_index(te, filename='$ATOMDB/apec_line.fits', \
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
-def list_lines(specrange, lldat=False, index=False, linefile=False,\
+def __list_lines(specrange, lldat=False, index=False, linefile=False,\
               units='angstroms', Te=False, teunit='K', minepsilon=1e-20):
   """
   DEPRECATED
@@ -780,7 +795,7 @@ def list_lines(specrange, lldat=False, index=False, linefile=False,\
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
-def list_nei_lines(specrange, Te, tau, Te_init=False,  lldat=False, linefile=False,\
+def __list_nei_lines(specrange, Te, tau, Te_init=False,  lldat=False, linefile=False,\
               units='angstroms', teunit='K', minepsilon=1e-20, \
               datacache=False):
   """
@@ -988,7 +1003,7 @@ def list_nei_lines(specrange, Te, tau, Te_init=False,  lldat=False, linefile=Fal
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 
-def print_lines(llist, specunits = 'A', do_cfg=False):
+def __print_lines(llist, specunits = 'A', do_cfg=False):
   """
   DEPRECATED
   Prints lines in a linelist to screen
@@ -1129,7 +1144,7 @@ def print_lines(llist, specunits = 'A', do_cfg=False):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 
-def make_ion_index_continuum(bins,  element, \
+def __make_ion_index_continuum(bins,  element, \
                              index = False,\
                              cocofile='$ATOMDB/apec_coco.fits',\
                              binunits = 'keV', \
@@ -1323,7 +1338,7 @@ def _expand_E_grid(eedges, n,Econt_in_full, cont_in_full):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
-def broaden_continuum(bins, spectrum, binunits = 'keV', \
+def __broaden_continuum(bins, spectrum, binunits = 'keV', \
                       broadening=False,\
                       broadenunits='keV'):
   """
@@ -1401,7 +1416,7 @@ def broaden_continuum(bins, spectrum, binunits = 'keV', \
     spectrum=spectrum[::-1]
   return spectrum
 
-def get_response_ebins(rmf):
+def _get_response_ebins(rmf):
   """
   Get the energy bins from the rmf file
 
@@ -1457,7 +1472,7 @@ def get_response_ebins(rmf):
   return specbins_in, specbins_out
 
 
-def get_effective_area(rmf, arf=False):
+def __get_effective_area(rmf, arf=False):
   """
   Get the effective area of a response file
 
@@ -1529,7 +1544,7 @@ def get_effective_area(rmf, arf=False):
   area *= arfarea
   return ebins_in, area
 
-class Gaussian_CDF():
+class _Gaussian_CDF():
   """
   For fast interpolation, pre-calculate the CDF and interpolate it when
   broadening lines
@@ -1543,7 +1558,7 @@ class Gaussian_CDF():
 
   Create a CDF instance:
 
-  >>> s=Gaussian_CDF()
+  >>> s=_Gaussian_CDF()
 
   Broaden a line on ebins grid, with centroid and width.
 
@@ -1686,15 +1701,15 @@ class CIESession():
     None
     """
     self.SessionType='CIE'
-    self.session_initialise1(linefile, cocofile, elements, abundset)
+    self._session_initialise1(linefile, cocofile, elements, abundset)
 
     # a hold for the spectra
-    self.spectra=CIESpectrum(self.linedata, self.cocodata)
+    self.spectra=_CIESpectrum(self.linedata, self.cocodata)
 
-    self.session_initialise2()
+    self._session_initialise2()
 
 
-  def session_initialise1(self, linefile, cocofile, elements, abundset):
+  def _session_initialise1(self, linefile, cocofile, elements, abundset):
     """
     This routine does all the initialization which is the same for all
     the different session classes, separates them out from the
@@ -1719,7 +1734,7 @@ class CIESession():
     self.datacache={}
 
     # Open up the APEC files
-    self.set_apec_files(linefile, cocofile)
+    self._set_apec_files(linefile, cocofile)
 
     # if elements are specified, use them. Otherwise, use Z=1-30
     if util.keyword_check(elements):
@@ -1761,7 +1776,7 @@ class CIESession():
     self.raw_response=False
 
 
-  def session_initialise2(self):
+  def _session_initialise2(self):
     """
     This routine does the remaining initialization which is the same for all
     the different session classes, separates them out from the
@@ -1777,7 +1792,7 @@ class CIESession():
     """
 
     self.set_broadening(False, broaden_limit=1e-18)
-    self.cdf = Gaussian_CDF()
+    self.cdf = _Gaussian_CDF()
 
 
   def set_broadening(self, thermal_broadening, broaden_limit=False, \
@@ -1986,7 +2001,7 @@ class CIESession():
 
 
 
-      self.specbins, self.ebins_out = get_response_ebins(self.rmf)
+      self.specbins, self.ebins_out = _get_response_ebins(self.rmf)
 
       if self.ebins_out[-1] < self.ebins_out[0]:
         # need to reverse things
@@ -2064,7 +2079,7 @@ class CIESession():
                                     broaden_object = self.cdf, \
                                     log_interp=log_interp, dolines=dolines,\
                                     dopseudo=dopseudo, docont=docont)
-    ss = self.apply_response(s)
+    ss = self._apply_response(s)
 
     return ss
 
@@ -2117,7 +2132,7 @@ class CIESession():
 
 
 
-  def apply_response(self, spectrum):
+  def _apply_response(self, spectrum):
 
     """
     Apply a response to a spectrum
@@ -2158,7 +2173,7 @@ class CIESession():
     return ret
 
 
-  def set_apec_files(self, linefile, cocofile):
+  def _set_apec_files(self, linefile, cocofile):
     """
     Set the apec line and coco files, and load up their data
 
@@ -2265,7 +2280,7 @@ class CIESession():
 
 
 
-  def set_abundset(self, abundstring):
+  def set_abundset(self, abundstring=None):
     """
     Set the abundance set.
 
@@ -2280,6 +2295,15 @@ class CIESession():
     none
       updates self.abundset and self.abundsetvector.
     """
+    if abundstring==None:
+      # Get abundance data file
+      abunddata = atomdb.get_data(False, False, 'abund',datacache=self.datacache)
+
+      # find the possible strings
+      print("Possible abundance sets:")
+      for name in abunddata[1].data.field('Source'):
+        print("  %s"%(name))
+      return
 
     # read in the abundance the raw data was calculated on
     old = atomdb.get_abundance(abundset=self.default_abundset,\
@@ -2625,7 +2649,7 @@ def convert_spec(spec, specunit, specunitout):
 
 
 
-class CIESpectrum():
+class _CIESpectrum():
   """
   A class holding the emissivity data for CIE emission, and returning
   spectra
@@ -2641,9 +2665,9 @@ class CIESpectrum():
   ----------
   SessionType : string
     "CIE"
-  spectra : dict of ElementSpectra
+  spectra : dict of _ElementSpectrum
     a dictionary containing the emissivity data for each HDU,
-    subdivided by element (spectra[12][18] is an ElementSpectrum object
+    subdivided by element (spectra[12][18] is an _ElementSpectrum object
     containing the argon data for the 12th HDU)
   kTlist : array
     The temperatures for each emissivity HDU, in keV
@@ -2696,7 +2720,7 @@ class CIESpectrum():
           else:
             c = False
 
-          self.spectra[ihdu][Z]=ElementSpectrum(ldat[Zarr[:,Z]],\
+          self.spectra[ihdu][Z]=_ElementSpectrum(ldat[Zarr[:,Z]],\
                                               c, \
                                               Z)
       pickle.dump(self.spectra, open(picklefname,'wb'))
@@ -3192,15 +3216,15 @@ class CIESpectrum():
 
 
           llist1 = self.spectra[ikT[0]][Z].return_linelist(specrange,\
-                                  teunit='keV', specunit=specunit)
+                                  specunit=specunit)
           llist2 = self.spectra[ikT[1]][Z].return_linelist(specrange,\
-                                  teunit='keV', specunit=specunit)
+                                  specunit=specunit)
 
           elemlinelist = self._merge_linelists_temperatures(f, llist1, llist2, log_interp)
 
         else:
           elemlinelist = self.spectra[ikT[0]][Z].return_linelist(specrange,\
-                                  teunit='keV', specunit=specunit)
+                                  specunit=specunit)
 
         # fix abundance
         elemlinelist['Epsilon'] *= abund
@@ -3216,7 +3240,7 @@ class CIESpectrum():
 
 
 
-class ElementSpectrum():
+class _ElementSpectrum():
   """
   A class holding the emissivity data for an element in one HDU
 
@@ -3232,19 +3256,14 @@ class ElementSpectrum():
     The atomic number of the element
   z1_drv : int
     The charge + 1 for the ion. 0 = whole element.
-  parent : CIESpectrum
-    Parent CIESpectrum object
 
   Attributes
   ----------
-  lines : LineData
-    A LineData object containing all the line information
-  continuum : ContinuumData
-    A ContinuumData object containing all the contrinuum information
-  parent : CIESpectrum
-    Parent CIESpectrum object
-  session : CIESession
-    Parent Session of parent CIESpectrum object
+  lines : _LineData
+    A _LineData object containing all the line information
+  continuum : _ContinuumData
+    A _ContinuumData object containing all the contrinuum information
+
   """
 
   def __init__(self, linedata, cocodata, Z, z1_drv=0):
@@ -3264,9 +3283,9 @@ class ElementSpectrum():
 
     Modifies
     --------
-    self.lines : LineData
+    self.lines : _LineData
       The line emission HDU data for this element/ion
-    self.continuum : ContinuumData
+    self.continuum : _ContinuumData
       The continuum emission HDU data for this element/ion
     """
 
@@ -3274,12 +3293,12 @@ class ElementSpectrum():
     if z1_drv != 0:
       tmp = linedata[(linedata['Element'] == Z) &\
                                (linedata['Ion_drv'] == z1_drv)]
-      self.lines = LineData(tmp)
-      self.continuum = ContinuumData(cocodata)
+      self.lines = _LineData(tmp)
+      self.continuum = _ContinuumData(cocodata)
 
     else:
-      self.lines = LineData(linedata)
-      self.continuum = ContinuumData(cocodata)
+      self.lines = _LineData(linedata)
+      self.continuum = _ContinuumData(cocodata)
 
 
   def return_spectrum(self, eedges, Te, ebins_checksum=False,\
@@ -3443,7 +3462,7 @@ class ElementSpectrum():
 
     # self.spectrum_withresp=ret
 
-class LineData():
+class _LineData():
   """
   A class holding the line data for an element in one HDU
 
@@ -3647,7 +3666,7 @@ class LineData():
     return self.spectrum
 
 
-class ContinuumData():
+class _ContinuumData():
   """
   A class holding the continuum data for an element in one HDU
 
@@ -3655,8 +3674,7 @@ class ContinuumData():
   ----------
   cocoentry : array(cocodatatype)
     A single row from the continuum data in an AtomDB file.
-  parentElementSpectrum : ElementSpectrum
-    Parent ElementSpectrum object
+
 
   Attributes
   ----------
@@ -3668,8 +3686,6 @@ class ContinuumData():
     The continuum emissivities (ph cm^3 s^-1 keV^-1)
   Pseudo : array(float)
     The pseudocontinuum energies (ph cm^3 s^-1 keV^-1)
-  parentElementSpectrum : ElementSpectrum
-    Parent ElementSpectrum object
   spectrum_calculated : bool
     True if spectrum has already been calculated, otherwise false
   ebins_checksum : string
@@ -3689,8 +3705,6 @@ class ContinuumData():
     ----------
     cocoentry : numrec
       The data for 1 element/ion
-    parentElementSpectrum : ElementSpectrum
-      Parent ElementSpectrum object
     """
 
     if type(cocoentry)==bool:
@@ -3836,7 +3850,7 @@ class NEISession(CIESession):
 
   Create a session instance:
 
-  >>> s=NEISession()
+  >>> s = NEISession()
 
   Set up the responses, in this case a dummy response from 0.1 to 10 keV
 
@@ -3876,11 +3890,11 @@ class NEISession(CIESession):
     """
     self.SessionType='NEI'
 
-    self.session_initialise1(linefile, cocofile, elements, abundset)
+    self._session_initialise1(linefile, cocofile, elements, abundset)
 
-    self.spectra=NEISpectrum(self.linedata, self.cocodata)
+    self.spectra=_NEISpectrum(self.linedata, self.cocodata)
 
-    self.session_initialise2()
+    self._session_initialise2()
 
 
   def return_linelist(self,Te, tau, specrange, init_pop='ionizing',specunit='A', \
@@ -4128,13 +4142,13 @@ class NEISession(CIESession):
                                     broaden_object=self.cdf, \
                                     freeze_ion_pop = freeze_ion_pop)
 
-    ss = self.apply_response(s)
+    ss = self._apply_response(s)
 
     return ss
 
 
 
-class NEISpectrum(CIESpectrum):
+class _NEISpectrum(_CIESpectrum):
   """
   A class holding the emissivity data for NEI emission, and returning
   spectra
@@ -4150,9 +4164,9 @@ class NEISpectrum(CIESpectrum):
   ----------
   SessionType : string
     "NEI"
-  spectra : dict of ElementSpectra
+  spectra : dict of _ElementSpectrum
     a dictionary containing the emissivity data for each HDU,
-    subdivided by ion (spectra[12][18][13] is an ElementSpectrum object
+    subdivided by ion (spectra[12][18][13] is an _ElementSpectrum object
     containing the argon XIII data for the 12th HDU)
   kTlist : array
     The temperatures for each emissivity HDU, in keV
@@ -4211,7 +4225,7 @@ class NEISpectrum(CIESpectrum):
 
             if len(ccdat)==0:
               ccdat = [False]
-            self.spectra[ihdu][Z][z1]=ElementSpectrum(ldat[isgood],\
+            self.spectra[ihdu][Z][z1]=_ElementSpectrum(ldat[isgood],\
                                                   ccdat[0], Z, z1_drv=z1)
 
 
@@ -4410,7 +4424,7 @@ class NEISpectrum(CIESpectrum):
               spec[i] += ionspec*abund
 
     if len(ikT)==2:
-      totspec = merge_spectra_temperatures(f, spec[0], spec[1], log_interp)
+      totspec = self._merge_spectra_temperatures(f, spec[0], spec[1], log_interp)
     else:
       totspec = spec[0]
 
@@ -4618,9 +4632,9 @@ class NEISpectrum(CIESpectrum):
 
             # get the linelist
             llist1 = self.spectra[ikT[0]][Z][z1_drv].return_linelist(specrange,\
-                                    teunit='keV', specunit=specunit)
+                                    specunit=specunit)
             llist2 = self.spectra[ikT[1]][Z][z1_drv].return_linelist(specrange,\
-                                    teunit='keV', specunit=specunit)
+                                    specunit=specunit)
             # correct for ion fraction
             llist1['Epsilon'] *= ionfrac[z1_drv-1]
             llist2['Epsilon'] *= ionfrac[z1_drv-1]
@@ -4640,7 +4654,7 @@ class NEISpectrum(CIESpectrum):
 
             # get the linelist
             llist = self.spectra[ikT[0]][Z][z1].return_linelist(specrange,\
-                                     teunit='keV', specunit=specunit)
+                                     specunit=specunit)
 
             # correct for ion fraction
             llist['Epsilon'] *= ionfrac[z1_drv-1]
@@ -4777,11 +4791,11 @@ class PShockSession(NEISession):
 
     self.SessionType='PShock'
 
-    self.session_initialise1(linefile, cocofile, elements, abundset)
+    self._session_initialise1(linefile, cocofile, elements, abundset)
 
-    self.spectra=PShockSpectrum(self.linedata, self.cocodata)
+    self.spectra=_PShockSpectrum(self.linedata, self.cocodata)
 
-    self.session_initialise2()
+    self._session_initialise2()
 
     # self.datacache={}
 
@@ -4823,7 +4837,7 @@ class PShockSession(NEISession):
     # self.docont=True # Include continuum in spectrum
     # self.dopseudo=True # Include pseudo continuum in spectrum
     # self.set_broadening(False, broaden_limit=1e-18)
-    # self.cdf = Gaussian_CDF()
+    # self.cdf = _Gaussian_CDF()
 
 
 
@@ -4952,7 +4966,7 @@ class PShockSession(NEISession):
                                     abundance=ab, log_interp=True,\
                                     broaden_object=self.cdf)
 
-    ss = self.apply_response(s)
+    ss = self._apply_response(s)
 
     return ss
 
@@ -5072,7 +5086,7 @@ class PShockSession(NEISession):
 
 
 
-class PShockSpectrum(NEISpectrum):
+class _PShockSpectrum(_NEISpectrum):
   """
   A class holding the emissivity data for NEI emission, and returning
   spectra
@@ -5090,9 +5104,9 @@ class PShockSpectrum(NEISpectrum):
     The parent CIESession
   SessionType : string
     "CIE"
-  spectra : dict of ElementSpectra
+  spectra : dict of _ElementSpectrum
     a dictionary containing the emissivity data for each HDU,
-    subdivided by element (spectra[12][18] is an ElementSpectrum object
+    subdivided by element (spectra[12][18] is an _ElementSpectrum object
     containing the argon data for the 12th HDU)
   kTlist : array
     The temperatures for each emissivity HDU, in keV
@@ -5152,7 +5166,7 @@ class PShockSpectrum(NEISpectrum):
 
             if len(ccdat)==0:
               ccdat = [False]
-            self.spectra[ihdu][Z][z1]=ElementSpectrum(ldat[isgood],\
+            self.spectra[ihdu][Z][z1]=_ElementSpectrum(ldat[isgood],\
                                                   ccdat[0], Z, z1_drv=z1)
 
 
@@ -5409,7 +5423,7 @@ class PShockSpectrum(NEISpectrum):
     ----------
     Te : float
       Temperature in keV or K
-    tau : float
+    tau_u : float
       ionization timescale, ne * t (cm^-3 s).
     Z : int
       nuclear charge of element
@@ -5669,7 +5683,7 @@ class PShockSpectrum(NEISpectrum):
 
 #### LEGACY CODE BEYOND THIS POINT
 
-def get_nei_line_emissivity(Z, z1, up, lo):
+def __get_nei_line_emissivity(Z, z1, up, lo):
   """
   DEPRECATED
   Return the line emissivity for a single line, separated out by the ion driving it
