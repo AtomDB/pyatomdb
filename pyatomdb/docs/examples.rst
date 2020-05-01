@@ -52,39 +52,121 @@ The heart of the spectral analysis is the spectrum.py class. This reads in the r
 Making a Spectrum
 -----------------
 
-.. literalinclude:: ../examples/spectrum_session_examples.py
+.. literalinclude:: ../examples/spectrum_session_examples_1.py
 
---------------------
-Showing Line Details
---------------------
+.. figure:: ../examples/spectrum_session_examples_1_1.svg
+    :align: center
+    :alt: Spectrum Example 1
+    :figclass: align-center
 
-.. literalinclude:: ../examples/spectrum_session_linelist_examples.py
+    A kT=0.4keV simple spectrum created with and without an instrument response
+
+---------------
+Line Broadening
+---------------
+By default, line broadening is off. The command ``session.set_broadening`` allows you to turn on thermal broadening and, if desired, add additional turbulent velocity broadening too.
+
+.. literalinclude:: ../examples/spectrum_session_examples_2.py
+
+.. figure:: ../examples/spectrum_session_examples_2_1.svg
+    :align: center
+    :alt: Spectrum Example 2
+    :figclass: align-center
+
+    A kT=3.0keV spectrum unbroadened, thermally broadened and then additionally velocity broadend.
+
+-------------------
+Changing Abundances
+-------------------
+There are several ways to change the abundances. By default, all are set to 1.0 times the solar value of `Anders and Grevesse <adsabs.harvard.edu/abs/1989GeCoA..53..197A>`_.
+The ``session.set_abund`` command implements this.
+
+.. literalinclude:: ../examples/spectrum_session_examples_3_abund.py
+
+.. figure:: ../examples/spectrum_session_examples_3_1.svg
+    :align: center
+    :alt: Spectrum Example 3
+    :figclass: align-center
+
+    A kT=1.0keV spectrum with assorted different abundances applied.
+
+
+You can also change the entire abundance set in use using ``session.set_abundset``.
+
+.. literalinclude:: ../examples/spectrum_session_examples_4_abund.py
+
+.. figure:: ../examples/spectrum_session_examples_4_1.svg
+    :align: center
+    :alt: Spectrum Example 4
+    :figclass: align-center
+
+    A kT=1.0keV spectrum with assorted different abundance sets applied.
+
+----------------
+Return line list
+----------------
+To obtain a list of lines and their emissivities in a spectral range, use ``session.return_linelist``. This
+returns the data as a numpy array of the lines in the region, applying all current abundance information
+to the linelist. It also interpolates in temperature between the two nearest points. Note
+that since AtomDB cuts off lines with emissivities below :math:`10^{-20}` :math:`ph ~ cm^3 s^{-1}`, lines
+will diappear below this emissivity. Lines beyond the last temperature point at which they are tabulated will
+not be included in the returned linelist.
+
+.. literalinclude:: ../examples/spectrum_session_examples_5_linelist.py
+
+----------------------
+Return line emissivity
+----------------------
+To calculate the emissvitiy of a specific line, you can use ``session.return_line_emissivity`` along
+with the ion, element, upper and lower levels of the transition. You can supply a single or a range
+of temperatures, and a dictionary will be returned containing much of the information along with
+emissivity (epsilon) you requested.
+
+.. literalinclude:: ../examples/spectrum_session_examples_6_line_emissivity.py
+
+.. figure:: ../examples/spectrum_session_examples_6_1.svg
+    :align: center
+    :alt: Spectrum Example 6
+    :figclass: align-center
+
+    Emissivity of the resonance line of O VII.
 
 ++++++++++++++++
 NEISession Class
 ++++++++++++++++
-Derived from the CIESession class, this handles non-equilibrium spectra. As such,
+Derived from the CIESession class, this handles non-equilibrium spectra. As such, all of the calls to it are
+exactly the same. Adding response, setting abundances obtaining spectra, etc all work the same way.
+Therefore I will only outline what is different.
+
+The main difference is that a non equilibrium plasma requires 2 more pieces of information to define it. The
+current electron temperature is as with the CIE case. The other two are:
+
+  tau
+    The ionization timescale (:math:`n_e t`) in cm:sup:`3` s:sup:`-1` since the plasma left it's previous
+    equilibrium
+  init_pop
+    The initial population the plasma was in at tau=0.
+
+Tau is a single number in all cases. init_pop can be be defined in a range of ways:
+
+  float
+    If it is a single number, this is assumed to be an electron temperature. The ionization fraction will
+    be calculated at this :math:`T_e`.
+
+  dict
+    If a dictionary is provided, it should be an explicit ionization fraction for each element.
+    So dict[6]= [0.0, 0.1, 0.2, 0.3, 0.3, 0.1, 0.0] would be the ionization fraction for carbon,
+    dict[8]= [0.0, 0.0, 0.1, 0.1, 0.1, 0.15,0.3,0.2,0.05] would be for oxygen etc.
+
+  'ionizing'
+    If the string ionizating is provided, set all elements to be entirely neutral.
+
+  'recombining'
+    If the string recombining is provided, set all elements to be fully ionized.
+
+Ta da
+
 a few extra parameters should be set. The ionization timescale (tau) and the initial ionization fraction should be specified. This can either be as an initial temperature or an exact specified input distribution of ion populations.
-
------------------
-Making a spectrum
------------------
-
-.. literalinclude:: ../examples/spectrum_NEIsession_examples.py
-
---------------------
-Showing Line Details
---------------------
-
-.. literalinclude:: ../examples/spectrum_NEIsession_linelist_examples.py
-
-
-==============
-Make Line List
-==============
-List the strongest lines in a given temperature and wavelength region:  ``make_line_list.py``
-
-.. literalinclude:: ../examples/make_line_list.py
 
 =====================
 Get PI Cross Sections
