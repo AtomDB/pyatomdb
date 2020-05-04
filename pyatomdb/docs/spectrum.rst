@@ -1,4 +1,4 @@
-PyAtomDB Spectrum module
+spectrum module
 ====================================
 
 This module contains codes for creating spectra from the AtomDB emissivity files

@@ -1,7 +1,10 @@
-PyAtomDB APEC module
-====================================
+apec module
+===========
 
-This modules contains the APEC code. It calls many different subroutines from throughout the PyAtomDB module. Currently largely unwritten, as APEC code needs to be tidied up for transfer.
+This modules contains the APEC code. It calls many different subroutines from throughout the PyAtomDB module.
+
+It is expected that this code will go through a major rewrite to make it more pythonic. Be wary of embedding too
+many links to this module in your code.
 
 .. automodule:: pyatomdb.apec
     :members:
