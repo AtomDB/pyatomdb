@@ -1,5 +1,12 @@
+========================
 PyAtomDB Example Scripts
-====================================
+========================
+
+
+
+----------------
+Module Structure
+----------------
 
 These are examples of using the PyAtomDB module in your projects. They can all be found in the examples subdirectory of your PyAtomDB installation.
 
@@ -25,14 +32,10 @@ const
 
 
 
-.. contents:: Table of Contents
-   :depth: 2
-   :backlinks: entry
 
-
-=======
+-------
 Spectra
-=======
+-------
 The spectrum.py module contains routines for taking the spectrum generated from the
 apec model and extracting line emissivities or continuum emission, applying responses,
 changing abundances, etc. In these examples, we will use the
@@ -46,11 +49,12 @@ therefore hopefully present on most systems.
 ++++++++++++++++
 CIESession Class
 ++++++++++++++++
+
 The heart of the spectral analysis is the spectrum.py class. This reads in the results of an apec run (by default, $ATOMDB/apec_line.fits and $ATOMDB/apec_coco.fits) and allows the user to obtain spectra at a range of temperatures accounting for instrument responses, thermal and velocity broadening,  abundance changes and other issues.
 
------------------
+~~~~~~~~~~~~~~~~~
 Making a Spectrum
------------------
+~~~~~~~~~~~~~~~~~
 
 .. literalinclude:: ../examples/spectrum_session_examples_1.py
 
@@ -61,9 +65,10 @@ Making a Spectrum
 
     A kT=0.4keV simple spectrum created with and without an instrument response
 
----------------
+~~~~~~~~~~~~~~~
 Line Broadening
----------------
+~~~~~~~~~~~~~~~
+
 By default, line broadening is off. The command ``session.set_broadening`` allows you to turn on thermal broadening and, if desired, add additional turbulent velocity broadening too.
 
 .. literalinclude:: ../examples/spectrum_session_examples_2.py
@@ -75,10 +80,11 @@ By default, line broadening is off. The command ``session.set_broadening`` allow
 
     A kT=3.0keV spectrum unbroadened, thermally broadened and then additionally velocity broadend.
 
--------------------
+~~~~~~~~~~~~~~~~~~~
 Changing Abundances
--------------------
-There are several ways to change the abundances. By default, all are set to 1.0 times the solar value of `Anders and Grevesse <adsabs.harvard.edu/abs/1989GeCoA..53..197A>`_.
+~~~~~~~~~~~~~~~~~~~
+
+There are several ways to change the abundances. By default, all are set to 1.0 times the solar value of `Anders and Grevesse <http://adsabs.harvard.edu/abs/1989GeCoA..53..197A>`_.
 The ``session.set_abund`` command implements this.
 
 .. literalinclude:: ../examples/spectrum_session_examples_3_abund.py
@@ -102,9 +108,10 @@ You can also change the entire abundance set in use using ``session.set_abundset
 
     A kT=1.0keV spectrum with assorted different abundance sets applied.
 
-----------------
+~~~~~~~~~~~~~~~~
 Return line list
-----------------
+~~~~~~~~~~~~~~~~
+
 To obtain a list of lines and their emissivities in a spectral range, use ``session.return_linelist``. This
 returns the data as a numpy array of the lines in the region, applying all current abundance information
 to the linelist. It also interpolates in temperature between the two nearest points. Note
@@ -114,9 +121,10 @@ not be included in the returned linelist.
 
 .. literalinclude:: ../examples/spectrum_session_examples_5_linelist.py
 
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~
 Return line emissivity
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~
+
 To calculate the emissvitiy of a specific line, you can use ``session.return_line_emissivity`` along
 with the ion, element, upper and lower levels of the transition. You can supply a single or a range
 of temperatures, and a dictionary will be returned containing much of the information along with
@@ -134,6 +142,7 @@ emissivity (epsilon) you requested.
 ++++++++++++++++
 NEISession Class
 ++++++++++++++++
+
 Derived from the CIESession class, this handles non-equilibrium spectra. As such, all of the calls to it are
 exactly the same. Adding response, setting abundances obtaining spectra, etc all work the same way.
 Therefore I will only outline what is different.
@@ -159,26 +168,69 @@ Tau is a single number in all cases. init_pop can be be defined in a range of wa
     dict[8]= [0.0, 0.0, 0.1, 0.1, 0.1, 0.15,0.3,0.2,0.05] would be for oxygen etc.
 
   'ionizing'
-    If the string ionizating is provided, set all elements to be entirely neutral.
+    If the string ionizing is provided, set all elements to be entirely neutral. This is the default.
 
   'recombining'
     If the string recombining is provided, set all elements to be fully ionized.
 
-Ta da
+~~~~~~~~~~~~~~~~~
+Making a Spectrum
+~~~~~~~~~~~~~~~~~
 
-a few extra parameters should be set. The ionization timescale (tau) and the initial ionization fraction should be specified. This can either be as an initial temperature or an exact specified input distribution of ion populations.
+As an example, this will plot a simple recombining spectrum within initial temperature of 1.0keV.
 
-=====================
+.. literalinclude:: ../examples/spectrum_session_examples_7_nei.py
+
+.. figure:: ../examples/spectrum_session_examples_7_1.svg
+    :align: center
+    :alt: Spectrum Example 7
+    :figclass: align-center
+
+    Recombining spectrum specified by an initial temperature
+
+~~~~~~~~~~~~~~~~~
+Making a Linelist
+~~~~~~~~~~~~~~~~~
+
+This is again exactly the same as the CIESession case, except with extra parameters ``tau`` and ``init_pop``.
+The only additional option is the ability to separate the linelist by driving ion. This is the ion which gives
+rise to the emission. For example, if the emission is largely from ionization into an excited state and then
+subsequent cascade, then that part of the emissivity has a different driving ion than that driven by
+excitation of the ion's ground state.
+
+Separating out these features can be turned on and off using the ``by_ion_drv`` keyword,
+
+.. literalinclude:: ../examples/spectrum_session_examples_8_nei_linelist.py
+
+
+-------------------
+Getting Atomic Data
+-------------------
+
+
+
+
+
+
+
+--------------------
+Individual Use Cases
+--------------------
+
+These are typically scripts created to answer user's questions which might be interesting. As a result,
+sometimes the exact response files etc may not be available to you. Please swap in what you need to.
+
++++++++++++++++++++++
 Get PI Cross Sections
-=====================
++++++++++++++++++++++
 
 Extract the PI cross section data:  ``photoionization_data.py``
 
 .. literalinclude:: ../examples/photoionization_data.py
 
-==================
+++++++++++++++++++
 Make Cooling Curve
-==================
+++++++++++++++++++
 
 Make a cooling curve, total emissivity in keV cm3 s-1, for each element
 in a specfied spectral range (e.g. 2 to 10 keV).
