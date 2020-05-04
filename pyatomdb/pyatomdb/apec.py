@@ -1633,7 +1633,7 @@ def run_apec_element(settings, te, dens, Z):
     # time to calculate the ionization balance
     if settings['UseIonBalanceTable']:
       # read the ionization balance table
-      ionfrac = atomdb.get_ionfrac(os.path.expandvars(settings['IonBalanceTable']), Z, te)
+      ionfrac = atomdb._get_precalc_ionfrac(os.path.expandvars(settings['IonBalanceTable']), Z, te)
     else:
       # calculate the ionization balance
       ionftmp = calc_full_ionbal(te, 1e14, Te_init=te, Zlist=[Z], extrap=True)
@@ -2102,7 +2102,7 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
 
 
 
-        exc,dex, tmp = atomdb.calc_maxwell_rates(ecdat[1].data['coeff_type'][i],\
+        exc,dex, tmp = atomdb._calc_maxwell_rates(ecdat[1].data['coeff_type'][i],\
                                      ecdat[1].data['min_temp'][i],\
                                      ecdat[1].data['max_temp'][i],\
                                      ecdat[1].data['temperature'][i],\
@@ -2171,7 +2171,7 @@ def gather_rates(Z, z1, te, dens, datacache=False, settings=False,\
       for i in range(len(pcdat[1].data)):
 
 
-        exc,dex, tmp = atomdb.calc_maxwell_rates(pcdat[1].data['coeff_type'][i],\
+        exc,dex, tmp = atomdb._calc_maxwell_rates(pcdat[1].data['coeff_type'][i],\
                                      pcdat[1].data['min_temp'][i],\
                                      pcdat[1].data['max_temp'][i],\
                                      pcdat[1].data['temperature'][i],\
@@ -3951,7 +3951,7 @@ def wrap_ion_directly(fname, ind, Z, z1):
     # time to calculate the ionization balance
     if settings['UseIonBalanceTable']:
       # read the ionization balance table
-      ionfrac = atomdb.get_ionfrac(os.path.expandvars(settings['IonBalanceTable']), Z, te)
+      ionfrac = atomdb._get_precalc_ionfrac(os.path.expandvars(settings['IonBalanceTable']), Z, te)
     else:
       # calculate the ionization balance
       ionftmp = calc_full_ionbal(Te, 1e14, Te_init=Te, Zlist=[Z], extrap=True)
