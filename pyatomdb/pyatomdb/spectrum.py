@@ -2369,11 +2369,14 @@ class CIESession():
     -------
     ret : dict
       Dictionary containing:
-      Te, tau, teunit: as input
-      wavelength : line wavelength (A)
-      energy : line energy (keV)
-      epsilon : emissivity in ph cm^3 s-1 (or ph cm^5 s^-1 if apply_aeff=True)
-                first index is temperature, second is tau.
+
+        Te, tau, teunit : as input
+
+        wavelength : line wavelength (A)
+
+        energy : line energy (keV)
+
+        epsilon : emissivity in ph cm^3 s-1 (or ph cm^5 s^-1 if apply_aeff=True). First index is temperature, second is tau.
 
     """
 
