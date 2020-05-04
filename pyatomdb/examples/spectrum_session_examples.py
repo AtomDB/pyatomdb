@@ -1,12 +1,21 @@
-import pyatomdb, numpy, pylab
+import pyatomdb
+import numpy
+import pylab
 
 
 # declare the Collisional Ionization Equilibrium session
 sess = pyatomdb.spectrum.CIESession()
 
-# set the response (here, a dummy response)
+# create a set of energy bins (in keV) for the response. Note these are
+# the n edges of the n-1 bins.
 ebins = numpy.linspace(0.6,12.4,1000)
+
+# set the response (raw keyword tells pyatomdb it is not a real response file)
 sess.set_response(ebins, raw=True)
+
+kT = 0.4 # temperature in keV
+spec = sess.return_spectrum(kT)
+
 
 # alternatively, could set to real RMF, ARF files using:
 # sess.set_response(rmf, arf=arf)
