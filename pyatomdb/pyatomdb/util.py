@@ -3244,6 +3244,114 @@ def generate_web_fitsfiles(version='', outdir=''):
   return
 
 
+def convert_spec(spec, specunit, specunitout):
+  """
+  Convert spectral ranges from specunit to specunitout
+
+  Parameters
+  ----------
+  spec : array
+    The units to return
+  specunit : string
+    The input spectral unit ('keV', 'A')
+  specunitout : string
+    The output spectral unit ('keV', 'A')
+
+  Returns
+  -------
+  specout : array
+    spec, converted to specunitout
+  """
+  allowedunits = ['a','ang','angstrom','angstroms','ev','kev']
+  cfactors = [1.0, 1.0, 1.0, 1.0, const.HC_IN_KEV_A*1000, const.HC_IN_KEV_A]
+  ctype    =  ['w','w','w','w','e','e']
+
+  specunit2 = specunit.lower()
+  specunitout2 = specunitout.lower()
+
+  # If units are the same, do nothing
+  if specunit2==specunitout2: return spec
+
+  try:
+    cfac_in = cfactors[allowedunits.index(specunit2)]
+    cfac_out = cfactors[allowedunits.index(specunitout2)]
+
+
+
+  except ValueError:
+    # Assume one of the units is bad
+    if not (specunit2 in allowedunits):
+      raise UnitsError("%s is not a recognized spectroscopic unit %s"%\
+           (specunit2, allowedunits))
+    elif not (specunitout2 in allowedunits):
+      raise UnitsError("%s is not a recognized spectroscopic unit %s"%\
+           (specunitout2, allowedunits))
+    raise
+  ctype_in = ctype[allowedunits.index(specunit2)]
+  ctype_out = ctype[allowedunits.index(specunitout2)]
+
+
+  if ctype_in == 'w':
+    try:
+      spec_ang = cfac_in * spec
+    except TypeError:
+      spec = numpy.array(spec)
+      spec_ang = cfac_in * spec
+  elif ctype_in == 'e':
+    try:
+      spec_ang = cfac_in / spec
+    except TypeError:
+      spec = numpy.array(spec)
+      spec_ang = cfac_in / spec
+    spec_ang = cfac_in / spec
+
+
+  if ctype_out == 'w':
+    spec_out = spec_ang * cfac_out
+  elif ctype_out == 'e':
+    spec_out = cfac_out/spec_ang
+
+  if ctype_out != ctype_in:
+    # invert array if converting between energy and wavelength
+    spec_out = spec_out[::-1]
+
+  return spec_out
+
+
+def convert_temp(Te, teunit, teunitout):
+  """
+  Convert temperature (Te) from units teunit to teunitout
+
+  Parameters
+  ----------
+  Te : float
+    The temperature
+  teunit : string
+    units of Te
+  teunitout : string
+    output temperature units
+  """
+
+  teunit2 = teunit.lower()
+  teunitout2 = teunitout.lower()
+
+  if teunitout2==teunit2: return Te
+
+  allowedunits = ['ev','kev','k']
+
+  cfactors = [1000.,1.0,1/const.KBOLTZ]
+  try:
+    cfac = cfactors[allowedunits.index(teunitout2)]/cfactors[allowedunits.index(teunit2)]
+  except ValueError:
+    # Assume one of the units is bad
+    if not (teunit2 in allowedunits):
+      raise UnitsError("%s is not a recognized temperature unit %s"%(teunit2, allowedunits))
+    elif not (teunitout2 in allowedunits):
+      raise UnitsError("%s is not a recognized temperature unit %s"%(teunitout2, allowedunits))
+    raise
+  return cfac*Te
+
+
 
 class UnitsError(ValueError):
     pass

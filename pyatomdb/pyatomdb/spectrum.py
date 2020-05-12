@@ -981,7 +981,7 @@ def __list_nei_lines(specrange, Te, tau, Te_init=False,  lldat=False, linefile=F
   # Calculate the ionization balance.
   ionbal ={}
   for Z in Zlist:
-    ionbal[Z] = apec.solve_ionbal_eigen(Z, kT, tau=tau, Te_init = kT_init,\
+    ionbal[Z] = apec.return_ionbal(Z, kT, tau=tau, Te_init = kT_init,\
                                     teunit='keV', datacache=datacache)
   # multiply everything by the appropriate ionization fraction
   if 'Elem_drv' in llist.dtype.names:
@@ -2382,7 +2382,7 @@ class CIESession():
 
     Tevec, Teisvec = util.make_vec(Te)
 
-    kTlist = convert_temp(Tevec, teunit, 'keV')
+    kTlist = util.convert_temp(Tevec, teunit, 'keV')
     if apply_abund:
       ab = self.abund[Z]*self.abundsetvector[Z]
     else:
@@ -2461,7 +2461,7 @@ class CIESession():
       epsilon_aeff (ph cm5 s-1) ion (string) and upper & lower levels.
 
     """
-    kT = convert_temp(Te, teunit, 'keV')
+    kT = util.convert_temp(Te, teunit, 'keV')
 
 
     # make element and abundance lists
@@ -2540,112 +2540,8 @@ class CIESession():
       emiss_aeff = linelist['Epsilon']*factor
     return emiss_aeff
 
-def convert_temp(Te, teunit, teunitout):
-  """
-  Convert temperature (Te) from units teunit to teunitout
-
-  Parameters
-  ----------
-  Te : float
-    The temperature
-  teunit : string
-    units of Te
-  teunitout : string
-    output temperature units
-  """
-
-  teunit2 = teunit.lower()
-  teunitout2 = teunitout.lower()
-
-  if teunitout2==teunit2: return Te
-
-  allowedunits = ['ev','kev','k']
-
-  cfactors = [1000.,1.0,1/const.KBOLTZ]
-  try:
-    cfac = cfactors[allowedunits.index(teunitout2)]/cfactors[allowedunits.index(teunit2)]
-  except ValueError:
-    # Assume one of the units is bad
-    if not (teunit2 in allowedunits):
-      raise util.UnitsError("%s is not a recognized temperature unit %s"%(teunit2, allowedunits))
-    elif not (teunitout2 in allowedunits):
-      raise util.UnitsError("%s is not a recognized temperature unit %s"%(teunitout2, allowedunits))
-    raise
-  return cfac*Te
 
 
-def convert_spec(spec, specunit, specunitout):
-  """
-  Convert spectral ranges from specunit to specunitout
-
-  Parameters
-  ----------
-  spec : array
-    The units to return
-  specunit : string
-    The input spectral unit ('keV', 'A')
-  specunitout : string
-    The output spectral unit ('keV', 'A')
-
-  Returns
-  -------
-  specout : array
-    spec, converted to specunitout
-  """
-  allowedunits = ['a','ang','angstrom','angstroms','ev','kev']
-  cfactors = [1.0, 1.0, 1.0, 1.0, const.HC_IN_KEV_A*1000, const.HC_IN_KEV_A]
-  ctype    =  ['w','w','w','w','e','e']
-
-  specunit2 = specunit.lower()
-  specunitout2 = specunitout.lower()
-
-  # If units are the same, do nothing
-  if specunit2==specunitout2: return spec
-
-  try:
-    cfac_in = cfactors[allowedunits.index(specunit2)]
-    cfac_out = cfactors[allowedunits.index(specunitout2)]
-
-
-
-  except ValueError:
-    # Assume one of the units is bad
-    if not (specunit2 in allowedunits):
-      raise util.UnitsError("%s is not a recognized spectroscopic unit %s"%\
-           (specunit2, allowedunits))
-    elif not (specunitout2 in allowedunits):
-      raise util.UnitsError("%s is not a recognized spectroscopic unit %s"%\
-           (specunitout2, allowedunits))
-    raise
-  ctype_in = ctype[allowedunits.index(specunit2)]
-  ctype_out = ctype[allowedunits.index(specunitout2)]
-
-
-  if ctype_in == 'w':
-    try:
-      spec_ang = cfac_in * spec
-    except TypeError:
-      spec = numpy.array(spec)
-      spec_ang = cfac_in * spec
-  elif ctype_in == 'e':
-    try:
-      spec_ang = cfac_in / spec
-    except TypeError:
-      spec = numpy.array(spec)
-      spec_ang = cfac_in / spec
-    spec_ang = cfac_in / spec
-
-
-  if ctype_out == 'w':
-    spec_out = spec_ang * cfac_out
-  elif ctype_out == 'e':
-    spec_out = cfac_out/spec_ang
-
-  if ctype_out != ctype_in:
-    # invert array if converting between energy and wavelength
-    spec_out = spec_out[::-1]
-
-  return spec_out
 
 
 
@@ -2758,7 +2654,7 @@ class _CIESpectrum():
     f : list[float]
       fractional weight to apply to each ikT. Should sum to 1.
     """
-    kT = convert_temp(Te, teunit, 'keV')
+    kT = util.convert_temp(Te, teunit, 'keV')
 
     # find the nearest temperature
     if kT < self.kTlist[0]:
@@ -2844,7 +2740,7 @@ class _CIESpectrum():
     """
 
     # get kT in keV
-    kT = convert_temp(Te, teunit, 'keV')
+    kT = util.convert_temp(Te, teunit, 'keV')
 
     ikT, f = self.get_nearest_Tindex(kT, teunit='keV', nearest=nearest, log_interp=log_interp)
 
@@ -2951,7 +2847,7 @@ class _CIESpectrum():
     """
 
 
-    kT = convert_temp(Te, teunit, 'keV')
+    kT = util.convert_temp(Te, teunit, 'keV')
 
     ikT, f = self.get_nearest_Tindex(kT, \
                                      teunit='keV', \
@@ -3194,7 +3090,7 @@ class _CIESpectrum():
     """
 
     # get kT in keV
-    kT = convert_temp(Te, teunit, 'keV')
+    kT = util.convert_temp(Te, teunit, 'keV')
 
     ikT, f = self.get_nearest_Tindex(kT, teunit='keV', nearest=nearest)
 
@@ -3347,7 +3243,7 @@ class _ElementSpectrum():
       The spectrum in ph cm^3 s^-1 bin^-1
     """
 
-    T = convert_temp(Te, teunit, 'K')
+    T = util.convert_temp(Te, teunit, 'K')
 
     if ebins_checksum == False:
       # check the parent
@@ -3393,7 +3289,7 @@ class _ElementSpectrum():
     linelist : array
       list of lines and epsilons
     """
-    wave = convert_spec(specrange, specunit, 'A')
+    wave = util.convert_spec(specrange, specunit, 'A')
 
     llist = self.lines.lines[(self.lines.lines['Lambda']>=wave[0]) &\
                        (self.lines.lines['Lambda']<=wave[1])]
@@ -3617,7 +3513,7 @@ class _LineData():
           T=0.0
           Tb = 0.0
         else:
-          Tb = convert_temp(T, 'K','keV')*const.ERG_KEV/(masslist[llist['Element']]*1e3*const.AMUKG)
+          Tb = util.convert_temp(T, 'K','keV')*const.ERG_KEV/(masslist[llist['Element']]*1e3*const.AMUKG)
 
         if velocity_broadening <0:
           velocitybroadeining = 0.0
@@ -3944,7 +3840,7 @@ class NEISession(CIESession):
 
     """
 
-    kT = convert_temp(Te, teunit, 'keV')
+    kT = util.convert_temp(Te, teunit, 'keV')
 
     el_list = self.elements
     ab = {}
@@ -4029,7 +3925,7 @@ class NEISession(CIESession):
     tauvec, tauisvec = util.make_vec(taulist)
 
 
-    kTlist = convert_temp(Tevec, teunit, 'keV')
+    kTlist = util.convert_temp(Tevec, teunit, 'keV')
     if apply_abund:
       ab = self.abund[Z]*self.abundsetvector[Z]
     else:
@@ -4285,9 +4181,9 @@ class _NEISpectrum(_CIESpectrum):
              (init_pop))
     elif isinstance(init_pop, float):
       # this is an initial temperature
-      kT_init = convert_temp(init_pop, teunit, 'keV')
+      kT_init = util.convert_temp(init_pop, teunit, 'keV')
       for Z in elements:
-        init_pop_calc[Z] = apec.solve_ionbal_eigen(Z, kT_init, \
+        init_pop_calc[Z] = apec.return_ionbal(Z, kT_init, \
                                             teunit='keV', \
                                             datacache=self.datacache)
     elif isinstance(init_pop, dict):
@@ -4305,9 +4201,9 @@ class _NEISpectrum(_CIESpectrum):
 
     else:
     # no calculate the output
-      kT = convert_temp(Te, teunit, 'keV')
+      kT = util.convert_temp(Te, teunit, 'keV')
       for Z in elements:
-        ionfrac[Z] = apec.solve_ionbal_eigen(Z, kT, init_pop=init_pop_calc[Z], \
+        ionfrac[Z] = apec.return_ionbal(Z, kT, init_pop=init_pop_calc[Z], \
                                           tau=tau, \
                                           teunit='keV', \
                                           datacache=self.datacache)
@@ -4358,7 +4254,7 @@ class _NEISpectrum(_CIESpectrum):
     """
 
     # get kT in keV
-    kT = convert_temp(Te, teunit, 'keV')
+    kT = util.convert_temp(Te, teunit, 'keV')
 
     ikT, f = self.get_nearest_Tindex(kT, teunit='keV', nearest=nearest, log_interp=log_interp)
 
@@ -4482,7 +4378,7 @@ class _NEISpectrum(_CIESpectrum):
 
     import collections
 
-    kT = convert_temp(Te, teunit, 'keV')
+    kT = util.convert_temp(Te, teunit, 'keV')
 
     ikT, f = self.get_nearest_Tindex(kT, \
                                      teunit='keV', \
@@ -4581,7 +4477,7 @@ class _NEISpectrum(_CIESpectrum):
     """
 
     # get kT in keV
-    kT = convert_temp(Te, teunit, 'keV')
+    kT = util.convert_temp(Te, teunit, 'keV')
 
     ikT, f = self.get_nearest_Tindex(kT, teunit='keV', nearest=nearest, log_interp=log_interp)
 
@@ -4887,7 +4783,7 @@ class PShockSession(NEISession):
 
     """
 
-    kT = convert_temp(Te, teunit, 'keV')
+    kT = util.convert_temp(Te, teunit, 'keV')
 
     el_list = self.elements
     ab = {}
@@ -5028,7 +4924,7 @@ class PShockSession(NEISession):
     tau_lvec, tau_lisvec = util.make_vec(tau_llist)
 
 
-    kTlist = convert_temp(Tevec, teunit, 'keV')
+    kTlist = util.convert_temp(Tevec, teunit, 'keV')
     if apply_abund:
       ab = self.abund[Z]*self.abundsetvector[Z]
     else:
@@ -5228,9 +5124,9 @@ class _PShockSpectrum(_NEISpectrum):
              (init_pop))
     elif isinstance(init_pop, float):
       # this is an initial temperature
-      kT_init = convert_temp(init_pop, teunit, 'keV')
+      kT_init = util.convert_temp(init_pop, teunit, 'keV')
       for Z in elements:
-        init_pop_calc[Z] = apec.solve_ionbal_eigen(Z, kT_init, \
+        init_pop_calc[Z] = apec.return_ionbal(Z, kT_init, \
                                             teunit='keV', \
                                             datacache=self.datacache)
     elif isinstance(init_pop, dict):
@@ -5241,7 +5137,7 @@ class _PShockSpectrum(_NEISpectrum):
 
 
     ionfrac = {}
-    kT = convert_temp(Te, teunit, 'keV')
+    kT = util.convert_temp(Te, teunit, 'keV')
 
     if freeze_ion_pop:
       for Z in elements:
@@ -5278,7 +5174,7 @@ class _PShockSpectrum(_NEISpectrum):
 
         #now calculate cumulative ionfrac
 
-        ionfractmp = apec.solve_ionbal_eigen(Z,kT,init_pop = init_pop_calc[Z],\
+        ionfractmp = apec.return_ionbal(Z,kT,init_pop = init_pop_calc[Z],\
                                              tau = taulist,teunit='keV', \
                                             datacache=self.datacache)
         for i in range(nzones):
@@ -5336,7 +5232,7 @@ class _PShockSpectrum(_NEISpectrum):
     """
 
     # get kT in keV
-    kT = convert_temp(Te, teunit, 'keV')
+    kT = util.convert_temp(Te, teunit, 'keV')
 
     ikT, f = self.get_nearest_Tindex(kT, teunit='keV', nearest=nearest, log_interp=log_interp)
 
@@ -5464,7 +5360,7 @@ class _PShockSpectrum(_NEISpectrum):
 
     import collections
 
-    kT = convert_temp(Te, teunit, 'keV')
+    kT = util.convert_temp(Te, teunit, 'keV')
 
     ikT, f = self.get_nearest_Tindex(kT, \
                                      teunit='keV', \
@@ -5566,7 +5462,7 @@ class _PShockSpectrum(_NEISpectrum):
     """
 
     # get kT in keV
-    kT = convert_temp(Te, teunit, 'keV')
+    kT = util.convert_temp(Te, teunit, 'keV')
 
     ikT, f = self.get_nearest_Tindex(kT, teunit='keV', nearest=nearest, log_interp=log_interp)
 
@@ -5723,7 +5619,7 @@ def __get_nei_line_emissivity(Z, z1, up, lo):
             (j['UpperLev']==up) &\
             (j['LowerLev']==lo)]
     if len(j2)>0:
-      ionbal = apec.solve_ionbal_eigen(Z, emiss['Te'][i],  \
+      ionbal = apec.return_ionbal(Z, emiss['Te'][i],  \
                        teunit='keV', \
                        datacache=datacache)
 

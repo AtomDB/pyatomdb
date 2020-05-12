@@ -14,8 +14,8 @@ import scipy, ctypes
 import astropy.io.fits as pyfits
 #from joblib import Parallel, delayed
 
-def calc_full_ionbal(Te, tau=False, init_pop=False, Te_init=False, Zlist=False, teunit='K',\
-                    extrap=True, cie=True, settings=False):
+def calc_full_ionbal(Te, tau=False, init_pop='ionizing', Te_init=False, Zlist=False, teunit='K',\
+                    extrap=True, cie=True, settings=False, datacache=False):
   """
   Calculate the ionization balance for all the elements in Zlist.
 
@@ -91,7 +91,7 @@ def calc_full_ionbal(Te, tau=False, init_pop=False, Te_init=False, Zlist=False, 
     print("Warning: you have specified both an initial temperature and "+\
           "ion population: using ion population")
 
-  datacache={}
+
 
 
   if cie:
@@ -146,7 +146,129 @@ def calc_full_ionbal(Te, tau=False, init_pop=False, Te_init=False, Zlist=False, 
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
+def _calc_elem_ionbal(Z, Te, tau=False, init_pop='ionizing', teunit='K',\
+                    extrap=True, settings=False, datacache=False):
+  """
+  Calculate the ionization balance for all the elements in Zlist.
 
+  One of init_pop or Te_init should be set. If neither is set, assume
+  all elements start from neutral.
+
+
+  Parameters
+  ----------
+  Z : int
+    nuclear charge to include in calculation (e.g. 8 for oxygen)
+  Te : float
+    electron temperature in keV or K (default K)
+  tau : float
+    N_e * t for the non-equilibrium ioniziation (default False, i.e. CIE)
+  init_pop : string or float
+    if 'ionizing' : all ionizing from neutral (so [1,0,0,0...])
+    if 'recombining': all recombining from ionized (so[...0,0,1])
+    if array: actual populations (e.g. [0, 0.1, 0.3, 0.5, 0.1, 0, 0])
+    if dict of arrays : the acutal fractional populations (so init_pop[6] is the array for carbon)
+    if single float : the temperature (same units as Te)
+  teunit : {'K' , 'keV'}
+    units of temperatures (default K)
+  extrap : bool
+    Extrappolate rates to values outside their given range. (default False)
+
+  Returns
+  -------
+  final_pop : array
+    final population. E.g. [0.1,0.2,0.3,0.2,0.2,0.0,0.0]
+
+  """
+
+  kT = util.convert_temp(Te, teunit, 'keV')
+  print("in _calc_elem_ionbal: tau = ", tau)
+  if tau==False:
+    cie = True
+    init_pop_calc=False
+  else:
+    cie = False
+  print("CIE:", cie)
+  if not cie:
+      # if it's not equilibrium, get the initial population
+    if isinstance(init_pop, str):
+      if init_pop.lower() == 'ionizing':
+        init_pop_calc = numpy.zeros(Z+1)
+        init_pop_calc[0] = 1.0
+      elif init_pop.lower() == 'recombining':
+        init_pop_calc = numpy.zeros(Z+1)
+        init_pop_calc[-1] = 1.0
+      else:
+        raise util.OptionError("Error: init_pop is set as a string, must be 'ionizing' or 'recombining'. Currently %s."%\
+             (init_pop))
+    elif isinstance(init_pop, float):
+      # this is an initial temperature
+      kT_init = util.convert_temp(init_pop, teunit, 'keV')
+      init_pop_calc = return_ionbal(Z, kT_init, \
+                                    teunit='keV', \
+                                    datacache=datacache,fast=False,
+                                    settings = settings, extra=extrap)
+
+
+    elif isinstance(init_pop, numpy.ndarray) or isinstance(init_pop, list):
+      init_pop_calc = init_pop
+    elif isinstance(init_pop, dict):
+      init_pop_calc = init_pop[Z]
+    else:
+      raise util.OptionError("Error: invalid type for init_pop")
+
+
+  # get the end point population
+
+  ionrate = numpy.zeros(Z, dtype=float)
+  recrate = numpy.zeros(Z, dtype=float)
+  for z1 in range(1,Z+1):
+    ionrate[z1-1], recrate[z1-1] = atomdb.get_ionrec_rate(kT, False, Te_unit='keV', \
+                     Z=Z, z1=z1, datacache=datacache, extrap=extrap,\
+                     settings=settings)
+
+  if cie:
+    final_pop = solve_ionbal(ionrate, recrate)
+  else:
+    final_pop = solve_ionbal(ionrate, recrate, init_pop=init_pop_calc, tau=tau)
+
+  return final_pop
+
+  # if (not init_pop) | (cie):
+    # init_pop = {}
+    # for Z in Zlist:
+      # ionrate = numpy.zeros(Z, dtype=float)
+      # recrate = numpy.zeros(Z, dtype=float)
+      # if cie:
+        # kT_init=kT
+      # for z1 in range(1,Z+1):
+        # tmp = \
+          # atomdb.get_ionrec_rate(kT_init, False,  Te_unit='keV', \
+                     # Z=Z, z1=z1, datacache=datacache, extrap=extrap,\
+                     # settings=settings)
+
+
+        # ionrate[z1-1], recrate[z1-1]=tmp
+      # # now solve
+
+      # init_pop[Z] = solve_ionbal(ionrate, recrate)
+  # if cie:
+    # # Exit here if the inital
+
+    # return init_pop
+
+
+
+
+  # now solve the actual ionization balance we want.
+
+
+  return pop
+
+
+#------------------------------------------
+#------------------------------------------
+#------------------------------------------
 
 def solve_ionbal(ionrate, recrate, init_pop=False, tau=False):
   """
@@ -4568,14 +4690,13 @@ def generate_apec_headerblurb(settings, linehdulist, cocohdulist):
   hc.add_comment('*** END INITIALIZATION VALUES ***',after=len(hl)-1)
 
 
-
-
-def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
+def return_ionbal(Z, Te, init_pop=False, tau=False,\
                        teunit='K', \
-                       filename=False, datacache=False, debug=False):
+                       filename=False, datacache=False, fast=True,
+                       settings= False, debug=False, extrap=True):
+
   """
-  Solve the ionization balance for a range of ions using the eigenvector
-  approach and files as distributed in XSPEC.
+  Solve the ionization balance for a element Z.
 
   Parameters
   ----------
@@ -4597,6 +4718,56 @@ def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
     If not set, download from AtomDB FTP site.
   datacache : dict
     Used for caching the data. See description in atomdb.get_data
+  fast : bool
+    If true, use precalculated eigenvector files to obtain CIE and NEI results
+
+  Returns
+  -------
+  final_pop : float array
+    final populations.
+
+  """
+
+  if fast:
+    ionbal = _solve_ionbal_eigen(Z, Te, init_pop=init_pop, tau=tau, \
+                       teunit=teunit, \
+                       filename=filename, datacache=datacache, debug=debug)
+    return ionbal
+
+  else:
+    ionbal = _calc_elem_ionbal(Z, Te, tau=tau, init_pop=init_pop, teunit=teunit,\
+                               extrap=extrap, settings=settings, datacache=datacache)
+    return ionbal
+
+
+
+
+def _solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, \
+                       teunit='K', \
+                       filename=False, datacache=False, debug=False):
+  """
+  Solve the ionization balance for element Z using the eigenvector
+  approach and files as distributed in XSPEC.
+
+  Parameters
+  ----------
+  Z : int
+    atomic number of element
+  Te : float or array
+    electron temperature(s), default in K
+  init_pop : float array
+    initial population of ions for non-equlibrium calculations. Will be renormalised to 1.
+  tau : float or array
+    N_e * t for the non-equilibrium ioniziation, in cm^3 s^-1.
+
+  teunit : {'K' , 'keV'}
+    units of temperatures (default K)
+  filename : string
+    Can optionally point directly to the file in question, i.e. to look at older data
+    look at $HEADAS/../spectral/modelData/eigenELSYMB_v3.0.fits.
+    If not set, download from AtomDB FTP site.
+  datacache : dict
+    Used for caching the data. See description in atomdb.get_data
 
   Returns
   -------
@@ -4608,38 +4779,45 @@ def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
 #  Version 0.1 Initial Release
 #  Adam Foster 16th September 2015
 #
-  # first, calculate the equilibrium solution
 
-#  if (init_pop==False) & (tau==False): do_equilib=True
 
-  init_pop_set = util.keyword_check(init_pop)
-  tau_set = util.keyword_check(tau)
-  Te_init_set = util.keyword_check(Te_init)
+  kT = util.convert_temp(Te, teunit, 'keV')
 
-  if (not tau_set):
-    # we need to do equilbirum
-    do_equilib = True
-    Te_equilib = Te
+  if tau==False:
+    cie = True
+    init_pop_calc=False
   else:
-    if (not init_pop_set):
-    # we need to do equilbirum
-      if not Te_init_set:
-        print("Warning: neither Te_init not init_pop set. Assuming ionization "+\
-              "from neutral")
-        do_equilib=False
-        init_pop = numpy.zeros(Z+1)
-        init_pop[0] = 1.0
+    cie = False
+
+  if not cie:
+      # if it's not equilibrium, get the initial population
+    if isinstance(init_pop, str):
+      if init_pop.lower() == 'ionizing':
+        init_pop_calc = numpy.zeros(Z+1)
+        init_pop_calc[0] = 1.0
+      elif init_pop.lower() == 'recombining':
+        init_pop_calc = numpy.zeros(Z+1)
+        init_pop_calc[-1] = 1.0
       else:
-        do_equilib = True
-        Te_equilib = Te_init
+        raise util.OptionError("Error: init_pop is set as a string, must be 'ionizing' or 'recombining'. Currently %s."%\
+             (init_pop))
+    elif isinstance(init_pop, float):
+      # this is an initial temperature
+      kT_init = util.convert_temp(init_pop, teunit, 'keV')
+      init_pop_calc = return_ionbal(Z, kT_init, \
+                                            teunit='keV', \
+                                            datacache=datacache,fast=True)
 
 
+    elif isinstance(init_pop, numpy.ndarray) or isinstance(init_pop, list):
+      init_pop_calc = init_pop
+    elif isinstance(init_pop, dict):
+      init_pop_calc = init_pop[Z]
     else:
-      do_equilib=False
-  if (not tau_set):
-    do_nei=False
-  else:
-      do_nei=True
+      raise util.OptionError("Error: invalid type for init_pop")
+
+
+  # open the eigenvector data file
 
   if util.keyword_check(filename):
     # we have a filename specified!
@@ -4651,89 +4829,88 @@ def solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, Te_init=False, \
   else:
     d = atomdb.get_data(Z, False, 'eigen', datacache=datacache)
   telist = numpy.logspace(4,9,1251)
-  if teunit.lower()=='kev':
-    telist*=const.KBOLTZ
+  kTlist=telist*const.KBOLTZ
 
-  if do_equilib:
-    itelist = numpy.argsort((telist-Te_equilib)**2)
-    ite = [min(itelist[:2]), max(itelist[:2])]
-    Tdiff = telist[ite[1]] - telist[ite[0]]
+  # if we are looking for equilibrium, return the nearest data
+  if cie:
+
+    ikTlist = numpy.argsort(numpy.abs(kTlist-kT))
+    ite = [min(ikTlist[:2]), max(ikTlist[:2])]
+    Tdiff = kTlist[ite[1]] - kTlist[ite[0]]
     if Tdiff > 0.0:
-      factorlow = (telist[ite[1]]-Te_equilib)/Tdiff
-      factorhigh = (Te_equilib-telist[ite[0]])/Tdiff
+      factorlow = (kTlist[ite[1]]-kT)/Tdiff
+      factorhigh = (kT-kTlist[ite[0]])/Tdiff
       equilib = factorlow * d['EIGEN'].data['FEQB'][ite[0]]+\
                 factorhigh * d['EIGEN'].data['FEQB'][ite[1]]
     else:
       equilib = d['EIGEN'].data['FEQB'][ite[0]]
-  if do_nei:
-    if (do_equilib):
-      init_pop = equilib
+
+    #renormalize
+    equilib /= sum(equilib)
+    return equilib
+
+  # now do the non-equilibrium data
+
 
     # renormalize
     # make Te into a vector
-    Te_vec, Te_isvec = util.make_vec(Te)
-    tau_vec, tau_isvec = util.make_vec(tau)
-    frac_out = numpy.zeros([len(Te_vec),len(tau_vec),Z+1], dtype=float)
-    for iTe, Te in enumerate(Te_vec):
-      Tindex = numpy.argmin((telist-Te)**2)
+  kT_vec, kT_isvec = util.make_vec(kT)
+  tau_vec, tau_isvec = util.make_vec(tau)
+  frac_out = numpy.zeros([len(kT_vec),len(tau_vec),Z+1], dtype=float)
+  for ikT, kT in enumerate(kT_vec):
+    kTindex = numpy.argmin(numpy.abs(kTlist-kT))
 
-      lefteigenvec = numpy.zeros([Z,Z], dtype=float)
-      righteigenvec = numpy.zeros([Z,Z], dtype=float)
-      if Z==1:
-        for i in range(Z):
-          for j in range(Z):
-            lefteigenvec[i,j] = d['EIGEN'].data['VL'][Tindex]
-            righteigenvec[i,j] = d['EIGEN'].data['VR'][Tindex]
-      else:
-        for i in range(Z):
-          for j in range(Z):
-            lefteigenvec[i,j] = d['EIGEN'].data['VL'][Tindex][i*Z+j]
-            righteigenvec[i,j] = d['EIGEN'].data['VR'][Tindex][i*Z+j]
-
-
-      work = numpy.array(init_pop[1:] - d['EIGEN'].data['FEQB'][Tindex][1:], dtype=float)
-
-      fspectmp = numpy.matrix(lefteigenvec) * numpy.matrix(work).transpose()
-
-      delt = 1.0
-
-      worktmp = numpy.zeros(Z)
-
-      for itau, ttau in enumerate(tau_vec):
-        if Z >1:
-          for i in range(Z):
-            worktmp[i] = fspectmp[i]*numpy.exp(d['EIGEN'].data['EIG'][Tindex,i]*delt*ttau)
-
-        else:
-          worktmp[0] = fspectmp[0]*numpy.exp(d['EIGEN'].data['EIG'][Tindex]*delt*ttau)
-
-        frac = numpy.zeros(Z+1)
-        for i in range(Z):
-          for j in range(Z):
-            frac[i+1] += worktmp[j]*righteigenvec[j][i]
-          frac[i+1] += d['EIGEN'].data['FEQB'][Tindex][i+1]
-
-        if debug:
-          frac_out[iTe, itau,:] = frac
-        frac[frac<0.0] = 0.0
-
-        if sum(frac)> 1.0:
-          frac = frac/sum(frac)
-        frac[0] = 1-sum(frac[1:])
-        if not(debug):
-          frac_out[iTe,itau,:]=frac
-
-  if tau_set:
-    if not tau_isvec:
-
-      frac_out=frac_out[:,0,:]
-
-      if not Te_isvec:
-        frac_out=frac_out[0,:]
+    lefteigenvec = numpy.zeros([Z,Z], dtype=float)
+    righteigenvec = numpy.zeros([Z,Z], dtype=float)
+    if Z==1:
+      for i in range(Z):
+        for j in range(Z):
+          lefteigenvec[i,j] = d['EIGEN'].data['VL'][kTindex]
+          righteigenvec[i,j] = d['EIGEN'].data['VR'][kTindex]
     else:
-      if not Te_isvec:
-        frac_out=frac_out[0,:,:]
+      for i in range(Z):
+        for j in range(Z):
+          lefteigenvec[i,j] = d['EIGEN'].data['VL'][kTindex][i*Z+j]
+          righteigenvec[i,j] = d['EIGEN'].data['VR'][kTindex][i*Z+j]
 
-    return frac_out
-  else:
-    return equilib
+
+    work = numpy.array(init_pop_calc[1:] - d['EIGEN'].data['FEQB'][kTindex][1:], dtype=float)
+
+    fspectmp = numpy.matrix(lefteigenvec) * numpy.matrix(work).transpose()
+
+    delt = 1.0
+
+    worktmp = numpy.zeros(Z)
+
+    for itau, ttau in enumerate(tau_vec):
+      if Z >1:
+        for i in range(Z):
+          worktmp[i] = fspectmp[i]*numpy.exp(d['EIGEN'].data['EIG'][kTindex,i]*delt*ttau)
+
+      else:
+        worktmp[0] = fspectmp[0]*numpy.exp(d['EIGEN'].data['EIG'][kTindex]*delt*ttau)
+
+      frac = numpy.zeros(Z+1)
+      for i in range(Z):
+        for j in range(Z):
+          frac[i+1] += worktmp[j]*righteigenvec[j][i]
+        frac[i+1] += d['EIGEN'].data['FEQB'][kTindex][i+1]
+
+      if debug:
+        frac_out[ikT, itau,:] = frac
+      frac[frac<0.0] = 0.0
+
+      if sum(frac)> 1.0:
+        frac = frac/sum(frac)
+      frac[0] = 1-sum(frac[1:])
+      if not(debug):
+        frac_out[ikT,itau,:]=frac
+
+
+  if not tau_isvec:
+    frac_out = frac_out.sum(1)
+  if not kT_isvec:
+    frac_out = frac_out.sum(0)
+
+
+  return frac_out
