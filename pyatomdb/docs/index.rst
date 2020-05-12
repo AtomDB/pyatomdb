@@ -81,7 +81,7 @@ There are several different modules currently. These are:
   :doc:`apec </apec>`
      The full APEC code
 
-Expect bugs. Report those bugs! Make feature requests! Email the code authors or raise an issue at the `github page <https://github.com/jagophile/atomdb/issues>`_
+To report bugs or make feature requests,  email the code authors or raise an issue at the `github page <https://github.com/jagophile/atomdb/issues>`_
 
 
 

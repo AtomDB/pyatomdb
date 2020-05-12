@@ -151,7 +151,7 @@ The main difference is that a non equilibrium plasma requires 2 more pieces of i
 current electron temperature is as with the CIE case. The other two are:
 
   tau
-    The ionization timescale (:math:`n_e t`) in cm:sup:`3` s:sup:`-1` since the plasma left it's previous
+    The ionization timescale (:math:`n_e t`) in |cm-3s| since the plasma left its previous
     equilibrium
   init_pop
     The initial population the plasma was in at tau=0.
@@ -206,12 +206,76 @@ Separating out these features can be turned on and off using the ``by_ion_drv`` 
 -------------------
 Getting Atomic Data
 -------------------
+The ``atomdb`` module is designed to read data from the database and either
+return raw opened files (e.g. all the energy levels of an ion) or
+individual useful data (e.g. a rate coefficient).
+
+AtomDB stores data sorted by ion in a series of files in the ``$ATOMDB/APED``. There are several files for
+each ion, covering different data types:
+
+       *           'IR' - ionization and recombination
+       *           'LV' - energy levels
+       *           'LA' - radiative transition data (lambda and A-values)
+       *           'EC' - electron collision data
+       *           'PC' - proton collision data
+       *           'DR' - dielectronic recombination satellite line data
+       *           'PI' - XSTAR photoionization data
+       *           'AI' - autoionization data
+       *           'ALL' - reads all of the above. Does not return anything. Used for bulk downloading.
+
+       Or, for non-ion-specific data (abundances and bremstrahlung coeffts):
+
+       *           'ABUND' - abundance tables
+       *           'HBREMS' - Hummer bremstrahlung coefficients
+       *           'RBREMS' - relativistic bremstrahlung coefficitients
+       *           'IONBAL' - ionization balance tables
+       *           'EIGEN'  - eigenvalue files (for non-equilibrium ionization)
+
+The raw atomic data files can be downloaded using ``atomdb.get_data``.
+
+.. note:: Datacache
+
+    Often, when using AtomDB data you will want to use the same file over and over again. However,
+    the whole database is too large to be loaded into memory as a matter of course. To get around this,
+    the ``datacache`` keyword is used in several routines. This is a dictionary which is populated
+    with any data files that you have to open. The atomdb function which ultimately opens the raw
+    data files, ``get_data``, will always check for an already existing data file here before
+    going to the disk to open the file anew. If there is no data there, then the file is opened
+    and its data is stored in the datacache so that next time the routine is called it will
+    already be there.
+
+    If you need to save memory, you can empty the cache by declaring the datacache as a
+    new dictionary, i.e. ``datacache={}``.
 
 
 
+.. literalinclude:: ../examples/atomdb_example_1_get_data.py
+
++++++++++++++++++++++++++
+Getting Rate Coefficients
++++++++++++++++++++++++++
+
+Ionization, recombination, and excitation rate coefficients can all be
+obtained using ``get_maxwell_rate``.
+
+.. literalinclude:: ../examples/atomdb_example_2_get_maxwell.py
+
+.. figure:: ../examples/atomdb_examples_2_1.svg
+    :align: center
+    :alt: AtomDB Example 2.1
+    :figclass: align-center
+
+    Excitation rates for O\ :sup:`6+`.
 
 
+.. figure:: ../examples/atomdb_examples_2_2.svg
+    :align: center
+    :alt: AtomDB Example 2.2
+    :figclass: align-center
 
+    Ionization and recombination rates for O\ :sup:`6+` to O\ :sup:`7+`.
+    Note that for the components breakdown, there is no excitation autionization
+    contribution in the files.
 
 --------------------
 Individual Use Cases
@@ -236,3 +300,9 @@ Make a cooling curve, total emissivity in keV cm3 s-1, for each element
 in a specfied spectral range (e.g. 2 to 10 keV).
 
 .. literalinclude:: ../examples/calc_power.py
+
+.. |cm3| replace:: cm\ :sup:`3`
+.. |cm-3| replace:: cm\ :sup:`-3`
+.. |cm-3s| replace:: cm\ :sup:`-3` s\ :sup:`1`
+.. |cm3s-1| replace:: cm\ :sup:`3` s\ :sup:`-1`
+

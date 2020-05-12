@@ -939,7 +939,7 @@ def get_ionpot(Z, z1, settings=False,
 
 
 def get_abundance(abundfile=False, abundset='AG89', element=[-1],\
-                  datacache=False, settings = False):
+                  datacache=False, settings = False, show=False):
   """
   Get the elemental abundances, relative to H (H=1.0)
 
@@ -948,23 +948,30 @@ def get_abundance(abundfile=False, abundset='AG89', element=[-1],\
   abundfile : string
     special abundance file, if not using the default from filemap
   abundset : string
-    Abundance set. Available:
+    Abundance set. To list those available, set to one that doesn't
+    exist (suggest "list"). Available:
 
-    * Allen: Allen, C. W.  Astrophysical Quantities, 3rd Ed.,  1973 (London: Athlone Press)
+    Allen
+      Allen, C. W.  Astrophysical Quantities, 3rd Ed.,  1973 (London: Athlone Press)
 
-    * AG89: Anders, E. and Grevesse, N. 1989, Geochimica et Cosmochimica Acta, 53, 197
+    AG89
+      Anders, E. and Grevesse, N. 1989, Geochimica et Cosmochimica Acta, 53, 197
 
-    * GA88: Grevesse, N, and Anders, E.1988, Cosmic abundances of matter, ed. C. J. Waddington, AIP Conference, Minneapolis, MN
+    GA88
+      Grevesse, N, and Anders, E.1988, Cosmic abundances of matter, ed. C. J. Waddington, AIP Conference, Minneapolis, MN
 
-    * Feldman: Feldman, U., Mandelbaum, P., Seely, J.L., Doschek, G.A.,Gursky H., 1992, ApJSS, 81,387
+    Feldman
+      Feldman, U., Mandelbaum, P., Seely, J.L., Doschek, G.A.,Gursky H., 1992, ApJSS, 81,387
 
     Default is AG89
   element : list of int
     Elements to find abundance for. If not specified, return all.
   datacache : dict
     See get_data
-  datacache : settings
+  settings : settings
     See get_data
+  show : bool
+    If set to true, print available abundances and their references to the screen.
 
   Returns
   -------
@@ -987,13 +994,24 @@ def get_abundance(abundfile=False, abundset='AG89', element=[-1],\
   else:
     abunddata = pyfits.open(abundfile)
 
+  if show:
+    print("Available abundance options:")
+    for d in abunddata[1].data:
+      print( "%10s : %s"%(d['Source'], d['Reference']))
+
   if element[0]==-1:
     element = list(range(1,31))
 
   ind = numpy.where(abunddata[1].data.field('Source')==abundset)[0]
   if len(ind)==0:
-    print("Invalid Abundance Set chosen: select from ", \
-          abunddata[1].data.field('Source'))
+    print("Invalid Abundance Set chosen: select from: ")
+
+    if 'Reference' in abunddata[1].data.names:
+      for d in abunddata[1].data:
+        print(" %10s : %s"%(d['Source'], d['Reference']))
+    else:
+      for d in abunddata[1].data:
+        print(" %10s"%(d['Source']))
     return -1
   ret = {}
   for Z in element:
@@ -2771,7 +2789,7 @@ def _calc_ionrec_ea(cidat, Te, extrap=False):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
-def get_ionrec_rate(Te_in, irdat_in, lvdat_in=False, Te_unit='K', \
+def get_ionrec_rate(Te_in, irdat_in=False, lvdat_in=False, Te_unit='K', \
                      lvdatp1_in=False, ionpot=False, separate=False,\
                      Z=-1, z1=-1, settings=False, datacache=False,\
                      extrap=True):
@@ -2784,7 +2802,7 @@ def get_ionrec_rate(Te_in, irdat_in, lvdat_in=False, Te_unit='K', \
   Te_in : float or arr(float)
     electron temperature in K (default), eV, or keV
   irdat_in : HDUList
-    ionization and recombination rate data
+    ionization and recombination rate data, if already open
   lvdat_in : HDUList
     level data for ion with lower charge (i.e. ionizing ion or recombined ion)
   Te_unit : {'K' , 'keV' , 'eV'}
@@ -3015,17 +3033,17 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
 
   Examples
   --------
-  Te = numpy.logspace(4,9,20)
+  >>> Te = numpy.logspace(4,9,20)
 
-  (1) Get excitation rates for row 12 of an Fe XVII file
-  colldata = pyatomdb.atomdb.get_data(26,17,'EC')
-  exc, dex = get_maxwell_rate(Te, colldata=colldata, index=12)
+  >>> # (1) Get excitation rates for row 12 of an Fe XVII file
+  >>> colldata = pyatomdb.atomdb.get_data(26,17,'EC')
+  >>> exc, dex = get_maxwell_rate(Te, colldata=colldata, index=12)
 
-  (2) Get excitation rates for row 12 of an Fe XVII file
-  exc, dex = get_maxwell_rate(Te, Z=26,z1=17, index=12)
+  >>> # (2) Get excitation rates for row 12 of an Fe XVII file
+  >>> exc, dex = get_maxwell_rate(Te, Z=26,z1=17, index=12)
 
-  (3) Get excitation rates for transitions from level 1 to 15 of FE XVII
-  exc, dex = get_maxwell_rate(Te, Z=26, z1=17, dtype='EC', finallev=15, initlev=1)
+  >>>  (3) Get excitation rates for transitions from level 1 to 15 of FE XVII
+  >>> exc, dex = get_maxwell_rate(Te, Z=26, z1=17, dtype='EC', finallev=15, initlev=1)
 
   """
 # Note interface update 03-Apr-2016
@@ -4447,7 +4465,6 @@ def get_data(Z, z1, ftype, datacache=False, \
         # (3) atomdburl/filename+'.gz'
 
           try:
-            print("fname", fname)
             d = pyfits.open(fname)
           except FileNotFoundError:
             try:
@@ -4536,7 +4553,6 @@ def get_data(Z, z1, ftype, datacache=False, \
         d = pyfits.open(fname)
       except IOError:
         try:
-          print(fname)
           d = pyfits.open(fname+'.gz')
         except IOError:
           if offline:
