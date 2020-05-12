@@ -8,9 +8,10 @@ and interacting with fitting codes like XSPEC and Sherpa.
 
 Full documentation can be found at http://atomdb.readthedocs.io
 
-=======================
+============
 Installation
-=======================
+============
+
 Standard python installation:
 python setup.py install
 
@@ -18,6 +19,7 @@ python setup.py install
 ===============
 Version History
 ===============
+
 0.0.0.1
 July 17th 2015: initial release
 
@@ -158,3 +160,6 @@ March 20th 2020: Added PShockSession class to specturm module, mimicking XSPEC p
 
 0.10.0
 May 12th 2020: Major update to documentation, spectrum and atomdb modules. Significant rationalization of routines, making many non-public in the documentation. This should help new users understand what is going on. I apologise if it breaks whatever you were doing, please get in touch if the fix is not obvious.
+
+0.10.1
+May 12th 2020: Minor packaging fixes
