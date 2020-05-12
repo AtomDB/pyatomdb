@@ -277,6 +277,25 @@ obtained using ``get_maxwell_rate``.
     Note that for the components breakdown, there is no excitation autionization
     contribution in the files.
 
+
+
+-----------------------------
+Calculating Plasma Conditions
+-----------------------------
+The ``apec`` module is used for calculating plasma related phenomena. For example,
+ionization fractions, non-equilibrium ionization, level populations, emission spectra.
+Currently, it is mostly written in such a way that it is difficult to use it outside
+of running the entire APEC code. A rewrite will happen soon. However, for now,
+here are a couple of useful routines which should be useable.
+
++++++++++++++++++++++++++++++++++
+Getting Charge State Distribution
++++++++++++++++++++++++++++++++++
+
+
+
+
+
 --------------------
 Individual Use Cases
 --------------------

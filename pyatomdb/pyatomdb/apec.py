@@ -182,13 +182,11 @@ def _calc_elem_ionbal(Z, Te, tau=False, init_pop='ionizing', teunit='K',\
   """
 
   kT = util.convert_temp(Te, teunit, 'keV')
-  print("in _calc_elem_ionbal: tau = ", tau)
   if tau==False:
     cie = True
     init_pop_calc=False
   else:
     cie = False
-  print("CIE:", cie)
   if not cie:
       # if it's not equilibrium, get the initial population
     if isinstance(init_pop, str):
@@ -204,6 +202,8 @@ def _calc_elem_ionbal(Z, Te, tau=False, init_pop='ionizing', teunit='K',\
     elif isinstance(init_pop, float):
       # this is an initial temperature
       kT_init = util.convert_temp(init_pop, teunit, 'keV')
+
+      # rerun this routine in equilibrium mode to find the initial ion pop
       init_pop_calc = return_ionbal(Z, kT_init, \
                                     teunit='keV', \
                                     datacache=datacache,fast=False,
@@ -233,38 +233,6 @@ def _calc_elem_ionbal(Z, Te, tau=False, init_pop='ionizing', teunit='K',\
     final_pop = solve_ionbal(ionrate, recrate, init_pop=init_pop_calc, tau=tau)
 
   return final_pop
-
-  # if (not init_pop) | (cie):
-    # init_pop = {}
-    # for Z in Zlist:
-      # ionrate = numpy.zeros(Z, dtype=float)
-      # recrate = numpy.zeros(Z, dtype=float)
-      # if cie:
-        # kT_init=kT
-      # for z1 in range(1,Z+1):
-        # tmp = \
-          # atomdb.get_ionrec_rate(kT_init, False,  Te_unit='keV', \
-                     # Z=Z, z1=z1, datacache=datacache, extrap=extrap,\
-                     # settings=settings)
-
-
-        # ionrate[z1-1], recrate[z1-1]=tmp
-      # # now solve
-
-      # init_pop[Z] = solve_ionbal(ionrate, recrate)
-  # if cie:
-    # # Exit here if the inital
-
-    # return init_pop
-
-
-
-
-  # now solve the actual ionization balance we want.
-
-
-  return pop
-
 
 #------------------------------------------
 #------------------------------------------
