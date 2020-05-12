@@ -49,13 +49,13 @@ else:
 
 setup(name='pyatomdb',
       version=get_version('pyatomdb/__init__.py'),
-      description='AtomDB python library. This is a very early development version.',
+      description='AtomDB python library.',
       url='http://www.atomdb.org',
       author='Adam Foster',
       author_email='afoster@cfa.harvard.edu',
       license='Smithsonian',
       packages=['pyatomdb','tests'],
-      classifiers=['Development Status :: 2 - Pre-Alpha',\
+      classifiers=['Development Status :: 4 - Beta',\
                    'Environment :: Console',\
                    'Intended Audience :: Developers',\
                    'Intended Audience :: Education',\

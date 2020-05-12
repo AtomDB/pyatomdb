@@ -2,11 +2,11 @@
 PYATOMDB
 ========
 
-This is pre-alpha release code. Many functions have just been ripped from my
-hard disk and not yet fully vetted. Possibly the most complete section is the 
-"spectrum" module. Sample code is in the docs subfolder.
+This code is designed to interact with the AtomDB database. It is in active
+development but is now approaching feature complete for creating spectra
+and interacting with fitting codes like XSPEC and Sherpa.
 
-Full documentation can be found at http://atomdb.readthedocs.org
+Full documentation can be found at http://atomdb.readthedocs.io
 
 =======================
 Installation
