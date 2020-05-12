@@ -13,7 +13,7 @@ def get_version(relpath):
     for line in open(join(dirname(__file__), relpath)):
         if '__version__' in line:
             if '"' in line:
-                # __version__ = "0.9"
+                # __version__ = "0.10"
                 return line.split('"')[1]
             elif "'" in line:
                 return line.split("'")[1]

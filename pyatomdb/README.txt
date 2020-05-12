@@ -155,3 +155,6 @@ bugs in logic fixed.
 
 0.9.0
 March 20th 2020: Added PShockSession class to specturm module, mimicking XSPEC pshock (parallel shock) model. Other minor bugfixes.
+
+0.10.0
+May 12th 2020: Major update to documentation, spectrum and atomdb modules. Significant rationalization of routines, making many non-public in the documentation. This should help new users understand what is going on. I apologise if it breaks whatever you were doing, please get in touch if the fix is not obvious.
