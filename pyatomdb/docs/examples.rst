@@ -294,7 +294,23 @@ Getting Charge State Distribution
 
 
 
+.. literalinclude:: ../examples/apec_example_1_get_ionbal.py
 
+.. figure:: ../examples/apec_examples_1_1.svg
+    :align: center
+    :alt: APEC Example 1.1
+    :figclass: align-center
+
+    Ionization balance for oxygen
+
+
+.. figure:: ../examples/apec_examples_1_2.svg
+    :align: center
+    :alt: APEC Example 1.2
+    :figclass: align-center
+
+    Charge state distribution calculated many different ways for
+    non equilibrium ionization.
 
 --------------------
 Individual Use Cases
