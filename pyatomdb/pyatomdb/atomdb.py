@@ -4311,7 +4311,7 @@ def get_data(Z, z1, ftype, datacache=False, \
     ismisc = True
 
 
-  if datacache != False:
+  if type(datacache) == dict:
     # make sure that the relevant dictionaries are ready to receive the data
     if not 'data' in list(datacache.keys()):
       datacache['data']={}
@@ -4615,7 +4615,7 @@ def get_data(Z, z1, ftype, datacache=False, \
         except:
           d[1].columns[d[1].data.names.index('COEFF_OM')].name='EFFCOLLSTRPAR'
 
-    if datacache:
+    if type(datacache)==dict:
       if ismisc:
         if ftype.upper()=='EIGEN':
           if not Z in list(datacache['data']['misc']['EIGEN'].keys()):
@@ -4636,7 +4636,7 @@ def get_data(Z, z1, ftype, datacache=False, \
     else:
       return d
   else:
-    if datacache:
+    if type(datacache)==dict:
       if ismisc:
         if ftype.upper()=='EIGEN':
           return datacache['data']['misc'][ftype.upper()][Z]
