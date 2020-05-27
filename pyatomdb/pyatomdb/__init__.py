@@ -8,7 +8,7 @@ from . import apec
 from . import util
 import sys, glob
 
-__version__="0.10.1"
+__version__="0.10.2"
 
 try:
   PATH = os.path.dirname(__file__)

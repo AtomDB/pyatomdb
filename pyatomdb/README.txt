@@ -163,3 +163,6 @@ May 12th 2020: Major update to documentation, spectrum and atomdb modules. Signi
 
 0.10.1
 May 12th 2020: Minor packaging fixes
+
+0.10.2
+May 27th 2020: Bugfix to read_data
