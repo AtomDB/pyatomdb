@@ -635,7 +635,7 @@ def check_version():
   None
 
   """
-
+  import curl
   try:
     adbroot_init = os.environ['ATOMDB']
   except KeyError:
@@ -675,7 +675,7 @@ def check_version():
 
 #-------------------------------------------------------------------------------
 
-def switch_version(version):
+def switch_version(version, force=False):
   """
   Changes the AtomDB version. Note this will overwrite several links
   on your hard disk, and will *NOT* be repaired upon quitting python.
@@ -688,6 +688,9 @@ def switch_version(version):
   ----------
   version: string
     The version of AtomDB to switch to. Should be of the form "2.0.2"
+  force : bool
+    If True, force a re-download of all the relevant files regardless of
+    whether they already exist or not.
 
   Returns
   -------
@@ -716,8 +719,9 @@ def switch_version(version):
   curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
 
   if curversion == version:
-    print("Already using version %s. Not changing anything!" %(version))
-    return
+    if not(force):
+      print("Already using version %s. Not changing anything!" %(version))
+      return
 
   # ok, otherwise we must do things!
   startdir = os.getcwd()
@@ -741,6 +745,8 @@ def switch_version(version):
     else:
       print("We are missing some files for this version, downloading now")
       mustdownload = True
+
+  if force: mustdownload=True
 
   if mustdownload:
     # go find the files
@@ -2382,10 +2388,10 @@ def make_linelist(linefile, outfile):
                                         numpy.int,\
                                         numpy.int,\
                                         numpy.int,\
-                                        (numpy.float,51),\
-                                        (numpy.float,51),\
-                                        (numpy.float,51),\
-                                        (numpy.float,51)]})
+                                        (numpy.float,nte),\
+                                        (numpy.float,nte),\
+                                        (numpy.float,nte),\
+                                        (numpy.float,nte)]})
 
   tmpdattype =  numpy.dtype({'names':['Lambda',\
                                       'Lambda_Err',\
