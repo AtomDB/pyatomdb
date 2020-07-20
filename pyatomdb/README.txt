@@ -170,3 +170,6 @@ May 27th 2020: Bugfix to read_data
 0.10.3
 July 14th 2020: Added force keyword to switch_version. Amended make_linelist to handle non-51 temperature files
 
+0.10.4
+July 20th 2020: Fixed PShockSession initialization error. Added automatic removal of old pickle files generated from fits files when detected.
+
