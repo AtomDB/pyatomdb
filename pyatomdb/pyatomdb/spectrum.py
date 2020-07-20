@@ -1742,7 +1742,7 @@ class CIESession():
     else:
       if self.SessionType=='CIE':
         self.elements=list(range(1,const.MAXZ_CIE+1))
-      elif self.SessionType=='NEI':
+      elif self.SessionType in ['NEI','PShock']:
         self.elements=list(range(1,const.MAXZ_NEI+1))
 
 
@@ -2592,11 +2592,24 @@ class _CIESpectrum():
     picklefname = os.path.expandvars('$ATOMDB/spectra_%s_%s.pkl'%\
                                 (linedata[0].header['CHECKSUM'],\
                                  cocodata[0].header['CHECKSUM']))
+    havepicklefile = False
     if os.path.isfile(picklefname):
-      self.spectra = pickle.load(open(picklefname,'rb'))
-      self.kTlist = self.spectra['kTlist']
-    else:
-    # < insert test for existing pkl file for spectra, otherwise populate>
+      havepicklefile = True
+
+    if havepicklefile:
+      try:
+        self.spectra = pickle.load(open(picklefname,'rb'))
+        self.kTlist = self.spectra['kTlist']
+      except AttributeError:
+        havepicklefile=False
+        print("pre-stored data in %s is out of date. This can be caused by updates to the data "%(picklefname)+
+              "or, more likely, changes to pyatomdb. Regenerating...")
+        
+        # delete the old file      
+        if os.path.isfile(picklefname):
+          os.remove(picklefname)
+        
+    if not havepicklefile:
       self.spectra={}
       self.kTlist = numpy.array(linedata[1].data['kT'].data)
       self.spectra['kTlist']=numpy.array(linedata[1].data['kT'].data)
@@ -4093,11 +4106,24 @@ class _NEISpectrum(_CIESpectrum):
                                 (linedata[0].header['CHECKSUM'],\
                                  cocodata[0].header['CHECKSUM']))
 
-
+    havepicklefile = False
     if os.path.isfile(picklefname):
-      self.spectra = pickle.load(open(picklefname,'rb'))
-      self.kTlist = self.spectra['kTlist']
-    else:
+      havepicklefile = True
+
+    if havepicklefile:
+      try:
+        self.spectra = pickle.load(open(picklefname,'rb'))
+        self.kTlist = self.spectra['kTlist']
+      except AttributeError:
+        havepicklefile=False
+        print("pre-stored data in %s is out of date. This can be caused by updates to the data "%(picklefname)+
+              "or, more likely, changes to pyatomdb. Regenerating...")
+        
+        # delete the old file      
+        if os.path.isfile(picklefname):
+          os.remove(picklefname)
+        
+    if not havepicklefile:
       self.spectra={}
       self.kTlist = numpy.array(linedata[1].data['kT'].data)
       self.spectra['kTlist'] = numpy.array(linedata[1].data['kT'].data)
@@ -5034,10 +5060,24 @@ class _PShockSpectrum(_NEISpectrum):
                                  cocodata[0].header['CHECKSUM']))
 
 
+    havepicklefile = False
     if os.path.isfile(picklefname):
-      self.spectra = pickle.load(open(picklefname,'rb'))
-      self.kTlist = self.spectra['kTlist']
-    else:
+      havepicklefile = True
+
+    if havepicklefile:
+      try:
+        self.spectra = pickle.load(open(picklefname,'rb'))
+        self.kTlist = self.spectra['kTlist']
+      except AttributeError:
+        havepicklefile=False
+        print("pre-stored data in %s is out of date. This can be caused by updates to the data "%(picklefname)+
+              "or, more likely, changes to pyatomdb. Regenerating...")
+        
+        # delete the old file      
+        if os.path.isfile(picklefname):
+          os.remove(picklefname)
+        
+    if not havepicklefile:
       self.spectra={}
       self.kTlist = numpy.array(linedata[1].data['kT'].data)
       self.spectra['kTlist'] = numpy.array(linedata[1].data['kT'].data)
