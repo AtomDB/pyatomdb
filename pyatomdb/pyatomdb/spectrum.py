@@ -5691,7 +5691,7 @@ def calc_ee_brems_spec(ebins, Te, dens, teunit='keV'):
   Parameters
   ----------
   ebins : array(float)
-    The spectral bin edges in energy order
+    The spectral bin edges in energy order (keV)
   Te : float
     Electron temperature (default, keV)
   dens : float
@@ -5713,9 +5713,9 @@ def calc_ee_brems_spec(ebins, Te, dens, teunit='keV'):
   eespec = apec.calc_ee_brems(ebins, kT, dens)
 
   # average over bin width & centroid
-  eecent = (eespec[1:]+eespec[:-1])/2
-  binwidth = ebins[1:]-ebins[:-1]
-  ee = eecent * binwidth
+  #eecent = (eespec[1:]+eespec[:-1])/2
+  #binwidth = ebins[1:]-ebins[:-1]
+  ee = (ebins[1:]-ebins[:-1]) * (eespec[1:]+eespec[:-1])/2
 
   return ee
 

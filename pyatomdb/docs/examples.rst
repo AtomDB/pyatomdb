@@ -312,6 +312,13 @@ Getting Charge State Distribution
     Charge state distribution calculated many different ways for
     non equilibrium ionization.
 
+--------------------------------
+Including APEC models in PyXSPEC
+--------------------------------
+
+.. literalinclude:: ../examples/wrapper_xspec_examples.py
+
+
 --------------------
 Individual Use Cases
 --------------------
