@@ -1769,11 +1769,14 @@ class CIESession():
     self.dolines=True # Include lines in spectrum
     self.docont=True # Include continuum in spectrum
     self.dopseudo=True # Include pseudo continuum in spectrum
+    self.do_eebrems = True # Do electron-electron bremsstrahlung
 
     # no response set yet
     self.rmffile=False
     self.arffile=False
     self.raw_response=False
+
+
 
 
   def _session_initialise2(self):
@@ -2078,7 +2081,8 @@ class CIESession():
                                     elements = el_list, abundance=ab, \
                                     broaden_object = self.cdf, \
                                     log_interp=log_interp, dolines=dolines,\
-                                    dopseudo=dopseudo, docont=docont)
+                                    dopseudo=dopseudo, docont=docont, \
+                                    do_eebrems = self.do_eebrems)
     ss = self._apply_response(s)
 
     return ss
@@ -2225,6 +2229,21 @@ class CIESession():
 
     else:
       print("Unknown data type for cocofile. Please pass a string or an HDUList")
+
+  def set_eebrems(self, do_eebrems):
+    """
+    Set whether to do the electron-electron bremsstrahlung in the spectrum
+
+    Parameters
+    ----------
+
+    do_eebrems : bool
+      If True, include the electron-electron bremsstrahlung calculation
+      If False, don't (this is default, and matches XSPEC behaviour)
+    """
+    a = bool(do_eebrems)
+    self.do_eebrems = a
+
 
   def set_abund(self, elements, abund):
     """
@@ -2587,6 +2606,7 @@ class _CIESpectrum():
       The continuum emissivity data
     """
 
+    self.datacache = {}
     self.SessionType = 'CIE'
 
     picklefname = os.path.expandvars('$ATOMDB/spectra_%s_%s.pkl'%\
@@ -2604,11 +2624,11 @@ class _CIESpectrum():
         havepicklefile=False
         print("pre-stored data in %s is out of date. This can be caused by updates to the data "%(picklefname)+
               "or, more likely, changes to pyatomdb. Regenerating...")
-        
-        # delete the old file      
+
+        # delete the old file
         if os.path.isfile(picklefname):
           os.remove(picklefname)
-        
+
     if not havepicklefile:
       self.spectra={}
       self.kTlist = numpy.array(linedata[1].data['kT'].data)
@@ -2714,7 +2734,8 @@ class _CIESpectrum():
   def return_spectrum(self, Te, teunit='keV', nearest = False,\
                              elements=False, abundance=False, log_interp=True,\
                              broaden_object=False,\
-                             dolines=True, docont=True, dopseudo=True):
+                             dolines=True, docont=True, dopseudo=True, \
+                             do_eebrems = False):
 
     """
     Return the spectrum of the element on the energy bins in
@@ -2745,6 +2766,8 @@ class _CIESpectrum():
       Calculate Continuum emission (default True)
     dopseudo : bool
       Calculate PseudoContinuum (weak line) emission (default True)
+    do_eebrems : bool
+      Calculate electron-electron bremsstrahlung emission (default False)
 
     Returns
     -------
@@ -2768,6 +2791,11 @@ class _CIESpectrum():
         abundance[Z] = 1.0
 
     s = 0.0
+
+    # electron-electron bremsstrahlung electron counter
+    if do_eebrems:
+      nel=0.0
+      rawabund = atomdb.get_abundance(datacache=self.datacache)
 
     for Z in elements:
       abund = abundance[Z]
@@ -2818,6 +2846,17 @@ class _CIESpectrum():
           ss = self._merge_spectra_temperatures(f,ss1,ss2,log_interp)
 
         s+=ss
+        if do_eebrems:
+          ionpop=apec.return_ionbal(Z, kT, datacache=self.datacache, teunit='keV')
+          Zabundance = rawabund[Z]*abund
+
+          tmp = sum(ionpop*numpy.arange(Z+1))*Zabundance
+          nel +=tmp
+
+    if do_eebrems:
+      eespec = calc_ee_brems_spec(self.ebins, kT, nel)
+      s+= eespec
+
     return s
 
 
@@ -4052,7 +4091,8 @@ class NEISession(CIESession):
                                     nearest = nearest,elements = el_list, \
                                     abundance=ab, log_interp=True,\
                                     broaden_object=self.cdf, \
-                                    freeze_ion_pop = freeze_ion_pop)
+                                    freeze_ion_pop = freeze_ion_pop,\
+                                    do_eebrems=self.do_eebrems)
 
     ss = self._apply_response(s)
 
@@ -4118,11 +4158,11 @@ class _NEISpectrum(_CIESpectrum):
         havepicklefile=False
         print("pre-stored data in %s is out of date. This can be caused by updates to the data "%(picklefname)+
               "or, more likely, changes to pyatomdb. Regenerating...")
-        
-        # delete the old file      
+
+        # delete the old file
         if os.path.isfile(picklefname):
           os.remove(picklefname)
-        
+
     if not havepicklefile:
       self.spectra={}
       self.kTlist = numpy.array(linedata[1].data['kT'].data)
@@ -4238,7 +4278,7 @@ class _NEISpectrum(_CIESpectrum):
 
   def return_spectrum(self, Te, tau, init_pop='ionizing', teunit='keV', nearest = False,
                              elements=False, abundance=False, log_interp=True, broaden_object=False,\
-                             freeze_ion_pop = False):
+                             freeze_ion_pop = False, do_eebrems = False):
 
     """
     Return the spectrum of the element on the energy bins in
@@ -4272,6 +4312,8 @@ class _NEISpectrum(_CIESpectrum):
       Object with routine "broaden" which applies line broadening. Usually a Gaussian.
     freeze_ion_pop : bool
       If True, skip the ion population calculation, use init_pop as the final pop instead.
+    do_eebrems : bool
+      Calculate electron-electron bremsstrahlung emission (default False)
 
     Returns
     -------
@@ -4353,6 +4395,15 @@ class _NEISpectrum(_CIESpectrum):
     else:
       totspec = spec[0]
 
+    if do_eebrems:
+      nel = 0.0
+      rawabund = atomdb.get_abundance(datacache=self.datacache)
+      for Z in ionfrac_all.keys():
+        if abundance[Z] > 0.0:
+          nel += sum(ionfrac_all[Z]*numpy.arange(Z+1))*rawabund[Z]*abundance[Z]
+
+      eespec = calc_ee_brems_spec(self.ebins, kT, nel)
+      totspec += eespec
     return totspec
 
 
@@ -4889,7 +4940,8 @@ class PShockSession(NEISession):
                                     teunit=teunit, \
                                     nearest = nearest,elements = el_list, \
                                     abundance=ab, log_interp=True,\
-                                    broaden_object=self.cdf)
+                                    broaden_object=self.cdf,\
+                                    do_eebrems=self.do_eebrems)
 
     ss = self._apply_response(s)
 
@@ -5072,11 +5124,11 @@ class _PShockSpectrum(_NEISpectrum):
         havepicklefile=False
         print("pre-stored data in %s is out of date. This can be caused by updates to the data "%(picklefname)+
               "or, more likely, changes to pyatomdb. Regenerating...")
-        
-        # delete the old file      
+
+        # delete the old file
         if os.path.isfile(picklefname):
           os.remove(picklefname)
-        
+
     if not havepicklefile:
       self.spectra={}
       self.kTlist = numpy.array(linedata[1].data['kT'].data)
@@ -5228,7 +5280,7 @@ class _PShockSpectrum(_NEISpectrum):
 
   def return_spectrum(self, Te, tau_u, tau_l=0.0, init_pop='ionizing', teunit='keV', nearest = False,
                              elements=False, abundance=False, log_interp=True, broaden_object=False,\
-                             freeze_ion_pop=False):
+                             freeze_ion_pop=False, do_eebrems = False):
 
     """
     Return the spectrum of the element on the energy bins in
@@ -5264,6 +5316,8 @@ class _PShockSpectrum(_NEISpectrum):
       Object with routine "broaden" which applies line broadening. Usually a Gaussian.
     freeze_ion_pop : bool
       If True, skip the ion population calculation, use init_pop as the final pop instead.
+    do_eebrems : bool
+      Calculate electron-electron bremsstrahlung emission (default False)
 
     Returns
     -------
@@ -5346,6 +5400,17 @@ class _PShockSpectrum(_NEISpectrum):
 
         # add the element's spectrum to the whole, including abundance
         totspec += elspec* abund
+
+
+    if do_eebrems:
+      nel = 0.0
+      rawabund = atomdb.get_abundance(datacache=self.datacache)
+      for Z in ionfrac_all.keys():
+        if abundance[Z] > 0.0:
+          nel += sum(ionfrac_all[Z]*numpy.arange(Z+1))*rawabund[Z]*abundance[Z]
+
+      eespec = calc_ee_brems_spec(self.ebins, kT, nel)
+      totspec += eespec
 
     return totspec
 
@@ -5618,6 +5683,41 @@ class _PShockSpectrum(_NEISpectrum):
           linelist = numpy.append(linelist, linelisttmp)
 
     return linelist
+
+def calc_ee_brems_spec(ebins, Te, dens, teunit='keV'):
+  """
+  Calculate the electron-electron bremstrahlung per-bin emissivity
+
+  Parameters
+  ----------
+  ebins : array(float)
+    The spectral bin edges in energy order
+  Te : float
+    Electron temperature (default, keV)
+  dens : float
+    The electron density (cm^-3)
+  teunit : string
+    Units of Te (keV by default, K also allowed)
+
+  Returns
+  -------
+  eebrems : array(float)
+    electron-electron bremsstrahlung in ph cm^3 s^-1 bin^-1
+
+  """
+
+  # convert temperature to keV if required
+  kT = util.convert_temp(Te, teunit, 'keV')
+
+  # get the emission at each bin edge
+  eespec = apec.calc_ee_brems(ebins, kT, dens)
+
+  # average over bin width & centroid
+  eecent = (eespec[1:]+eespec[:-1])/2
+  binwidth = ebins[1:]-ebins[:-1]
+  ee = eecent * binwidth
+
+  return ee
 
 
 #### LEGACY CODE BEYOND THIS POINT

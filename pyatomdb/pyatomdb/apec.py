@@ -4751,9 +4751,13 @@ def _solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, \
 
   kT = util.convert_temp(Te, teunit, 'keV')
 
-  if tau==False:
-    cie = True
-    init_pop_calc=False
+  if type(tau)==bool:
+    if tau==False:
+      cie = True
+      init_pop_calc=False
+
+    else:
+      raise ValueError("Error: tau should be False, a float, or an array of floats. Received "+repr(Tau))
   else:
     cie = False
 
