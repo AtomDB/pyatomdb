@@ -2561,7 +2561,39 @@ class CIESession():
 
 
 
+  def adjust_line(change, Z=0, z1=0, z1_drv=0, upper=0,lower=0, quantity="Epsilon", method="Replace"):
+     """
+     Change the emissivity or wavelength of a line. Integer parameters set to 0 mean "all". Note this all
+     happens in memory and does not edit the underlying files.
 
+     Parameters
+     ----------
+     change : float or str
+       If float, set the new value to this.
+       If string
+     Z : int
+       Element
+     z1 : int
+       Ion
+     z1_drv : int
+       Driving ion
+     upper : int
+       Upper level
+     lower : int
+       Lower level
+     quantity : string
+       Change "Epsilon" or "Lambda" - emissivity or wavelength - by change
+     method : string
+       "Replace": replace existing value with change
+       "Multiply" : multiply existing value with change
+       "Divide" : divide existing value by change
+       "Add" : add change to existing value
+       "Subtract" : subtract change from existing
+
+     Returns
+     -------
+     None
+     """
 
 
 
@@ -2806,7 +2838,7 @@ class _CIESpectrum():
         sss=0.0
 
         if len(ikT) == 1:
-          ss = self.spectra[ikT[i]][Z].return_spectrum(self.ebins,\
+          ss = self.spectra[ikT[0]][Z].return_spectrum(self.ebins,\
                                   kT,\
                                   ebins_checksum = self.ebins_checksum,\
                                   thermal_broadening = self.thermal_broadening,\
@@ -3309,7 +3341,7 @@ class _ElementSpectrum():
 
     self.ebins_checksum = ebins_checksum
     self.T = T
-    spec = 0.0
+    spec = numpy.zeros(len(eedges)-1)
 
     if dolines:
       spec+=self.lines.return_spec(eedges, T, ebins_checksum=ebins_checksum,\
@@ -5742,7 +5774,7 @@ def __get_nei_line_emissivity(Z, z1, up, lo):
   -------
   emiss : dict
     a dictionary containing an array, one for each ion_drv, with the emissivity in it.
-    E.g. emiss[6] is a 51 element array, with the emissivity due to z1=6 as a fn of temperature
+    E.g. emiss[6] is an nTe element array, with the emissivity due to z1=6 as a fn of temperature
     Also emiss['Te'] is the tempearture in keV
   """
   warnings.warn("get_nei_line_emissivity is a deprecated function and will be removed. Use NEISession.return_line_emissivity instead", DeprecationWarning, stacklevel=3)

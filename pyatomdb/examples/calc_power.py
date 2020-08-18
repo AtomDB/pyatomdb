@@ -1,4 +1,4 @@
-import pyatomdb, numpy, os
+import pyatomdb, numpy, os, pylab
 
 """
 This code is an example of generating a cooling curve: the total power
@@ -17,127 +17,110 @@ https://heasarc.nasa.gov/xanadu/xspec/xspec11/manual/node33.html#SECTION00631000
 Adjustable parameters (energy range, element choice) are in the block
 marked #### ADJUST THINGS HERE
 
+Note that any warnings of the nature:
+"kT = 0.000862 is below minimum range of 0.000862. Returning lowest kT spectrum available"
+should be ignored. This is returning the temperature at our lowest tabulated value but is
+a rounding error making it think it is outside our range.
+
 Usage: python3 calc_power.py
 """
 
-
-
-def calc_power_oneelem_oneT(Z, Elo, Ehi, ihdu,linefile="$ATOMDB/apec_line.fits",\
-                       cocofile="$ATOMDB/apec_coco.fits"):
-  """
-  Calculate the radiated power between 2 different energies
-
-  INPUTS
-  ------
-  Z : int
-    The element atomic number
-  Elo : float
-    The lower energy bound
-  Ehi : float
-    The upper energy bound
-  ihdu : int
-    The HDU to use, from 2 to 52. Each is a different temperature from
-    10^4 to 10^9K in log space.
-  linefile : string/HDUlist
-    If a string, filename of the line emission. If HDU list, that file, already open
-  cocofile : string/HDUlist
-    If a string, filename of the continuum emission. If HDU list, that file, already open
-
-  """
-
-  # make energy bins
-  ebins = numpy.linspace(Elo, Ehi, 10000)
-  en = (ebins[1:]+ebins[:-1])/2
-
-  #
-  spec = pyatomdb.spectrum.make_spectrum(ebins, ihdu, linefile=linefile,\
-                       cocofile=cocofile,\
-                       elements=[Z])
-
-  # now you have a spectrum in photons. Convert to keV
-
-  E = spec*en # energy in keV cm^3 s^-1
-
-  return sum(E)
-
-def calc_power_oneT(Zlist, Elo, Ehi, ihdu, linefile="$ATOMDB/apec_line.fits",\
-                       cocofile="$ATOMDB/apec_coco.fits"):
-  """
-  Zlist : [int]
-    List of element nuclear charges
-  Elo : float
-    The lower energy bound
-  Ehi : float
-    The upper energy bound
-  ihdu : int
-    The HDU to use, from 2 to 52. Each is a different temperature from
-    10^4 to 10^9K in log space.
-  linefile : string/HDUlist
-    If a string, filename of the line emission. If HDU list, that file, already open
-  cocofile : string/HDUlist
-    If a string, filename of the continuum emission. If HDU list, that file, already open
-  """
-  E={}
-  for Z in Zlist:
-    E[Z] = calc_power_oneelem_oneT(Z, Elo, Ehi, ihdu, linefile = linefile, cocofile = cocofile)
-  return E
-
-def calc_power(Zlist, Elo, Ehi, hdulist=range(2,53), linefile="$ATOMDB/apec_line.fits",\
-                       cocofile="$ATOMDB/apec_coco.fits"):
+def calc_power(Zlist, cie, Tlist):
 
   """
   Zlist : [int]
     List of element nuclear charges
-  Elo : float
-    The lower energy bound
-  Ehi : float
-    The upper energy bound
-  hdulist : [int]
-    The HDUs to calculate the emission on, from 2 to 52. Each is a different temperature from
-    10^4 to 10^9K in log space. If not given, will do for all 51 temperatures.
-  linefile : string/HDUlist
-    If a string, filename of the line emission. If HDU list, that file, already open
-  cocofile : string/HDUlist
-    If a string, filename of the continuum emission. If HDU list, that file, already open
+  cie : CIESession
+    The CIEsession object with all the relevant data predefined.
+  Tlist : array(float)
+    The temperatures at which to calculate the power (in K)
   """
+
   res = {}
   res['power'] = {}
   res['temperature'] = []
-  for i, ihdu in enumerate(hdulist):
-    # Get temperature (there are more sophisticated ways to do this, this should just work for what you need)
-    T = 10**(4+(0.1*(ihdu-2)))
+  cie.set_abund(numpy.arange(1,31), 0.0)
+  kTlist = Tlist*pyatomdb.const.KBOLTZ
+  en = (cie.ebins_out[1:]+cie.ebins_out[:-1])/2
+  for i, kT in enumerate(kTlist):
 
+
+    print("Doing temperature iteration %i of %i"%(i, len(kTlist)))
+    T = Tlist[i]
 
     res['temperature'].append(T)
-    res['power'][i] = calc_power_oneT(Zlist, Elo, Ehi, ihdu, linefile = linefile,\
-                      cocofile = cocofile)
+    res['power'][i] = {}
 
+    for Z in Zlist:
+
+      if Z==0:
+        # This is the electron-electron bremstrahlung component alone
+
+        #set all abundances to 1 (I need a full census of electrons in the plasma for e-e brems)
+        cie.set_abund(Zlist[1:], 1.0)
+        # turn on e-e bremsstrahlung
+        cie.set_eebrems(True)
+        spec = cie.return_spectrum(kT, dolines=False, docont=False, dopseudo=False)
+      else:
+        # This is everything else, element by element.
+
+        # turn off all the elements
+        cie.set_abund(Zlist[1:], 0.0)
+        # turn back on this element
+        cie.set_abund(Z, 1.0)
+        # turn off e-e bremsstrahlung (avoid double counting)
+        cie.set_eebrems(False)
+
+        spec = cie.return_spectrum(kT)
+      # if Z = 1, do the eebrems (only want to calculate this once)
+#      if Z == 1:
+#        cie.set_eebrems(True)
+#      else:
+#        cie.set_eebrems(False)
+
+
+      # get spectrum in ph cm3 s-1
+      #spec = cie.return_spectrum(kT)
+
+      # convert to keV cm3 s-1, sum
+      res['power'][i][Z] = sum(spec*en)
 
   return res
 
 if __name__=='__main__':
 
-  #### ADJUST THINGS HERE
+  ############################
+  #### ADJUST THINGS HERE ####
+  ############################
 
   # Elements to include
-  #Zlist = range(1,31) <- all the elements
-  Zlist = [1,2,6,7,8,10,12,13,14,16,18,20,26,28] #<- just a few
+  #Zlist = range(31) <- all the elements
+  Zlist = [0,1,2,6,7,8,10,12,13,14,16,18,20,26,28] #<- just a few
+  # Note that for this purpose, Z=0 is the electron-electron bremsstrahlung
+  # continuum. This is not a general AtomDB convention, just what I've done here
+  # to make this work.
 
-  # specify energy range you want to integrate over (min = 0.001keV, max=100keV)
-  Elo = 2 #keV
-  Ehi = 10 #
+  # specify photon energy range you want to integrate over (min = 0.001keV, max=100keV)
+  Elo = 0.001 #keV
+  Ehi = 100.0 #
+
+  # temperatures at which to calculate curve (K)
+  Tlist = numpy.logspace(4,9,51)
 
   # specify output file name (default output.txt)
   outfile = 'output.txt'
 
-  #pre-open the emissivity files (not required, but saves a lot of disk access time)
-  linedata  = pyatomdb.pyfits.open(os.path.expandvars('$ATOMDB/apec_line.fits'))
-  cocodata  = pyatomdb.pyfits.open(os.path.expandvars('$ATOMDB/apec_coco.fits'))
+  ################################
+  #### END ADJUST THINGS HERE ####
+  ################################
 
-  #### END ADJUST THINGS HERE
-
+  # set up the spectrum
+  cie = pyatomdb.spectrum.CIESession()
+  ebins = numpy.linspace(Elo, Ehi, 10001)
+  cie.set_response(ebins, raw=True)
+  cie.set_eebrems(True)
   # crunch the numbers
-  k = calc_power(Zlist, Elo, Ehi, linefile = linedata, cocofile = cocodata)
+  k = calc_power(Zlist, cie, Tlist)
 
   # output generation
   o = open(outfile, 'w')
@@ -149,15 +132,38 @@ if __name__=='__main__':
   o.write(s+'\n')
 
   # for each temperature
+  k['totpower'] = numpy.zeros(len(k['temperature']))
+
   for i in range(len(k['temperature'])):
     s = '%22e'%(numpy.log10(k['temperature'][i]))
     for Z in Zlist:
       s+=' %12e'%(k['power'][i][Z])
+      k['totpower'][i]+=k['power'][i][Z]
     o.write(s+'\n')
 
   # notes
   o.write("# Total Emissivity in keV cm^3 s^-1 for each element with AG89 abundances, between %e and %e keV\n"%(Elo, Ehi))
   o.write("# To get cooling power, multiply by Ne NH")
+  o.write("# Z=0 component is electron-electron bremsstrahlung component, only significant at high T")
   o.close
 
+  fig = pylab.figure()
+  fig.show()
+  ax = fig.add_subplot(111)
+
+  ax.loglog(k['temperature'], k['totpower']*pyatomdb.const.ERG_KEV)
+
+  ax.set_xlabel('Temperature (K)')
+  ax.set_ylabel('Radiated Power (erg cm$^3$ s$^{-1}$)')
+
+  ax.set_xlim(min(Tlist), max(Tlist))
+
+  # draw graphs
+  pylab.draw()
+
+  zzz=input("Press enter to continue")
+
+  # save image files
+  fig.savefig('calc_power_examples_1_1.pdf')
+  fig.savefig('calc_power_examples_1_1.svg')
 
