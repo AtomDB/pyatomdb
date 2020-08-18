@@ -343,6 +343,13 @@ in a specfied spectral range (e.g. 2 to 10 keV).
 
 .. literalinclude:: ../examples/calc_power.py
 
+.. figure:: ../examples/calc_power_examples_1_1.svg
+    :align: center
+    :alt: Calc Power Example 1.1
+    :figclass: align-center
+    
+    The total emissivity of the plasma between 0.001 and 100 keV.
+    
 .. |cm3| replace:: cm\ :sup:`3`
 .. |cm-3| replace:: cm\ :sup:`-3`
 .. |cm-3s| replace:: cm\ :sup:`-3` s\ :sup:`1`
