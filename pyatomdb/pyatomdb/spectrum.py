@@ -33,7 +33,7 @@ except ImportError:
 import numpy, os, hashlib, pickle
 # other pyatomdb modules
 from . import atomic, util, const, atomdb, apec
-from scipy.stats import norm
+
 import time
 import warnings
 
@@ -1570,11 +1570,11 @@ class _Gaussian_CDF():
 
 
   """
-
-
   def __init__(self):
+    from scipy.stats import norm
     self.x = numpy.linspace(-6,6,2400)
     self.cdf = norm.cdf(self.x)
+    self.broadentype='Gaussian'
 
   def broaden(self, centroid, width, ebins):
     """
@@ -1603,6 +1603,157 @@ class _Gaussian_CDF():
 
     return ret
 
+
+class _Lorentzian_CDF():
+  """
+  For fast interpolation, pre-calculate the CDF and interpolate it when
+  broadening lines
+
+  Parameters
+  ----------
+  None
+
+  Examples
+  --------
+
+  Create a CDF instance:
+
+  >>> s=_Gaussian_CDF()
+
+  Broaden a line on ebins grid, with centroid and width.
+
+  >>> cdf = a.broaden(centroid, width, ebins)
+
+  Convert to flux in each bin
+
+  >>> flux= cdf[1:]-cdf[:-1]
+
+
+  """
+
+
+
+  def __init__(self):
+    from scipy.stats import cauchy
+    self.x = numpy.linspace(-12,12,4800)
+    self.cdf = cauchy.cdf(self.x)
+    self.broadentype='Lorentzian'
+
+  def broaden(self, centroid, width, ebins):
+    """
+    Broaden a line, return CDF
+
+    Parameters
+    ----------
+    centroid : float
+      The line energy (keV)
+    width : float
+      The sigma of the normal distribution, in keV
+    ebins : array(float)
+      Energy grid to return CDF on
+
+    Returns
+    -------
+    CDF : array(float)
+      cumulative flux distribution of linen at each bin edge.
+    """
+
+    # move the energy grid
+    etmp = (ebins-centroid)/width
+
+    # interpolate to get the appropriate CDF values
+    ret=numpy.interp(etmp, self.x, self.cdf)
+
+    return ret
+
+
+
+class _Voigt_CDF():
+  """
+  For fast interpolation, pre-calculate the CDF and interpolate it when
+  broadening lines
+
+  Parameters
+  ----------
+  None
+
+  Examples
+  --------
+
+  Create a CDF instance:
+
+  >>> s=_Gaussian_CDF()
+
+  Broaden a line on ebins grid, with centroid and width.
+
+  >>> cdf = a.broaden(centroid, width, ebins)
+
+  Convert to flux in each bin
+
+  >>> flux= cdf[1:]-cdf[:-1]
+
+
+  """
+
+
+
+  def __init__(self, sigma, gamma):
+    from scipy.special import voigt_profile
+    self.x = numpy.linspace(-12,12,2400)
+    self.broadentype='Voigt'
+
+
+
+  def __recalc(self, sigma, gamma):
+
+    if ((self.sigma==sigma) & \
+        (self.gamma == gamma)): pass
+
+
+
+    edges = (self.x[1:]+self.x[:-1])/2
+    edges = numpy.append( edges[0]-(edges[1]-edges[0]), \
+                          edges, \
+                          edges[-1] + (edges[-1]-edges[-2]))
+
+
+    dx = edges[1:]-edges[:-1]
+
+    pdfmid =  voigt_profile(self.x, sigma, gamma)*dx
+
+    self.cdf = numpy.cumsum(pdfmid)
+
+
+  def broaden(self, centroid, ebins, sigma, gamma, test_recalc=False):
+    """
+    Broaden a line, return CDF
+
+    Parameters
+    ----------
+    centroid : float
+      The line energy (keV)
+    width : float
+      The sigma of the normal distribution, in keV
+    ebins : array(float)
+      Energy grid to return CDF on
+
+    Returns
+    -------
+    CDF : array(float)
+      cumulative flux distribution of linen at each bin edge.
+    """
+
+    # move the energy grid
+    etmp = (ebins-centroid)
+
+    # If required, recalculate the parameters
+    if test_recalc:
+      self.__recalc(sigma, gamma)
+
+    # interpolate to get the appropriate CDF values
+    ret=numpy.interp(etmp, self.x, self.cdf)
+
+    return ret
 
 
 class CIESession():
