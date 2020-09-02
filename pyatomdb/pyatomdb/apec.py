@@ -1020,7 +1020,7 @@ def calc_ee_brems(E, T, N):
       GII[k,] = GpwII[k,]*FCCII[k,]
     ret = 1.455e-16*N**2*numpy.exp(-x)/(x*numpy.sqrt(taoII))*GII
   elif 300.<=T<7000.:
-    taoIII = taoII
+    taoIII = tao
     for k in range(numx):
       GpwIII[k,] = numpy.sum(aIII*taoIII**(aIIj/8.)*x[k,]**(aIIi))-\
                    numpy.exp(x[k,])*(-1.0)*Ei0[k,]*\
