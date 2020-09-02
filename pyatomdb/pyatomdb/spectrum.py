@@ -3014,7 +3014,7 @@ class _CIESpectrum():
                                   dopseudo=dopseudo) *\
                                   abund
 
-          ss2 = self.spectra[ikT[0]][Z].return_spectrum(self.ebins,\
+          ss2 = self.spectra[ikT[1]][Z].return_spectrum(self.ebins,\
                                   kT,\
                                   ebins_checksum = self.ebins_checksum,\
                                   thermal_broadening = self.thermal_broadening,\
