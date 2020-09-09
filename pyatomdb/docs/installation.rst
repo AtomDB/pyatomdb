@@ -36,6 +36,18 @@ If it does not immediately throw out an error, it has been successful. It will
 then start asking about installing the AtomDB files, see the next section. Note
 that there is no longer a need to run the initialize script.
 
+
+.. warning::
+  pycURL issues can arise when installing. If your install above worked without
+  errors, then you are fine. If you encountered errors, and they are related to
+  pycurl, you will need to consult your system's package managed (or conda if
+  that is what you are using) and install pycurl separately - 
+  e.g. ``conda install pycurl``.
+  
+  I'm not sure why this refuses to install directly with pip sometimes, but it seems
+  to be a recurring feature.
+  
+  
 ----------------
 ATOMDB Directory
 ----------------
