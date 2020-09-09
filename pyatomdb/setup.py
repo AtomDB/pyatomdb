@@ -19,7 +19,7 @@ def get_version(relpath):
                 return line.split("'")[1]
 
 
-readme = open('README.txt', 'r')
+readme = open('README.rst', 'r')
 README_TEXT = readme.read()
 readme.close()
 
