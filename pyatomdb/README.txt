@@ -175,3 +175,7 @@ July 20th 2020: Fixed PShockSession initialization error. Added automatic remova
 
 0.10.5
 September 4th 2020: Fixed issue when handling temperatures above or below the maximum and minimum values in the APEC emissivity files. Added Electron-electron bremsstrahlung emission into APEC model.
+
+0.10.6
+September 9th 2020: Fixed missing filename in build - README.txt had been renamed README.rst. Also included pycurl in requirements list
+
