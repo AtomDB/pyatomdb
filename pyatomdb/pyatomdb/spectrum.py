@@ -4278,6 +4278,7 @@ class NEISession(CIESession):
                                     do_eebrems=self.do_eebrems)
 
     ss = self._apply_response(s)
+    self.ionfrac = self.spectra.ionfrac
 
     return ss
 
@@ -4530,7 +4531,7 @@ class _NEISpectrum(_CIESpectrum):
     ionfrac_all = self._calc_ionfrac(kT, tau, init_pop=init_pop, teunit='keV', \
                                     freeze_ion_pop = freeze_ion_pop,\
                                     elements = el)
-
+    self.ionfrac = ionfrac_all
     spec = {}
     if len(ikT)==2:
       spec[0] = 0.0
