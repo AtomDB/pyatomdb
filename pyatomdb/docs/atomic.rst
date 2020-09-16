@@ -1,5 +1,5 @@
-PyAtomDB Atomic module
-====================================
+atomic module
+=============
 
 This modules contains basic atomic parameters (i.e. atomic numbers, element symbols)
 

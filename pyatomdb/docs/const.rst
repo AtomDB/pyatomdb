@@ -1,5 +1,5 @@
-PyAtomDB Const module
-====================================
+const module
+============
 
 A series of physical constants and constants relevant to running the APEC code.
 

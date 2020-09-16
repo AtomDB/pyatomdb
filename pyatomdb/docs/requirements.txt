@@ -1,4 +1,7 @@
 numpydoc
 astropy
 wget
-sphinx==1.2.3
+sphinx
+scipy
+requests
+joblib

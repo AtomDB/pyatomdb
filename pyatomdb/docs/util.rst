@@ -1,7 +1,7 @@
-PyAtomDB Util module
-====================================
+util module
+===========
 
-This modules contains simple utility codes (sorting etc) that pyatomdb relies on.
+This modules contains simple utility codes (sorting, file handling etc) that pyatomdb relies on.
 
 .. automodule:: pyatomdb.util
     :members:
