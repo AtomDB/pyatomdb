@@ -207,7 +207,7 @@ def _calc_elem_ionbal(Z, Te, tau=False, init_pop='ionizing', teunit='K',\
       init_pop_calc = return_ionbal(Z, kT_init, \
                                     teunit='keV', \
                                     datacache=datacache,fast=False,
-                                    settings = settings, extra=extrap)
+                                    settings = settings, extrap=extrap)
 
 
     elif isinstance(init_pop, numpy.ndarray) or isinstance(init_pop, list):
