@@ -2623,7 +2623,7 @@ def _calc_ionrec_dr(cidat, Te, extrap=False):
       # otherwise, calculate the value at a range of near-minimum temperatures,
       # and use to construct a good second derivative.
       else:
-        tetmp = numpy.logspace(numpy.log10(Te_min), numpy.log10(Te_min)+1,4)
+        tetmp = numpy.logspace(numpy.log10(Te_min[0]), numpy.log10(Te_min[0])+1,4)
         citmp=_calc_ionrec_dr(cidat, tetmp)
 
         tetmpl = numpy.log(tetmp)
