@@ -179,3 +179,5 @@ September 4th 2020: Fixed issue when handling temperatures above or below the ma
 0.10.6
 September 9th 2020: Fixed missing filename in build - README.txt had been renamed README.rst. Also included pycurl in requirements list
 
+0.10.7
+October 12th 2020: Fixed a series of bugs - 28 and 29 on Github, and merged in ionization balance storage information pull request from Jim Slavin.
