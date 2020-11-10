@@ -1419,7 +1419,7 @@ def _calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
                        levdat=False, ladat=False, \
                        lolev=False, uplev=False, \
                        force_extrap=False, did_extrap=False, \
-                       datacache=False):
+                       datacache=False, return_upsilon=False):
 
   from scipy.special import expn
   from scipy import interpolate
@@ -1949,10 +1949,16 @@ def _calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
   #print "upsilon:", upsilon
 #------------------------------------
 
+
+
   if (calc_type == const.E_UPSILON):
 
     #negative upsilon is unphysical
     upsilon[upsilon < 0] = 0.0
+
+    if return_upsilon==True:
+      return(upsilon)
+
 
     exc_rate = numpy.zeros(len(chi), dtype=float)
     dex_rate = numpy.zeros(len(chi), dtype=float)
@@ -2610,6 +2616,7 @@ def _calc_ionrec_dr(cidat, Te, extrap=False):
       print("calc_ionrec_rate: DR Recombination type %i not recognized" %(cidat['par_type']))
 
   # now extrappolate if required
+
   if extrap:
     ilow = numpy.where(Te<cidat['min_temp'])[0]
     if len(ilow) > 0:
@@ -3358,6 +3365,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
   elif dtype=='DR':
     cidat = colldata[1].data[index]
     dr = _calc_ionrec_dr(cidat,Te_arr, extrap=force_extrap)
+
     if sum(numpy.isnan(dr))>0:
       if not silent:
 

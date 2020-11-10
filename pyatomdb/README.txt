@@ -181,3 +181,6 @@ September 9th 2020: Fixed missing filename in build - README.txt had been rename
 
 0.10.7
 October 12th 2020: Fixed a series of bugs - 28 and 29 on Github, and merged in ionization balance storage information pull request from Jim Slavin.
+
+0.10.8
+November 9th 2020: Minor changes for compatibility with changes to kappa module.

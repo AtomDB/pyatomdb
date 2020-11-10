@@ -1893,7 +1893,7 @@ class CIESession():
     else:
       if self.SessionType=='CIE':
         self.elements=list(range(1,const.MAXZ_CIE+1))
-      elif self.SessionType in ['NEI','PShock']:
+      elif self.SessionType in ['NEI','PShock','Kappa']:
         self.elements=list(range(1,const.MAXZ_NEI+1))
 
 
@@ -4734,9 +4734,7 @@ class _NEISpectrum(_CIESpectrum):
       If true, keep lines which are the same but have different ion_drv separate.
       Otherwise, merge them.
 
-
     """
-
     # get kT in keV
     kT = util.convert_temp(Te, teunit, 'keV')
 
@@ -5116,7 +5114,6 @@ class PShockSession(NEISession):
     ab = {}
     for Z in el_list:
       ab[Z] = self.abund[Z]*self.abundsetvector[Z]
-
 
     self.spectra.ebins = self.specbins
     self.spectra.ebins_checksum=hashlib.md5(self.spectra.ebins).hexdigest()
