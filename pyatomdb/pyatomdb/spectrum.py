@@ -2712,42 +2712,221 @@ class CIESession():
 
 
 
-  def adjust_line(change, Z=0, z1=0, z1_drv=0, upper=0,lower=0, quantity="Epsilon", method="Replace"):
-     """
-     Change the emissivity or wavelength of a line. Integer parameters set to 0 mean "all". Note this all
-     happens in memory and does not edit the underlying files.
+  def _adjust_line(self, change, Z=0, z1=0, z1_drv=0, upper=0,lower=0, quantity="Epsilon", method="Replace", trackchanges=False):
+    """
+    Change the emissivity or wavelength of a line. Integer parameters set to 0 mean "all". Note this all
+    happens in memory and does not edit the underlying files.
 
-     Parameters
-     ----------
-     change : float or str
-       If float, set the new value to this.
-       If string
-     Z : int
-       Element
-     z1 : int
-       Ion
-     z1_drv : int
-       Driving ion
-     upper : int
-       Upper level
-     lower : int
-       Lower level
-     quantity : string
-       Change "Epsilon" or "Lambda" - emissivity or wavelength - by change
-     method : string
-       "Replace": replace existing value with change
-       "Multiply" : multiply existing value with change
-       "Divide" : divide existing value by change
-       "Add" : add change to existing value
-       "Subtract" : subtract change from existing
+    Parameters
+    ----------
+    change : float or str
+      If float, set the new value to this.
+      If string
+    Z : int
+      Element
+    z1 : int
+      Ion
+    z1_drv : int
+      Driving ion
+    upper : int
+      Upper level
+    lower : int
+      Lower level
+    quantity : string
+      Change "Epsilon" or "Lambda" - emissivity or wavelength - by change
+    method : string
+      "Replace": replace existing value with change
+      "Multiply" : multiply existing value with change
+      "Divide" : divide existing value by change
+      "Add" : add change to existing value
+      "Subtract" : subtract change from existing
+    Returns
+    -------
+    None
+    """
+    meth = method.lower()
 
-     Returns
-     -------
-     None
-     """
+    if Z==0:
+      Zlist = self.elements
+    else:
+      Zlist = [Z]
+    for Zt in Zlist:
+      if z1==0:
+        z1list = range(1,z1+2)
+      else:
+        z1list=[z1]
+      for z1t in z1list:
+        if z1_drv==0:
+          if self.SessionType=='CIE':
+            z1_drvlist=[0]
+          else:
+            z1_drvlist=range(1,z1+2)
+        else:
+          if self.SessionType=='CIE':
+            z1_drvlist=[0]
+          else:
+            z1_drvlist=[z1_drv]
+
+        for z1_drvt in z1_drvlist:
+
+          # go through each temperature, see if there is line data for this
+          # ion. If so, change it according to uppper, lower
+
+          for ikT in range(len(self.spectra.kTlist)):
+             # check if there is any data for this element
+
+            try:
+              ldat = self.spectra.spectra[ikT][Zt].lines.lines
+            except KeyError:
+              # element or temperature data doesn't exist
+              continue
+
+            tochange = numpy.ones(len(ldat), dtype=bool)
+
+            if upper!=0:
+              tochange[ldat['UpperLev'] != upper] = False
+            if lower != 0:
+              tochange[ldat['LowerLev'] != lower] = False
+
+            if trackchanges:
+              tochange[self.spectra.spectra[ikT][Zt].lines.changed==True] = False
+
+            if sum(tochange) > 0:
+
+              if meth=='replace':
+                 ldat[quantity][tochange] = change
+              if meth=='add':
+                 ldat[quantity][tochange] += change
+              if meth=='subtract':
+                 ldat[quantity][tochange] -= change
+              if meth=='divide':
+                 ldat[quantity][tochange] /= change
+              if meth=='multiply':
+                 ldat[quantity][tochange] *= change
+
+              self.spectra.spectra[ikT][Zt].lines.changed[tochange] = True
+
+
+    return
 
 
 
+  def _adjust_line_lambda(self, change, Z, z1, upper,lower, quantity="Epsilon", method="Replace", trackchanges=False):
+    """
+    Change the emissivity or wavelength of a line. Integer parameters set to 0 mean "all". Note this all
+    happens in memory and does not edit the underlying files.
+
+    Parameters
+    ----------
+    change : float or str
+      If float, set the new value to this.
+      If string
+    Z : int
+      Element
+    z1 : int
+      Ion
+    upper : int
+      Upper level
+    lower : int
+      Lower level
+    quantity : string
+      Change "Epsilon" or "Lambda" - emissivity or wavelength - by change
+    method : string
+      "Replace": replace existing value with change
+      "Multiply" : multiply existing value with change
+      "Divide" : divide existing value by change
+      "Add" : add change to existing value
+      "Subtract" : subtract change from existing
+    Returns
+    -------
+    None
+    """
+    meth = method.lower()
+
+    # see if this line is already listed
+    try:
+      value=self.spectra.fixwavelength[Z][z1][upper][lower]
+    except AttributeError:
+      self.spectra.fixwavelength={}
+
+    if not Z in self.spectra.fixwavelength.keys():
+      self.spectra.fixwavelength[Z]={}
+
+    if not z1 in self.spectra.fixwavelength[Z].keys():
+      self.spectra.fixwavelength[Z][z1]={}
+
+    if not upper in self.spectra.fixwavelength[Z][z1].keys():
+      self.spectra.fixwavelength[Z][z1][upper]={}
+
+    if not lower in self.spectra.fixwavelength[Z][z1][upper].keys():
+      self.spectra.fixwavelength[Z][z1][upper][lower]=quantity
+
+
+
+
+
+    if Z==0:
+      Zlist = self.elements
+    else:
+      Zlist = [Z]
+    for Zt in Zlist:
+      if z1==0:
+        z1list = range(1,z1+2)
+      else:
+        z1list=[z1]
+      for z1t in z1list:
+        if z1_drv==0:
+          if self.SessionType=='CIE':
+            z1_drvlist=[0]
+          else:
+            z1_drvlist=range(1,z1+2)
+        else:
+          if self.SessionType=='CIE':
+            z1_drvlist=[0]
+          else:
+            z1_drvlist=[z1_drv]
+
+        for z1_drvt in z1_drvlist:
+
+          # go through each temperature, see if there is line data for this
+          # ion. If so, change it according to uppper, lower
+
+          for ikT in range(len(self.spectra.kTlist)):
+             # check if there is any data for this element
+
+            try:
+              ldat = self.spectra.spectra[ikT][Zt].lines.lines
+            except KeyError:
+              # element or temperature data doesn't exist
+              continue
+
+            tochange = numpy.ones(len(ldat), dtype=bool)
+
+            if upper!=0:
+              tochange[ldat['UpperLev'] != upper] = False
+            if lower != 0:
+              tochange[ldat['LowerLev'] != lower] = False
+
+            if trackchanges:
+              tochange[self.spectra.spectra[ikT][Zt].lines.changed==True] = False
+
+            if sum(tochange) > 0:
+
+              if meth=='replace':
+                 ldat[quantity][tochange] = change
+              if meth=='add':
+                 ldat[quantity][tochange] += change
+              if meth=='subtract':
+                 ldat[quantity][tochange] -= change
+              if meth=='divide':
+                 ldat[quantity][tochange] /= change
+              if meth=='multiply':
+                 ldat[quantity][tochange] *= change
+
+              self.spectra.spectra[ikT][Zt].lines.changed[tochange] = True
+
+
+    return
 
 
 class _CIESpectrum():
@@ -5801,9 +5980,9 @@ class _PShockSpectrum(_NEISpectrum):
 
             # get the linelist
             llist1 = self.spectra[ikT[0]][Z][z1_drv].return_linelist(specrange,\
-                                    teunit='keV', specunit=specunit)
+                                    specunit=specunit)
             llist2 = self.spectra[ikT[1]][Z][z1_drv].return_linelist(specrange,\
-                                    teunit='keV', specunit=specunit)
+                                    specunit=specunit)
             # correct for ion fraction
             llist1['Epsilon'] *= ionfrac[z1_drv-1]
             llist2['Epsilon'] *= ionfrac[z1_drv-1]
