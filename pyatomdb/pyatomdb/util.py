@@ -1829,7 +1829,7 @@ def write_ir_file(fname, dat, clobber=False):
 
 #-------------------------------------------------------------------------------
 
-def write_dr_file(fname, dat, clobber=False):
+def write_dr_file(fname, dat, lvdat = None,clobber=False):
   """
   Write the data in list dat to fname
 
@@ -1998,9 +1998,40 @@ def write_dr_file(fname, dat, clobber=False):
     for icmt in dat['comments']:
       hdu1.header.add_comment(icmt)
 
-  # combine hdus
-  print('combining HDUs')
-  hdulist = pyfits.HDUList([hdu0,hdu1])
+
+  if lvdat != None:
+    hdu2 = pyfits.BinTableHDU.from_columns(pyfits.ColDefs(
+          [pyfits.Column(name='ELEC_CONFIG',
+             format='40A',
+             array=lvdat['ELEC_CONFIG']),
+           pyfits.Column(name='L_QUAN',
+             format='1J',
+             array=lvdat['L_QUAN']),
+           pyfits.Column(name='S_QUAN',
+             format='1E',
+             array=lvdat['S_QUAN']),
+           pyfits.Column(name='LEV_DEG',
+             format='1J',
+             array=lvdat['LEV_DEG']),
+           pyfits.Column(name='DRLEVID',
+             format='1J',
+             array=lvdat['DRLEVID']),
+           pyfits.Column(name='APEDID',
+             format='1J',
+             array=lvdat['APEDID'])]
+           ))
+
+    print('combining HDUs')
+    hdu2.header['EXTNAME']=('DR_LEVELS')
+
+    hdulist = pyfits.HDUList([hdu0,hdu1, hdu2])
+
+  else:
+
+
+    # combine hdus
+    print('combining HDUs')
+    hdulist = pyfits.HDUList([hdu0,hdu1])
 
   # write out file (overwrite any existing file)
   if clobber:
