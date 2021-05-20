@@ -268,16 +268,17 @@ def _ci_younger(Te, c):
 
   T_eV = 1.e3*KBOLTZ*Te
   x = c[0]/T_eV
-  ci = numpy.zeros(len(Te), dtype=float)
-  for ite in range(len(Te)):
 
-    if (x[ite] <= 30.0):
-      f1_val = _f1_fcn(x[ite])
-      ci[ite] = (numpy.exp(-x[ite])/x[ite])* \
-                ( c[1]*( 1 - x[ite]*f1_val ) +\
-                  c[2]*( 1 + x[ite] - x[ite]*(x[ite]+2)*f1_val )+\
-                  c[3]*f1_val + \
-                  c[4]*x[ite]*_f2_fcn(x[ite]) )
+  ci = numpy.zeros(len(Te), dtype=float)
+
+  ite = numpy.where(x <= 1000.0)[0]
+
+  f1_val = _f1_fcn(x[ite])
+  ci[ite] = (numpy.exp(-x[ite])/x[ite])* \
+            ( c[1]*( 1 - x[ite]*f1_val ) +\
+              c[2]*( 1 + x[ite] - x[ite]*(x[ite]+2)*f1_val )+\
+              c[3]*f1_val + \
+              c[4]*x[ite]*_f2_fcn(x[ite]) )
 
   ci *= 6.69e-07/(T_eV*numpy.sqrt(T_eV))
   return ci
@@ -427,18 +428,24 @@ def _f2_fcn(x):
        9.4900e8 ,1.5345e10,1.7182e11,1.3249e12,6.9071e12,
        2.3531e13,4.9432e13,5.7760e13,3.0225e13,3.3641e12])
 
-  if (x > 0.27):
+  result = numpy.zeros(len(x))
+
+  ix = numpy.where(x > 0.27)[0]
+
+  for iix in ix:
     p=0.0
     q=0.0
     xp = 1
     for i in range(0,15):
       p = p+pc[i]/xp
       q = q+qc[i]/xp
-      xp = x*xp
+      xp = x[iix]*xp
 
-    result=((p/q)/x)/x
-  else:
-    result=(((numpy.log(x)*numpy.log(x))/2.0)+(0.57722*numpy.log(x)))+1.0
+    result[iix]=((p/q)/x[iix])/x[iix]
+
+  ix = numpy.where(x <= 0.27)[0]
+  for iix in ix:
+    result[iix]=(((numpy.log(x[iix])*numpy.log(x[iix]))/2.0)+(0.57722*numpy.log(x[iix])))+1.0
 
   return result
 
@@ -1423,7 +1430,6 @@ def _calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
 
   from scipy.special import expn
   from scipy import interpolate
-
   xs = numpy.array([0.00, 0.25, 0.50, 0.75, 1.00])
   xs9 = numpy.array([0.00, 0.125, 0.25, 0.375, 0.50, 0.675, 0.80, 0.925, 1.00])
 #  print Tarr, om, coll_type
@@ -2012,6 +2018,7 @@ def _calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
     print(coll_type, min_T, max_T, Tarr, om, dE, T, Z, degl, degu)
 
   if force_extrap:
+
     return exc_rate, dex_rate, did_extrap
 
   else:
@@ -2292,7 +2299,7 @@ def _calc_ionrec_ci(cidat, Te, extrap=False, ionpot=False):
   if len(ici) > 0:
     if (cidat['par_type'] == const.CI_YOUNGER):
       T_eV = 1.e3*const.KBOLTZ*Te[ici]
-      x = cidat['ionrec_par'][0][ici]/T_eV
+      x = cidat['ionrec_par'][0]/T_eV
       i = numpy.where(x <=30.0)[0]
       if len(i) > 0:
         f1_val = _f1_fcn(x[i])
@@ -2593,11 +2600,11 @@ def _calc_ionrec_dr(cidat, Te, extrap=False):
     # Mazzotta
     if (cidat['par_type'] == const.DR_MAZZOTTA):
       T_eV = 1.e3*const.KBOLTZ*Te[idr]
-      dr[idr] = (cidat['par_type'][0]/(T_eV**1.5))  * \
-           (cidat['par_type'][5]*numpy.exp(-cidat['par_type'][1]/T_eV) +\
-            cidat['par_type'][6]*numpy.exp(-cidat['par_type'][2]/T_eV) +\
-            cidat['par_type'][7]*numpy.exp(-cidat['par_type'][3]/T_eV) +\
-            cidat['par_type'][8]*numpy.exp(-cidat['par_type'][4]/T_eV))
+      dr[idr] = (cidat['ionrec_par'][0]/(T_eV**1.5))  * \
+           (cidat['ionrec_par'][5]*numpy.exp(-cidat['ionrec_par'][1]/T_eV) +\
+            cidat['ionrec_par'][6]*numpy.exp(-cidat['ionrec_par'][2]/T_eV) +\
+            cidat['ionrec_par'][7]*numpy.exp(-cidat['ionrec_par'][3]/T_eV) +\
+            cidat['ionrec_par'][8]*numpy.exp(-cidat['ionrec_par'][4]/T_eV))
 
     elif (cidat['par_type'] == const.DR_BADNELL):
       dr[idr] = _dr_badnell(Te[idr], cidat['ionrec_par'])
@@ -2920,7 +2927,10 @@ def get_ionrec_rate(Te_in, irdat_in=False, lvdat_in=False, Te_unit='K', \
   rrret = numpy.zeros(len(Te), dtype=float)
   drret = numpy.zeros(len(Te), dtype=float)
 
-  ionpot = irdat[1].header['IONPOT']
+  try:
+    ionpot = irdat[1].header['IONPOT']
+  except KeyError:
+    ionpot = False
   # Start with the CI data
   ici = numpy.where(irdat[1].data['TR_TYPE']=='CI')[0]
 
@@ -3258,8 +3268,8 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
       degl =uplev['lev_deg']
       degu = lolev['lev_deg']
 
-
-    exc,dex= _calc_maxwell_rates(ecdat['coeff_type'],\
+    print("Force_extrap:", force_extrap)
+    zzz = _calc_maxwell_rates(ecdat['coeff_type'],\
                                  ecdat['min_temp'],\
                                  ecdat['max_temp'],\
                                  ecdat['temperature'],\
@@ -3268,7 +3278,11 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                                  force_extrap=force_extrap, ladat=ladat, \
                                  levdat=lvdata)
 
+    exc = zzz[0]
+    dex = zzz[1]
+    if force_extrap:
 
+      did_extrap = zzz[2]
 
     if numpy.isscalar(exc):
       if dex < 0:
