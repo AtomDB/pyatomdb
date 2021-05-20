@@ -96,8 +96,6 @@ def pyapec(engs, params, flux):
   elements = []
   for i in range(1,31): elements.append(i)
 
-  print('params', len(params))
-  print(params)
   if len(params)==4:
     # apec model
     abund=numpy.array(params[1])
