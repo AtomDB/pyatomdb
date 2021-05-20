@@ -543,7 +543,7 @@ def calc_brems_gaunt(E, T, z1, brems_type, datacache=False, \
 
       if gam1<1.0:
         gaunt_ff[i] = born
-        print("FORCE BORN")
+#        print("FORCE BORN")
       else:
         # go to do polynomial expansion
 
@@ -1740,7 +1740,7 @@ def run_apec_element(settings, te, dens, Z):
                                       atomdbroot=os.path.expandvars('$ATOMDB'),\
                                       misc=True)
 
-  abundances = atomdb.get_abundance(abundfile, settings['Abundances'])
+  abundances = atomdb.get_abundance(abundfile = abundfile, abundset=settings['Abundances'])
   abund=abundances[Z]
 
   # create placeholders for all the data
@@ -3057,6 +3057,15 @@ def calc_satellite(Z, z1, T, datacache=False, settings=False):
         print("Error in calc_satellite: unknown DR type %i"%\
                (drdat[1].data['type'][iline]))
         epsilon = numpy.nan
+
+      # if there is a translation table from DR SATELLITE to AtomDB levels, use it.
+      if len(drdat) > 2:
+        itmp = drdat[2].data[drdat[2].data['DRLEVID']==ll]['APEDID']
+        if len(itmp) ==1:
+          if itmp[0] != 0:
+            ll = itmp[0]
+
+
       if ll >= len(lev_rates_in):
         print("warning: DR satellite line recombining into non existant level %i of ion Z=%i, z1=%i"%\
               (ll, Z, z1))
@@ -3294,7 +3303,7 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
                  do_la=True, do_ai=False, do_ec=False, do_pc=False,\
                  do_ir=False)
 
-    #datacache={}
+    datacache={}
 
 
     for i in range(len(matrixA_in['init'])):
@@ -3682,7 +3691,7 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
 
   # set up the datacache
 
-  #datacache = {}
+  datacache = {}
 
   # Find the number of levels
   lvdat = atomdb.get_data(Z,z1,'LV', datacache=datacache, settings=settings)
@@ -3802,9 +3811,9 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
       print("Start calc_recomb_popn at %s"%(time.asctime()))
 
       levpop_recomb=calc_recomb_popn(lev_pop, Z, z1,\
-                                      z1_drv, te, dens, drlevrates,\
-                                      rrlevrates,\
-                                      datacache=datacache, settings=settings)
+                                     z1_drv, te, dens, drlevrates,\
+                                     rrlevrates,\
+                                     datacache=datacache, settings=settings)
       print("Finish calc_recomb_popn at %s"%(time.asctime()))
 
       #zzz=raw_input()
@@ -4060,8 +4069,8 @@ def wrap_ion_directly(fname, ind, Z, z1):
                                       atomdbroot=os.path.expandvars('$ATOMDB'),\
                                       misc=True)
 
-  #abundances = atomdb.get_abundance(abundfile, settings['Abundances'])
-  abundances = atomdb.get_abundance()
+  abundances = atomdb.get_abundance(abundfile=abundfile, abundset=settings['Abundances'])
+  #abundances = atomdb.get_abundance()
   abund=abundances[Z]
 
   # update the output filename
