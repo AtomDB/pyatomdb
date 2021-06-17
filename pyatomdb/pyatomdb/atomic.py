@@ -924,16 +924,74 @@ def get_maxn(cfgstr):
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 
-def parse_eissner(cfgstr, nel=0):
-  shelllist='123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-  llist = 'spdfghiklmnoqrtuvwxyz'
-  cfg = cfgstr.strip()
-  try:
-    cfg = cfg.decode('ascii')
-  except AttributeError:
-    pass
-  cfgcopy = cfg+' '
-  cfgcopy = cfgcopy[:-1]
+def parse_eissner(cfgstr, nel=0, levelmap=None):
+
+  if levelmap is not None:
+    # levelmap is a list of n, l for each level
+    # with i['N'] and i['L'] giving the infos
+    shelllist='123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+    llist = 'spdfghiklmnoqrtuvwxyz'
+    cfg = cfgstr.strip()
+    try:
+      cfg = cfg.decode('ascii')
+    except AttributeError:
+      pass
+    cfgcopy = cfg+' '
+    cfgcopy = cfgcopy[:-1]
+    if len(cfg)%3 == 0:
+      # find the initial split. Want configuration to start with 5 (or 6, or 7)
+      if cfg[0] in['5','6','7']:
+        pass
+      elif cfg[-1] in ['5','6','7']:
+        cfg='5'+cfg[:-1]
+      elif (cfg[-1].islower() and cfg[-2].islower()):
+        cfg='5'+cfg
+      else:
+        print("Invalid configuration (1) %s" %(cfg))
+    elif len(cfg)%3 == 2:
+      if not cfg[0] in ['5','6','7']:
+        cfg = '5'+cfg
+      else:
+        print("Invalid configuration (2) %s" %(cfg))
+    elif len(cfg)%3 == 1:
+      if not (cfg[-2].islower() and cfg[-1].islower()):
+        print("Invalid configuration (3) %s" %(cfg))
+    ret = ""
+    i=0
+    while i < len(cfg):
+      cfgtmp = cfg[i:i+3]
+      #print(cfgtmp)
+      if cfgtmp[-1].islower():
+        if len(cfg)>=i+4:
+          if cfg[i+3].islower():
+            cfgtmp=cfg[i:i+4]
+      #if re.search('[a-z][a-zA-Z]',''):
+      #  cfgtmp = cfg[i:i+4]
+      i += len(cfgtmp)
+
+      nelec = int(cfgtmp[:2])-50
+      if len(cfgtmp)==3:
+        ishell = shelllist.index(cfgtmp[2])
+      else:
+        ishell = shelllist.index(cfgtmp[3])-35+len(shelllist)+(26*(shelllist.index(cfgtmp[2])-35))
+
+      n = levelmap[ishell]['N']
+      l = levelmap[ishell]['L']
+      lsymb = llist[l]
+      ret += "%i%s%i "%(n,lsymb,nelec)
+    ret = ret[:-1]
+
+
+  else:
+    shelllist='123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+    llist = 'spdfghiklmnoqrtuvwxyz'
+    cfg = cfgstr.strip()
+    try:
+      cfg = cfg.decode('ascii')
+    except AttributeError:
+      pass
+    cfgcopy = cfg+' '
+    cfgcopy = cfgcopy[:-1]
 
   # now deal with double letters
 #  for i in range(len(cfg)-1):
@@ -943,54 +1001,54 @@ def parse_eissner(cfgstr, nel=0):
 
 #  print(cfg)
 
-  if len(cfg)%3 == 0:
-    # find the initial split. Want configuration to start with 5 (or 6, or 7)
-    if cfg[0] in['5','6','7']:
-      pass
-    elif cfg[-1] in ['5','6','7']:
-      cfg='5'+cfg[:-1]
-    elif (cfg[-1].islower() and cfg[-2].islower()):
-      cfg='5'+cfg
-    else:
-      print("Invalid configuration (1) %s" %(cfg))
-  elif len(cfg)%3 == 2:
-    if not cfg[0] in ['5','6','7']:
-      cfg = '5'+cfg
-    else:
-      print("Invalid configuration (2) %s" %(cfg))
-  elif len(cfg)%3 == 1:
-    if not (cfg[-2].islower() and cfg[-1].islower()):
-      print("Invalid configuration (3) %s" %(cfg))
-  ret = ""
-  i=0
-  while i < len(cfg):
-    cfgtmp = cfg[i:i+3]
-    #print(cfgtmp)
-    if cfgtmp[-1].islower():
-      if len(cfg)>=i+4:
-        if cfg[i+3].islower():
-          cfgtmp=cfg[i:i+4]
-    #if re.search('[a-z][a-zA-Z]',''):
-    #  cfgtmp = cfg[i:i+4]
-    i += len(cfgtmp)
-
-    nelec = int(cfgtmp[:2])-50
-    if len(cfgtmp)==3:
-      ishell = shelllist.index(cfgtmp[2])
-    else:
-      ishell = shelllist.index(cfgtmp[3])-35+len(shelllist)+(26*(shelllist.index(cfgtmp[2])-35))
-
-    n=1
-    l=0
-    for ii in range(ishell):
-      if l < n-1:
-        l+=1
+    if len(cfg)%3 == 0:
+      # find the initial split. Want configuration to start with 5 (or 6, or 7)
+      if cfg[0] in['5','6','7']:
+        pass
+      elif cfg[-1] in ['5','6','7']:
+        cfg='5'+cfg[:-1]
+      elif (cfg[-1].islower() and cfg[-2].islower()):
+        cfg='5'+cfg
       else:
-        n+=1
-        l=0
-    lsymb = llist[l]
-    ret += "%i%s%i "%(n,lsymb,nelec)
-  ret = ret[:-1]
+        print("Invalid configuration (1) %s" %(cfg))
+    elif len(cfg)%3 == 2:
+      if not cfg[0] in ['5','6','7']:
+        cfg = '5'+cfg
+      else:
+        print("Invalid configuration (2) %s" %(cfg))
+    elif len(cfg)%3 == 1:
+      if not (cfg[-2].islower() and cfg[-1].islower()):
+        print("Invalid configuration (3) %s" %(cfg))
+    ret = ""
+    i=0
+    while i < len(cfg):
+      cfgtmp = cfg[i:i+3]
+      #print(cfgtmp)
+      if cfgtmp[-1].islower():
+        if len(cfg)>=i+4:
+          if cfg[i+3].islower():
+            cfgtmp=cfg[i:i+4]
+      #if re.search('[a-z][a-zA-Z]',''):
+      #  cfgtmp = cfg[i:i+4]
+      i += len(cfgtmp)
+
+      nelec = int(cfgtmp[:2])-50
+      if len(cfgtmp)==3:
+        ishell = shelllist.index(cfgtmp[2])
+      else:
+        ishell = shelllist.index(cfgtmp[3])-35+len(shelllist)+(26*(shelllist.index(cfgtmp[2])-35))
+
+      n=1
+      l=0
+      for ii in range(ishell):
+        if l < n-1:
+          l+=1
+        else:
+          n+=1
+          l=0
+      lsymb = llist[l]
+      ret += "%i%s%i "%(n,lsymb,nelec)
+    ret = ret[:-1]
 
   return ret
 
