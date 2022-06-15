@@ -4383,8 +4383,8 @@ def get_data(Z, z1, ftype, datacache=False, \
 
       if not(havedata):
         if settings:
-          if settings['filemap']:
-            fmapfile = settings['filemap']
+          if settings['FileMap']:
+            fmapfile = settings['FileMap']
           if settings['atomdbroot']:
             atomdbroot = settings['atomdbroot']
 

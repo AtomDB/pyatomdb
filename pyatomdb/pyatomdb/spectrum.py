@@ -510,12 +510,12 @@ def __add_lines(Z, abund, lldat, ebins, z1=False, z1_drv=False, \
   if broadening:
     if  bunits == 'a':
       for ll in l:
-        spectrum+=atomdb.addline2(ebins, const.HC_IN_KEV_A/ll['lambda'], \
+        spectrum+=atomdb._addline2(ebins, const.HC_IN_KEV_A/ll['lambda'], \
                  ll['epsilon']* abund,\
                  broadening*const.HC_IN_KEV_A/(ll['lambda']**2))
     else:
       for ll in l:
-        spectrum+=atomdb.addline2(ebins, const.HC_IN_KEV_A/ll['lambda'], \
+        spectrum+=atomdb._addline2(ebins, const.HC_IN_KEV_A/ll['lambda'], \
                  ll['epsilon']* abund,\
                  broadening)
   else:
