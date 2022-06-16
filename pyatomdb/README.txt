@@ -186,9 +186,10 @@ October 12th 2020: Fixed a series of bugs - 28 and 29 on Github, and merged in i
 November 9th 2020: Minor changes for compatibility with changes to kappa module.
 
 0.10.9
-June 16th 2022: Several quality of life issues overdue for inclusion.
- - Spectrum session now has a verbosity switch
- - Added more to the wrappers folder
- - Added the ability to update wavelengths on the fly in spectrum objects
- - Fixed errors when forcing use of older Mazzotta data for ionization
+June 16th 2022: Several quality of life issues overdue for inclusion
+
+- Spectrum session now has a verbosity switch
+- Added more to the wrappers folder
+- Added the ability to update wavelengths on the fly in spectrum objects
+- Fixed errors when forcing use of older Mazzotta data for ionization
 
