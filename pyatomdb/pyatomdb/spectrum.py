@@ -1927,7 +1927,8 @@ class CIESession():
     self.arffile=False
     self.raw_response=False
 
-
+    # verbosity
+    self.verbose = False
 
 
   def _session_initialise2(self):
@@ -1951,7 +1952,9 @@ class CIESession():
 
   def set_broadening(self, thermal_broadening, broaden_limit=False, \
                            velocity_broadening=0.0, \
-                           velocity_broadening_units='km/s'):
+                           velocity_broadening_units='km/s',\
+                           thermal_broaden_temperature=None,\
+                           teunit='keV'):
 
     """
     Turn on or off thermal broadening, and the emissivity limit for
@@ -1969,7 +1972,9 @@ class CIESession():
       velocity broadening to apply. If <=0, not applied
     velocity_broadening_units : string
       Units of velocity_broadening. 'km/s' is default and only value so far.
-
+    thermal_broaden_temperature : float
+      If not None, use this temperature for all line broadening instead of
+      plasma temperature (keV)
     Notes
     -----
     Updates attributes thermal_broadening, broaden_limit, velocity_broadening,
@@ -1980,10 +1985,11 @@ class CIESession():
     if broaden_limit != False:
       self.broaden_limit = broaden_limit
 
-    if self.thermal_broadening==True:
-      print("Will thermally broaden lines with emissivity > %e ph cm3 s-1"%(self.broaden_limit))
-    else:
-      print("Will not thermally broaden lines")
+    if self.verbose:
+      if self.thermal_broadening==True:
+        print("Will thermally broaden lines with emissivity > %e ph cm3 s-1"%(self.broaden_limit))
+      else:
+        print("Will not thermally broaden lines")
 
     self.velocity_broadening=velocity_broadening
 
@@ -2001,7 +2007,13 @@ class CIESession():
 
     self.spectra.velocity_broadening=self.velocity_broadening
     self.spectra.velocity_broadening_units=self.velocity_broadening_units
-
+    if thermal_broaden_temperature is not None:
+      T = util.convert_temp(thermal_broaden_temperature, teunit, 'K')
+      self.thermal_broaden_temperature=T
+      self.spectra.thermal_broaden_temperature=T
+    else:
+      self.thermal_broaden_temperature=None
+      self.spectra.thermal_broaden_temperature=None
 
 
 
@@ -3159,6 +3171,12 @@ class _CIESpectrum():
       nel=0.0
       rawabund = atomdb.get_abundance(datacache=self.datacache)
 
+    # get the line broadening temperature. Typically this is kT unless
+    # overridden using XXXSession.set_broadening
+    if self.thermal_broaden_temperature is not None:
+      Tb= util.convert_temp(self.thermal_broaden_temperature, 'K', 'keV')
+    else:
+      Tb=kT
     for Z in elements:
       abund = abundance[Z]
       if abund > 0:
@@ -3169,7 +3187,7 @@ class _CIESpectrum():
 
         if len(ikT) == 1:
           ss = self.spectra[ikT[0]][Z].return_spectrum(self.ebins,\
-                                  kT,\
+                                  Tb,\
                                   ebins_checksum = self.ebins_checksum,\
                                   thermal_broadening = self.thermal_broadening,\
                                   broaden_limit = epslimit,\
@@ -3182,7 +3200,7 @@ class _CIESpectrum():
 
         else:
           ss1 = self.spectra[ikT[0]][Z].return_spectrum(self.ebins,\
-                                  kT,\
+                                  Tb,\
                                   ebins_checksum = self.ebins_checksum,\
                                   thermal_broadening = self.thermal_broadening,\
                                   broaden_limit = epslimit,\
@@ -3194,7 +3212,7 @@ class _CIESpectrum():
                                   abund
 
           ss2 = self.spectra[ikT[1]][Z].return_spectrum(self.ebins,\
-                                  kT,\
+                                  Tb,\
                                   ebins_checksum = self.ebins_checksum,\
                                   thermal_broadening = self.thermal_broadening,\
                                   broaden_limit = epslimit,\
