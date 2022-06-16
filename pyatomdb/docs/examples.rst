@@ -318,6 +318,10 @@ Including APEC models in PyXSPEC
 
 .. literalinclude:: ../examples/wrapper_xspec_examples.py
 
+There are other wrapper files which work in the same way for a model with
+a separate temperature set for line broadening, and others will be added in 
+the ``wrapper`` directory.
+
 
 --------------------
 Individual Use Cases
