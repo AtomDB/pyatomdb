@@ -2183,6 +2183,12 @@ class CIESession():
 
       self.ebins_checksum =hashlib.md5(self.specbins).hexdigest()
 
+    # this is now a check for 0 minimums
+    if self.specbins_set:
+      if self.specbins[0] <=0:
+        warnings.warn('Response minimum energy is 0 keV, setting to small finite value (%e keV)'%(self.specbins[1]*1e-6))
+        self.specbins[0] = self.specbins[1]*1e-6
+
 
   def return_spectrum(self, te, teunit='keV', nearest=False,\
                       get_nearest_t=False, log_interp=True,\
