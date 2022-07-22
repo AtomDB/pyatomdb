@@ -193,3 +193,6 @@ June 16th 2022: Several quality of life issues overdue for inclusion
 - Added the ability to update wavelengths on the fly in spectrum objects
 - Fixed errors when forcing use of older Mazzotta data for ionization
 
+0.10.10
+July 22nd 2022: Updated spectrum.py set_response to handle 0keV minimum energy responses
+
