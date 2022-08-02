@@ -64,6 +64,21 @@ Making a Spectrum
     :figclass: align-center
 
     A kT=0.4keV simple spectrum created with and without an instrument response
+    
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Handling Large Response Matrices
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Some missions, for example XRISM, have a large number of bins in their response files (XRISM has 50,000). Creating a 50,000x50,000 response matrix would require of order 16GB of memory, most of which would be zeros. Setting ``sparse=True`` when setting the response will use `sparse matrices <https://docs.scipy.org/doc/scipy/reference/sparse.html>`_ to save memory. The code below shows how to do this and also how to compare any innacuracies caused (testing so far has shown nothing larger than numerical rounding errors, 1 part in 10 :sup:`15`)
+
+.. literalinclude:: ../examples/spectrum_session_examples_1b.py
+
+.. figure:: ../examples/spectrum_session_examples_1_1b.svg
+    :align: center
+    :alt: Spectrum Example 1(b) - sparse matrices for large responses
+    :figclass: align-center
+
+    A kT=0.4keV simple spectrum created with regular and sparse instrument responses. The same code can be used to compare the accuracy of the two methods for different response matrices, but will require large amounts of memory if using large responses.
 
 ~~~~~~~~~~~~~~~
 Line Broadening

@@ -2048,7 +2048,7 @@ class CIESession():
     self.response_set : bool
       A response has been loaded
     self.response_type : string
-      'standard' or 'sparse' depending on the type implemented
+      'raw', 'standard' or 'sparse' depending on the type implemented
     self.specbins_set : bool
       The spectral bins are set
     self.ebins_checksum : string
@@ -2402,6 +2402,7 @@ class CIESession():
       arfdat = self.arf
 
       ret = spectrum*self.arf
+      
       try:
         ret = numpy.matmul(ret,self.rmfmatrix)
       except ValueError:
@@ -2414,7 +2415,8 @@ class CIESession():
     elif self.response_type=='sparse':
       arfdat = self.arf
       ret = spectrum*self.arf
-      ret = (self.rmfmatrix*spectrum).sum(1)
+      ret = (self.rmfmatrix*ret).sum(1)
+      pickle
       return(ret)
     
     else:
