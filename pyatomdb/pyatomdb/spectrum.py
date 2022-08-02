@@ -33,7 +33,7 @@ except ImportError:
 import numpy, os, hashlib, pickle
 # other pyatomdb modules
 from . import atomic, util, const, atomdb, apec
-
+from scipy.sparse import bsr_array
 import time
 import warnings
 
@@ -2018,7 +2018,7 @@ class CIESession():
 
 
 
-  def set_response(self, rmf, arf=False, raw=False):
+  def set_response(self, rmf, arf=False, raw=False, sparse=False):
     """
     Set the response. rmf, arf can either be the filenames or the
     opened files (latter is faster if called repeatedly)
@@ -2046,7 +2046,9 @@ class CIESession():
       The spectral bins on which to return the spectrum (keV). Can be
       different from specbins depending on the spectrum
     self.response_set : bool
-      A resonse has been loaded
+      A response has been loaded
+    self.response_type : string
+      'standard' or 'sparse' depending on the type implemented
     self.specbins_set : bool
       The spectral bins are set
     self.ebins_checksum : string
@@ -2062,7 +2064,12 @@ class CIESession():
       If true, the rmf variable contains the energy bin edges (keV) for all
       the bins, and each bin has a perfect response. This is effectively
       a dummy response
-
+    sparse : bool
+      If true, the rmf is stored as a sparse matrix and solved using sparse
+      matrix algebra. Useful for large RMFs (e.g. XRISM).
+      Tests show accuracy to 1 part in 10^{15}.
+      Ignored if raw==True
+      
     Returns
     -------
     none
@@ -2070,6 +2077,8 @@ class CIESession():
     """
 
     if raw==True:
+      if sparse:
+        warnings.warn("Sparse matrix requested with raw response. Ignoring.")
       # make a diagonal perfect response
       self.specbins = rmf
       self.ebins_out = rmf
@@ -2082,6 +2091,7 @@ class CIESession():
       self.arf = False
       self.ebins_checksum =hashlib.md5(self.specbins).hexdigest()
       self.raw_response=True
+      self.response_type = 'raw'
     else:
 
       if util.keyword_check(arf):
@@ -2121,6 +2131,7 @@ class CIESession():
 
     # these are the *output* energy bins
 
+
       ebins = self.rmf['EBOUNDS'].data['E_MIN']
       if ebins[-1] > ebins[0]:
         ebins = numpy.append(ebins, self.rmf['EBOUNDS'].data['E_MAX'][-1])
@@ -2141,47 +2152,109 @@ class CIESession():
 
     # bugfix: not all missions index from 0 (or 1).
     # Use chanoffset to correct for this.
-      chanoffset = self.rmf['EBOUNDS'].data['CHANNEL'][0]
+      
+      if not sparse:
 
-      self.rmfmatrix = numpy.zeros([len(self.rmf[matrixname].data),len(self.rmf['EBOUNDS'].data)])
-      for ibin, i in enumerate(self.rmf[matrixname].data):
-
-        lobound = 0
-
-        fchan = i['F_CHAN']*1
-        nchan = i['N_CHAN']*1
-
-        if numpy.isscalar(fchan):
-          fchan = numpy.array([fchan])
-        fchan -= chanoffset
-        if numpy.isscalar(nchan):
-          nchan = numpy.array([nchan])
-
-        for j in range(len(fchan)):
-          ilo = fchan[j]
-          if ilo < 0: continue
-
-          ihi = fchan[j] + nchan[j]
-          self.rmfmatrix[ibin,ilo:ihi]=i['MATRIX'][lobound:lobound+nchan[j]]
-          lobound = lobound+nchan[j]
+        chanoffset = self.rmf['EBOUNDS'].data['CHANNEL'][0]
 
 
+        self.rmfmatrix = numpy.zeros([len(self.rmf[matrixname].data),len(self.rmf['EBOUNDS'].data)])
+        for ibin, i in enumerate(self.rmf[matrixname].data):
 
-      self.specbins, self.ebins_out = _get_response_ebins(self.rmf)
+          lobound = 0
 
-      if self.ebins_out[-1] < self.ebins_out[0]:
-        # need to reverse things
-        self.ebins_out=self.ebins_out[::-1]
-        self.rmfmatrix = self.rmfmatrix[:,::-1]
+          fchan = i['F_CHAN']*1
+          nchan = i['N_CHAN']*1
 
-      self.specbin_units='keV'
-      self.aeff = self.rmfmatrix.sum(1)
-      if util.keyword_check(self.arf):
-        self.aeff *=self.arf
-      self.response_set = True
-      self.specbins_set = True
+          if numpy.isscalar(fchan):
+            fchan = numpy.array([fchan])
+          fchan -= chanoffset
+          if numpy.isscalar(nchan):
+            nchan = numpy.array([nchan])
 
-      self.ebins_checksum =hashlib.md5(self.specbins).hexdigest()
+          for j in range(len(fchan)):
+            ilo = fchan[j]
+            if ilo < 0: continue
+
+            ihi = fchan[j] + nchan[j]
+            self.rmfmatrix[ibin,ilo:ihi]=i['MATRIX'][lobound:lobound+nchan[j]]
+            lobound = lobound+nchan[j]
+
+        self.specbins, self.ebins_out = _get_response_ebins(self.rmf)
+
+        if self.ebins_out[-1] < self.ebins_out[0]:
+          # need to reverse things
+          self.ebins_out=self.ebins_out[::-1]
+          self.rmfmatrix = self.rmfmatrix[:,::-1]
+
+        self.specbin_units='keV'
+        self.aeff = self.rmfmatrix.sum(1)
+        if util.keyword_check(self.arf):
+          self.aeff *=self.arf
+        self.response_set = True
+        self.specbins_set = True
+        self.response_type = 'standard'
+
+        self.ebins_checksum =hashlib.md5(self.specbins).hexdigest()
+
+      else:
+        # sparse matrix time!
+        data=[]
+        row=[]
+        col=[]
+        
+        chanoffset = self.rmf['EBOUNDS'].data['CHANNEL'][0]
+        
+        for ibin, i in enumerate(self.rmf[matrixname].data):
+          lobound = 0
+          for ngrp in range(i['N_GRP']):
+            fchan = i['F_CHAN']*1
+            nchan = i['N_CHAN']*1
+  
+            if numpy.isscalar(fchan):
+              fchan = numpy.array([fchan])
+            fchan -= chanoffset
+            if numpy.isscalar(nchan):
+              nchan = numpy.array([nchan])
+              
+            for j in range(len(fchan)):
+              ilo = fchan[j]
+              if ilo < 0: continue
+  
+              ihi = fchan[j] + nchan[j]
+              data.extend(i['MATRIX'][lobound:lobound+nchan[j]])
+              row.extend(range(ilo,ihi))
+              col.extend([ibin]*nchan[j])
+              lobound = lobound+nchan[j]
+  
+        self.specbins, self.ebins_out = _get_response_ebins(self.rmf)
+  
+        data = numpy.array(data)
+        row = numpy.array(row)
+        col = numpy.array(col)
+        
+        if self.ebins_out[-1] < self.ebins_out[0]:
+          # need to reverse things
+          self.ebins_out=self.ebins_out[::-1]
+          col = len(self.ebins_out)-col-1
+  
+  
+        self.rmfmatrix =  bsr_array((data, (row, col)), shape=(len(self.specbins)-1, len(self.ebins_out)-1),\
+                          dtype=data.dtype)
+  
+        
+  
+        self.specbin_units='keV'
+        self.aeff = self.rmfmatrix.sum(1)
+        if util.keyword_check(self.arf):
+          self.aeff *=self.arf
+        self.response_set = True
+        self.specbins_set = True
+        self.response_type = 'sparse'
+  
+        self.ebins_checksum =hashlib.md5(self.specbins).hexdigest()
+  
+  
 
     # this is now a check for 0 minimums
     if self.specbins_set:
@@ -2322,29 +2395,30 @@ class CIESession():
     """
 
     # if the response is raw, no need to matrix multiply (diagonal response, effectively)
-    if self.raw_response:
+    if self.response_type=='raw':
       return spectrum
 
+    elif self.response_type=='standard':
+      arfdat = self.arf
 
-    arfdat = self.arf
-
-#    if arfdat:
- #     res = spectrum * arfdat['SPECRESP'].data['SPECRESP']
- #   else:
-  #    res = spectrum*1.0
-    ret = spectrum*self.arf
-
-
-    try:
-      ret = numpy.matmul(ret,self.rmfmatrix)
-    except ValueError:
+      ret = spectrum*self.arf
       try:
-        ret = numpy.matmul(ret,self.rmfmatrix.transpose())
+        ret = numpy.matmul(ret,self.rmfmatrix)
       except ValueError:
-        if ret == 0:
-          ret = numpy.zeros(len(self.ebins_out)-1)
-    return ret
-
+        try:
+          ret = numpy.matmul(ret,self.rmfmatrix.transpose())
+        except ValueError:
+          if ret == 0:
+            ret = numpy.zeros(len(self.ebins_out)-1)
+      return ret
+    elif self.response_type=='sparse':
+      arfdat = self.arf
+      ret = spectrum*self.arf
+      ret = (self.rmfmatrix*spectrum).sum(1)
+      return(ret)
+    
+    else:
+      raise util.OptionError('Unknown response type %s'%(self.response_type))
 
   def _set_apec_files(self, linefile, cocofile):
     """
