@@ -71,7 +71,7 @@ setup(name='pyatomdb',
       "requests",\
       "wget",\
       "numpy>=1.9.0",\
-      "scipy>=1.4.0",\
+      "scipy>=1.9.0",\
       "joblib",\
       "mock",\
       "astropy",\
