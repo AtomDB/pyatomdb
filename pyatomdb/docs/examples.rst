@@ -73,7 +73,7 @@ Some missions, for example XRISM, have a large number of bins in their response 
 
 .. literalinclude:: ../examples/spectrum_session_examples_1b.py
 
-.. figure:: ../examples/spectrum_session_examples_1_1b.svg
+.. figure:: ../examples/spectrum_session_examples_1b_1.svg
     :align: center
     :alt: Spectrum Example 1(b) - sparse matrices for large responses
     :figclass: align-center
