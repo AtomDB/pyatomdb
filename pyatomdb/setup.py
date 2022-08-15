@@ -75,6 +75,7 @@ setup(name='pyatomdb',
       "joblib",\
       "mock",\
       "astropy",\
+      "libcurl",\
       "pycurl"],
       ext_modules = extmos)
 

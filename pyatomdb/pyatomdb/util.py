@@ -368,9 +368,11 @@ def download_atomdb_emissivity_files(adbroot, userid, version):
 
   print("...done")
 
-  shutil.rmtree(tmpdir)
 
 
+  shutil.rmtree(tmpdir, ignore_errors=True)
+    
+    
 #-------------------------------------------------------------------------------
 
 def download_atomdb_nei_emissivity_files(adbroot, userid, version):
@@ -439,7 +441,7 @@ def download_atomdb_nei_emissivity_files(adbroot, userid, version):
     print("moving %s/%s/%s to %s/%s"%(tmpdir, dirname, l, adbroot, l))
     shutil.move("%s/%s/%s"%(tmpdir, dirname, l), "%s/%s"%(adbroot, l))
 
-  shutil.rmtree(tmpdir)
+  shutil.rmtree(tmpdir, ignore_errors=True)
   print("... done")
 
 #-------------------------------------------------------------------------------
