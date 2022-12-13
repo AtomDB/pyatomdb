@@ -198,3 +198,8 @@ July 22nd 2022: Updated spectrum.py set_response to handle 0keV minimum energy r
 
 0.10.11
 August 2nd 2022: Added "sparse" option to set_response, which uses sparse matrices in the RMF, allowing for large responses (e.g. XRISM) to be handled with limited memory usage.
+
+0.10.12
+December 13th 2022
+Fixed(?) issues with curl library
+Corrected bug with return_spectrum leading to overestimate in E-E brems of ~20%

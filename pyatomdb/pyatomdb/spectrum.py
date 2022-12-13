@@ -2069,7 +2069,7 @@ class CIESession():
       matrix algebra. Useful for large RMFs (e.g. XRISM).
       Tests show accuracy to 1 part in 10^{15}.
       Ignored if raw==True
-      
+
     Returns
     -------
     none
@@ -2152,7 +2152,7 @@ class CIESession():
 
     # bugfix: not all missions index from 0 (or 1).
     # Use chanoffset to correct for this.
-      
+
       if not sparse:
 
         chanoffset = self.rmf['EBOUNDS'].data['CHANNEL'][0]
@@ -2202,48 +2202,48 @@ class CIESession():
         data=[]
         row=[]
         col=[]
-        
+
         chanoffset = self.rmf['EBOUNDS'].data['CHANNEL'][0]
-        
+
         for ibin, i in enumerate(self.rmf[matrixname].data):
           lobound = 0
           for ngrp in range(i['N_GRP']):
             fchan = i['F_CHAN']*1
             nchan = i['N_CHAN']*1
-  
+
             if numpy.isscalar(fchan):
               fchan = numpy.array([fchan])
             fchan -= chanoffset
             if numpy.isscalar(nchan):
               nchan = numpy.array([nchan])
-              
+
             for j in range(len(fchan)):
               ilo = fchan[j]
               if ilo < 0: continue
-  
+
               ihi = fchan[j] + nchan[j]
               data.extend(i['MATRIX'][lobound:lobound+nchan[j]])
               row.extend(range(ilo,ihi))
               col.extend([ibin]*nchan[j])
               lobound = lobound+nchan[j]
-  
+
         self.specbins, self.ebins_out = _get_response_ebins(self.rmf)
-  
+
         data = numpy.array(data)
         row = numpy.array(row)
         col = numpy.array(col)
-        
+
         if self.ebins_out[-1] < self.ebins_out[0]:
           # need to reverse things
           self.ebins_out=self.ebins_out[::-1]
           col = len(self.ebins_out)-col-1
-  
-  
+
+
         self.rmfmatrix =  bsr_array((data, (row, col)), shape=(len(self.specbins)-1, len(self.ebins_out)-1),\
                           dtype=data.dtype)
-  
-        
-  
+
+
+
         self.specbin_units='keV'
         self.aeff = self.rmfmatrix.sum(1)
         if util.keyword_check(self.arf):
@@ -2251,10 +2251,10 @@ class CIESession():
         self.response_set = True
         self.specbins_set = True
         self.response_type = 'sparse'
-  
+
         self.ebins_checksum =hashlib.md5(self.specbins).hexdigest()
-  
-  
+
+
 
     # this is now a check for 0 minimums
     if self.specbins_set:
@@ -2402,7 +2402,7 @@ class CIESession():
       arfdat = self.arf
 
       ret = spectrum*self.arf
-      
+
       try:
         ret = numpy.matmul(ret,self.rmfmatrix)
       except ValueError:
@@ -2418,7 +2418,7 @@ class CIESession():
       ret = (self.rmfmatrix*ret).sum(1)
       pickle
       return(ret)
-    
+
     else:
       raise util.OptionError('Unknown response type %s'%(self.response_type))
 
@@ -3317,7 +3317,17 @@ class _CIESpectrum():
 
     if do_eebrems:
       eespec = calc_ee_brems_spec(self.ebins, kT, nel)
-      s+= eespec
+
+      # Here we divide the eebrems by nel/nH so that the resulting
+      # spectrum simply needs to
+      # be  multiplied by nenH
+      try:
+        nH =rawabund[1]*abundance[1]
+      except KeyError:
+        print("Warning: as this plasma has no hydrogen in it, assuming nH=1 for electron-electron bremstrahlung renorm")
+        nH=1.0
+
+      s+= eespec/(nel/nH)
 
     return s
 
@@ -4866,7 +4876,17 @@ class _NEISpectrum(_CIESpectrum):
           nel += sum(ionfrac_all[Z]*numpy.arange(Z+1))*rawabund[Z]*abundance[Z]
 
       eespec = calc_ee_brems_spec(self.ebins, kT, nel)
-      totspec += eespec
+
+      # Here we divide the eebrems by nel/nH so that the resulting
+      # spectrum simply needs to
+      # be  multiplied by nenH
+
+      try:
+        nH =rawabund[1]*abundance[1]
+      except KeyError:
+        print("Warning: as this plasma has no hydrogen in it, assuming nH=1 for electron-electron bremstrahlung renorm")
+        nH=1.0
+      totspec += eespec/(nel/nH)
     return totspec
 
 
