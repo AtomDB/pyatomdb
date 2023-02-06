@@ -12,8 +12,15 @@ Full documentation can be found at http://atomdb.readthedocs.io
 Installation
 ============
 
-Standard python installation:
-python setup.py install
+Standard python installation. 
+
+#. From `PyPI <https://pypi.org/>`_ , using the simple ``pip install pyatomdb`` command.
+#. From `GitHub <https://github.com/AtomDB/pyatomdb>`_ , using the command ``git clone https://github.com/AtomDB/pyatomdb.git`` to get the source, then ``pip install -e python </path/to/folder/with/setup.py/in/it>``.
+#. If using ``Conda``: Pyatomdb is not packaged with Conda as it requires compiling of some C code and (as far as I can tell) Conda cannot handle this. I recommend installing the dependencies independently, e.g.: ``conda install requests wget "numpy>=1.9.0" "scipy>=1.9.0" joblib mock astropy pycurl``, then install pip within conda (``conda install pip``), and then ``pip install -e python </path/to/folder/with/setup.py/in/it>``.
+#. Using ``setuptools`` (deprecated): python setup.py install
+
+
+
 
 
 ===============
@@ -203,3 +210,7 @@ August 2nd 2022: Added "sparse" option to set_response, which uses sparse matric
 December 13th 2022
 Fixed(?) issues with curl library
 Corrected bug with return_spectrum leading to overestimate in E-E brems of ~20%
+
+0.10.13
+February 6th 2023
+Another attempt to fix issues with curl library

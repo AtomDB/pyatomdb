@@ -18,13 +18,12 @@ Installation
 
 PyAtomDB can be installed in two ways:
 
-  #. From `PyPI <https://pypi.org/>`_ , using the simple ``pip install pyatomdb`` command.
-  #. From `GitHub <https://github.com/AtomDB/pyatomdb>`_ , using the command ``git clone https://github.com/AtomDB/pyatomdb.git``
-     to get the source, then ``python setup.py develop`` to install links to the source
-     in your Python path.
+#. From `PyPI <https://pypi.org/>`_ , using the simple ``pip install pyatomdb`` command.
+#. From `GitHub <https://github.com/AtomDB/pyatomdb>`_ , using the command ``git clone https://github.com/AtomDB/pyatomdb.git`` to get the source, then ``pip install -e python </path/to/folder/with/setup.py/in/it>``.
+#. If using ``Conda``: Pyatomdb is not packaged with Conda as it requires compiling of some C code and (as far as I can tell) Conda cannot handle this. I recommend installing the dependencies independently, e.g.: ``conda install requests wget "numpy>=1.9.0" "scipy>=1.9.0" joblib mock astropy pycurl``, then install pip within conda (``conda install pip``), and then ``pip install -e python </path/to/folder/with/setup.py/in/it>``.
+#. Using ``setuptools`` (deprecated): python setup.py install
 
-Note that for both of these options the ``--user`` option can be useful, as it will install
-software in your local path if you do not have administrator priviledges on your machine.
+Note that for the PyPI and setuptools options the ``--user`` option can be useful, as it will install software in your local path if you do not have administrator priviledges on your machine.
 
 You can check that the installation was successful by running:
 
@@ -40,12 +39,11 @@ that there is no longer a need to run the initialize script.
 .. warning::
   pycURL issues can arise when installing. If your install above worked without
   errors, then you are fine. If you encountered errors, and they are related to
-  pycurl, you will need to consult your system's package managed (or conda if
+  pycurl, you will need to consult your system's package manager (or conda if
   that is what you are using) and install pycurl separately - 
   e.g. ``conda install pycurl``.
   
-  I'm not sure why this refuses to install directly with pip sometimes, but it seems
-  to be a recurring feature.
+  I'm not sure why this refuses to install directly with pip sometimes, but it seems to be a recurring feature.
   
   
 ----------------
