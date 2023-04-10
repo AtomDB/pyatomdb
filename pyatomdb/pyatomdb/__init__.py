@@ -1,14 +1,14 @@
 __all__=["atomdb","util","atomic","spectrum","const","apec"]
 
 from .atomdb import *
-from . import spectrum
-from . import atomic
+import spectrum
+import atomic
 import ctypes
-from . import apec
-from . import util
+import apec
+import util
 import sys, glob
 
-__version__="0.10.13"
+__version__="0.10.8"
 
 try:
   PATH = os.path.dirname(__file__)

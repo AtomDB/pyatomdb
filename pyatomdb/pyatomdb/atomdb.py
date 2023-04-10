@@ -19,7 +19,7 @@ Adam Foster August 28th 2015
 
 import os, datetime, numpy, re, time, getpass
 import urllib.request, urllib.error, urllib.parse
-from . import util, apec, const, atomic, spectrum
+import util, apec, const, atomic, spectrum
 
 import astropy.io.fits as pyfits
 from scipy import stats, integrate
@@ -657,8 +657,8 @@ def __get_ionbal(ionbalfile, element, ion=-1):
 
   a=get_data(1,1,'IONBAL')
 #  find data type
-  for i in a[1].header:
-    print(i)
+  #for i in a[1].header:
+    #print(i)
   if a[1].header['HDUCLASS']=='ION_BAL':
 
     # find index for correct ion
@@ -4383,8 +4383,8 @@ def get_data(Z, z1, ftype, datacache=False, \
 
       if not(havedata):
         if settings:
-          if settings['FileMap']:
-            fmapfile = settings['FileMap']
+          if settings['filemap']:
+            fmapfile = settings['filemap']
           if settings['atomdbroot']:
             atomdbroot = settings['atomdbroot']
 

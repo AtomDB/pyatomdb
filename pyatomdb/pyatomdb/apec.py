@@ -1,4 +1,3 @@
-#
 """
 The apec module contains routines crucial for the APEC code. This also
 includes some interfaces to external C libraries (or will, eventually).
@@ -10,7 +9,7 @@ Adam Foster September 16th 2015
 
 import numpy, copy, pickle
 import os, time
-from . import util, atomdb, const, atomic
+import util, atomdb, const, atomic
 import scipy, ctypes
 import astropy.io.fits as pyfits
 #from joblib import Parallel, delayed
@@ -1586,9 +1585,9 @@ def create_lhdu_cie(linedata):
 
   tmp = numpy.zeros(len(linedata), dtype=numpy.dtype({'names':['negLambda','Element','Ion'],\
                                                        'formats':[float, float, float]}))
-  tmp['Element']= linedata['element']
-  tmp['Ion']= linedata['ion']
-  tmp['negLambda']= linedata['lambda']*-1
+  tmp['Element']= linedata['Element']
+  tmp['Ion']= linedata['Ion']
+  tmp['negLambda']= linedata['Lambda']*-1
 
   srt = numpy.argsort(tmp, order=['Element','Ion','negLambda'])
   linedata = linedata[srt]
@@ -2680,7 +2679,7 @@ def solve_level_pop(init,final,rates,settings):
     for i in range(1, len(matrixB)):
       if matrixA[i,i] >= 0:
         matrixA[i,i]=-1e10
-        print("Tieing level %i to ground with rate 1e10"%(i))
+        print("ATieing level %i to ground with rate 1e10"%(i))
     print("Finished check of diagonal terms at %s"%(time.asctime()))
 
 #    a = {}
@@ -3318,8 +3317,8 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
       levpop_this = numpy.zeros(nlev)
 
 
-  print("level population for recombination into Z=%i, z1=%i, z1_drv=%i"%\
-        (Z, z1, z1_drv))
+  #print("level population for recombination into Z=%i, z1=%i, z1_drv=%i, levpop=%i"%\
+        #(Z, z1, z1_drv,levpop))
   for i in range(len(levpop_this)):
     print(i, levpop_this[i])
   return levpop_this
@@ -3339,12 +3338,6 @@ def calc_cascade_population(matrixA, matrixB):
 
   mb =matrixB[1:]
   ma =matrixA[1:,1:]
-  
-  # amend diagonals with 0 rate out
-  for i in range(ma.shape[0]):
-    if ma[i,i]>= 0.0:
-      ma[i,i]=-1e20  
-  
   # solve
   try:
     popn = numpy.linalg.solve(ma,mb)
@@ -3735,7 +3728,7 @@ def run_apec_ion(settings, te, dens, Z, z1, ionfrac, abund):
   # now we have the level populations, make a line list for each ion
 
   # scale lev_pop by the ion and element abundance.
-      print("lev_pop Z=%i, z1=%i,z1_drv=%i, abund*ionfrac=%e, sum(pop)=%e:"%(Z,z1, z1, abund*ionfrac[z1-1], sum(lev_pop)*abund*ionfrac[z1-1]))
+      #print("lev_pop Z=%i, z1=%i,z1_drv=%i, abund*ionfrac=%e, sum(pop)=%e:"%(Z,z1, z1, abund*ionfrac[z1-1], sum(lev_pop)*abund*ionfrac[z1-1]))
       lev_pop *= abund*ionfrac[z1-1]
 #      for i in range(len(lev_pop)):
 #        print(i, lev_pop[i])
@@ -4823,42 +4816,21 @@ def _solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, \
 
   # if we are looking for equilibrium, return the nearest data
   if cie:
-    kT_vec, kT_isvec = util.make_vec(kT)
-    frac_out = numpy.zeros([len(kT_vec),Z+1], dtype=float)
-    for ikT, kT in enumerate(kT_vec):
 
-      kTindex = numpy.where(kTlist > kT)[0]
-
-      if len(kTindex) == len(kTlist):
-        print("kT supplied (%e K) is out of range (%e - %e K). Using lowest value."%(kT, min(kTlist), max(kTlist)))
-        kTindex = [0]
-      elif   len(kTindex) == 0:
-        print("kT supplied (%e K) is out of range (%e - %e K). Using highest value."%(kT, min(kTlist), max(kTlist)))
-        kTindex = [len(kTlist)-1]
-      else:
-        kTindex = [kTindex[0]-1, kTindex[0]]
-
-#      numpy.argmin(numpy.abs(kTlist-kT))
-      #ikTlist = numpy.argsort(numpy.abs(kTlist-kT))
-#      ite = [min(ikTlist[:2]), max(ikTlist[:2])]
-      if len(kTindex) > 1:
-
-        Tdiff = kTlist[kTindex[1]] - kTlist[kTindex[0]]
-        #Tdiff > 0.0:
-        factorlow = (kTlist[kTindex[1]]-kT)/Tdiff
-        factorhigh = (kT-kTlist[kTindex[0]])/Tdiff
-        equilib = factorlow * d['EIGEN'].data['FEQB'][kTindex[0]]+\
-                  factorhigh * d['EIGEN'].data['FEQB'][kTindex[1]]
-      else:
-        equilib = d['EIGEN'].data['FEQB'][kTindex[0]]
+    ikTlist = numpy.argsort(numpy.abs(kTlist-kT))
+    ite = [min(ikTlist[:2]), max(ikTlist[:2])]
+    Tdiff = kTlist[ite[1]] - kTlist[ite[0]]
+    if Tdiff > 0.0:
+      factorlow = (kTlist[ite[1]]-kT)/Tdiff
+      factorhigh = (kT-kTlist[ite[0]])/Tdiff
+      equilib = factorlow * d['EIGEN'].data['FEQB'][ite[0]]+\
+                factorhigh * d['EIGEN'].data['FEQB'][ite[1]]
+    else:
+      equilib = d['EIGEN'].data['FEQB'][ite[0]]
 
     #renormalize
-      equilib[equilib < 0] = 0
-      equilib /= sum(equilib)
-      frac_out[ikT,:] = equilib
-    if not kT_isvec:
-      frac_out = frac_out.sum(0)
-    return frac_out
+    equilib /= sum(equilib)
+    return equilib
 
   # now do the non-equilibrium data
 
@@ -4925,3 +4897,4 @@ def _solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, \
 
 
   return frac_out
+
