@@ -32,7 +32,7 @@ except ImportError:
 
 import numpy, os, hashlib, pickle, math
 # other pyatomdb modules
-import atomic, util, const, atomdb, apec, class_apec_trial
+import atomic, util, const, atomdb, apec, class_apec
 
 import time
 import warnings

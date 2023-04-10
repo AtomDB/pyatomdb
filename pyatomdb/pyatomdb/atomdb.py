@@ -4310,13 +4310,13 @@ def get_data(Z, z1, ftype, datacache=False, \
 
   if ftype=='ALL':
     # call for each dtype
-    print("Fetching all data for Z=%i, z1=%i"%(Z, z1))
+    #print("Fetching all data for Z=%i, z1=%i"%(Z, z1))
     for ftype in ['IR','LV','LA','EC','PC','DR','AI','PI']:
       tmp=get_data(Z, z1, ftype, datacache=datacache, \
                    settings=settings, \
        indexzero=indexzero, \
        offline=offline)
-    print("All data successfully retrieved")
+    #print("All data successfully retrieved")
     return True
 
 

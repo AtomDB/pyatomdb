@@ -638,7 +638,7 @@ class ion:
       final=final[irate]
       rates=rates[irate]
       nlev = max([max(init), max(final)])+1
-      print("nlev = %i, nlev_old =%i"%(nlev, nlev_old))
+      #print("nlev = %i, nlev_old =%i"%(nlev, nlev_old))
 
 
       if nlev <= const.NLEV_NOSPARSE:
@@ -2967,7 +2967,7 @@ class variableapec():
                   ecrate[index] = ecrate[index] * factor_EC[num]
                   change_num_ec = index
                 
-                print(index)
+                #print(index)
 
     #now multiply the excitation and deexcitation rate with factor if errortype = 'EC'
     # now merge the de-excitation data
@@ -3327,7 +3327,7 @@ class variableapec():
       '''
 
       
-      print(ecrate_new)
+      #print(ecrate_new)
       #print(larate_new)
       rate_out = numpy.append(larate_new, numpy.append(airate_new, numpy.append(ecrate_new, numpy.append(pcrate_new, irrate_new))))
       rate_out = numpy.append(rate_out, diagterms*-1)
