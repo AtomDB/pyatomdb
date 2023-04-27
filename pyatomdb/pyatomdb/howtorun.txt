@@ -1,0 +1,6 @@
+import pyatomdb,class_apec,atomdb,os
+a=class_apec.ion(26, 25)
+a.gather_rates(4e7,1)
+a.level_population(4e7,1)
+a.return_linelist(4e7,1)
+a.run_apec_ion(4e7,1)
