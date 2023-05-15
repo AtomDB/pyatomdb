@@ -102,8 +102,11 @@ class ion:
         #ionfrac=self.ionfrac
         self.Z=Z
         self.z1=z1
+        datacache={}
+        
         #self.Te=Te
         #self.N_e=N_e
+        
         Abund= atomdb.get_abundance(abundfile=False, \
                 abundset='AG89', element=[-1], datacache=False, settings=False, show=False)
         self.Abund=Abund
@@ -111,6 +114,8 @@ class ion:
         #settings = parse_par_file(fname)
         settings = parse_par_file(os.path.expandvars(settings_fname))
         self.settings = settings
+        self.datacache=datacache
+        
         
 
 
@@ -198,7 +203,7 @@ class ion:
 
 
 
-    def gather_rates(self, Te, N_e,  datacache=True, settings=False,\
+    def gather_rates(self, Te, N_e,  datacache=False, settings=False,\
                  do_la=True, do_ai=True, do_ec=True, do_pc=True,\
                  do_ir=True):
       """
@@ -227,15 +232,15 @@ class ion:
       rate: numpy.array(float)
       Rate for each transition (in s-1)
       """
+      
       Z=self.Z
       z1=self.z1
+      datacache=self.datacache
+      #print("Starting Gather Rates Z=%i, z1=%iat %s"%(Z, z1,time.asctime()))
       Te_arr, dummy = util.make_vec(Te)
       
-
-      Atomic_data =  ion.datacache(self, Z, z1)
-      
-
-      lvdat =  Atomic_data['data'][Z][z1]['LV']
+      lvdat = atomdb.get_data(Z, z1, 'LV', datacache=datacache, \
+                            settings = settings)
 
       
       
@@ -254,13 +259,15 @@ class ion:
       larate = numpy.zeros(0, dtype=float)
 
       if do_la:
+        print("Starting Gather Rates do_la at %s"%(time.asctime()))
         t1=time.time()
         if has_sum_lv:
           diagterms+=lvdat[1].data['ARAD_TOT']
 
         
-
-        ladat =  Atomic_data['data'][Z][z1]['LA']
+        ladat = atomdb.get_data(Z, z1, 'LA', datacache=datacache, \
+                            settings = settings)
+        
 
 
         
@@ -276,6 +283,8 @@ class ion:
             for i in range(len(laup)):
               diagterms[laup[i]] +=larate[i]
         t2 = time.time()
+        print("Finished Gather Rates do_la at %s: took %f seconds"%(time.asctime(),t2-t1))
+       
         
 
 
@@ -289,10 +298,13 @@ class ion:
       if do_ai:
         if has_sum_lv:
           diagterms+= lvdat[1].data['AAUT_TOT']
+        print("Starting Gather Rates do_ai at %s"%(time.asctime()))
 
 
         t1=time.time()
-        aidat =  Atomic_data['data'][Z][z1]['AI']
+        
+        aidat = atomdb.get_data(Z, z1, 'AI', datacache=datacache, \
+                            settings = settings)
 
         
         if aidat != False:
@@ -304,6 +316,7 @@ class ion:
             for i in range(len(aiup)):
               diagterms[aiup[i]] +=airate[i]
         t2=time.time()
+        print("Finished Gather Rates do_ai at %s: took %f seconds"%(time.asctime(),t2-t1))
         
 
   # get the EC data:
@@ -314,12 +327,14 @@ class ion:
 
       if do_ec:
         t1 = time.time()
-        ecdat =  Atomic_data['data'][Z][z1]['EC']
+        ecdat = atomdb.get_data(Z, z1, 'EC', datacache=datacache, \
+                            settings = settings)
         
         if ecdat != False:
 
-          lvdat =  Atomic_data['data'][Z][z1]['LV']
           
+          lvdat = atomdb.get_data(Z, z1, 'LV', datacache=datacache, \
+                            settings = settings)
 
           ecup = numpy.zeros(len(ecdat[1].data), dtype=int)
           eclo = numpy.zeros(len(ecdat[1].data), dtype=int)
@@ -337,7 +352,9 @@ class ion:
           deltaearr = lvdat[1].data['ENERGY'][ecdat[1].data['upper_lev']-1]-\
                   lvdat[1].data['ENERGY'][ecdat[1].data['lower_lev']-1]
 
-          ladat =  Atomic_data['data'][Z][z1]['LA']
+          
+          ladat = atomdb.get_data(Z, z1, 'LA', datacache=datacache, \
+                            settings = settings)
 
           for i in range(len(ecdat[1].data)):
         # check if we need to swap things
@@ -400,7 +417,8 @@ class ion:
 
       if do_pc:
         t1 = time.time()
-        pcdat =  Atomic_data['data'][Z][z1]['PC']
+        pcdat = atomdb.get_data(Z, z1, 'PC', datacache=datacache, \
+                            settings = settings)
         if pcdat != False:
           pcup = numpy.zeros(len(pcdat[1].data), dtype=int)
           pclo = numpy.zeros(len(pcdat[1].data), dtype=int)
@@ -464,7 +482,9 @@ class ion:
       irrate = numpy.zeros(0, dtype=float)
       if do_ir:
         t1 = time.time()
-        irdat =  Atomic_data['data'][Z][z1]['IR']
+        
+        irdat = atomdb.get_data(Z, z1, 'IR', datacache=datacache, \
+                            settings = settings)
 
         
         if irdat != False:
@@ -559,7 +579,8 @@ class ion:
       up_out = numpy.append(up_out, numpy.arange(nlev, dtype=int))
       lo_out = numpy.append(lo_out, numpy.arange(nlev, dtype=int))
       rate_out = numpy.append(rate_out, diagterms*-1)
-      t2=time.time()
+      
+      print("Finished Gather Rates at %s"%(time.asctime()))
       
       return up_out, lo_out, rate_out
       
@@ -2194,7 +2215,7 @@ class ion:
 
 
 
-    def run_apec_ion(self,  Te, N_e):
+    def run_apec_ion(self,  Te, N_e, *args, **kwargs):
         """
         Run the APEC code using the settings provided for an individual ion.
 
@@ -2225,10 +2246,21 @@ class ion:
         # get the data.
         
         Z=self.Z
-        z1=self.z1
+
+        
+        if not kwargs:
+         z1 = self.z1 
+         #Abund=self.Abund
+         #ionfrac= element.calc_elem_ionbal(self,  Te, N_e)
+        else:
+         z1 = kwargs.get('z1')
+         #Abund = kwargs.get('Abund')
+         #ionfrac = kwargs.get('ionfrac')
+
+
         Abund=self.Abund
         
-        ionfrac= element.calc_elem_ionbal(self, Z, Te)
+        ionfrac= element.calc_elem_ionbal(self,  Te, N_e)
         settings=self.settings
         z1_drv=z1*1
         
@@ -2299,6 +2331,7 @@ class ion:
     # fix any sub-zero level populations
                 lev_pop[lev_pop<0] = 0.0
                 lev_pop *= Abund[Z]*ionfrac[z1-1]
+                #print('***1',Abund[Z]*ionfrac[z1-1],z1)
     
       
                 linelist_exc,  continuum['twophot'] = ion.do_lines(self,  Z, z1, Te, N_e, datacache=datacache, settings=settings, z1_drv_in=z1_drv, lev_pop=lev_pop)
@@ -2311,7 +2344,7 @@ class ion:
                 # skipping the exact level calculation, fill it with zeros, ground state with 1.
                 lev_pop = numpy.zeros(nlev, dtype=float)
                 lev_pop[0] = 1.0*Abund[Z]*ionfrac[z1-1]
-
+                
         else:
             lev_pop=numpy.ones(1, dtype=float)*Abund[Z]*ionfrac[z1-1]
 
@@ -2331,6 +2364,7 @@ class ion:
                 linelist_dr, drlevrates = ion.calc_satellite(self, Z, z1, Te, datacache=datacache, settings=settings)
                 linelist_dr['epsilon']*=Abund[Z]*ionfrac[z1_drv-1]
                 drlevrates *=Abund[Z]*ionfrac[z1_drv-1]
+                
 
             else:
                 linelist_dr = numpy.zeros(0, dtype= setup.generate_datatypes(self,'linetype'))
@@ -2352,10 +2386,10 @@ class ion:
             tmpdrlevrates,xxx = util.make_vec(drlevrates)
             tmprrlevrates,xxx = util.make_vec(rrlevrates)
 
-            print(lev_pop)
+            #print(lev_pop)
             if sum(tmpdrlevrates) + sum(tmprrlevrates)>0:
       
-                print('*** CHECK',lev_pop, Z, z1, z1_drv, Te, N_e)
+                #print('*** CHECK',lev_pop, Z, z1, z1_drv, Te, N_e)
                 levpop_recomb= ion.calc_recomb_popn(self, lev_pop, Z, z1, z1_drv, Te, N_e, drlevrates, rrlevrates, datacache=datacache, settings=settings)
                 
 
@@ -2363,7 +2397,7 @@ class ion:
 
 
                 linelist_rec, tmptwophot =ion.do_lines(self, Z, z1, Te , N_e,  datacache=datacache, settings=settings, z1_drv_in=z1_drv, lev_pop=levpop_recomb)  
-                print(linelist_rec)
+                
                 continuum['twophot']+= tmptwophot
             
         # now do the ionizing cases
@@ -2393,6 +2427,7 @@ class ion:
                         ion.do_lines(self, Z, z1, Te, N_e,  datacache=datacache, settings=settings,  z1_drv_in=z1_drv, lev_pop=lev_pop)
 
                     linelist_ion = numpy.append(linelist_ion, linelist_ion_tmp)
+                    
                     continuum['twophot']+=tmptwophot
 
                 lev_pop_parent = lev_pop
@@ -2435,15 +2470,13 @@ class ion:
         
             pickle.dump(ret, open(fname, 'wb'))
 
-        print(linelist)
+        #print(linelist)
         return linelist, continuum, pseudocont
 
 
     
 
-
-
-
+    
 
 
 
@@ -5592,7 +5625,7 @@ c
 
 
 
-class element():
+class element(ion):
 
 
     '''
@@ -5611,7 +5644,8 @@ class element():
     
     
 
-    def __init__(self, Z, Te, N_e, ind, factor, errortype, Abund):
+    
+    def __init__(self, Z, Te=None, N_e=None, ind=None, parent=None,  settings_fname='$ATOMDB/apec.par'):
         '''
         Z=self.Z
         Te=self.Te
@@ -5622,12 +5656,38 @@ class element():
         '''
         #ionfrac= calc_elem_ionbal_delta(self, Z, Te, factor, errortype)
         
+        
+        
+        
+        self.Z=Z
+
         Abund= atomdb.get_abundance(abundfile=False, \
                 abundset='AG89', element=[-1], datacache=False, settings=False, show=False)
+        self.Abund=Abund
+        settings = parse_par_file(os.path.expandvars(settings_fname))
+        self.settings = settings
+        
 
-        fname = os.path.expandvars('$ATOMDB/apec.par')
-        settings = parse_par_file(fname)
 
+        #list1=[]
+        #list1 = list(range(1,Z+1))
+        
+        #a = ion(Z,list1)
+        
+        #list2=a.z1
+
+        #for i in list2:
+         # self.z1= i-2
+          #print(self.z1)
+        #for z1 in range(1, Z+1):
+
+        #  a = ion(Z,z1)
+        
+        #  self.z1 = a.z1
+        #  print(self.z1)
+        
+
+        
 
 
         
@@ -6258,7 +6318,7 @@ class element():
 
 
 
-    def calc_elem_ionbal(self, Z, Te, tau=False, init_pop='ionizing', teunit='K',\
+    def calc_elem_ionbal(self,  Te, N_e, tau=False, init_pop='ionizing', teunit='K',\
                     extrap=True, settings=False, datacache=False):
       """
       Calculate the ionization balance for all the elements in Zlist.
@@ -6293,6 +6353,7 @@ c
 
       """
 
+      Z=self.Z
       kT = util.convert_temp(Te, teunit, 'keV')
       if tau==False:
         cie = True
@@ -6435,7 +6496,7 @@ c
     
 
 
-    def run_apec_element(self, Z, Te, N_e, settings):
+    def run_apec_element(self, Te, N_e):
       """
       Run the APEC code using the settings provided for one element
 
@@ -6458,6 +6519,10 @@ c
       None
       """
 
+      settings=self.settings
+      Z=self.Z
+
+      
       if settings['Ionization']=='NEI':
         z1list = list(range(1, Z+2))
         ionfrac = numpy.ones(len(z1list), dtype=float)
@@ -6503,9 +6568,9 @@ c
       ecent = (ebins[1:]+ebins[:-1])/2
 
       z1_drv_list = numpy.arange(1,Z+2, dtype=int)
-      for z1_drv in range(1, Z+2):
+      for z1_drv in range(3, Z-3):
 
-        tmplinelist, tmpcontinuum, tmppseudocont = ion.run_apec_ion(self, settings, Z, z1_drv, Te, N_e, ionfrac, Abund)
+        tmplinelist, tmpcontinuum, tmppseudocont = ion.run_apec_ion(self,  Te, N_e, z1=z1_drv)
         linelist = numpy.append(linelist, tmplinelist)
         contlist[z1_drv] = tmpcontinuum
         pseudolist[z1_drv] = tmppseudocont
@@ -6515,7 +6580,7 @@ c
       if settings['Ionization']=='CIE':
 
         cieout = element.generate_cie_outputs(self, settings, Z, linelist, contlist, pseudolist)
-        return cieout
+        return linelist
       
       elif settings['Ionization']=='NEI':
         ionftmp= allelement.calc_full_ionbal(self,Te, 1e14, Te_init=Te, Zlist=[Z], extrap=True)
