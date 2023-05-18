@@ -9,7 +9,7 @@ import math
 import numpy, copy, pickle
 import hashlib
 import os, time, sys
-import util, const, atomic, atomdb
+from . import util, const, atomic, atomdb
 import scipy, ctypes
 import astropy.io.fits as pyfits
 #from __main__ import *

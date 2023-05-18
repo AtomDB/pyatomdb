@@ -9,7 +9,7 @@ Adam Foster July 17th 2015
 import numpy, os, errno, hashlib
 import requests, urllib.request, urllib.parse, urllib.error, time, subprocess, shutil, wget, glob
 import datetime
-import const, atomic, atomdb
+from . import const, atomic, atomdb
 from io import StringIO
 import ftplib
 try:
