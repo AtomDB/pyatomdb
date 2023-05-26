@@ -2439,10 +2439,10 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                  'ion_drv', \
                                  'upperlev',\
                                  'lowerlev'],\
-                        'formats':[numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
+                        'formats':[float,\
+                                   float,\
+                                   float,\
+                                   float,\
                                    numpy.int,\
                                    numpy.int,\
                                    numpy.int,\
@@ -2459,10 +2459,10 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                  'ion', \
                                  'upperlev',\
                                  'lowerlev'],\
-                        'formats':[numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
+                        'formats':[float,\
+                                   float,\
+                                   float,\
+                                   float,\
                                    numpy.int,\
                                    numpy.int,\
                                    numpy.int,\
@@ -2476,10 +2476,10 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                  'Ion', \
                                  'UpperLev',\
                                  'LowerLev'],\
-                        'formats':[numpy.float32,\
-                                   numpy.float32,\
-                                   numpy.float32,\
-                                   numpy.float32,\
+                        'formats':[float32,\
+                                   float32,\
+                                   float32,\
+                                   float32,\
                                    numpy.int32,\
                                    numpy.int32,\
                                    numpy.int32,\
@@ -2495,10 +2495,10 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                  'Ion_drv', \
                                  'UpperLev',\
                                  'LowerLev'],\
-                        'formats':[numpy.float32,\
-                                   numpy.float32,\
-                                   numpy.float32,\
-                                   numpy.float32,\
+                        'formats':[float32,\
+                                   float32,\
+                                   float32,\
+                                   float32,\
                                    numpy.int32,\
                                    numpy.int32,\
                                    numpy.int32,\
@@ -2516,10 +2516,10 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                  'Ion_Drv', \
                                  'UpperLev',\
                                  'LowerLev'],\
-                        'formats':[numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
+                        'formats':[float,\
+                                   float,\
+                                   float,\
+                                   float,\
                                    numpy.int,\
                                    numpy.int,\
                                    numpy.int,\
@@ -2536,10 +2536,10 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                  'Ion', \
                                  'UpperLev',\
                                  'LowerLev'],\
-                        'formats':[numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
+                        'formats':[float,\
+                                   float,\
+                                   float,\
+                                   float,\
                                    numpy.int,\
                                    numpy.int,\
                                    numpy.int,\

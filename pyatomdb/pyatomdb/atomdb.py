@@ -4383,10 +4383,13 @@ def get_data(Z, z1, ftype, datacache=False, \
 
       if not(havedata):
         if settings:
-          if settings['filemap']:
-            fmapfile = settings['filemap']
-          if settings['atomdbroot']:
+          print(settings)
+          if settings['FileMap']:
+            fmapfile = settings['FileMap']
+          if 'atomdbroot' in settings.keys():
             atomdbroot = settings['atomdbroot']
+          else:
+            atomdbroot = os.environ['ATOMDB']
 
         fname = get_filemap_file(ftype, False, False, fmapfile=fmapfile,\
                                atomdbroot=atomdbroot, quiet=True,\

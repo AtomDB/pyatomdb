@@ -71,21 +71,8 @@ class ion:
     #errortype= str(sys.argv[6])
 
 
-    
-    
-
-
-
-
-    
-    
-    
-    
-    
-
-
-
-    def __init__(self, Z, z1, Te=None, N_e=None, ind=None, settings_fname='$ATOMDB/apec.par'):
+    def __init__(self, Z, z1, Te=None, N_e=None, ind=None, settings_fname='$ATOMDB/apec.par',\
+                Abund=None):
         
         '''
         Z=self.Z
@@ -102,32 +89,25 @@ class ion:
         #ionfrac=self.ionfrac
         self.Z=Z
         self.z1=z1
-        datacache={}
+        self.datacache={}
         
         #self.Te=Te
         #self.N_e=N_e
-        
-        Abund= atomdb.get_abundance(abundfile=False, \
-                abundset='AG89', element=[-1], datacache=False, settings=False, show=False)
-        self.Abund=Abund
-        #fname = os.path.expandvars('$ATOMDB/apec.par')
-        #settings = parse_par_file(fname)
-        settings = parse_par_file(os.path.expandvars(settings_fname))
-        self.settings = settings
-        self.datacache=datacache
-        
-        
+
+        self.settings = parse_par_file(os.path.expandvars(settings_fname))
 
 
-        
-
-
-
-
-    
-    
-    
-
+        if Abund is None:
+          Abund= atomdb.get_abundance(abundfile=False, \
+                  abundset='AG89', element=[-1], datacache=self.datacache, settings=self.settings, show=False)
+          self.Abund=Abund[Z]
+        else:
+          if type(Abund)==float:
+            self.Abund=Abund
+          elif type(Abund)==dict:
+            self.Abund=Abund[Z]
+          
+          
 
     """
     Disable printing.
@@ -146,66 +126,53 @@ class ion:
    
 
 
-    def datacache(self, Z, z1, settings=False):
+    # def datacache(self, Z, z1, settings=False):
 
 
-        """
-        Creating an empty dictionary datacache
+        # """
+        # Creating an empty dictionary datacache
     
-        Reading atomic data for:
-        ‘IR’ - ionization and recombination
-        ‘LV’ - energy levels
-        ‘LA’ - radiative transition data (lambda and A-values)
-        ‘EC’ - electron collision data
-        ‘PC’ - proton collision data
-        ‘DR’ - dielectronic recombination satellite line data
-        ‘PI’ - XSTAR photoionization data
-        ‘AI’ - autoionization data
+        # Reading atomic data for:
+        # ‘IR’ - ionization and recombination
+        # ‘LV’ - energy levels
+        # ‘LA’ - radiative transition data (lambda and A-values)
+        # ‘EC’ - electron collision data
+        # ‘PC’ - proton collision data
+        # ‘DR’ - dielectronic recombination satellite line data
+        # ‘PI’ - XSTAR photoionization data
+        # ‘AI’ - autoionization data
 
-        Parameters
-        ----------
-        Z: int
-          The nuclear charge of the element
-        z1 : int
-          ion charge
-        datacache : dict
-          Used for caching the data. See description in atomdb.get_data
-        settings : dict
-          See description in atomdb.get_data
+        # Parameters
+        # ----------
+        # Z: int
+          # The nuclear charge of the element
+        # z1 : int
+          # ion charge
+        # datacache : dict
+          # Used for caching the data. See description in atomdb.get_data
+        # settings : dict
+          # See description in atomdb.get_data
 
-        Returns: datacache
-        Storing in datacache for later use
-        """
+        # Returns: datacache
+        # Storing in datacache for later use
+        # """
         
 
-        datacache={}
-        self.Z=Z
-        self.z1=z1
+        # datacache={}
+        # self.Z=Z
+        # self.z1=z1
         
-        #for z1 in range(1, Z+1):
-         # Alldat = atomdb.get_data(Z, z1, 'ALL', datacache=datacache, \
-                            #settings = settings)
-        Alldat = atomdb.get_data(Z, z1,  'ALL', datacache=datacache, \
-                            settings = settings)
+        # #for z1 in range(1, Z+1):
+         # # Alldat = atomdb.get_data(Z, z1, 'ALL', datacache=datacache, \
+                            # #settings = settings)
+        # Alldat = atomdb.get_data(Z, z1,  'ALL', datacache=datacache, \
+                            # settings = settings)
         
-        return datacache
+        # return datacache
 
-
-
-
-
-
-    
-    
-
-
-
-
-
-
-    def gather_rates(self, Te, N_e,  datacache=False, settings=False,\
+    def gather_rates(self, T, N_e,  datacache=None, settings=None,\
                  do_la=True, do_ai=True, do_ec=True, do_pc=True,\
-                 do_ir=True):
+                 do_ir=True, output_by_process=False, *args, **kwargs):
       """
       fetch the rates for all the levels of Z, z1.  'IR', 'LV', 'LA', 'EC', 'PC', 'DR', 'PI', 'AI' rates are being read from datacache.
       Parameters
@@ -214,14 +181,16 @@ class ion:
         The nuclear charge of the element
       z1 : int
         ion charge +1
-      Te : float
-        temperture (Kelvin)
+      T : float
+        temperature (Kelvin)
       N_e: float
         electron density (cm^-3)
       settings : dict
         See description in atomdb.get_data
       datacache : dict
         Used for caching the data. See description in atomdb.get_data
+      output_by_process : bool (False)
+        If set,  
 
       Returns
       -------
@@ -233,17 +202,27 @@ class ion:
       Rate for each transition (in s-1)
       """
       
-      Z=self.Z
-      z1=self.z1
-      datacache=self.datacache
+      if not kwargs:
+        z1 = self.z1
+        Z = self.Z
+      else:
+        z1 = kwargs.get('z1')
+        Z = kwargs.get('Z')
+
       #print("Starting Gather Rates Z=%i, z1=%iat %s"%(Z, z1,time.asctime()))
-      Te_arr, dummy = util.make_vec(Te)
-      
+      T_arr, dummy = util.make_vec(T)
+
+      if datacache is None:
+        datacache = self.datacache
+      if settings is None:
+        settings = self.settings
+
       lvdat = atomdb.get_data(Z, z1, 'LV', datacache=datacache, \
                             settings = settings)
 
-      
-      
+
+      print("gather rates: Z,z1=", Z, z1)
+
       nlev = len(lvdat[1].data)
 
       diagterms = numpy.zeros(nlev)
@@ -286,6 +265,9 @@ class ion:
         print("Finished Gather Rates do_la at %s: took %f seconds"%(time.asctime(),t2-t1))
        
         
+
+      print("larates=", laup, lalo, larate)
+     
 
 
       # create dummy results
@@ -346,7 +328,7 @@ class ion:
           idex = 0
     # need to loop and calculate each result
 
-#    Te_arr = numpy.array([te])
+#    T_arr = numpy.array([T])
           deglarr = lvdat[1].data['LEV_DEG'][ecdat[1].data['lower_lev']-1]
           deguarr = lvdat[1].data['LEV_DEG'][ecdat[1].data['upper_lev']-1]
           deltaearr = lvdat[1].data['ENERGY'][ecdat[1].data['upper_lev']-1]-\
@@ -378,7 +360,7 @@ class ion:
                                      ecdat[1].data['max_temp'][i],\
                                      ecdat[1].data['temperature'][i],\
                                      ecdat[1].data['effcollstrpar'][i],\
-                                     deltaearr[i]/1e3, Te_arr, Z, \
+                                     deltaearr[i]/1e3, T_arr, Z, \
                                      degl, degu,\
                                      force_extrap=True,\
                                      levdat=lvdat,ladat=ladat, \
@@ -430,7 +412,7 @@ class ion:
           idex = 0
     # need to loop and calculate each result
 
-#    Te_arr = numpy.array([te])
+#    T_arr = numpy.array([T])
           deglarr = lvdat[1].data['LEV_DEG'][pcdat[1].data['lower_lev']-1]
           deguarr = lvdat[1].data['LEV_DEG'][pcdat[1].data['upper_lev']-1]
           deltaearr = lvdat[1].data['ENERGY'][pcdat[1].data['upper_lev']-1]-\
@@ -446,7 +428,7 @@ class ion:
                                      pcdat[1].data['max_temp'][i],\
                                      pcdat[1].data['temperature'][i],\
                                      pcdat[1].data['effcollstrpar'][i],\
-                                     deltaearr[i]/1e3, Te_arr, Z, \
+                                     deltaearr[i]/1e3, T_arr, Z, \
                                      deglarr[i], deguarr[i],\
                                      force_extrap=True)
 
@@ -495,7 +477,7 @@ class ion:
           iir = 0
       # need to loop and calculate each result
 
-          Te_arr = numpy.array(Te)
+#          T_arr = numpy.array(T)
           irtmp = irdat[1].data[(irdat[1].data['TR_TYPE']=='XI') | \
                             (irdat[1].data['TR_TYPE']=='CI')]
 
@@ -517,7 +499,7 @@ class ion:
               continue
             else:
 
-              rate=atomdb.get_maxwell_rate(Te_arr, irdat, i, lvdat, \
+              rate=atomdb.get_maxwell_rate(T_arr, irdat, i, lvdat, \
                                      lvdatap1=lvdatp1, ionpot=ionpot, \
                                      exconly=True)
 
@@ -538,37 +520,38 @@ class ion:
           for i in range(len(irup)):
             diagterms[irup[i]] +=irrate[i]
         t2=time.time()
-        
 
-      tmp={}
-      tmp['up']={}
-      tmp['lo']={}
-      tmp['rate']={}
-      tmp['up']['ec'] = ecup
-      tmp['lo']['ec'] = eclo
-      tmp['rate']['ec'] = ecrate
+# Detailed  output (optional)
+      if output_by_process:
+        tmp={}
+        tmp['init']={}
+        tmp['final']={}
+        tmp['rate']={}
+        tmp['init']['ec'] = ecup
+        tmp['final']['ec'] = eclo
+        tmp['rate']['ec'] = ecrate
+  
+        tmp['init']['pc'] = pcup
+        tmp['final']['pc'] = pclo
+        tmp['rate']['pc'] = pcrate
+  
+        tmp['init']['ir'] = irup
+        tmp['final']['ir'] = irlo
+        tmp['rate']['ir'] = irrate
+  
+        tmp['init']['ai'] = aiup
+        tmp['final']['ai'] = ailo
+        tmp['rate']['ai'] = airate
+  
+        tmp['init']['la'] = laup
+        tmp['final']['la'] = lalo
+        tmp['rate']['la'] = larate
+  
+        tmp['init']['diag'] = numpy.arange(nlev, dtype=int)
+        tmp['final']['diag'] = numpy.arange(nlev, dtype=int)
+        tmp['rate']['diag'] = diagterms*-1
+        return(tmp)
 
-      tmp['up']['pc'] = pcup
-      tmp['lo']['pc'] = pclo
-      tmp['rate']['pc'] = pcrate
-
-      tmp['up']['ir'] = irup
-      tmp['lo']['ir'] = irlo
-      tmp['rate']['ir'] = irrate
-
-      tmp['up']['ai'] = aiup
-      tmp['lo']['ai'] = ailo
-      tmp['rate']['ai'] = airate
-
-      tmp['up']['la'] = laup
-      tmp['lo']['la'] = lalo
-      tmp['rate']['la'] = larate
-
-      tmp['up']['diag'] = numpy.arange(nlev, dtype=int)
-      tmp['lo']['diag'] = numpy.arange(nlev, dtype=int)
-      tmp['rate']['diag'] = diagterms*-1
-
-#  pickle.dump(tmp, open('tmp_gather_%i_%i.pkl'%(Z,z1),'wb'))
 
       t1=time.time()
       up_out = numpy.append(laup, numpy.append(aiup, numpy.append(ecup, numpy.append(pcup, irup))))
@@ -581,8 +564,12 @@ class ion:
       rate_out = numpy.append(rate_out, diagterms*-1)
       
       print("Finished Gather Rates at %s"%(time.asctime()))
-      
-      return up_out, lo_out, rate_out
+
+      tmp = {}
+      tmp['init'] = up_out
+      tmp['final'] = lo_out
+      tmp['rate'] = rate_out
+      return(tmp)
       
 
 
@@ -625,7 +612,7 @@ class ion:
 
     blockPrint()
 
-    def solve_level_pop(self, init,final,rates,settings):
+    def solve_level_pop(self, init,final,rates):
       """
       Solve the level population
 
@@ -637,10 +624,6 @@ class ion:
         The initial level for each transition
       rates : array(float)
         The rate for each transition
-
-      settings: dictionary
-        The settings read from the apec.par file by parse_par_file
-
       Returns
       -------
       array(float)
@@ -790,15 +773,7 @@ class ion:
 
     enablePrint()
 
-
-
-
-
-
-
-    def level_population(self, Te, N_e):
-
-
+    def calc_level_population(self, rates=None):
         """
         Calculate level populations for all the levels of Z, z1
 
@@ -815,33 +790,21 @@ class ion:
         settings : dict
         """
 
-        Z=self.Z
-        z1=self.z1
-        settings=self.settings
-        datacache = {}
-        up, lo, rates = ion.gather_rates(self, Te, N_e)
-        lev_pop = ion.solve_level_pop (self, up,lo,rates, settings)
-        #lev_pop *= ion.ion_fraction(self, Z, z1)
-        return lev_pop
+        if rates is None:
+          rates = self.rates
+          
+#  removing this line as you have already called gather rates
+#        up, lo, rates = ion.gather_rates(self, Te, N_e)
+
+        lev_pop = self.solve_level_pop (rates['init'],rates['final'],rates['rate'])
+
+# just return the level population straight up
+        self.lev_pop[self.z1]=lev_pop
 
 
-    
-
-
-
-
-        
-
-
-
-
-    
-    
-
-
-    def calc_recomb_popn(self, levpop, Z, z1, z1_drv,Te, N_e, drlevrates, rrlevrates,\
-                     settings=False, datacache=False, dronly=False,\
-                     rronly=False):
+    def calc_recomb_popn(self, T, N_e, drlevrates, rrlevrates,\
+                     dronly=False,\
+                     rronly=False, *args, **kwargs):
       """
       Calculate the level population of a recombined ion
 
@@ -850,10 +813,8 @@ class ion:
       levpop: array(float)
         Level populations, already taking into account elemental abundance
         and ion fraction of z1_drv
-      Z: int
-      z1: int
       z1_drv: int
-      Te: electron temperature (K)
+      T: electron temperature (K)
       N_e: electron density (cm^-3)
       drlevrates: array(float)
         Rates into each level from DR calculations
@@ -870,22 +831,35 @@ class ion:
 
       # levpop at this point should alread have the corrected abundance in
       # there
+      if not kwargs:
+        z1_drv = self.z1
+        Z = self.Z
+        levpop = self.lev_pop
+      else:
+        z1_drv = kwargs.get('z1')
+        Z = kwargs.get('Z')
+        levpop = kwargs.get('lev_pop')
 
-      Atomic_data =  ion.datacache(self, Z, z1)
-      lvdat =  Atomic_data['data'][Z][z1]['LV']
+      # z1 is one less than z1_drv, as we are recombining.
+      z1 = z1_drv-1
       
+      lvdat =  atomdb.get_data(Z,z1,'LV', settings=self.settings, datacache=self.datacache)
+
+      # If no data, return 0
       if not lvdat:
         nlev = 1
         levpop = numpy.zeros(1, dtype=float)
-        return levpop
+        self.recomb_levpop = levpop
+        return
+
       nlev = len(lvdat[1].data)
-      Tarr, dummy = util.make_vec(Te)
+      Tarr, dummy = util.make_vec(T)
 
       if nlev > const.NLEV_NOSPARSE:
         print("using sparse solver for recomb")
 
     
-        aidat =  Atomic_data['data'][Z][z1]['AI']
+        aidat =  atomdb.get_data(Z,z1,'AI', settings=self.settings, datacache=self.datacache)
         
         if aidat:
           ailev = numpy.array(util.unique(aidat[1].data['level_init']))-1
@@ -901,7 +875,7 @@ class ion:
         recombrate = numpy.zeros(nlev, dtype=float)
 
         #get the recomb data
-        irdat =  Atomic_data['data'][Z][z1]['IR']
+        irdat =  atomdb.get_data(Z,z1,'IR', settings=self.settings, datacache=self.datacache)
         
 
         for iir, ir in enumerate(irdat[1].data):
@@ -924,7 +898,7 @@ class ion:
 
         matrixA = {}
         matrixA['init'], matrixA['final'], matrixA['rate']=\
-          ion.gather_rates(self,  Te, N_e, datacache=datacache, settings=settings,\
+          self.gather_rates(T, N_e, datacache=self.datacache, settings=self.settings,\
                  do_la=True, do_ai=False, do_ec=False, do_pc=False,\
                  do_ir=False)
 
@@ -967,7 +941,7 @@ class ion:
 
         rrrecombrate = numpy.zeros(nlev, dtype=float)
         drrecombrate = numpy.zeros(nlev, dtype=float)
-        irdat =  Atomic_data['data'][Z][z1]['IR']
+        irdat =  atomdb.get_data(Z,z1,'IR', settings=self.settings, datacache=self.datacache)
         
 
         havedrrate=False
@@ -1019,17 +993,17 @@ class ion:
 
         matrixA = numpy.zeros([nlev,nlev],dtype=float)
 
-        ladat =  Atomic_data['data'][Z][z1]['LA']
-        
+#        ladat = atomdb.get_data(Z,z1,'LA', settings=self.settings, datacache=self.datacache)
 
         matrixA_in = {}
-        matrixA_in['init'], matrixA_in['final'], matrixA_in['rate']=\
-          ion.gather_rates(self,  Te, N_e,  datacache=datacache, settings=settings,\
+#        matrixA_in['init'], matrixA_in['final'], matrixA_in['rate']=
+        matrixA_in=\
+          self.gather_rates(T, N_e,  datacache=self.datacache, settings=self.settings,\
                  do_la=True, do_ai=False, do_ec=False, do_pc=False,\
-                 do_ir=False)
+                 do_ir=False, Z=self.Z, z1=self.z1-1)
 
-        #datacache={}
-
+        # return from gather rates is matrixA_in['up'], ['lo'], ['rate']
+        print(matrixA_in)
 
         for i in range(len(matrixA_in['init'])):
           matrixA[matrixA_in['final'][i], matrixA_in['init'][i]]+=matrixA_in['rate'][i]
@@ -1037,7 +1011,7 @@ class ion:
     # solve unless matrixB ==0
         if sum(matrixB[1:])>0:
           matrixB = -1*matrixB
-          levpop_this = setup.calc_cascade_population(self, matrixA, matrixB)
+          levpop_this = _calc_cascade_population(matrixA, matrixB)
         else:
           levpop_this = numpy.zeros(nlev)
 
@@ -1049,15 +1023,13 @@ class ion:
       return levpop_this
 
 
-
-
-
-
-
-
-
-    def calc_ioniz_popn(self, levpop, Z, z1, z1_drv,Te, N_e, settings=False, \
-                    datacache=False, do_xi=False):
+#                     rronly=False, *args, **kwargs):
+#    def calc_recomb_popn(self, T, N_e, drlevrates, rrlevrates,\
+#                     dronly=False,\
+#                     rronly=False, *args, **kwargs):
+                       
+    def calc_ioniz_popn(self, levpop, Z, z1, z1_drv,T, N_e, settings=None, \
+                    datacache=None, do_xi=False):
         """
         Calculate the level population due to ionization into the ion
 
@@ -1069,7 +1041,7 @@ class ion:
         Z: int
         z1: int
         z1_drv: int
-        T: float
+        T: float (K)
         Ne: float
         factor: float  
         errortype:str
@@ -1091,14 +1063,13 @@ class ion:
         import scipy.sparse as sparse
         from scipy.sparse.linalg import spsolve
 
-        datacache = {}
-        #Z=self.Z
-        #z1=self.z1
-        #print("Starting calc_ioniz_popn at %s"%(time.asctime()))
-        Atomic_data =  ion.datacache(self, Z, z1)
-        lvdat =  Atomic_data['data'][Z][z1]['LV']
-        
-        #lvdat = atomdb.get_data(Z,z1,'LV', settings=settings, datacache=datacache)
+        if datacache is not None:
+          self.datacache = datacache
+        if settings is not None:
+          self.settings = settings
+
+        lvdat = atomdb.get_data(Z, z1, 'LV', datacache=self.datacache, \
+                            settings = self.settings)
 
   # if we have no lv data, ignore.
         if not util.keyword_check(lvdat):
@@ -1107,46 +1078,37 @@ class ion:
         nlev = len(lvdat[1].data)
 
   # get populating rate from previous ion
-        Atomic_data_prev =  ion.datacache(self, Z, z1-1)
-        aidat = Atomic_data_prev['data'][Z][z1-1]['AI']
+        aidat = atomdb.get_data(Z,z1-1,'AI', datacache=self.datacache, \
+                            settings = self.settings)
         ionizrateai=numpy.zeros(nlev, dtype=float)
         ionizrateir=numpy.zeros(nlev, dtype=float)
 
-        #print("Starting calc_ioniz_popn aidat loop at %s"%(time.asctime()))
         if aidat:
             tmp_pop = levpop[aidat[1].data['level_init']-1]
             for iai in range(len(aidat[1].data)-1):
               ionizrateai[aidat[1].data['level_final'][iai]-1] += \
                   tmp_pop[iai]*aidat[1].data['auto_rate'][iai]
 
-    #aidat.close()
-        #print("Finished calc_ioniz_popn aidat loop at %s"%(time.asctime()))
-
-
-        #print("Starting calc_ioniz_popn xidat loop at %s"%(time.asctime()))
         if do_xi:
-
-            irdat = Atomic_data_prev['data'][Z][z1-1]['IR']
-            #irdat = atomdb.get_data(Z, z1-1, 'IR', settings=settings, datacache=datacache)
+            irdat = atomdb.get_data(Z, z1-1, 'IR', datacache=self.datacache, \
+                            settings = self.settings)
             ionpot = float(irdat[1].header['ionpot'])
             if z1 >1:
-                lvdatm1 = Atomic_data_prev['data'][Z][z1-1]['LV']
-  # go through each excitation, have fun
+                lvdatm1 = atomdb.get_data(Z,z1-1,'LV', datacache=self.datacache, settings=self.settings)
+
 
             for iir, ir in enumerate(irdat[1].data):
                 if ir['TR_TYPE'] in ['XI']:
-                    Tarr =  numpy.array([Te])
+                    Tarr =  numpy.array([T])
                     ionrate=atomdb.get_maxwell_rate(Tarr, irdat, iir, lvdatm1, \
                                      lvdatap1=lvdat, ionpot=ionpot)
                     
                     ionizrateir[ir['level_final']-1] += levpop[ir['level_init']-1]*\
                                        ionrate
-
-
-
-
         ionizrate=ionizrateir+ionizrateai
         matrixB = ionizrate
+
+  ### Get the rates for cascade in the next ion ###
 
   # save some time if there is nothing to ionize.
 
@@ -1160,9 +1122,8 @@ class ion:
             return popn
         maxlev=maxlev[-1]
   
-        matrixA_in={}
-        matrixA_in['init'], matrixA_in['final'], matrixA_in['rate'] = \
-            ion.gather_rates(self,  Te, N_e, datacache=datacache, settings=settings,\
+        matrixA_in = \
+            self.gather_rates(T, N_e, datacache=self.datacache, settings=self.settings,\
                         do_la=True, do_ai=True, do_ec=False, do_pc=False,\
                         do_ir=False)
 
@@ -1180,13 +1141,9 @@ class ion:
 
         if (maxlev <= const.NLEV_NOSPARSE):
     # convert to a regular solver
-            #print("regular solver")
             matrixA = numpy.zeros([maxlev+1,maxlev+1], dtype=float)
-
             for i in range(len(matrixA_in['init'])):
                 matrixA[matrixA_in['final'][i], matrixA_in['init'][i]] += matrixA_in['rate'][i]
-
-
     # bug-u-fix
             for i in range(1, maxlev):
                 if matrixA[i,i] >= 0:
@@ -1266,63 +1223,6 @@ class ion:
 
 
 
-
-    def kurucz(self, uin, gam):
-      """
-      Correction factors to Kellogg bremstrahlung calculation by Bob Kurucz
-
-      Parameters
-      ----------
-      uin : array(float)
-        energy grid, units of E/kT (both in keV)
-      gam : array(float)
-        Z**2/T, in units of Rydbergs
-
-      Returns
-      -------
-      array(float)
-        gaunt factors at high gam (> 0.1)
-      """
-
-      ya = numpy.array([5.4,5.25, 5.,4.69,4.48,4.16,3.85,4.77,4.63,4.4,\
-                    4.13,3.87,3.52, 3.27,4.15,4.02,3.8,3.57,3.27,\
-                    2.98,2.7,3.54,3.41,3.22,2.97,2.7,2.45,2.2,2.94,\
-                    2.81,2.65,2.44,2.21,2.01,1.81,2.41,2.32,2.19,2.02,\
-                    1.84,1.67,1.5,1.95,1.9,1.8,1.68,1.52,1.41,1.3,\
-                    1.55,1.56,1.51,1.42,1.33,1.25,1.17,1.17,1.3,1.32,\
-                    1.3,1.2,1.15,1.11,.86,1.,1.15,1.18,1.15,1.11,1.08,\
-                    .59,.76,.97,1.09,1.13,1.1,1.08,.38,.53,.76,.96,\
-                    1.08,1.09,1.09])
-      gaunt = numpy.ones(len(uin), dtype=float)
-
-
-      rj = numpy.log10(gam) * 2. + 3.
-      j = numpy.array(numpy.floor(rj), dtype=int)
-      rj =  numpy.array(j, dtype=float)
-
-      rk = numpy.log10(uin) * 2. + 9.
-      k = numpy.array(numpy.floor(rk), dtype=int)
-      k[k<1] = 1
-      rk =  numpy.array(k, dtype=float)
-
-
-
-      gaunt[(j >= 7) | (j < 1) | (k>=12)]=0.0
-
-      i = numpy.where(gaunt>0)[0]
-
-
-      t = (numpy.log10(gam) - (rj - 3.) / 2.) / .5
-      u = (numpy.log10(uin[i]) - (rk[i] - 9.) / 2.) / .5
-  # so t is a scalar
-  # u is a vector
-
-      gaunt[i] = (1. - t) * (1. - u) * ya[j + k[i] * 7 - 8] + \
-        t * (1.-u)* ya[j + 1 + k[i]*7 - 8] + t*u*ya[j + 1 + (k[i] + 1) * 7 - 8] +\
-        (1. - t) * u * ya[j + (k[i] + 1) * 7 - 8]
-
-      return gaunt
-
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
@@ -1332,8 +1232,8 @@ class ion:
 
 
 
-    def calc_brems_gaunt(self, E, T, z1, brems_type, datacache=False, \
-                                          settings=False):
+    def calc_brems_gaunt(self, E, T, z1, brems_type, datacache=None, \
+                                          settings=None):
       """
       calculate the bremstrahulung free-free gaunt factor
 
@@ -1363,6 +1263,11 @@ class ion:
         The gaunt factor for the free-free process.
 
       """
+      if datacache is not None:
+        self.datacache = datacache
+      if settings is not None:
+        self.settings = settings
+        
 
       Evec, Eisvec = util.make_vec(E)
       gaunt_ff = numpy.zeros(len(Evec), dtype=float)
@@ -1371,9 +1276,8 @@ class ion:
       z0 = z1-1.0 # we need to use the actual ion charge
       if brems_type==const.HUMMER:
     # read in the hummer data
-        Atomic_data =  ion.datacache(self, Z, z1)
-        hdat = Atomic_data['data'][False][False]['hbrems'] 
-
+        hdat = atomdb.get_data(False, False,'hbrems', settings = self.settings,\
+                                               datacache=self.datacache)
         #hdat = atomdb.get_data(False, False,'hbrems', settings = settings,\
                                                #datacache=datacache)
         gaunt_D=hdat['BR_GAUNT'].data['COEFFICIENT']
@@ -1444,7 +1348,7 @@ class ion:
         gam = z0 * z0 * const.RYDBERG / kT
         gam1 = min(gam*1.e3,100.)
         if (gam > .1):
-          gaunt_ff = ion.kurucz(self, Evec/kT, gam)
+          gaunt_ff = _kurucz(Evec/kT, gam)
         elif (kT==0.0):
           print("brems_kellog: Zero temperature!")
         else:
@@ -1557,10 +1461,8 @@ class ion:
       elif brems_type==const.RELATIVISTIC:
 
     #initialize
-        Atomic_data =  ion.datacache(self, Z, z1)
-        rdat = Atomic_data['data'][False][False]['rbrems'] 
-        #rdat = atomdb.get_data(False, False,'rbrems', settings = settings,\
-                                               #datacache=datacache)
+        rdat = atomdb.get_data(False, False,'rbrems', settings = self.settings,\
+                                                      datacache=self.datacache)
 #    gaunt_D=rdat['BR_GAUNT'].data['COEFFICIENT']
         gaunt_U = rdat['GAUNT_FF'].data['LOG10_U']
         gaunt_Z = rdat['GAUNT_FF'].data['Z']
@@ -1637,6 +1539,7 @@ class ion:
         return gaunt_ff
       else:
         print("UNKNOWN BREMS TYPE: ", brems_type)
+        raise("ERROR")
         return -1
 
 
@@ -1648,9 +1551,7 @@ class ion:
 
 
 
-
-
-    def do_brems(self, Z, z1, T, abund, brems_type, eedges):
+    def do_brems(self, Z, z1, T, brems_type, eedges):
       """
       Calculate the bremstrahlung emission in units of photon cm^3 s^-1 bin^-1
 
@@ -1662,8 +1563,8 @@ class ion:
         ion charge +1
       T : float
         temperture (Kelvin)
-      abund : float
-        elemental abundance (should be between 1.0 and 0.0)
+#      abund : float
+#        elemental abundance (should be between 1.0 and 0.0)
       brems_type : int
         Type of bremstrahlung requested:
         1 = HUMMER = Non-relativistic: 1988ApJ...327..477H
@@ -1688,23 +1589,17 @@ class ion:
 
       EkT=E/kT
 
-      gaunt_ff = ion.calc_brems_gaunt(self, E, T, z1, brems_type)
+      gaunt_ff = self.calc_brems_gaunt(E, T, z1, brems_type)
 
-      emission = const.BREMS_COEFF*abund*\
+#      emission = const.BREMS_COEFF*abund*\
+#          (z1-1)*(z1-1)*numpy.exp(-EkT)*(dE/numpy.sqrt(T))*gaunt_ff/(E*const.ERG_KEV)
+      emission = const.BREMS_COEFF*\
           (z1-1)*(z1-1)*numpy.exp(-EkT)*(dE/numpy.sqrt(T))*gaunt_ff/(E*const.ERG_KEV)
 
       return emission
 
 
-
-
-
-
- 
-
-    
-
-    def do_lines(self,  Z, z1, Te, N_e, datacache=False, settings=False, z1_drv_in=-1, *args, **kwargs):
+    def do_lines(self,  Z, z1, Te, N_e, z1_drv_in=-1, *args, **kwargs):
       #lev_pop=None, 
       """
       Level populations into line lists, for exc, rec, and ion lines
@@ -1740,20 +1635,15 @@ class ion:
       #z1=self.z1
       tstart=time.time()
       
-      Atomic_data =  ion.datacache(self, Z, z1)
-      #ladat = atomdb.get_data(Z,z1,'LA', datacache=datacache, settings=settings)
-      ladat = Atomic_data['data'][Z][z1]['LA']
-      lvdat = Atomic_data['data'][Z][z1]['LV']
-
-      #ladat = atomdb.get_data(Z,z1,'LA', datacache=datacache, settings=settings)
-      # lvdat = atomdb.get_data(Z,z1,'LV', datacache=datacache, settings=settings)
-      ebins = setup.make_vector_nbins(self, settings['LinearGrid'], \
-                            settings['GridMinimum'], \
-                            settings['GridMaximum'], \
-                            settings['NumGrid'])
-      twoph = numpy.zeros(settings['NumGrid'], dtype=float)
+      ladat = atomdb.get_data(Z,z1,'LA', datacache=self.datacache, settings=self.settings)
+      lvdat = atomdb.get_data(Z,z1,'LV', datacache=self.datacache, settings=self.settings)
+      ebins = _make_vector_nbins(self.settings['LinearGrid'], \
+                            self.settings['GridMinimum'], \
+                            self.settings['GridMaximum'], \
+                            self.settings['NumGrid'])
+      twoph = numpy.zeros(self.settings['NumGrid'], dtype=float)
       linelist = numpy.zeros(len(ladat[1].data), \
-             dtype= setup.generate_datatypes(self,'linetype'))
+             dtype= _generate_datatypes('linetype'))
       goodlines = numpy.ones(len(linelist), dtype=bool)
 
       if z1_drv_in < 0:
@@ -1765,7 +1655,7 @@ class ion:
 
       ## checking if lev_pop is given ##
       if not kwargs:
-        lev_pop=ion.level_population(self, Te,N_e)
+        lev_pop=self.lev_pop
       else:
         lev_pop = kwargs.get('lev_pop')
 
@@ -1810,7 +1700,8 @@ class ion:
   # now check for 2 photon transitions
       #print("starting check for 2 photon transitions at %s"%(time.asctime()))
       if (Z-z1==1):
-    # He-like:
+    # He-like    
+
         nup = lvdat[1].data['n_quan'][linelist['upperlev']-1]
         lup = lvdat[1].data['l_quan'][linelist['upperlev']-1]
         degup = lvdat[1].data['lev_deg'][linelist['upperlev']-1]
@@ -1823,7 +1714,7 @@ class ion:
 
       # do the 2 photon fun
           twoph = numpy.zeros(len(ebins)-1, dtype=float)
-          if settings['TwoPhoton']:
+          if self.settings['TwoPhoton']:
 #        if len(ila) > 1:
 
             for iila in ila:
@@ -1849,7 +1740,7 @@ class ion:
                       (linelist['lowerlev']==1))[0]
         if len(ila)>0:
           twoph = numpy.zeros(len(ebins)-1, dtype=float)
-          if settings['TwoPhoton']:
+          if self.settings['TwoPhoton']:
             for iila in ila:
 
               tmp2ph={}
@@ -1934,21 +1825,18 @@ class ion:
       z1=self.z1
       settings=self.settings
       tstart=time.time()
-      
-      Atomic_data =  ion.datacache(self, Z, z1)
-      #ladat = atomdb.get_data(Z,z1,'LA', datacache=datacache, settings=settings)
-      ladat = Atomic_data['data'][Z][z1]['LA']
-      lvdat = Atomic_data['data'][Z][z1]['LV']
 
-      #ladat = atomdb.get_data(Z,z1,'LA', datacache=datacache, settings=settings)
-      # lvdat = atomdb.get_data(Z,z1,'LV', datacache=datacache, settings=settings)
+      # mass simplification here: the self.datacache has already been populated, so reuse it
+      ladat = atomdb.get_data(Z,z1,'LA', datacache=self.datacache, settings=self.settings)
+      lvdat = atomdb.get_data(Z,z1,'LV', datacache=self.datacache, settings=self.settings)
+ 
       ebins = setup.make_vector_nbins(self, settings['LinearGrid'], \
                             settings['GridMinimum'], \
                             settings['GridMaximum'], \
                             settings['NumGrid'])
       twoph = numpy.zeros(settings['NumGrid'], dtype=float)
       linelist = numpy.zeros(len(ladat[1].data), \
-             dtype= setup.generate_datatypes(self,'linetype'))
+             dtype= _generate_datatypes('linetype'))
       goodlines = numpy.ones(len(linelist), dtype=bool)
 
       if z1_drv_in < 0:
@@ -1959,26 +1847,29 @@ class ion:
   # now do this
 
       ## checking if lev_pop is given ##
-      
-      lev_pop=ion.level_population(self, Te,N_e)
-      
-      
+
+#  no need to re-calculate this, you've already solved it      
+#      lev_pop=ion.level_population(self, Te,N_e)
+      lev_pop=self.lev_pop
 
       linelist['epsilon'] = ladat[1].data.field('einstein_a') * lev_pop[ladat[1].data.field('upper_lev')-1]/N_e
 
-
       linelist['lambda'] = ladat[1].data.field('wavelen')
 
+      igood = ( numpy.isfinite(ladat[1].data['wave_obs']) &
+               (ladat[1].data['wave_obs'] > 0))
 
-      igood = numpy.isfinite(ladat[1].data['wave_obs'])
+      ### EXPERIMENTAL ###         
+      linelist['lambda'][igood]=ladat[1].data['wave_obs'][igood]
 
-      if sum(igood) > 0 :
-        igood = numpy.where(igood==True)[0]
 
-        igood = igood[numpy.where(ladat[1].data['wave_obs'][igood]>0)[0]]
-
-      if len(igood)  >0:
-        linelist['lambda'][igood]=ladat[1].data['wave_obs'][igood]
+#      if sum(igood) > 0 :
+#        igood = numpy.where(igood==True)[0]
+#
+#        igood = igood[numpy.where(ladat[1].data['wave_obs'][igood]>0)[0]]
+#
+#      if len(igood)  >0:
+#        linelist['lambda'][igood]=ladat[1].data['wave_obs'][igood]
 #  for iline, line in enumerate(ladat[1].data):
 #    if numpy.isfinite(line['wave_obs']):
 #      if line['wave_obs'] > 0:
@@ -2094,7 +1985,8 @@ class ion:
     
 
 
-    def calc_satellite(self, Z, z1, Te, datacache=False, settings=False):
+#    def calc_satellite(self, Z, z1, Te, datacache=False, settings=False):
+    def calc_satellite(self, Te):
       """
       Calcaulate DR satellite lines
 
@@ -2118,24 +2010,30 @@ class ion:
       """
 
   # recombining ion charge
-      z1_drv=z1+1
-
-      Atomic_data =  ion.datacache(self, Z, z1)
-      Atomic_data_drv= ion.datacache(self, Z, z1_drv)
+      z1_drv=self.z1+1
+      Z=self.Z
+      z1 = self.z1
+#      Atomic_data =  ion.datacache(self, Z, z1)
+#      Atomic_data_drv= ion.datacache(self, Z, z1_drv)
         
 
-      drdat = Atomic_data_drv['data'][Z][z1_drv]['DR']
-      lvdat =  Atomic_data_drv['data'][Z][z1_drv]['LV']
-      lvdatrec = Atomic_data['data'][Z][z1]['LV']
+#      drdat = Atomic_data_drv['data'][Z][z1_drv]['DR']
+#      lvdat =  Atomic_data_drv['data'][Z][z1_drv]['LV']
+#      lvdatrec = Atomic_data['data'][Z][z1]['LV']
 
-      
+      drdat = atomdb.get_data(Z, z1_drv, 'DR', datacache=self.datacache, \
+                            settings = self.settings)
+      lvdat = atomdb.get_data(Z, z1_drv, 'LV', datacache=self.datacache, \
+                            settings = self.settings)
+      lvdatrec= atomdb.get_data(Z, z1, 'LV', datacache=self.datacache, \
+                            settings = self.settings)
 
 #  pseudocont = numpy.zeros(settings['NumGrid']-1, dtype=float)
 
 #  print "start DR"
 
       if drdat==False:
-        linelist = numpy.zeros(0,dtype=setup.generate_datatypes(self, 'linetype'))
+        linelist = numpy.zeros(0,dtype=_generate_datatypes('linetype'))
         lev_rates_in = 0.0
       else:
 
@@ -2148,7 +2046,7 @@ class ion:
           lev_rates_in = numpy.zeros(len(lvdatrec[1].data), dtype=float)
 
 
-        linelist = numpy.zeros(len(drdat[1].data),dtype=setup.generate_datatypes(self, 'linetype'))
+        linelist = numpy.zeros(len(drdat[1].data),dtype=_generate_datatypes('linetype'))
         kT = const.KBOLTZ*Te
         for iline in range(len(linelist)):
           epsilson = 0.0
@@ -2215,7 +2113,7 @@ class ion:
 
 
 
-    def run_apec_ion(self,  Te, N_e, *args, **kwargs):
+    def run_apec_ion(self,  T, N_e, ionfrac=1.0, Abund=None, *args, **kwargs):
         """
         Run the APEC code using the settings provided for an individual ion.
 
@@ -2245,167 +2143,163 @@ class ion:
 
         # get the data.
         
-        Z=self.Z
-
-        
         if not kwargs:
-         z1 = self.z1 
-         #Abund=self.Abund
-         #ionfrac= element.calc_elem_ionbal(self,  Te, N_e)
+          z1 = self.z1
+          Z = self.Z
+
         else:
-         z1 = kwargs.get('z1')
-         #Abund = kwargs.get('Abund')
-         #ionfrac = kwargs.get('ionfrac')
+          z1 = kwargs.get('z1')
+          Z = kwargs.get('Z')
 
 
-        Abund=self.Abund
-        
-        ionfrac= element.calc_elem_ionbal(self,  Te, N_e)
-        settings=self.settings
+        # we should check if the ionfrac is provided.
+        self.ionfrac = ionfrac
+
+        if Abund is not None:
+          self.Abund=Abund
+        else:
+          if self.Abund is None:
+            Abund = atomdb.get_abundance(element=[Z],\
+                  datacache=self.datacache, settings = self.settings)
+            self.Abund = Abund[Z]
+            Abund = self.Abund
+          else:        
+            Abund = self.Abund
+
         z1_drv=z1*1
         
-        settings['WriteIonFname'] = "Z_%i_z1_%i_T_%i_N_%i"%(Z,z1,Te,N_e)
-        settings['filemap'] = settings['FileMap']
-        settings['atomdbroot'] = os.path.expandvars('$ATOMDB')
+        self.settings['WriteIonFname'] = "Z_%i_z1_%i_T_%i_N_%i"%(Z,z1,T,N_e)
+        self.settings['filemap'] = self.settings['FileMap']
+        self.settings['atomdbroot'] = os.path.expandvars('$ATOMDB')
 
 
 
   # get the output energy bins for the continuum
-        ebins = setup.make_vector_nbins(self, settings['LinearGrid'], \
-                            settings['GridMinimum'], \
-                            settings['GridMaximum'], \
-                            settings['NumGrid'])
+        ebins = _make_vector_nbins(self.settings['LinearGrid'], \
+                                        self.settings['GridMinimum'], \
+                                        self.settings['GridMaximum'], \
+                                        self.settings['NumGrid'])
 
   ## FIXME CUTOFF FOR MIN IONPOP
-        linelist = numpy.zeros(0, dtype=setup.generate_datatypes(self,'linetype'))
-        pseudo = numpy.zeros(settings['NumGrid'], dtype=float)
+        linelist = numpy.zeros(0, dtype=_generate_datatypes('linetype'))
+        pseudo = numpy.zeros(self.settings['NumGrid'], dtype=float)
         continuum = {}
-        continuum['brems'] = numpy.zeros(settings['NumGrid'], dtype=float)
-        continuum['twophot'] = numpy.zeros(settings['NumGrid'], dtype=float)
-        continuum['rrc'] = numpy.zeros(settings['NumGrid'], dtype=float)
+        continuum['brems'] = numpy.zeros(self.settings['NumGrid'], dtype=float)
+        continuum['twophot'] = numpy.zeros(self.settings['NumGrid'], dtype=float)
+        continuum['rrc'] = numpy.zeros(self.settings['NumGrid'], dtype=float)
 
 
   ## FIXME CUTOFF FOR MIN 
         #if ionfrac[z1_drv-1] < const.MIN_IONPOP:
         #    return  linelist, continuum, pseudo
-        
 
-  # set up the datacache
-
-        datacache = {}
-
-  # Find the number of levels
-        Atomic_data =  ion.datacache(self, Z, z1)
-        #print(Atomic_data)
-        lvdat = Atomic_data['data'][Z][z1]['LV']
+       # Find the number of levels
+        lvdat = atomdb.get_data(self.Z, self.z1, 'LV', datacache=self.datacache, settings = self.settings)
         
-        
-        linelist_exc = numpy.zeros(0, dtype= setup.generate_datatypes(self,'linetype'))
-        linelist_dr = numpy.zeros(0, dtype= setup.generate_datatypes(self,'linetype'))
-        linelist_rec = numpy.zeros(0, dtype= setup.generate_datatypes(self,'linetype'))
+        linelist_exc = numpy.zeros(0, dtype= _generate_datatypes('linetype'))
+        linelist_dr = numpy.zeros(0, dtype= _generate_datatypes('linetype'))
+        linelist_rec = numpy.zeros(0, dtype= _generate_datatypes('linetype'))
+
         if lvdat!= False:
     # find the number of levels
             nlev = len(lvdat[1].data)
 
     # check if we need to do any of the line-related calculations
 
-            if (settings['EmissionLines'] or settings['TwoPhoton']):
-
+            if (self.settings['EmissionLines'] or self.settings['TwoPhoton']):
 
     # gather all the level to level rates
                 
-                
-                up, lo, rates = ion.gather_rates(self,  Te, N_e, do_la=True, \
-                                                    do_ec=True, do_ir=True, do_pc=True, do_ai=True, datacache=datacache)
-      
-                
-                
-                lev_pop = ion.level_population(self, Te, N_e)
+                # stores all the rates in self.rates
+                self.rates = self.gather_rates(T, N_e, do_la=True, \
+                                  do_ec=True, do_ir=True, do_pc=True, do_ai=True, datacache=self.datacache)
 
-                #print(lev_pop)
+                # uses self.rates to calculate self.lev_pop[z1]
+                self.calc_level_population()
 
     # just in case, add zeros to lengthen the lev_pop appropriately
-                if len(lev_pop) < nlev:
-                    lev_pop = numpy.append(lev_pop, numpy.zeros(nlev-len(lev_pop), dtype=float))
+                if len(self.lev_pop[z1_drv]) < nlev:
+                    self.lev_pop[z1_drv] = numpy.append(self.lev_pop[z1_drv], numpy.zeros(nlev-len(self.lev_pop[z1_drv]), dtype=float))
 
     # fix any sub-zero level populations
-                lev_pop[lev_pop<0] = 0.0
-                lev_pop *= Abund[Z]*ionfrac[z1-1]
-                #print('***1',Abund[Z]*ionfrac[z1-1],z1)
-    
-      
-                linelist_exc,  continuum['twophot'] = ion.do_lines(self,  Z, z1, Te, N_e, datacache=datacache, settings=settings, z1_drv_in=z1_drv, lev_pop=lev_pop)
-                
-                
-                #linelist_excited= ion.linelist(self, Z, z1, Te, N_e)
+                self.lev_pop[z1_drv][self.lev_pop[z1_drv]<0] = 0.0
 
+    # scale by abundance and ion fraction
+                self.lev_pop[z1_drv] *= Abund*ionfrac
 
+                
+                linelist_exc,  continuum['twophot'] = self.do_lines(self.Z, self.z1, T, N_e, datacache=self.datacache, settings=self.settings, z1_drv_in=z1_drv, lev_pop=self.lev_pop)
+                
             else:
                 # skipping the exact level calculation, fill it with zeros, ground state with 1.
-                lev_pop = numpy.zeros(nlev, dtype=float)
-                lev_pop[0] = 1.0*Abund[Z]*ionfrac[z1-1]
+                self.lev_pop[z1_drv] = numpy.zeros(nlev, dtype=float)
+                self.lev_pop[z1_drv] = 1.0*Abund*ionfrac
                 
-        else:
-            lev_pop=numpy.ones(1, dtype=float)*Abund[Z]*ionfrac[z1-1]
+        else: # no level data for this ion
+
+            self.lev_pop[z1_drv]=numpy.ones(1, dtype=float)*Abund*ionfrac
 
 
-        if settings['Bremsstrahlung'] ==True:
-            brems = ion.do_brems(self, Z, z1, Te, N_e, settings['BremsType'], ebins)
+        # Bremsstrahlung calculation
+        if self.settings['Bremsstrahlung'] ==True:
+            brems = self.do_brems(Z, z1_drv, T, self.settings['BremsType'], ebins)
     # scale for  ion and element abundance.
-            continuum['brems']=brems*Abund[Z]*ionfrac[z1-1]
-
-    
+            continuum['brems']=brems*Abund*ionfrac
         else:
             continuum['brems']=numpy.zeros(len(ebins)-1, dtype=float)
+
+
+    #-----------------------------------
     # now look at the neighbouring ions
+    #-----------------------------------
+
+    # Recombination (if not neutral)
+    
         if z1_drv>1:
             z1=z1_drv-1
-            if settings['DRSatellite']:
-                linelist_dr, drlevrates = ion.calc_satellite(self, Z, z1, Te, datacache=datacache, settings=settings)
-                linelist_dr['epsilon']*=Abund[Z]*ionfrac[z1_drv-1]
-                drlevrates *=Abund[Z]*ionfrac[z1_drv-1]
+
+            # Do DR
+            
+            if self.settings['DRSatellite']:
+                linelist_dr, drlevrates = self.calc_satellite(T)
+                linelist_dr['epsilon']*=Abund*ionfrac
+                drlevrates *=Abund*ionfrac
                 
 
             else:
-                linelist_dr = numpy.zeros(0, dtype= setup.generate_datatypes(self,'linetype'))
+                linelist_dr = numpy.zeros(0, dtype= _generate_datatypes('linetype'))
                 drlevrates = 0.0
 
-    # Radiative Recombination
-            if settings['RRC']:
+            # Do Radiative Recombination
+            if self.settings['RRC']:
       
-                rrc, rrlevrates = atomdb.calc_rad_rec_cont(Z, z1, z1_drv, Te, ebins, settings=settings, datacache=datacache)
-                continuum['rrc'] = rrc*Abund[Z]*ionfrac[z1_drv-1]
-                rrlevrates*=Abund[Z]*ionfrac[z1_drv-1]
+                rrc, rrlevrates = atomdb.calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, settings=self.settings, datacache=self.datacache)
+                continuum['rrc'] = rrc*Abund*ionfrac
+                rrlevrates*=Abund*ionfrac
 
             else:
                 continuum['rrc'] = numpy.zeros(len(ebins)-1, dtype=float)
                 rrlevrates=0.0
 
 
-    # if there is recombination to process:
+            # if there is recombination to process:
             tmpdrlevrates,xxx = util.make_vec(drlevrates)
             tmprrlevrates,xxx = util.make_vec(rrlevrates)
 
-            #print(lev_pop)
             if sum(tmpdrlevrates) + sum(tmprrlevrates)>0:
-      
-                #print('*** CHECK',lev_pop, Z, z1, z1_drv, Te, N_e)
-                levpop_recomb= ion.calc_recomb_popn(self, lev_pop, Z, z1, z1_drv, Te, N_e, drlevrates, rrlevrates, datacache=datacache, settings=settings)
-                
-
-                
-
-
-                linelist_rec, tmptwophot =ion.do_lines(self, Z, z1, Te , N_e,  datacache=datacache, settings=settings, z1_drv_in=z1_drv, lev_pop=levpop_recomb)  
+                levpop_recomb= self.calc_recomb_popn(T, N_e, drlevrates, rrlevrates)
+                self.levpop[z1] = levpop_recomb
+### THIS CAN BE ABBREVIATED
+                linelist_rec, tmptwophot =self.do_lines(Z, z1, T , N_e, z1_drv_in=z1_drv, lev_pop=levpop[z1])  
                 
                 continuum['twophot']+= tmptwophot
             
         # now do the ionizing cases
-        linelist_ion = numpy.zeros(0,dtype= setup.generate_datatypes(self,'linetype'))
+        linelist_ion = numpy.zeros(0,dtype= _generate_datatypes('linetype'))
         if z1_drv < Z:
     #datacache={}
             z1=z1_drv+1
-            lev_pop_parent = lev_pop*1.0
+            lev_pop_parent = self.lev_pop*1.0
 
             while (sum(lev_pop_parent[1:]) > 1e-40) &\
                 (z1 <= Z):
@@ -2415,8 +2309,7 @@ class ion:
                 else:
                     do_xi = False
 
-                lev_pop = ion.calc_ioniz_popn(self, lev_pop_parent, Z, z1, z1_drv, Te, N_e, \
-                                settings=settings, datacache=datacache, \
+                lev_pop = self.calc_ioniz_popn(lev_pop_parent, Z, z1, z1_drv, T, N_e, \
                                 do_xi=do_xi)
 
                 #print(lev_pop, len(lev_pop))
@@ -2424,7 +2317,7 @@ class ion:
                 lev_pop[lev_pop<const.MIN_LEVPOP] = 0.0
                 if sum(lev_pop[1:]) > 0:
                     linelist_ion_tmp, tmptwophot = \
-                        ion.do_lines(self, Z, z1, Te, N_e,  datacache=datacache, settings=settings,  z1_drv_in=z1_drv, lev_pop=lev_pop)
+                        self.do_lines(Z, z1, T, N_e,  z1_drv_in=z1_drv, lev_pop=lev_pop)
 
                     linelist_ion = numpy.append(linelist_ion, linelist_ion_tmp)
                     
@@ -2435,16 +2328,16 @@ class ion:
 
         linelist = numpy.append(linelist_exc, numpy.append(linelist_dr, numpy.append(linelist_ion, linelist_rec)))
         
-        MinEpsilon = settings['MinEpsilon']
-        if settings['Ionization']=='CIE':
+        MinEpsilon = self.settings['MinEpsilon']
+        if self.settings['Ionization']=='CIE':
             MinEpsilon*=0.001
 
         pseudocont = numpy.zeros(len(ebins)-1, dtype=float)
 
         if len(linelist) > 0:
             weaklines = linelist[(linelist['epsilon']< MinEpsilon) &\
-                         (linelist['lambda']>const.HC_IN_KEV_A /settings['GridMaximum'])   &\
-                         (linelist['lambda']<const.HC_IN_KEV_A /settings['GridMinimum'])]
+                         (linelist['lambda']>const.HC_IN_KEV_A /self.settings['GridMaximum'])   &\
+                         (linelist['lambda']<const.HC_IN_KEV_A /self.settings['GridMinimum'])]
 
             for line in weaklines:
                 e = const.HC_IN_KEV_A /line['lambda']
@@ -2454,7 +2347,7 @@ class ion:
             linelist = linelist[linelist['epsilon'] > MinEpsilon]
         
       
-        if settings['WriteIon']==True:
+        if self.settings['WriteIon']==True:
         
             
             ret = {}
@@ -2462,11 +2355,11 @@ class ion:
             ret['continuum'] = continuum
             ret['pseudocont'] = pseudocont
             ret['ionfrac'] = ionfrac
-            ret['te'] = Te
+            ret['te'] = T
             ret['dens'] = N_e
-            ret['settings'] = settings
+            ret['settings'] = self.settings
             ret['abund'] = Abund[Z]
-            fname = settings['WriteIonFname']+'.pkl'
+            fname = self.settings['WriteIonFname']+'.pkl'
         
             pickle.dump(ret, open(fname, 'wb'))
 
@@ -4092,7 +3985,7 @@ c
                               settings['NumGrid'])
       twoph = numpy.zeros(settings['NumGrid'], dtype=float)
       linelist = numpy.zeros(len(ladat[1].data), \
-             dtype= setup.generate_datatypes(self,'linetype'))
+             dtype= _generate_datatypes('linetype'))
       goodlines = numpy.ones(len(linelist), dtype=bool)
 
       if z1_drv_in < 0:
@@ -4742,7 +4635,7 @@ c
                             settings['NumGrid'])
 
   ## FIXME CUTOFF FOR MIN IONPOP
-        linelist = numpy.zeros(0, dtype=setup.generate_datatypes(self,'linetype'))
+        linelist = numpy.zeros(0, dtype=_generate_datatypes('linetype'))
         pseudo = numpy.zeros(settings['NumGrid'], dtype=float)
         continuum = {}
         continuum['brems'] = numpy.zeros(settings['NumGrid'], dtype=float)
@@ -4765,9 +4658,9 @@ c
         lvdat = Atomic_data['data'][Z][z1]['LV']
         
         
-        linelist_exc = numpy.zeros(0, dtype= setup.generate_datatypes(self,'linetype'))
-        linelist_dr = numpy.zeros(0, dtype= setup.generate_datatypes(self,'linetype'))
-        linelist_rec = numpy.zeros(0, dtype= setup.generate_datatypes(self,'linetype'))
+        linelist_exc = numpy.zeros(0, dtype= _generate_datatypes('linetype'))
+        linelist_dr = numpy.zeros(0, dtype= _generate_datatypes('linetype'))
+        linelist_rec = numpy.zeros(0, dtype= _generate_datatypes('linetype'))
         if lvdat!= False:
     # find the number of levels
             nlev = len(lvdat[1].data)
@@ -4829,7 +4722,7 @@ c
                 drlevrates *=Abund[Z]*ionfrac[z1_drv-1]
 
             else:
-                linelist_dr = numpy.zeros(0, dtype= setup.generate_datatypes(self,'linetype'))
+                linelist_dr = numpy.zeros(0, dtype= _generate_datatypes('linetype'))
                 drlevrates = 0.0
 
     # Radiative Recombination
@@ -4866,7 +4759,7 @@ c
                 continuum['twophot']+= tmptwophot
             
         # now do the ionizing cases
-        linelist_ion = numpy.zeros(0,dtype= setup.generate_datatypes(self,'linetype'))
+        linelist_ion = numpy.zeros(0,dtype= _generate_datatypes('linetype'))
         if z1_drv < Z:
     #datacache={}
             z1=z1_drv+1
@@ -4963,7 +4856,7 @@ c
                             settings['NumGrid'])
 
   ## FIXME CUTOFF FOR MIN IONPOP
-        linelist = numpy.zeros(0, dtype=setup.generate_datatypes(self,'linetype'))
+        linelist = numpy.zeros(0, dtype=_generate_datatypes('linetype'))
         pseudo = numpy.zeros(settings['NumGrid'], dtype=float)
         continuum = {}
         continuum['brems'] = numpy.zeros(settings['NumGrid'], dtype=float)
@@ -4986,7 +4879,7 @@ c
         lvdat = Atomic_data['data'][Z][z1]['LV']
         
         
-        linelist_exc = numpy.zeros(0, dtype= setup.generate_datatypes(self,'linetype'))
+        linelist_exc = numpy.zeros(0, dtype= _generate_datatypes('linetype'))
         
         if lvdat!= False:
     # find the number of levels
@@ -5163,7 +5056,7 @@ c
         ebins = setup.make_vector_nbins(self, settings['LinearGrid'], settings['GridMinimum'], settings['GridMaximum'], settings['NumGrid'])
 
 
-        #linelist_rec = numpy.zeros(0, dtype= setup.generate_datatypes(self,'linetype'))
+        #linelist_rec = numpy.zeros(0, dtype= _generate_datatypes('linetype'))
         
   
             
@@ -5235,7 +5128,7 @@ c
         ebins = setup.make_vector_nbins(self, settings['LinearGrid'], settings['GridMinimum'], settings['GridMaximum'], settings['NumGrid'])
 
 
-        #linelist_rec = numpy.zeros(0, dtype= setup.generate_datatypes(self,'linetype'))
+        #linelist_rec = numpy.zeros(0, dtype= _generate_datatypes('linetype'))
         
   
             
@@ -5321,7 +5214,7 @@ c
         datacache={}
         z1_drv=z1-1
 
-        #linelist_rec = numpy.zeros(0, dtype= setup.generate_datatypes(self,'linetype'))
+        #linelist_rec = numpy.zeros(0, dtype= _generate_datatypes('linetype'))
         
   
             
@@ -5333,7 +5226,7 @@ c
         lev_pop = variableapec.level_population_delta(self, Z, z1-1, Te, N_e, factor, errortype, settings, upper_level, lower_level)*Abund[Z]*ionfrac[z1-1]
 
 
-        linelist_ion = numpy.zeros(0,dtype= setup.generate_datatypes(self,'linetype'))
+        linelist_ion = numpy.zeros(0,dtype= _generate_datatypes('linetype'))
         if z1_drv < Z:
           z1=z1_drv+1
           lev_pop_parent = lev_pop*1.0
@@ -5421,7 +5314,7 @@ c
         datacache={}
         z1_drv=z1-1
 
-        #linelist_rec = numpy.zeros(0, dtype= setup.generate_datatypes(self,'linetype'))
+        #linelist_rec = numpy.zeros(0, dtype= _generate_datatypes('linetype'))
         
   
             
@@ -5433,7 +5326,7 @@ c
         lev_pop = variableapec.level_population_delta(self, Z, z1-1, Te, N_e, factor, errortype, settings, upper_level, lower_level)*Abund[Z]*ionfrac[z1-1]
 
 
-        linelist_ion = numpy.zeros(0,dtype= setup.generate_datatypes(self,'linetype'))
+        linelist_ion = numpy.zeros(0,dtype= _generate_datatypes('linetype'))
         if z1_drv < Z:
           z1=z1_drv+1
           lev_pop_parent = lev_pop*1.0
@@ -5742,58 +5635,6 @@ class element(ion):
 
 
 
-    def extract_gauntff(self, Z, gamma2, gaunt_U, gaunt_Z, gaunt_Ng, gaunt_g2, gaunt_gf):
-      """
-      Extract the appropriate Gaunt free-free factor from the relativistic
-      data tables of Nozawa, Itoh, & Kohyama, 1998 ApJ, 507,530
-
-      Parameters
-      ----------
-      Z : int
-        Z for which result is required
-      gamma2 : array(float)
-        gamma^2 in units of Z^2 Rydbergs/kT
-      gaunt_U : array(float)
-        u=E/kT
-      gaunt_Z : array(int)
-        nuclear charge
-      gaunt_Ng : array(int)
-        number of gamma^2 factors
-      gaunt_g2 : array(float)
-        gamma^2 factors
-      gaunt_gf : array(float)
-        ff factors
-
-      Returns
-      -------
-      array(float)
-        Gaunt factors.
-
-      References
-      ----------
-      Nozawa, Itoh, & Kohyama, 1998 ApJ, 507,530
-      """
-
-
-    # look for one which matches the supplied Z
-      i = numpy.where(gaunt_Z == Z)[0]
-      Uvec = gaunt_U[i]
-      GauntFFvec = numpy.zeros(len(i),dtype=float)
-
-    # find the :"goo", interpolable values
-      ii = numpy.where((gamma2>gaunt_g2[i,0]) &\
-                   (gamma2<gaunt_g2[i,gaunt_Ng[i]-1]))[0]
-      for iii in ii:
-        ng = gaunt_Ng[i[iii]]
-
-        GauntFFvec[iii] = 10**(numpy.interp(gamma2,gaunt_g2[i[iii]][:ng], \
-                                        numpy.log10(gaunt_gf[i[iii]][:ng])))
-      ii = numpy.where(gamma2<gaunt_g2[i,0])[0]
-      GauntFFvec[ii]=gaunt_gf[i[ii],0]
-
-      ii = numpy.where(gamma2>gaunt_g2[i,gaunt_Ng[i]-1])[0]
-      GauntFFvec[ii]=gaunt_gf[i[ii],gaunt_Ng[i[ii]]-1]
-      return Uvec, GauntFFvec
 
 
 
@@ -5971,7 +5812,7 @@ class element(ion):
 
       linelist= linelist[igood]
 
-      linelist_equ = numpy.zeros(len(linelist), dtype=setup.generate_datatypes(self, 'linelist_cie'))
+      linelist_equ = numpy.zeros(len(linelist), dtype=_generate_datatypes( 'linelist_cie'))
 
       for i in linelist_equ.dtype.names:
         linelist_equ[i] = linelist[i]
@@ -6039,7 +5880,7 @@ class element(ion):
       maxnpseudo = len(pseudo)
       maxncont = len(cont)
 
-      ret['cont'] = numpy.zeros(1, dtype=setup.generate_datatypes(self, 'continuum', npseudo=maxnpseudo, ncontinuum=maxncont))
+      ret['cont'] = numpy.zeros(1, dtype=_generate_datatypes( 'continuum', npseudo=maxnpseudo, ncontinuum=maxncont))
 
       ret['cont']['Z'][0] = Z
       ret['cont']['rmJ'][0] = 0
@@ -6057,8 +5898,8 @@ class element(ion):
 
     def return_ionbal(self, Z, Te, init_pop=False, tau=False,\
                        teunit='K', \
-                       filename=False, datacache=False, fast=True,
-                       settings= False, debug=False, extrap=True):
+                       filename=False, fast=True,
+                       debug=False, extrap=True):
 
       """
       Solve the ionization balance for a element Z.
@@ -6094,21 +5935,21 @@ class element(ion):
       """
 
       if fast:
-        ionbal = element._solve_ionbal_eigen(self, Z, Te, init_pop=init_pop, tau=tau, \
+        ionbal = self._solve_ionbal_eigen(Te, init_pop=init_pop, tau=tau, \
                        teunit=teunit, \
-                       filename=filename, datacache=datacache, debug=debug)
+                       filename=filename, debug=debug)
         return ionbal
 
       else:
-        ionbal = element.calc_elem_ionbal(self, Z, Te, tau=tau, init_pop=init_pop, teunit=teunit,\
-                               extrap=extrap, settings=settings, datacache=datacache)
+        ionbal = self.calc_elem_ionbal(Te, tau=tau, init_pop=init_pop, teunit=teunit,\
+                               extrap=extrap)
         return ionbal
 
 
 
-    def _solve_ionbal_eigen(self, Z, Te, init_pop=False, tau=False, \
+    def _solve_ionbal_eigen(self, Te, init_pop=False, tau=False, \
                        teunit='K', \
-                       filename=False, datacache=False, debug=False):
+                       filename=False, debug=False):
       """
       Solve the ionization balance for element Z using the eigenvector
       approach and files as distributed in XSPEC.
@@ -6147,145 +5988,14 @@ class element(ion):
 
       kT = util.convert_temp(Te, teunit, 'keV')
 
-      if type(tau)==bool:
-        if tau==False:
-          cie = True
-          init_pop_calc=False
+      final_pop = _solve_ionbal_eigen(self.Z, Te, init_pop=init_pop,
+                                      tau=tau, teunit='K',
+                                      filename=filename,
+                                      datacache=self.datacache,
+                                      debug=debug)
+      return final_pop
 
-        else:
-          raise ValueError("Error: tau should be False, a float, or an array of floats. Received "+repr(Tau))
-      else:
-        cie = False
-
-      if not cie:
-      # if it's not equilibrium, get the initial population
-        if isinstance(init_pop, str):
-          if init_pop.lower() == 'ionizing':
-            init_pop_calc = numpy.zeros(Z+1)
-            init_pop_calc[0] = 1.0
-          elif init_pop.lower() == 'recombining':
-            init_pop_calc = numpy.zeros(Z+1)
-            init_pop_calc[-1] = 1.0
-          else:
-            raise util.OptionError("Error: init_pop is set as a string, must be 'ionizing' or 'recombining'. Currently %s."%\
-             (init_pop))
-        elif isinstance(init_pop, float):
-      # this is an initial temperature
-          kT_init = util.convert_temp(init_pop, teunit, 'keV')
-          init_pop_calc = element.return_ionbal(self,Z, kT_init, \
-                                            teunit='keV', \
-                                            datacache=datacache,fast=True)
-
-
-        elif isinstance(init_pop, numpy.ndarray) or isinstance(init_pop, list):
-          init_pop_calc = init_pop
-        elif isinstance(init_pop, dict):
-          init_pop_calc = init_pop[Z]
-        else:
-          raise util.OptionError("Error: invalid type for init_pop")
-
-
-  # open the eigenvector data file
-
-      if util.keyword_check(filename):
-    # we have a filename specified!
-        fname = os.path.expandvars(filename)
-        if not os.path.isfile(fname):
-          print("Specified file %s does not exist. Exiting"%(fname))
-          return
-        d = pyfits.open(fname)
-      else:
-        Atomic_data =  ion.datacache(self, Z, z1)
-        d = Atomic_data['data'][Z][False]['eigen'] 
-        #d = atomdb.get_data(Z, False, 'eigen', datacache=datacache)
-      telist = numpy.logspace(4,9,1251)
-      kTlist=telist*const.KBOLTZ
-
-  # if we are looking for equilibrium, return the nearest data
-      if cie:
-
-        ikTlist = numpy.argsort(numpy.abs(kTlist-kT))
-        ite = [min(ikTlist[:2]), max(ikTlist[:2])]
-        Tdiff = kTlist[ite[1]] - kTlist[ite[0]]
-        if Tdiff > 0.0:
-          factorlow = (kTlist[ite[1]]-kT)/Tdiff
-          factorhigh = (kT-kTlist[ite[0]])/Tdiff
-          equilib = factorlow * d['EIGEN'].data['FEQB'][ite[0]]+\
-                factorhigh * d['EIGEN'].data['FEQB'][ite[1]]
-        else:
-          equilib = d['EIGEN'].data['FEQB'][ite[0]]
-
-    #renormalize
-        equilib /= sum(equilib)
-        return equilib
-
-  # now do the non-equilibrium data
-
-
-    # renormalize
-    # make Te into a vector
-      kT_vec, kT_isvec = util.make_vec(kT)
-      tau_vec, tau_isvec = util.make_vec(tau)
-      frac_out = numpy.zeros([len(kT_vec),len(tau_vec),Z+1], dtype=float)
-      for ikT, kT in enumerate(kT_vec):
-        kTindex = numpy.argmin(numpy.abs(kTlist-kT))
-
-        lefteigenvec = numpy.zeros([Z,Z], dtype=float)
-        righteigenvec = numpy.zeros([Z,Z], dtype=float)
-        if Z==1:
-          for i in range(Z):
-            for j in range(Z):
-              lefteigenvec[i,j] = d['EIGEN'].data['VL'][kTindex]
-              righteigenvec[i,j] = d['EIGEN'].data['VR'][kTindex]
-        else:
-          for i in range(Z):
-            for j in range(Z):
-              lefteigenvec[i,j] = d['EIGEN'].data['VL'][kTindex][i*Z+j]
-              righteigenvec[i,j] = d['EIGEN'].data['VR'][kTindex][i*Z+j]
-
-
-        work = numpy.array(init_pop_calc[1:] - d['EIGEN'].data['FEQB'][kTindex][1:], dtype=float)
-
-        fspectmp = numpy.matrix(lefteigenvec) * numpy.matrix(work).transpose()
-
-        delt = 1.0
-
-        worktmp = numpy.zeros(Z)
-
-        for itau, ttau in enumerate(tau_vec):
-          if Z >1:
-            for i in range(Z):
-              worktmp[i] = fspectmp[i]*numpy.exp(d['EIGEN'].data['EIG'][kTindex,i]*delt*ttau)
-
-          else:
-            worktmp[0] = fspectmp[0]*numpy.exp(d['EIGEN'].data['EIG'][kTindex]*delt*ttau)
-
-          frac = numpy.zeros(Z+1)
-          for i in range(Z):
-            for j in range(Z):
-              frac[i+1] += worktmp[j]*righteigenvec[j][i]
-            frac[i+1] += d['EIGEN'].data['FEQB'][kTindex][i+1]
-
-          if debug:
-            frac_out[ikT, itau,:] = frac
-          frac[frac<0.0] = 0.0
-
-          if sum(frac)> 1.0:
-            frac = frac/sum(frac)
-          frac[0] = 1-sum(frac[1:])
-          if not(debug):
-            frac_out[ikT,itau,:]=frac
-
-
-      if not tau_isvec:
-        frac_out = frac_out.sum(1)
-      if not kT_isvec:
-        frac_out = frac_out.sum(0)
-
-
-      return frac_out
-
-
+#-----------------------------------------------------------------------
 
 
     def gather_rates(self, Z, Te, N_e, datacache=False, settings=False,\
@@ -6319,7 +6029,7 @@ class element(ion):
 
 
     def calc_elem_ionbal(self,  Te, N_e, tau=False, init_pop='ionizing', teunit='K',\
-                    extrap=True, settings=False, datacache=False):
+                    extrap=True):
       """
       Calculate the ionization balance for all the elements in Zlist.
 
@@ -6377,10 +6087,10 @@ c
           kT_init = util.convert_temp(init_pop, teunit, 'keV')
 
       # rerun this routine in equilibrium mode to find the initial ion pop
-          init_pop_calc = element.return_ionbal(self,Z, kT_init, \
+          init_pop_calc = self.return_ionbal(kT_init, \
                                     teunit='keV', \
-                                    datacache=datacache,fast=False,
-                                    settings = settings, extrap=extrap)
+                                    fast=False,
+                                    extrap=extrap)
 
 
         elif isinstance(init_pop, numpy.ndarray) or isinstance(init_pop, list):
@@ -6397,13 +6107,13 @@ c
       recrate = numpy.zeros(Z, dtype=float)
       for z1 in range(1,Z+1):
         ionrate[z1-1], recrate[z1-1] = atomdb.get_ionrec_rate(kT, False, Te_unit='keV', \
-                     Z=Z, z1=z1, datacache=datacache, extrap=extrap,\
-                     settings=settings)
+                     Z=Z, z1=z1, datacache=self.datacache, extrap=extrap,\
+                     settings=self.settings)
 
       if cie:
-        final_pop = setup.solve_ionbal(self,ionrate, recrate)
+        final_pop = _solve_ionbal(ionrate, recrate)
       else:
-        final_pop = setup.solve_ionbal(self, ionrate, recrate, init_pop=init_pop_calc, tau=tau)
+        final_pop = _solve_ionbal(ionrate, recrate, init_pop=init_pop_calc, tau=tau)
 
       return final_pop
 
@@ -6556,7 +6266,7 @@ c
 
   # create placeholders for all the data
 
-      linelist = numpy.zeros(0, dtype=setup.generate_datatypes(self,'linetype'))
+      linelist = numpy.zeros(0, dtype=_generate_datatypes('linetype'))
       contlist = {}
       pseudolist = {}
 
@@ -6661,7 +6371,7 @@ c
 
   # create placeholders for all the data
 
-      linelist = numpy.zeros(0, dtype=setup.generate_datatypes(self,'linetype'))
+      linelist = numpy.zeros(0, dtype=_generate_datatypes('linetype'))
       contlist = {}
       pseudolist = {}
 
@@ -6758,7 +6468,7 @@ c
           print("Not found. Going to assemble it.")
 
 
-        linelist = numpy.zeros(0, dtype=setup.generate_datatypes(self,'linetype'))
+        linelist = numpy.zeros(0, dtype=_generate_datatypes('linetype'))
         contlist = {}
         pseudolist = {}
 
@@ -6848,7 +6558,7 @@ c
             print("Not found. Going to assemble it.")
 
 
-        linelist = numpy.zeros(0, dtype=setup.generate_datatypes(self,'linetype'))
+        linelist = numpy.zeros(0, dtype=_generate_datatypes('linetype'))
         contlist = {}
         pseudolist = {}
  
@@ -7224,9 +6934,9 @@ class allelement():
       chdulist = []
 
       seclHDUdat = numpy.zeros(settings['NumTemp']*settings['NumDens'], \
-                          dtype=setup.generate_datatypes(self,'lineparams'))
+                          dtype=_generate_datatypes('lineparams'))
       seccHDUdat = numpy.zeros(settings['NumTemp']*settings['NumDens'], \
-                          dtype=setup.generate_datatypes(self,'cocoparams'))
+                          dtype=_generate_datatypes('cocoparams'))
 
 
       for iTe in range(settings['NumTemp']):
@@ -7249,11 +6959,11 @@ class allelement():
       # AT THIS POINT, GENERATE SHELL WHICH WILL GO IN THE HDU OF CHOICE
 
           if settings['Ionization']=='CIE':
-            linedata = numpy.zeros(0,dtype=setup.generate_datatypes(self,'linelist_cie'))
-            cocodata = numpy.zeros(0,dtype=setup.generate_datatypes(self,'continuum', ncontinuum=0, npseudo=0))
+            linedata = numpy.zeros(0,dtype=_generate_datatypes('linelist_cie'))
+            cocodata = numpy.zeros(0,dtype=_generate_datatypes('continuum', ncontinuum=0, npseudo=0))
           if settings['Ionization']=='NEI':
-            linedata = numpy.zeros(0,dtype=setup.generate_datatypes(self,'linetype'))
-            cocodata = numpy.zeros(0,dtype=setup.generate_datatypes(self,'continuum', ncontinuum=0, npseudo=0))
+            linedata = numpy.zeros(0,dtype=_generate_datatypes('linetype'))
+            cocodata = numpy.zeros(0,dtype=_generate_datatypes('continuum', ncontinuum=0, npseudo=0))
 
           for Z in Zlist:
             print("Calling run_apec_element for Z=%i Te=%e dens=%e at %s"%(Z, te, dens, time.asctime()))
@@ -7439,9 +7149,9 @@ class allelement():
       chdulist = []
 
       seclHDUdat = numpy.zeros(settings['NumTemp']*settings['NumDens'], \
-                          dtype=setup.generate_datatypes(self,'lineparams'))
+                          dtype=_generate_datatypes('lineparams'))
       seccHDUdat = numpy.zeros(settings['NumTemp']*settings['NumDens'], \
-                          dtype=setup.generate_datatypes(self,'cocoparams'))
+                          dtype=_generate_datatypes('cocoparams'))
 
 
       for iTe in range(settings['NumTemp']):
@@ -7464,11 +7174,11 @@ class allelement():
       # AT THIS POINT, GENERATE SHELL WHICH WILL GO IN THE HDU OF CHOICE
 
           if settings['Ionization']=='CIE':
-            linedata = numpy.zeros(0,dtype=setup.generate_datatypes(self,'linelist_cie'))
-            cocodata = numpy.zeros(0,dtype=setup.generate_datatypes(self,'continuum', ncontinuum=0, npseudo=0))
+            linedata = numpy.zeros(0,dtype=_generate_datatypes('linelist_cie'))
+            cocodata = numpy.zeros(0,dtype=_generate_datatypes('continuum', ncontinuum=0, npseudo=0))
           if settings['Ionization']=='NEI':
-            linedata = numpy.zeros(0,dtype=setup.generate_datatypes(self,'linetype'))
-            cocodata = numpy.zeros(0,dtype=setup.generate_datatypes(self,'continuum', ncontinuum=0, npseudo=0))
+            linedata = numpy.zeros(0,dtype=_generate_datatypes('linetype'))
+            cocodata = numpy.zeros(0,dtype=_generate_datatypes('continuum', ncontinuum=0, npseudo=0))
 
           for Z in Zlist:
             print("Calling run_apec_element for Z=%i Te=%e dens=%e at %s"%(Z, te, dens, time.asctime()))
@@ -7631,299 +7341,7 @@ class setup:
 
 
 
-    def generate_datatypes(self, dtype, npseudo=0, ncontinuum=0):
-      """
-      returns the various data types needed by apec
 
-      Parameters
-      ----------
-      dtype : string
-        One of "linetype", "cielinetype", "continuum"
-      npseudo : int (default=0)
-        Number of pseudocontinuum points for "continuum" type
-      ncontinuum : int (default=0)
-        Number of continuum points for "continuum" type
-
-
-      Returns
-      -------
-      numpy.dtype
-        The data dtype in question
-      """
-      if dtype == 'linetype':
-        ret = numpy.dtype({'names':['lambda',\
-                                 'lambda_err',\
-                                 'epsilon',\
-                                 'epsilon_err',\
-                                 'element',\
-                                 'ion', \
-                                 'elem_drv',\
-                                 'ion_drv', \
-                                 'upperlev',\
-                                 'lowerlev'],\
-                        'formats':[numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int]})
-
-      elif dtype =='linelist_cie':
-        ret = numpy.dtype({'names':['lambda',\
-                                 'lambda_err',\
-                                 'epsilon',\
-                                 'epsilon_err',\
-                                 'element',\
-                                 'ion', \
-                                 'upperlev',\
-                                 'lowerlev'],\
-                        'formats':[numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int]})
-      elif dtype =='linelist_cie_spectrum':
-        ret = numpy.dtype({'names':['Lambda',\
-                                 'Lambda_Err',\
-                                 'Epsilon',\
-                                 'Epsilon_Err',\
-                                 'Element',\
-                                 'Ion', \
-                                 'UpperLev',\
-                                 'LowerLev'],\
-                        'formats':[numpy.float32,\
-                                   numpy.float32,\
-                                   numpy.float32,\
-                                   numpy.float32,\
-                                   numpy.int32,\
-                                   numpy.int32,\
-                                   numpy.int32,\
-                                   numpy.int32]})
-      elif dtype =='linelist_nei_spectrum':
-        ret = numpy.dtype({'names':['Lambda',\
-                                 'Lambda_Err',\
-                                 'Epsilon',\
-                                 'Epsilon_Err',\
-                                 'Element',\
-                                 'Elem_drv',\
-                                 'Ion', \
-                                 'Ion_drv', \
-                                 'UpperLev',\
-                                 'LowerLev'],\
-                        'formats':[numpy.float32,\
-                                   numpy.float32,\
-                                   numpy.float32,\
-                                   numpy.float32,\
-                                   numpy.int32,\
-                                   numpy.int32,\
-                                   numpy.int32,\
-                                   numpy.int32,\
-                                   numpy.int32,\
-                                   numpy.int32]})
-      elif dtype == 'linetype_cap':
-        ret = numpy.dtype({'names':['Lambda',\
-                                 'Lambda_Err',\
-                                 'Epsilon',\
-                                 'Epsilon_Err',\
-                                 'Element',\
-                                 'Ion', \
-                                 'Elem_Drv',\
-                                 'Ion_Drv', \
-                                 'UpperLev',\
-                                 'LowerLev'],\
-                        'formats':[numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int]})
-
-      elif dtype == 'linelist_cie_cap':
-        ret = numpy.dtype({'names':['Lambda',\
-                                 'Lambda_Err',\
-                                 'Epsilon',\
-                                 'Epsilon_Err',\
-                                 'Element',\
-                                 'Ion', \
-                                 'UpperLev',\
-                                 'LowerLev'],\
-                        'formats':[numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int]})
-
-
-      elif dtype == 'continuum':
-        if ncontinuum==0:
-          ncontinuum+=1
-        if npseudo==0:
-          npseudo+=1
-
-        ret = numpy.dtype({'names':['Z','rmJ','N_Cont','E_Cont','Continuum','Cont_Err','N_Pseudo','E_Pseudo','Pseudo','Pseudo_Err'],\
-                       'formats':[int, int, \
-                                  int, (float, ncontinuum), (float, ncontinuum),(float, ncontinuum),\
-                                  int, (float, npseudo), (float, npseudo),(float, npseudo)]})
-      elif dtype == 'lineparams':
-        ret = numpy.dtype({'names':['kT','EDensity','Time','Nelement','Nline'],\
-                       'formats':[float, float, float, int, int]})
-      elif dtype == 'cocoparams':
-        ret = numpy.dtype({'names':['kT','EDensity','Time','NElement','NCont', 'NPseudo'],\
-                       'formats':[float, float, float, int, int, int]})
-      elif dtype == 'ecdat':
-    # Electron collisional data
-        ret = numpy.dtype({'names':['lower_lev','upper_lev','coeff_type',\
-                                'min_temp','max_temp', 'temperature', \
-                                'effcollstrpar','inf_limit','reference'],\
-                       'formats':[int, int, int, \
-                                  float, float, (float,20), \
-                                  (float,20), float, '|S20']})
-
-
-      else:
-        print("Unknown dtype %s in generate_datatypes"%(dtype))
-      return ret
-
-#-----------------------------------------------------------------------
-#-----------------------------------------------------------------------
-#-----------------------------------------------------------------------
-
-
-
-    def calc_cascade_population(self, matrixA, matrixB):
-
-      # replace the first line in the matrix with the population
-      # conservation equation (sum of level pops = 1)
-
-      matrixB[0] = 1.0
-      matrixA[0,:] = 1.0
-
-      mb =matrixB[1:]
-      ma =matrixA[1:,1:]
-      # solve
-      try:
-        popn = numpy.linalg.solve(ma,mb)
-      except numpy.linalg.linalg.LinAlgError:
-        if ma[0,0]==0.0:
-#      print 'hacking ma[0,0]=1.0'
-          ma[0,0]=-1.0
-          try:
-            popn = numpy.linalg.solve(ma,mb)
-          except numpy.linalg.linalg.LinAlgError:
-            print("failed again")
-
-        # look for levels with no way to ground. Put in a -1rate
-            for i in range(ma.shape[0]):
-              if ma[i,i]>= 0.0:
-                ma[i,i]=-1.0
-
-            try:
-              popn = numpy.linalg.solve(ma,mb)
-            except:
-              print('triple fail')
-              print(ma)
-              print(mb)
-              raise
-
-  #check
-      soln = numpy.allclose(numpy.dot(ma, popn), mb)
-
-      if soln==False:
-        print("ERROR Solving population matrix!")
-      popn=numpy.append(numpy.array([0.0]), popn)
-      return popn
-
-
-
-
-    def make_vector(self, linear, minval, step, nstep):
-      """
-      Create a vector from the given inputs
-
-      Parameters
-      ----------
-
-      linear: boolean
-        Whether the array should be linear or log spaced
-
-      minval: float
-        initial value of the array. In dex if linear==False
-
-      step: float
-        step between points on the array. In dex if linear==False
-
-      nstep: int
-        number of steps
-
-      Returns
-      -------
-
-      array(float)
-        array of values spaced out use the above parameters
-
-      """
-
-      arr = numpy.arange(nstep)*step+minval
-
-      if linear==False:
-        arr=10**arr
-
-      return arr
-
-
-
-
-
-#-----------------------------------------------------------------------
-#-----------------------------------------------------------------------
-#-----------------------------------------------------------------------
-    def make_vector_nbins(self, linear, minval, maxval, nstep):
-      """
-      Create a vector from the given inputs
-
-      Parameters
-      ----------
-
-      linear: boolean
-        Whether the array should be linear or log spaced
-
-      minval: float
-        initial value of the array. In dex if linear==False
-
-      maxval: float
-        maximum value of the array. In dex if linear==False
-
-      nstep: int
-        number of steps
-
-      Returns
-      -------
-
-      array(float)
-        array of values spaced out use the above parameters
-
-      """
-
-      arr = numpy.linspace(minval, maxval, nstep+1)
-
-      if linear==False:
-        arr=10**arr
-
-      return arr
 
 
 
@@ -8044,7 +7462,7 @@ class setup:
         ncontmax = max([max(a['N_Cont']), max(b['N_Cont'])])
         nlines = len(a) + len(b)
 
-      c = numpy.zeros(nlines, dtype=setup.generate_datatypes(self,'continuum',npseudo=npseudomax, ncontinuum=ncontmax))
+      c = numpy.zeros(nlines, dtype=_generate_datatypes('continuum',npseudo=npseudomax, ncontinuum=ncontmax))
       ic = 0
       if len(a) > 0:
         for ia in range(len(a)):
@@ -8316,140 +7734,6 @@ class setup:
       hc.add_comment('*** END INITIALIZATION VALUES ***',after=len(hl)-1)
 
 
-    def solve_ionbal(self, ionrate, recrate, init_pop=False, tau=False):
-      """
-      solve_ionbal: given a set of ionization and recombination rates, find
-      the equilibrium ionization balance. If init_pop and tau are set, do an
-      non-equilibrium calculation starting from init_pop and evolving for
-      n_e * t = tau (cm^-3 s)
-
-      Parameters
-      ----------
-      ionrate : float array
-        the ionization rates, starting with neutral ionizing to +1
-      recrate : float array
-        the recombination rates, starting with singly ionized recombining to neutral
-      init_pop : float array
-        initial population of ions for non-equlibrium calculations. Will be renormalised to 1.
-      tau : float
-        N_e * t for the non-equilibrium ioniziation
-
-      Returns
-      -------
-      final_pop : float array
-        final populations.
-
-      Notes
-      -----
-      Note that init_pop & final_pop will have 1 more element than ionrate and recrate.
-
-      """
-#
-#  Version 0.1 Initial Release
-#  Adam Foster 16th September 2015
-#
-  # first, calculate the equilibrium solution
-
-#  if (init_pop==False) & (tau==False): do_equilib=True
-      try:
-        if init_pop==False:
-          do_equilib=True
-        else:
-          do_equilib=False
-      except ValueError:
-        do_equilib=False
-      Z = len(ionrate)
-      b = numpy.zeros(Z+1, dtype=float)
-      a = numpy.zeros((Z+1,Z+1), dtype=float)
-
-
-      for iZ in range(0,Z):
-        a[iZ,iZ] -= (ionrate[iZ])
-        a[iZ+1,iZ] += (ionrate[iZ])
-
-        a[iZ,iZ+1] += (recrate[iZ])
-        a[iZ+1,iZ+1] -= (recrate[iZ])
-
-  # conservation of population
-      for iZ in range(0,Z+1):
-        a[0,iZ]=1.0
-      b[0]=1.0
-
-      eqpop=numpy.linalg.solve(a,b)
-
-      eqpop[eqpop<0] = 0.0
-
-      eqpop[0] = max([1.0-sum(eqpop[1:]), 0])
-
-      if do_equilib == True:
-        return eqpop
-
-  # now the NEI part
-  #remake matrix a
-      Z=len(ionrate)+1
-      ndim=Z
-      AA = numpy.zeros((ndim-1,ndim-1), dtype=float)
-  # populate with stuff
-
-      for iCol in range(ndim-1):
-        for iRow in range(ndim-1):
-
-          if (iRow==0):
-            if (iCol==0):
-              if (Z>2):
-                AA[0,iCol] = -(ionrate[0] + ionrate[1] + recrate[0])
-              else:
-                AA[0,iCol] = -(ionrate[0] + recrate[0])
-
-
-            if (iCol==1): AA[0,iCol] = recrate[1] - ionrate[0]
-            if (iCol>1):
-              AA[0,iCol] = -ionrate[0]
-          else:
-            if (iRow==iCol+1):  AA[iRow,iCol]= ionrate[iRow]
-            if (iRow==iCol):
-              if (iRow+2<ndim):
-
-                AA[iRow,iCol]=-(ionrate[iRow+1]+recrate[iRow])
-              else:
-                AA[iRow,iCol]=-recrate[iRow]
-
-
-            if (iRow==iCol-1):
-              AA[iRow,iCol]= recrate[iRow+1]
-
-
-      w,v = numpy.linalg.eig(AA)
-
-
-  # now copy VR to AA
-      AA=v
-
-  # b_in is difference betwen initial and final populations
-      b_in=init_pop[1:]-eqpop[1:]
-
-  # solve for initial conditions
-      b_out=numpy.linalg.solve(AA,b_in)
-
-  # include exponential decay term
-      C = b_out*numpy.exp( w*tau )
-
-  # get change
-      G = numpy.dot(v,C)
-
-  # solve for population
-      Ion_pop=numpy.zeros(Z)
-      Ion_pop[1:]= G + eqpop[1:]
-
-  # make sure everything is > 0
-      Ion_pop[Ion_pop<0] = 0.0
-
-  # set neutral to be the residual (or zero)
-      Ion_pop[0]=max([1-sum(Ion_pop[1:]), 0.0])
-
-  # return the data
-      return Ion_pop
-
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
@@ -8620,11 +7904,1214 @@ def parse_par_file(fname):
 
       return data
 
+def _calc_elem_ionbal(Z, Te, tau=False, init_pop='ionizing', teunit='K',\
+                extrap=True, settings=False, datacache=False):
+  """
+  Calculate the ionization balance for all the elements in Zlist.
+
+  One of init_pop or Te_init should be set. If neither is set, assume
+  all elements start from neutral.
+
+c
+  Parameters
+  ----------
+  Z : int
+    nuclear charge to include in calculation (e.g. 8 for oxygen)
+  Te : float
+    electron temperature in keV or K (default K)
+  tau : float
+    N_e * t for the non-equilibrium ioniziation (default False, i.e. CIE)
+  init_pop : string or float
+    if 'ionizing' : all ionizing from neutral (so [1,0,0,0...])
+    if 'recombining': all recombining from ionized (so[...0,0,1])
+    if array: actual populations (e.g. [0, 0.1, 0.3, 0.5, 0.1, 0, 0])
+    if dict of arrays : the acutal fractional populations (so init_pop[6] is the array for carbon)
+    if single float : the temperature (same units as Te)
+  teunit : {'K' , 'keV'}
+    units of temperatures (default K)
+  extrap : bool
+    Extrappolate rates to values outside their given range. (default False)
+
+  Returns
+  -------
+  final_pop : array
+    final population. E.g. [0.1,0.2,0.3,0.2,0.2,0.0,0.0]
+
+  """
+
+  kT = util.convert_temp(Te, teunit, 'keV')
+  if tau==False:
+    cie = True
+    init_pop_calc=False
+  else:
+    cie = False
+  if not cie:
+      # if it's not equilibrium, get the initial population
+    if isinstance(init_pop, str):
+      if init_pop.lower() == 'ionizing':
+        init_pop_calc = numpy.zeros(Z+1)
+        init_pop_calc[0] = 1.0
+      elif init_pop.lower() == 'recombining':
+        init_pop_calc = numpy.zeros(Z+1)
+        init_pop_calc[-1] = 1.0
+      else:
+        raise util.OptionError("Error: init_pop is set as a string, must be 'ionizing' or 'recombining'. Currently %s."%\
+         (init_pop))
+    elif isinstance(init_pop, float):
+  # this is an initial temperature
+      kT_init = util.convert_temp(init_pop, teunit, 'keV')
+
+  # rerun this routine in equilibrium mode to find the initial ion pop
+      init_pop_calc = element.return_ionbal(self,Z, kT_init, \
+                                teunit='keV', \
+                                datacache=datacache,fast=False,
+                                settings = settings, extrap=extrap)
+
+
+    elif isinstance(init_pop, numpy.ndarray) or isinstance(init_pop, list):
+      init_pop_calc = init_pop
+    elif isinstance(init_pop, dict):
+      init_pop_calc = init_pop[Z]
+    else:
+      raise util.OptionError("Error: invalid type for init_pop")
+
+
+# get the end point population
+
+  ionrate = numpy.zeros(Z, dtype=float)
+  recrate = numpy.zeros(Z, dtype=float)
+  for z1 in range(1,Z+1):
+    ionrate[z1-1], recrate[z1-1] = atomdb.get_ionrec_rate(kT, False, Te_unit='keV', \
+                 Z=Z, z1=z1, datacache=datacache, extrap=extrap,\
+                 settings=settings)
+
+  if cie:
+    final_pop = _solve_ionbal(ionrate, recrate)
+  else:
+    final_pop = _solve_ionbal(ionrate, recrate, init_pop=init_pop_calc, tau=tau)
+
+  return final_pop
+
+#------------------------------------------------------------------------
+
+def _do_brems(Z, z1, T, abund, brems_type, eedges):
+  """
+  Calculate the bremstrahlung emission in units of photon cm^3 s^-1 bin^-1
+
+  Parameters
+  ----------
+  Z : int
+    nuclear charge for which result is required
+  z1 : int
+    ion charge +1
+  T : float
+    temperture (Kelvin)
+  abund : float
+    elemental abundance (should be between 1.0 and 0.0)
+  brems_type : int
+    Type of bremstrahlung requested:
+    1 = HUMMER = Non-relativistic: 1988ApJ...327..477H
+    2 = KELLOGG = Semi-Relativistic: 1975ApJ...199..299K
+    3 = RELATIVISTIC = Relativistic: 1998ApJ...507..530N
+    4 = BREMS_NONE = no bremstrahlung
+  eedges : array(float)
+    The energy bin edges for the spectrum (keV)
+
+  Returns
+  -------
+  array(float)
+    bremstrahlung emission in units of photon cm^3 s^-1 bin^-1
+
+  """
+
+  kT = T*const.KBOLTZ # convert to keV
+
+  E = (eedges[1:]+eedges[:-1])/2.0
+
+  dE= (eedges[1:]-eedges[:-1])
+
+  EkT=E/kT
+
+  gaunt_ff = _calc_brems_gaunt(E, T, z1, brems_type)
+
+  emission = const.BREMS_COEFF*abund*\
+      (z1-1)*(z1-1)*numpy.exp(-EkT)*(dE/numpy.sqrt(T))*gaunt_ff/(E*const.ERG_KEV)
+
+  return emission
+
+#-----------------------------------------------------------------------
+
+def _calc_brems_gaunt(E, T, z1, brems_type, datacache=None, \
+                                      settings=None):
+  """
+  calculate the bremstrahulung free-free gaunt factor
+
+  Parameters
+  ----------
+  E : float
+    Energy (in keV) to calculate gaunt factor
+  T : float
+    Temperature (in K) of plasma
+  z1 : int
+    Ion charge +1 of ion (e.g. 6 for C VI)
+  brems_type : int
+    Type of bremstrahlung requested:
+    1 = HUMMER = Non-relativistic: 1988ApJ...327..477H
+    2 = KELLOGG = Semi-Relativistic: 1975ApJ...199..299K
+    3 = RELATIVISTIC = Relativistic: 1998ApJ...507..530N
+    4 = BREMS_NONE = no bremstrahlung
+  settings : dict
+    See description in atomdb.get_data
+  datacache : dict
+    Used for caching the data. See description in atomdb.get_data
+
+
+  Returns
+  -------
+  gaunt_ff : float
+    The gaunt factor for the free-free process.
+
+  """
+    
+
+  Evec, Eisvec = util.make_vec(E)
+  gaunt_ff = numpy.zeros(len(Evec), dtype=float)
+  NUM_J=8
+  NUM_I=11
+  z0 = z1-1.0 # we need to use the actual ion charge
+  if brems_type==const.HUMMER:
+# read in the hummer data
+    hdat = atomdb.get_data(False, False,'hbrems', settings = settings,\
+                                           datacache=datacache)
+    #hdat = atomdb.get_data(False, False,'hbrems', settings = settings,\
+                                           #datacache=datacache)
+    gaunt_D=hdat['BR_GAUNT'].data['COEFFICIENT']
+
+    gamma2 = z0**2 * const.RYDBERG/(const.KBOLTZ*T)
+
+    if ((gamma2 < 1e-3) | (gamma2 > 1e3)):
+      if (z0<10):
+        print("brems_hummer: Warning, gamma^2 = %e is out of range."%(gamma2))
+      gaunt_ff[:]=1.0
+
+    else:
+      u = Evec/(const.KBOLTZ*T)
+      j =  numpy.where(u <1.e-4)[0]
+      if len(j) != 0:
+        print("brems_hummer: Warning, u is out of range: ", u[j])
+        gaunt_ff[j]=1.0
+
+
+      gaunt_ff[u>31.6227766]=1.0
+
+
+  # all out of range data points are set to 1.0 now. Do the good stuff.
+
+      j = numpy.where(gaunt_ff<1.0)[0]
+      if len(j) > 0:
+        x_u = (2*numpy.log10(u[j])+2.5)/5.5
+        x_g = numpy.log10(gamma2)/3.0
+
+        c_j = numpy.zeros(NUM_J, dtype=float)
+        for jj in range(NUM_J):
+      # We then sum the Chebyshev series, but only 0.5* the first value
+          tmpgaunt = gaunt_D[jj*NUM_I:(jj+1)*NUM_I]
+          tmpgaunt[0] *=0.5
+          c_j[jj]=numpy.polynomial.chebyshev.chebval(x_g, tmpgaunt)
+    # again, sum chebshev polynomial with first index * 0.5
+        c_j[0]*=0.5
+        for ij, jj in enumerate(j):
+          gaunt_ff[jj] = numpy.polynomial.chebyshev.chebval(x_u[ij], c_j)
+    if not Eisvec:
+      gaunt_ff = gaunt_ff[0]
+    return gaunt_ff
+  elif brems_type==const.KELLOGG:
+
+    gam2 = numpy.array([.7783,1.2217,2.6234, 4.3766,20.,70.])
+    gam3 = numpy.array([1.,1.7783,3.,5.6234, 10.,30. ])
+    a    = numpy.array([1.001, 1.004, 1.017, 1.036, 1.056, 1.121, 1.001, 1.005,\
+                    1.017, 1.046, 1.073, 1.115, .9991, 1.005, 1.03, 1.055,\
+                    1.102, 1.176, .997, 1.005, 1.035,  1.069, 1.134, 1.186,\
+                    .9962, 1.004, 1.042, 1.1, 1.193, 1.306,.9874, .9962,\
+                    1.047, 1.156, 1.327, 1.485, .9681, .9755, 1.02, 1.208,\
+                    1.525, 1.965, .3029, .1616, .04757, .013, .0049, -.0032,\
+                    .4905, .2155, .08357, .02041, .00739, 2.9e-4, .654, \
+                    .2833, .08057, .03257, .00759, -.00151, 1.029, .391, \
+                    .1266, .05149, .01274, .00324, .9569, .4891, .1764, \
+                    .05914, .01407, -2.4e-4, 1.236, .7579, .326, .1077, \
+                    .028, .00548, 1.327, 1.017,.6017, .205, .0605, .00187, \
+                    -1.323, -.254, -.01571, -.001, -1.84e-4, 8e-5, -4.762, \
+                    -.3386, -.03571, -.001786, -3e-4, 1e-5, -6.349, -.4206, \
+                    -.02571, -.003429, -2.34e-4, 5e-5, -13.231, -.59, \
+                    -.04571, -.005714, -4.45e-4, -4e-5, -7.672, -.6852, \
+                    -.0643, -.005857,  -4.2e-4, 4e-5, -7.143, -.9947, \
+                    -.12, -.01007, -8.51e-4, -4e-5, -3.175, -1.116, -.227, \
+                    -.01821, -.001729, 2.3e-4])
+
+
+    kT = const.KBOLTZ*T
+    gam = z0 * z0 * const.RYDBERG / kT
+    gam1 = min(gam*1.e3,100.)
+    if (gam > .1):
+      gaunt_ff = ion.kurucz(Evec/kT, gam)
+    elif (kT==0.0):
+      print("brems_kellog: Zero temperature!")
+    else:
+      u=Evec/kT
+      gaunt_ff[(u>50) | (u==0)]=0.0
+      i = numpy.where( (u<50)& (u !=0.0))[0]
+      g=1.0
+      u2=u[i]**2
+      u1=0.5*u[i]
+      t=u1/3.75
+      u12=u1*0.5
+
+      ak = numpy.zeros(len(i), dtype=float)
+
+      ii = numpy.where(u12<=1.0)[0]
+      t2=t[ii]**2
+      t4=t2**2
+      t8=t4**2
+      ai = t2 * 3.5156229 + 1. + t4 * 3.089942 + t2 * 1.2067492 * t4 +\
+          t8 * .2659732 + t8 * .0360768 * t2 + t8 * .0045813 * t4
+      u122 = u12[ii] * u12[ii]
+
+      ak[ii] = -numpy.log(u12[ii]) * ai - .57721566 + u122 *\
+         (u122 * \
+           (u122 * \
+             (u122 * \
+               (u122 * \
+                 (u122 * 7.4e-6 + 1.075e-4) + \
+                .00262698) +\
+              .0348859) +\
+            .23069756) +\
+          .4227842)
+
+      ii = numpy.where(u12>1.0)[0]
+      type2=ii*1
+      u12im = -1. / u12[ii]
+      ak[ii] = u12im*\
+            (u12im*\
+              (u12im*\
+                (u12im*\
+                  (u12im*\
+                    (u12im*5.3208e-4 + .0025154) +\
+                   .00587872) +\
+                 .01062446) +\
+               .02189568) +\
+             .07832358) + \
+           1.25331414
+      ak[ii] /= numpy.exp(u1[ii]) * numpy.sqrt(u1[ii])
 
 
 
 
+  # see if born approx works
+      born = numpy.exp(u1) * .5513 * ak
+
+      if gam1<1.0:
+        gaunt_ff[i] = born
+#        print("FORCE BORN")
+      else:
+    # go to do polynomial expansion
+
+        u1 =u[i]
+        u1[u1<0.003]=0.003
+        u2=u1**2
 
 
+        n = numpy.zeros(len(i),dtype=int)
+    #m = numpy.zeros(len(i),dtype=int)
+
+        n[(u1<=0.03)]=1
+        n[(u1>0.03)&(u1<=0.3)]=2
+        n[(u1>0.3)&(u1<=1.0)]=3
+        n[(u1>1.0)&(u1<=5.0)]=4
+        n[(u1>5.0)&(u1<=15.0)]=5
+        n[(u1>15.0)]=6
+        if (gam1<=1.773):
+          m=1
+        elif ((gam1>1.773)&(gam1<=3.0)):
+          m=2
+        elif ((gam1>3.0)&(gam1<=5.6234)):
+          m=3
+        elif ((gam1>5.6234)&(gam1<=10.0)):
+          m=4
+        elif ((gam1>10.0)&(gam1<=30.0)):
+          m=5
+        else:
+          m=6
+
+        m1=m+1
+
+        g1= (a[n+(m+7)*6-49] +\
+            a[n+(m+14)*6-49]*u1+\
+            a[n+(m+21)*6-49]*u2)*born
+        g2 = (a[n+(m1+7)*6-49] +\
+              a[n+(m1+14)*6-49]*u1+\
+              a[n+(m1+21)*6-49]*u2)*born
+        p=(gam1-gam3[m-1])/gam2[m-1]
+        gaunt_ff[i]= (1.0-p)*g1 + p*g2
+
+#aktype=numpy.ones(len(ak), dtype=int)
+#aktype[type2]=2
+#    for i in range(len(E)):
+#      print "E[%i]=%e ak type %i, m=%i, n=%i, u=%e, g_ff=%e"%\
+#            (i,E[i], aktype[i],m,n[i], u[i],gaunt_ff[i])
+#
+#    zzz=raw_input()
+    if not Eisvec:
+      gaunt_ff = gaunt_ff[0]
+    return gaunt_ff
+  elif brems_type==const.RELATIVISTIC:
+
+#initialize
+    rdat = atomdb.get_data(False, False,'rbrems', settings =settings,\
+                                                  datacache=datacache)
+#    gaunt_D=rdat['BR_GAUNT'].data['COEFFICIENT']
+    gaunt_U = rdat['GAUNT_FF'].data['LOG10_U']
+    gaunt_Z = rdat['GAUNT_FF'].data['Z']
+    gaunt_Ng = rdat['GAUNT_FF'].data['N_GAMMA2']
+    gaunt_g2 = rdat['GAUNT_FF'].data['LOG10_GAMMA2']
+    gaunt_gf = rdat['GAUNT_FF'].data['GAUNT_FF']
+
+
+    gamma2 = numpy.log10(z0*z0*const.RYDBERG/(const.KBOLTZ*T))
+
+# extract the gaunt factors
+    if z0 in gaunt_Z:
+  # exact element is in file
+      Uvec, GauntFFvec = _extract_gauntff(z0, gamma2, gaunt_U, gaunt_Z, gaunt_Ng, gaunt_g2, gaunt_gf)
+#      print "we are here"
+#      for iuvec in xrange(len(Uvec)):
+#        print "Uvec[%i]=%e, GauntFFvec[%i]=%e"%(iuvec, Uvec[iuvec],\
+#                                                iuvec, GauntFFvec[iuvec])
+  #zzz=raw_input()
+    else:
+  # find nearest elements in the file
+      zlo = gaunt_Z[numpy.where(gaunt_Z < z0)[0]]
+      if len(zlo) ==0:
+        zlo=0
+      else:
+        zlo = max(zlo)
+      zup = gaunt_Z[numpy.where(gaunt_Z > z0)[0]]
+      if len(zup)==0:
+        zup=100
+      else:
+        zup=min(zup)
+
+  # check for various cases:
+      if (zlo==0) & (zup<100):
+        Uvec, GauntFFvec = _extract_gauntff(zup, gamma2, gaunt_U, gaunt_Z, gaunt_Ng, gaunt_g2, gaunt_gf)
+      if (zlo>0) & (zup==100):
+        Uvec, GauntFFvec = _extract_gauntff(zlo, gamma2, gaunt_U, gaunt_Z, gaunt_Ng, gaunt_g2, gaunt_gf)
+      if (zlo==0) & (zup==100):
+      #no match found
+          print("brems relativistic: we should never be here")
+      if (zlo>0) & (zup<100):
+    # we are going to interpolate between the 2 of these
+        Uvecl, GauntFFvecl = _extract_gauntff(zlo, gamma2, gaunt_U, gaunt_Z, gaunt_Ng, gaunt_g2, gaunt_gf)
+        Uvecu, GauntFFvecu = _extract_gauntff(zup, gamma2, gaunt_U, gaunt_Z, gaunt_Ng, gaunt_g2, gaunt_gf)
+
+        if len(numpy.where(numpy.abs(Uvecl-Uvecu)>0.001)[0]) != 0 :
+          print("Error: brems_relativistic: U vector mismatch ",  Uvecl, Uvecu)
+
+        Uvec = Uvecl
+        GauntFFvec = ((zup-z0)*GauntFFvecl + (z0-zlo)*GauntFFvecu)/(zup-zlo)
+#    print GauntFFvec
+# ok, so now we have Uvec and GauntFFvec assigned
+    u = numpy.log10(Evec/(const.KBOLTZ*T))
+#for (iBin=0;iBin < N; iBin++) {
+
+# First, some special cases on u
+# Long wavelength.  Use approximation from Scheuer 1960, MNRAS, 120,231
+# As noted in Hummer, 1988, ApJ, 325, 477
+
+# low energy
+    i = numpy.where(u<Uvec[0])[0]
+    gaunt_ff[i]=-0.55133*(0.5*numpy.log(10.)*gamma2+numpy.log(10.)*u[i]+0.056745)
+
+#high energy
+    i = numpy.where(u>Uvec[-1])[0]
+    gaunt_ff[i]=1.0
+
+#other energy
+    i = numpy.where((u>=Uvec[0]) & (u <=Uvec[-1]))[0]
+    gaunt_ff[i] = numpy.interp(u[i],Uvec, GauntFFvec)
+
+    if not Eisvec:
+      gaunt_ff = gaunt_ff[0]
+    return gaunt_ff
+  else:
+    print("UNKNOWN BREMS TYPE: ", brems_type)
+    return -1
+
+
+
+
+def _kurucz(uin, gam):
+  """
+  Correction factors to Kellogg bremstrahlung calculation by Bob Kurucz
+
+  Parameters
+  ----------
+  uin : array(float)
+    energy grid, units of E/kT (both in keV)
+  gam : array(float)
+    Z**2/T, in units of Rydbergs
+
+  Returns
+  -------
+  array(float)
+    gaunt factors at high gam (> 0.1)
+  """
+
+  ya = numpy.array([5.4,5.25, 5.,4.69,4.48,4.16,3.85,4.77,4.63,4.4,\
+                4.13,3.87,3.52, 3.27,4.15,4.02,3.8,3.57,3.27,\
+                2.98,2.7,3.54,3.41,3.22,2.97,2.7,2.45,2.2,2.94,\
+                2.81,2.65,2.44,2.21,2.01,1.81,2.41,2.32,2.19,2.02,\
+                1.84,1.67,1.5,1.95,1.9,1.8,1.68,1.52,1.41,1.3,\
+                1.55,1.56,1.51,1.42,1.33,1.25,1.17,1.17,1.3,1.32,\
+                1.3,1.2,1.15,1.11,.86,1.,1.15,1.18,1.15,1.11,1.08,\
+                .59,.76,.97,1.09,1.13,1.1,1.08,.38,.53,.76,.96,\
+                1.08,1.09,1.09])
+  gaunt = numpy.ones(len(uin), dtype=float)
+
+
+  rj = numpy.log10(gam) * 2. + 3.
+  j = numpy.array(numpy.floor(rj), dtype=int)
+  rj =  numpy.array(j, dtype=float)
+
+  rk = numpy.log10(uin) * 2. + 9.
+  k = numpy.array(numpy.floor(rk), dtype=int)
+  k[k<1] = 1
+  rk =  numpy.array(k, dtype=float)
+
+
+
+  gaunt[(j >= 7) | (j < 1) | (k>=12)]=0.0
+
+  i = numpy.where(gaunt>0)[0]
+
+
+  t = (numpy.log10(gam) - (rj - 3.) / 2.) / .5
+  u = (numpy.log10(uin[i]) - (rk[i] - 9.) / 2.) / .5
+# so t is a scalar
+# u is a vector
+
+  gaunt[i] = (1. - t) * (1. - u) * ya[j + k[i] * 7 - 8] + \
+    t * (1.-u)* ya[j + 1 + k[i]*7 - 8] + t*u*ya[j + 1 + (k[i] + 1) * 7 - 8] +\
+    (1. - t) * u * ya[j + (k[i] + 1) * 7 - 8]
+
+  return gaunt
+#-----------------------------------------------------------------------
+
+def _extract_gauntff(Z, gamma2, gaunt_U, gaunt_Z, gaunt_Ng, gaunt_g2, gaunt_gf):
+  """
+  Extract the appropriate Gaunt free-free factor from the relativistic
+  data tables of Nozawa, Itoh, & Kohyama, 1998 ApJ, 507,530
+
+  Parameters
+  ----------
+  Z : int
+    Z for which result is required
+  gamma2 : array(float)
+    gamma^2 in units of Z^2 Rydbergs/kT
+  gaunt_U : array(float)
+    u=E/kT
+  gaunt_Z : array(int)
+    nuclear charge
+  gaunt_Ng : array(int)
+    number of gamma^2 factors
+  gaunt_g2 : array(float)
+    gamma^2 factors
+  gaunt_gf : array(float)
+    ff factors
+
+  Returns
+  -------
+  array(float)
+    Gaunt factors.
+
+  References
+  ----------
+  Nozawa, Itoh, & Kohyama, 1998 ApJ, 507,530
+  """
+
+
+# look for one which matches the supplied Z
+  i = numpy.where(gaunt_Z == Z)[0]
+  Uvec = gaunt_U[i]
+  GauntFFvec = numpy.zeros(len(i),dtype=float)
+
+# find the :"goo", interpolable values
+  ii = numpy.where((gamma2>gaunt_g2[i,0]) &\
+               (gamma2<gaunt_g2[i,gaunt_Ng[i]-1]))[0]
+  for iii in ii:
+    ng = gaunt_Ng[i[iii]]
+
+    GauntFFvec[iii] = 10**(numpy.interp(gamma2,gaunt_g2[i[iii]][:ng], \
+                                    numpy.log10(gaunt_gf[i[iii]][:ng])))
+  ii = numpy.where(gamma2<gaunt_g2[i,0])[0]
+  GauntFFvec[ii]=gaunt_gf[i[ii],0]
+
+  ii = numpy.where(gamma2>gaunt_g2[i,gaunt_Ng[i]-1])[0]
+  GauntFFvec[ii]=gaunt_gf[i[ii],gaunt_Ng[i[ii]]-1]
+  return Uvec, GauntFFvec
+
+#-----------------------------------------------------------------------
+def _solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, \
+                   teunit='K', \
+                   filename=False, datacache=False, debug=False):
+  """
+  Solve the ionization balance for element Z using the eigenvector
+  approach and files as distributed in XSPEC.
+
+  Parameters
+  ----------
+  Z : int
+    atomic number of element
+  Te : float or array
+    electron temperature(s), default in K
+  init_pop : float array
+    initial population of ions for non-equlibrium calculations. Will be renormalised to 1.
+  tau : float or array
+    N_e * t for the non-equilibrium ioniziation, in cm^3 s^-1.
+
+  teunit : {'K' , 'keV'}
+    units of temperatures (default K)
+  filename : string
+    Can optionally point directly to the file in question, i.e. to look at older data
+    look at $HEADAS/../spectral/modelData/eigenELSYMB_v3.0.fits.
+    If not set, download from AtomDB FTP site.
+  datacache : dict
+    Used for caching the data. See description in atomdb.get_data
+
+  Returns
+  -------
+  final_pop : float array
+    final populations.
+
+  """
+#
+#  Version 0.1 Initial Release
+#  Adam Foster 16th September 2015
+#
+
+
+  kT = util.convert_temp(Te, teunit, 'keV')
+
+  if type(tau)==bool:
+    if tau==False:
+      cie = True
+      init_pop_calc=False
+
+    else:
+      raise ValueError("Error: tau should be False, a float, or an array of floats. Received "+repr(Tau))
+  else:
+    cie = False
+
+  if not cie:
+  # if it's not equilibrium, get the initial population
+    if isinstance(init_pop, str):
+      if init_pop.lower() == 'ionizing':
+        init_pop_calc = numpy.zeros(Z+1)
+        init_pop_calc[0] = 1.0
+      elif init_pop.lower() == 'recombining':
+        init_pop_calc = numpy.zeros(Z+1)
+        init_pop_calc[-1] = 1.0
+      else:
+        raise util.OptionError("Error: init_pop is set as a string, must be 'ionizing' or 'recombining'. Currently %s."%\
+         (init_pop))
+    elif isinstance(init_pop, float):
+  # this is an initial temperature
+      kT_init = util.convert_temp(init_pop, teunit, 'keV')
+      init_pop_calc = return_ionbal(Z, kT_init, \
+                                        teunit='keV', \
+                                        datacache=datacache,fast=True)
+
+
+    elif isinstance(init_pop, numpy.ndarray) or isinstance(init_pop, list):
+      init_pop_calc = init_pop
+    elif isinstance(init_pop, dict):
+      init_pop_calc = init_pop[Z]
+    else:
+      raise util.OptionError("Error: invalid type for init_pop")
+
+
+# open the eigenvector data file
+
+  if util.keyword_check(filename):
+# we have a filename specified!
+    fname = os.path.expandvars(filename)
+    if not os.path.isfile(fname):
+      print("Specified file %s does not exist. Exiting"%(fname))
+      return
+    d = pyfits.open(fname)
+  else:
+    d = atomdb.get_data(Z, False, 'eigen', datacache=datacache)
+  telist = numpy.logspace(4,9,1251)
+  kTlist=telist*const.KBOLTZ
+
+# if we are looking for equilibrium, return the nearest data
+  if cie:
+
+    ikTlist = numpy.argsort(numpy.abs(kTlist-kT))
+    ite = [min(ikTlist[:2]), max(ikTlist[:2])]
+    Tdiff = kTlist[ite[1]] - kTlist[ite[0]]
+    if Tdiff > 0.0:
+      factorlow = (kTlist[ite[1]]-kT)/Tdiff
+      factorhigh = (kT-kTlist[ite[0]])/Tdiff
+      equilib = factorlow * d['EIGEN'].data['FEQB'][ite[0]]+\
+            factorhigh * d['EIGEN'].data['FEQB'][ite[1]]
+    else:
+      equilib = d['EIGEN'].data['FEQB'][ite[0]]
+
+#renormalize
+    equilib /= sum(equilib)
+    return equilib
+
+# now do the non-equilibrium data
+
+
+# renormalize
+# make Te into a vector
+  kT_vec, kT_isvec = util.make_vec(kT)
+  tau_vec, tau_isvec = util.make_vec(tau)
+  frac_out = numpy.zeros([len(kT_vec),len(tau_vec),Z+1], dtype=float)
+  for ikT, kT in enumerate(kT_vec):
+    kTindex = numpy.argmin(numpy.abs(kTlist-kT))
+
+    lefteigenvec = numpy.zeros([Z,Z], dtype=float)
+    righteigenvec = numpy.zeros([Z,Z], dtype=float)
+    if Z==1:
+      for i in range(Z):
+        for j in range(Z):
+          lefteigenvec[i,j] = d['EIGEN'].data['VL'][kTindex]
+          righteigenvec[i,j] = d['EIGEN'].data['VR'][kTindex]
+    else:
+      for i in range(Z):
+        for j in range(Z):
+          lefteigenvec[i,j] = d['EIGEN'].data['VL'][kTindex][i*Z+j]
+          righteigenvec[i,j] = d['EIGEN'].data['VR'][kTindex][i*Z+j]
+
+
+    work = numpy.array(init_pop_calc[1:] - d['EIGEN'].data['FEQB'][kTindex][1:], dtype=float)
+
+    fspectmp = numpy.matrix(lefteigenvec) * numpy.matrix(work).transpose()
+
+    delt = 1.0
+
+    worktmp = numpy.zeros(Z)
+
+    for itau, ttau in enumerate(tau_vec):
+      if Z >1:
+        for i in range(Z):
+          worktmp[i] = fspectmp[i]*numpy.exp(d['EIGEN'].data['EIG'][kTindex,i]*delt*ttau)
+
+      else:
+        worktmp[0] = fspectmp[0]*numpy.exp(d['EIGEN'].data['EIG'][kTindex]*delt*ttau)
+
+      frac = numpy.zeros(Z+1)
+      for i in range(Z):
+        for j in range(Z):
+          frac[i+1] += worktmp[j]*righteigenvec[j][i]
+        frac[i+1] += d['EIGEN'].data['FEQB'][kTindex][i+1]
+
+      if debug:
+        frac_out[ikT, itau,:] = frac
+      frac[frac<0.0] = 0.0
+
+      if sum(frac)> 1.0:
+        frac = frac/sum(frac)
+      frac[0] = 1-sum(frac[1:])
+      if not(debug):
+        frac_out[ikT,itau,:]=frac
+
+
+  if not tau_isvec:
+    frac_out = frac_out.sum(1)
+  if not kT_isvec:
+    frac_out = frac_out.sum(0)
+
+
+  return frac_out
+
+#-----------------------------------------------------------------------
+
+def return_ionbal(Z, Te, init_pop=False, tau=False,\
+                   teunit='K', \
+                   filename=False, datacache=False, fast=True,
+                   settings= False, debug=False, extrap=True):
+
+  """
+  Solve the ionization balance for a element Z.
+
+  Parameters
+  ----------
+  Z : int
+    atomic number of element
+  Te : float or array
+    electron temperature(s), default in K
+  init_pop : float array
+    initial population of ions for non-equlibrium calculations. Will be renormalised to 1.
+  tau : float or array
+    N_e * t for the non-equilibrium ioniziation, in cm^3 s^-1.
+  Te_init : float
+    initial ionization balance temperature, same units as Te
+  teunit : {'K' , 'keV'}
+    units of temperatures (default K)
+  filename : string
+    Can optionally point directly to the file in question, i.e. to look at older data
+    look at $HEADAS/../spectral/modelData/eigenELSYMB_v3.0.fits.
+    If not set, download from AtomDB FTP site.
+  datacache : dict
+    Used for caching the data. See description in atomdb.get_data
+  fast : bool
+    If true, use precalculated eigenvector files to obtain CIE and NEI results
+
+  Returns
+  -------
+  final_pop : float array
+    final populations.
+
+  """
+
+  if fast:
+    ionbal = _solve_ionbal_eigen(Z, Te, init_pop=init_pop, tau=tau, \
+                   teunit=teunit, \
+                   filename=filename, datacache=datacache, debug=debug)
+    return ionbal
+
+  else:
+    ionbal = _calc_elem_ionbal(Z, Te, tau=tau, init_pop=init_pop, teunit=teunit,\
+                           extrap=extrap, settings=settings, datacache=datacache)
+    return ionbal
+#-----------------------------------------------------------------------
+def _solve_ionbal(self, ionrate, recrate, init_pop=False, tau=False):
+  """
+  solve_ionbal: given a set of ionization and recombination rates, find
+  the equilibrium ionization balance. If init_pop and tau are set, do an
+  non-equilibrium calculation starting from init_pop and evolving for
+  n_e * t = tau (cm^-3 s)
+
+  Parameters
+  ----------
+  ionrate : float array
+    the ionization rates, starting with neutral ionizing to +1
+  recrate : float array
+    the recombination rates, starting with singly ionized recombining to neutral
+  init_pop : float array
+    initial population of ions for non-equlibrium calculations. Will be renormalised to 1.
+  tau : float
+    N_e * t for the non-equilibrium ioniziation
+
+  Returns
+  -------
+  final_pop : float array
+    final populations.
+
+  Notes
+  -----
+  Note that init_pop & final_pop will have 1 more element than ionrate and recrate.
+
+  """
+#
+#  Version 0.1 Initial Release
+#  Adam Foster 16th September 2015
+#
+# first, calculate the equilibrium solution
+
+#  if (init_pop==False) & (tau==False): do_equilib=True
+  try:
+    if init_pop==False:
+      do_equilib=True
+    else:
+      do_equilib=False
+  except ValueError:
+    do_equilib=False
+  Z = len(ionrate)
+  b = numpy.zeros(Z+1, dtype=float)
+  a = numpy.zeros((Z+1,Z+1), dtype=float)
+
+
+  for iZ in range(0,Z):
+    a[iZ,iZ] -= (ionrate[iZ])
+    a[iZ+1,iZ] += (ionrate[iZ])
+
+    a[iZ,iZ+1] += (recrate[iZ])
+    a[iZ+1,iZ+1] -= (recrate[iZ])
+
+# conservation of population
+  for iZ in range(0,Z+1):
+    a[0,iZ]=1.0
+  b[0]=1.0
+
+  eqpop=numpy.linalg.solve(a,b)
+
+  eqpop[eqpop<0] = 0.0
+
+  eqpop[0] = max([1.0-sum(eqpop[1:]), 0])
+
+  if do_equilib == True:
+    return eqpop
+
+# now the NEI part
+#remake matrix a
+  Z=len(ionrate)+1
+  ndim=Z
+  AA = numpy.zeros((ndim-1,ndim-1), dtype=float)
+# populate with stuff
+
+  for iCol in range(ndim-1):
+    for iRow in range(ndim-1):
+
+      if (iRow==0):
+        if (iCol==0):
+          if (Z>2):
+            AA[0,iCol] = -(ionrate[0] + ionrate[1] + recrate[0])
+          else:
+            AA[0,iCol] = -(ionrate[0] + recrate[0])
+
+
+        if (iCol==1): AA[0,iCol] = recrate[1] - ionrate[0]
+        if (iCol>1):
+          AA[0,iCol] = -ionrate[0]
+      else:
+        if (iRow==iCol+1):  AA[iRow,iCol]= ionrate[iRow]
+        if (iRow==iCol):
+          if (iRow+2<ndim):
+
+            AA[iRow,iCol]=-(ionrate[iRow+1]+recrate[iRow])
+          else:
+            AA[iRow,iCol]=-recrate[iRow]
+
+
+        if (iRow==iCol-1):
+          AA[iRow,iCol]= recrate[iRow+1]
+
+
+  w,v = numpy.linalg.eig(AA)
+
+
+# now copy VR to AA
+  AA=v
+
+# b_in is difference betwen initial and final populations
+  b_in=init_pop[1:]-eqpop[1:]
+
+# solve for initial conditions
+  b_out=numpy.linalg.solve(AA,b_in)
+
+# include exponential decay term
+  C = b_out*numpy.exp( w*tau )
+
+# get change
+  G = numpy.dot(v,C)
+
+# solve for population
+  Ion_pop=numpy.zeros(Z)
+  Ion_pop[1:]= G + eqpop[1:]
+
+# make sure everything is > 0
+  Ion_pop[Ion_pop<0] = 0.0
+
+# set neutral to be the residual (or zero)
+  Ion_pop[0]=max([1-sum(Ion_pop[1:]), 0.0])
+
+# return the data
+  return Ion_pop
+
+#-----------------------------------------------------------------------
+def _generate_datatypes(dtype, npseudo=0, ncontinuum=0):
+  """
+  returns the various data types needed by apec
+
+  Parameters
+  ----------
+  dtype : string
+    One of "linetype", "cielinetype", "continuum"
+  npseudo : int (default=0)
+    Number of pseudocontinuum points for "continuum" type
+  ncontinuum : int (default=0)
+    Number of continuum points for "continuum" type
+
+
+  Returns
+  -------
+  numpy.dtype
+    The data dtype in question
+  """
+  print("dtype = ", dtype)
+  if dtype == 'linetype':
+    ret = numpy.dtype({'names':['lambda',\
+                             'lambda_err',\
+                             'epsilon',\
+                             'epsilon_err',\
+                             'element',\
+                             'ion', \
+                             'elem_drv',\
+                             'ion_drv', \
+                             'upperlev',\
+                             'lowerlev'],\
+                    'formats':[float,\
+                               float,\
+                               float,\
+                               float,\
+                               int,\
+                               int,\
+                               int,\
+                               int,\
+                               int,\
+                               int]})
+
+  elif dtype =='linelist_cie':
+    ret = numpy.dtype({'names':['lambda',\
+                             'lambda_err',\
+                             'epsilon',\
+                             'epsilon_err',\
+                             'element',\
+                             'ion', \
+                             'upperlev',\
+                             'lowerlev'],\
+                    'formats':[float,\
+                               float,\
+                               float,\
+                               float,\
+                               int,\
+                               int,\
+                               int,\
+                               int]})
+  elif dtype =='linelist_cie_spectrum':
+    ret = numpy.dtype({'names':['Lambda',\
+                             'Lambda_Err',\
+                             'Epsilon',\
+                             'Epsilon_Err',\
+                             'Element',\
+                             'Ion', \
+                             'UpperLev',\
+                             'LowerLev'],\
+                    'formats':[float32,\
+                               float32,\
+                               float32,\
+                               float32,\
+                               numpy.int32,\
+                               numpy.int32,\
+                               numpy.int32,\
+                               numpy.int32]})
+  elif dtype =='linelist_nei_spectrum':
+    ret = numpy.dtype({'names':['Lambda',\
+                             'Lambda_Err',\
+                             'Epsilon',\
+                             'Epsilon_Err',\
+                             'Element',\
+                             'Elem_drv',\
+                             'Ion', \
+                             'Ion_drv', \
+                             'UpperLev',\
+                             'LowerLev'],\
+                    'formats':[float32,\
+                               float32,\
+                               float32,\
+                               float32,\
+                               numpy.int32,\
+                               numpy.int32,\
+                               numpy.int32,\
+                               numpy.int32,\
+                               numpy.int32,\
+                               numpy.int32]})
+  elif dtype == 'linetype_cap':
+    ret = numpy.dtype({'names':['Lambda',\
+                             'Lambda_Err',\
+                             'Epsilon',\
+                             'Epsilon_Err',\
+                             'Element',\
+                             'Ion', \
+                             'Elem_Drv',\
+                             'Ion_Drv', \
+                             'UpperLev',\
+                             'LowerLev'],\
+                    'formats':[float,\
+                               float,\
+                               float,\
+                               float,\
+                               int,\
+                               int,\
+                               int,\
+                               int,\
+                               int,\
+                               int]})
+
+  elif dtype == 'linelist_cie_cap':
+    ret = numpy.dtype({'names':['Lambda',\
+                             'Lambda_Err',\
+                             'Epsilon',\
+                             'Epsilon_Err',\
+                             'Element',\
+                             'Ion', \
+                             'UpperLev',\
+                             'LowerLev'],\
+                    'formats':[float,\
+                               float,\
+                               float,\
+                               float,\
+                               int,\
+                               int,\
+                               int,\
+                               int]})
+
+
+  elif dtype == 'continuum':
+    if ncontinuum==0:
+      ncontinuum+=1
+    if npseudo==0:
+      npseudo+=1
+
+    ret = numpy.dtype({'names':['Z','rmJ','N_Cont','E_Cont','Continuum','Cont_Err','N_Pseudo','E_Pseudo','Pseudo','Pseudo_Err'],\
+                   'formats':[int, int, \
+                              int, (float, ncontinuum), (float, ncontinuum),(float, ncontinuum),\
+                              int, (float, npseudo), (float, npseudo),(float, npseudo)]})
+  elif dtype == 'lineparams':
+    ret = numpy.dtype({'names':['kT','EDensity','Time','Nelement','Nline'],\
+                   'formats':[float, float, float, int, int]})
+  elif dtype == 'cocoparams':
+    ret = numpy.dtype({'names':['kT','EDensity','Time','NElement','NCont', 'NPseudo'],\
+                   'formats':[float, float, float, int, int, int]})
+  elif dtype == 'ecdat':
+# Electron collisional data
+    ret = numpy.dtype({'names':['lower_lev','upper_lev','coeff_type',\
+                            'min_temp','max_temp', 'temperature', \
+                            'effcollstrpar','inf_limit','reference'],\
+                   'formats':[int, int, int, \
+                              float, float, (float,20), \
+                              (float,20), float, '|S20']})
+
+
+  else:
+    print("Unknown dtype %s in generate_datatypes"%(dtype))
+  return ret
+
+
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+
+
+
+def _calc_cascade_population(matrixA, matrixB):
+
+  # replace the first line in the matrix with the population
+  # conservation equation (sum of level pops = 1)
+
+  matrixB[0] = 1.0
+  matrixA[0,:] = 1.0
+
+  mb =matrixB[1:]
+  ma =matrixA[1:,1:]
+  # solve
+  try:
+    popn = numpy.linalg.solve(ma,mb)
+  except numpy.linalg.linalg.LinAlgError:
+    if ma[0,0]==0.0:
+#      print 'hacking ma[0,0]=1.0'
+      ma[0,0]=-1.0
+      try:
+        popn = numpy.linalg.solve(ma,mb)
+      except numpy.linalg.linalg.LinAlgError:
+        print("failed again")
+
+    # look for levels with no way to ground. Put in a -1rate
+        for i in range(ma.shape[0]):
+          if ma[i,i]>= 0.0:
+            ma[i,i]=-1.0
+
+        try:
+          popn = numpy.linalg.solve(ma,mb)
+        except:
+          print('triple fail')
+          print(ma)
+          print(mb)
+          raise
+
+#check
+  soln = numpy.allclose(numpy.dot(ma, popn), mb)
+
+  if soln==False:
+    print("ERROR Solving population matrix!")
+  popn=numpy.append(numpy.array([0.0]), popn)
+  return popn
+
+#-----------------------------------------------------------------------
+
+def make_vector(linear, minval, step, nstep):
+  """
+  Create a vector from the given inputs
+
+  Parameters
+  ----------
+
+  linear: boolean
+    Whether the array should be linear or log spaced
+
+  minval: float
+    initial value of the array. In dex if linear==False
+
+  step: float
+    step between points on the array. In dex if linear==False
+
+  nstep: int
+    number of steps
+
+  Returns
+  -------
+
+  array(float)
+    array of values spaced out use the above parameters
+
+  """
+
+  arr = numpy.arange(nstep)*step+minval
+
+  if linear==False:
+    arr=10**arr
+
+  return arr
+
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+def _make_vector_nbins(linear, minval, maxval, nstep):
+  """
+  Create a vector from the given inputs
+
+  Parameters
+  ----------
+
+  linear: boolean
+    Whether the array should be linear or log spaced
+
+  minval: float
+    initial value of the array. In dex if linear==False
+
+  maxval: float
+    maximum value of the array. In dex if linear==False
+
+  nstep: int
+    number of steps
+
+  Returns
+  -------
+
+  array(float)
+    array of values spaced out use the above parameters
+
+  """
+
+  arr = numpy.linspace(minval, maxval, nstep+1)
+
+  if linear==False:
+    arr=10**arr
+
+  return arr
 
 
