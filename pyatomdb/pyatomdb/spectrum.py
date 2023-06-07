@@ -32,7 +32,7 @@ except ImportError:
 
 import numpy, os, hashlib, pickle, math
 # other pyatomdb modules
-import atomic, util, const, atomdb, apec, class_apec
+import atomic, util, const, atomdb, apec, class_apec_trial
 
 import time
 import warnings
@@ -5486,7 +5486,7 @@ class _LineData_RS():
               
               #factor1.append(values)
               #print(factor1)
-            print(iline,tau[iline], llist['Lambda'][iline], llist['Element'][iline],llist['Ion'][iline])
+            #print(iline,tau[iline], llist['Lambda'][iline], llist['Element'][iline],llist['Ion'][iline])
 
               
               #file.write('%f\t''%f\t''%f\n'%(xs,values,factor))
@@ -5498,10 +5498,10 @@ class _LineData_RS():
 
             #print(x, width[iline])
             
-            spec += broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
-                           width[iline],eedges)*llist['Epsilon'][iline]\
-                           -(broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
-                           delta_E_kev[iline],eedges)*llist['Epsilon'][iline] *factor1)
+            spec += (1-factor1)*broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
+                           width[iline],eedges)*llist['Epsilon'][iline]
+                           #-(broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
+                           #delta_E_kev[iline],eedges)*llist['Epsilon'][iline] *factor1)
 
             #print(llist['Lambda'][iline], tau[iline])
 
