@@ -1,0 +1,29 @@
+from xspec import *
+s = Spectrum('ah100040030sxs_p0px1010_cl2_HP.pi')
+s.response = 'ah100040030_sxs_cl2_HP_small.rmf'
+s.response.arf = 'ah100040030sxs_p0px1010_ptsrc.arf'
+import rsapec_xspec
+import xspec
+#xspec.AllData.ignore('**-6.0 7.0-**')
+s.ignore('**-6.0,7.0-**')
+m1 = xspec.Model('tbabs*pyapecrs')
+m1.TBabs.nH=0.138
+m1.TBabs.nH.frozen=True
+m1.pyapecrs.kT=4.0
+#m1.pyapecrs.kT.frozen=True
+m1.pyapecrs.nL=8e21
+#m1.pyapecrs.Density.frozen=True
+#m1.pyapecrs.Density=0.04
+#m1.pyapecrs.Density.frozen=True
+m1.pyapecrs.Velocity=175
+m1.pyapecrs.Velocity.frozen=True
+m1.pyapecrs.Abundanc=0.41
+#m1.pyapecrs.Abundanc.frozen=True
+m1.pyapecrs.Redshift=1.72391E-02
+m1.pyapecrs.Redshift.frozen=True
+m1.pyapecrs.norm=0.94
+Fit.statMethod = "cstat"
+Xset.abund = "lpgs"
+Fit.query = "yes"
+Fit.perform()
+
