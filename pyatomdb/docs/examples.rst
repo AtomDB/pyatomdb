@@ -355,7 +355,7 @@ Example script using rsapec model in PyXSPEC
     :alt: Spectrum Example 1
     :figclass: align-center
 
-    
+    The rsapec model plotted over Hitomi observation of Perseus outer core
 
 
 
