@@ -46,7 +46,7 @@ plt.plot(chans,folded, color='orange', linewidth=2, label='rsapec model')
 plt.errorbar(chans, rates, xerr=xErrs,yerr=yErrs, label='Hitomi observation', fmt=",", color='blue')
 plt.xlabel('Energy(keV)')
 plt.ylabel('counts/s/keV')
-plt.legend()
+plt.legend(loc='upper left')
 pylab.draw()
 
 # save image files
