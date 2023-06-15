@@ -3,7 +3,7 @@
 
 from xspec import *
 import rsapec_xspec
-import xspec
+import pylab
 import matplotlib.pyplot as plt
 
 
@@ -17,7 +17,7 @@ s.ignore('**-6.0,7.0-**')
 
 
 # declare a new model and initiate the model parameters
-m1 = xspec.Model('tbabs*pyapecrs')
+m1 = Model('tbabs*pyapecrs')
 m1.TBabs.nH=0.138
 m1.TBabs.nH.frozen=True
 m1.pyapecrs.kT=4.06
@@ -47,7 +47,7 @@ plt.errorbar(chans, rates, xerr=xErrs,yerr=yErrs, label='Hitomi observation', fm
 plt.xlabel('Energy(keV)')
 plt.ylabel('counts/s/keV')
 plt.legend()
-plt.show()
+pylab.draw()
 
 # save image files
 plt.savefig('Rsapec_hitomi.pdf')
