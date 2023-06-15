@@ -338,6 +338,15 @@ a separate temperature set for line broadening, and others will be added in
 the ``wrapper`` directory.
 
 
+
+--------------------------------
+Using rsapec in PyXSPEC
+--------------------------------
+.. literalinclude:: ../examples/rsapec.py
+
+
+
+
 --------------------
 Individual Use Cases
 --------------------
