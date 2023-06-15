@@ -1,15 +1,10 @@
-"""
-The following code shows an application of the resonance scattering model on the Hitomi spectrum of Perseus cluster.
-"""
-
-
 # import relevant models
 # inital import creates rsapec, rsvapec, rsvvapec, analagous to apec, vapec, vvapec but resonance scattered
 
 from xspec import *
 import rsapec_xspec
 import xspec
-
+import matplotlib.pyplot as plt
 
 
 #import the response and spectrum file of Hitomi observation of Perseus core
@@ -33,15 +28,27 @@ m1.pyapecrs.Redshift=1.72391E-02
 m1.pyapecrs.Redshift.frozen=True
 m1.pyapecrs.norm=0.97
 Fit.statMethod = "cstat"
-#Fit.query = "yes"
-#Fit.perform()
+
 
 # let's overplot the model and the spectrum 
 
-Plot.device='/xs'
+Plot.device='/null'
 Plot.xAxis = "keV"
-Plot.add = True
-Plot.xLog = False
-Plot.yLog = False
 Plot.setRebin(5,10)
-Plot("data")
+Plot('data')
+chans = Plot.x()
+rates = Plot.y()
+xErrs = Plot.xErr()
+yErrs = Plot.yErr()
+folded= xspec.Plot.model(1)
+plt.xlim(6.5,6.6)
+plt.plot(chans,folded, color='orange', linewidth=2, label='rsapec model')
+plt.errorbar(chans, rates, xerr=xErrs,yerr=yErrs, label='Hitomi observation', fmt=",", color='blue')
+plt.xlabel('Energy(keV)')
+plt.ylabel('counts/s/keV')
+plt.legend()
+plt.show()
+
+# save image files
+plt.savefig('Rsapec_hitomi.pdf')
+plt.savefig('Rsapec_hitomi.svg')
