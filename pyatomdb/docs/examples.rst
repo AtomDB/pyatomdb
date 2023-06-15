@@ -339,10 +339,12 @@ the ``wrapper`` directory.
 
 
 
---------------------------------
++++++++++++++++++++++++++
 Using rsapec in PyXSPEC
---------------------------------
++++++++++++++++++++++++++
+
 The following code shows an application of the resonance scattering model on the Hitomi spectrum of Perseus cluster.
+
 .. literalinclude:: ../examples/rsapec.py
 
 
