@@ -349,6 +349,7 @@ Example script using rsapec model in PyXSPEC
 +++++++++++++++++++++++++
 
 .. literalinclude:: ../examples/rsapec.py
+.. figure:: ../examples/Rsapec_hitomi.svg
 
 
 
