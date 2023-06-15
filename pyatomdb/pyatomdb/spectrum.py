@@ -5452,7 +5452,7 @@ class _LineData_RS():
                           #width[iline],eedges)*llist['Epsilon'][iline]
 
 
-          if  tau[iline] < 0.05:
+          if  tau[iline] < 0.3:
 
             spec += broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
                           width[iline],eedges)*llist['Epsilon'][iline]
@@ -5462,7 +5462,7 @@ class _LineData_RS():
 
 
           #elif tau[iline] >= 0.5 and tau[iline]<10:
-          elif tau[iline] > 0.05:
+          elif tau[iline] > 0.3:
             
             factor = ((1-(math.exp(-tau[iline])))/(tau[iline]))
             factor1 = 1-factor
@@ -5498,10 +5498,9 @@ class _LineData_RS():
 
             #print(x, width[iline])
             
-            spec += (1-factor1)*broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
-                           width[iline],eedges)*llist['Epsilon'][iline]
-                           #-(broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
-                           #delta_E_kev[iline],eedges)*llist['Epsilon'][iline] *factor1)
+            spec += broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
+                           width[iline],eedges)*llist['Epsilon'][iline]-(broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
+                           delta_E_kev[iline],eedges)*llist['Epsilon'][iline] *factor1*(width[iline]/delta_E_kev[iline]))
 
             #print(llist['Lambda'][iline], tau[iline])
 
