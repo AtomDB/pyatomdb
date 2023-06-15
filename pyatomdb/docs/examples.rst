@@ -349,8 +349,13 @@ Example script using rsapec model in PyXSPEC
 +++++++++++++++++++++++++
 
 .. literalinclude:: ../examples/rsapec.py
-.. figure:: ../examples/Rsapec_hitomi.svg
 
+.. figure:: ../examples/Rsapec_hitomi.svg
+    :align: center
+    :alt: Spectrum Example 1
+    :figclass: align-center
+
+    
 
 
 
