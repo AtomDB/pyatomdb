@@ -8,9 +8,9 @@ import matplotlib.pyplot as plt
 
 
 #import the response and spectrum file of Hitomi observation of Perseus core
-s = Spectrum('ah100040030sxs_p0px1010_cl2_HP.pi')
-s.response = 'ah100040030_sxs_cl2_HP_small.rmf'
-s.response.arf = 'ah100040030sxs_p0px1010_ptsrc.arf'
+s = Spectrum('../examples/ah100040030sxs_p0px1010_cl2_HP.pi')
+s.response = '../examples/ah100040030_sxs_cl2_HP_small.rmf'
+s.response.arf = '../examples/ah100040030sxs_p0px1010_ptsrc.arf'
 
 #set the energy range for the fitting
 s.ignore('**-6.0,7.0-**')
@@ -20,15 +20,14 @@ s.ignore('**-6.0,7.0-**')
 m1 = Model('tbabs*pyapecrs')
 m1.TBabs.nH=0.138
 m1.TBabs.nH.frozen=True
-m1.pyapecrs.kT=4.06
-m1.pyapecrs.nL=8.05E+21
-m1.pyapecrs.Velocity=175
-m1.pyapecrs.Abundanc=0.39
-m1.pyapecrs.Redshift=1.72391E-02
+m1.pyapecrs.kT=4.07740  
+m1.pyapecrs.nL=1.22260E+22 
+m1.pyapecrs.Velocity= 172.116 
+m1.pyapecrs.Abundanc=0.389900 
+m1.pyapecrs.Redshift=1.72391E-02 
 m1.pyapecrs.Redshift.frozen=True
-m1.pyapecrs.norm=0.97
+m1.pyapecrs.norm=0.960000 
 Fit.statMethod = "cstat"
-
 
 # let's overplot the model and the spectrum 
 

@@ -32,10 +32,10 @@ except ImportError:
 
 import numpy, os, hashlib, pickle, math
 # other pyatomdb modules
-import atomic, util, const, atomdb, apec, class_apec_trial
+import atomic, util, const, atomdb, apec
 
-import time
-import warnings
+import time, wget
+import warnings, requests
 from scipy.integrate import quad
 
 def __make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
@@ -1842,7 +1842,7 @@ class CIESession():
   1 element shorter than ebins)
   """
 
-  def __init__(self, linefile="/Users/sao/pyatomdb/pyatomdb/pyatomdb/test/test_reduced.fits",\
+  def __init__(self, linefile="$ATOMDB/apec_line.fits",\
                      cocofile="$ATOMDB/apec_coco.fits",\
                      elements=False,\
                      abundset='AG89'):
@@ -1961,6 +1961,15 @@ class CIESession():
 
     self.set_broadening(False, broaden_limit=1e-18)
     self.cdf = _Gaussian_CDF()
+
+
+  def ionfraction(self, T, Z, teunit='K'):
+
+    settings=apec.parse_par_file(os.path.expandvars('$ATOMDB/apec.par'))
+    ionfrac = atomdb._get_precalc_ionfrac(os.path.expandvars(settings['IonBalanceTable']), Z , T)
+
+    return ionfrac
+
 
 
   def set_broadening(self, thermal_broadening, broaden_limit=False, \
@@ -3019,8 +3028,12 @@ class CIESession_RS(CIESession):
   1 element shorter than ebins)
   """
 
-  def __init__(self, linefile="/Users/sao/pyatomdb/pyatomdb/pyatomdb/test/test_reduced.fits",\
-                     cocofile="$ATOMDB/apec_coco.fits",\
+  
+      #print("File osc.fits downloaded successfully.")
+
+    #else:
+      #print("File osc.fits exists.")
+  def __init__(self, cocofile="$ATOMDB/apec_coco.fits",\
                      elements=False,\
                      abundset='AG89'):
     """
@@ -3042,6 +3055,23 @@ class CIESession_RS(CIESession):
     -------
     None
     """
+    
+
+    file_osc = "$ATOMDB/osc.fits"
+    f_osc = os.path.expandvars(file_osc)
+    atomdb_path = os.path.expandvars("$ATOMDB")
+
+
+    if not os.path.exists(f_osc):
+      wget.download('https://hea-www.cfa.harvard.edu/AtomDB/releases/osc.fits', out=atomdb_path)
+
+    linefile="$ATOMDB/osc.fits"
+
+
+
+
+
+
     self.SessionType='CIE'
     self._session_initialise1(linefile, cocofile, elements, abundset)
 
@@ -5153,6 +5183,20 @@ class _LineData_RS():
     self.ebins_checksum = False
 
 
+    #file_osc = "$ATOMDB/osc.fits"
+    #f_osc = os.path.expandvars(file_osc)
+    #atomdb_path = os.path.expandvars("$ATOMDB")
+
+
+    #if not os.path.exists(f_osc):
+     # wget.download('https://hea-www.cfa.harvard.edu/AtomDB/releases/osc.fits', out=atomdb_path)
+      #print("File osc.fits downloaded successfully.")
+
+    #else:
+      #print("File osc.fits exists.")
+
+
+
   def integrand(self, x, number):
 
     return 1.2*numpy.exp(-x*x-(number*numpy.exp(-x*x)))
@@ -5222,7 +5266,7 @@ class _LineData_RS():
     
   
    
-      energy_kev = const.HC_IN_KEV_A/self.lines['Lambda']
+      energy_priyankev = const.HC_IN_KEV_A/self.lines['Lambda']
       
       ion=ionfrac[self.lines['Ion']-1]
       #print(energy_kev, self.lines['Lambda'],ion)
@@ -5396,13 +5440,14 @@ class _LineData_RS():
           delta_E = 1.60218e-9*energy_kev*math.sqrt(u_th_sq + u_turb_sq )
           delta_E_kev= energy_kev*math.sqrt(u_th_sq + u_turb_sq )
           
-          
+        
+
           
           if numpy.array(Ab).size==30:       
 
            # tau = N_e*0.83*Abund[llist['Element'][0]-1]*ion*(math.pi**0.5)*(2**0.5)*Ab[llist['Element'][0]-1]*(const.PLANCK_CONSTANT)*(const.CLASSICAL_ELECTRON_RADIUS)*(const.LIGHTSPEED*100)*llist['Oscil_str']/delta_E
 
-            tau = N_e*0.83*Abund[llist['Element'][0]-1]*ion*(math.pi**0.5)*(2**0.5)*Ab[llist['Element'][0]-1]*(const.PLANCK_CONSTANT)*(const.CLASSICAL_ELECTRON_RADIUS)*(const.LIGHTSPEED*100)*llist['Oscil_str']/delta_E
+            tau = N_e*0.83*Abund[llist['Element'][0]-1]*ion*(math.pi**0.5)*Ab[llist['Element'][0]-1]*(const.PLANCK_CONSTANT)*(const.CLASSICAL_ELECTRON_RADIUS)*(const.LIGHTSPEED*100)*llist['Oscil_str']/delta_E
 
 
           
@@ -5419,7 +5464,7 @@ class _LineData_RS():
               abundan[elem[i]-1] = Ab[i]
 
 
-            tau = N_e*0.83*Abund[llist['Element'][0]-1]*ion*(math.pi**0.5)*(2**0.5)*abundan[llist['Element'][0]-1]*(const.PLANCK_CONSTANT)*(const.CLASSICAL_ELECTRON_RADIUS)*(const.LIGHTSPEED*100)*llist['Oscil_str']/delta_E
+            tau = N_e*0.83*Abund[llist['Element'][0]-1]*ion*(math.pi**0.5)*abundan[llist['Element'][0]-1]*(const.PLANCK_CONSTANT)*(const.CLASSICAL_ELECTRON_RADIUS)*(const.LIGHTSPEED*100)*llist['Oscil_str']/delta_E
 
 
 
@@ -5429,7 +5474,7 @@ class _LineData_RS():
           
           elif Ab.size==1:
 
-            tau = N_e*0.83*Abund[llist['Element'][0]-1]*ion*(math.pi**0.5)*(2**0.5)*Ab*(const.PLANCK_CONSTANT)*(const.CLASSICAL_ELECTRON_RADIUS)*(const.LIGHTSPEED*100)*llist['Oscil_str']/delta_E
+            tau = N_e*0.83*Abund[llist['Element'][0]-1]*ion*(math.pi**0.5)*Ab*(const.PLANCK_CONSTANT)*(const.CLASSICAL_ELECTRON_RADIUS)*(const.LIGHTSPEED*100)*llist['Oscil_str']/delta_E
             
           
           #print(math.sqrt(u_th_sq + u_turb_sq ),energy_kev)
@@ -5452,7 +5497,7 @@ class _LineData_RS():
                           #width[iline],eedges)*llist['Epsilon'][iline]
 
 
-          if  tau[iline] < 0.3:
+          if  tau[iline] < 0.1:
 
             spec += broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
                           width[iline],eedges)*llist['Epsilon'][iline]
@@ -5462,92 +5507,76 @@ class _LineData_RS():
 
 
           #elif tau[iline] >= 0.5 and tau[iline]<10:
-          elif tau[iline] > 0.3:
+          elif tau[iline] > 0.1 and tau[iline]<10:
             
-            factor = ((1-(math.exp(-tau[iline])))/(tau[iline]))
+            
+            factor = (0.00001*(tau[iline]**4))-(0.0008**(tau[iline]**3))+(0.0209**(tau[iline]**2))-(0.2254*tau[iline])+0.9828
+            #factor = ((1-(math.exp(-tau[iline])))/(tau[iline]))
             factor1 = 1-factor
-            
-            #x = (eedges-(const.HC_IN_KEV_A/llist['Lambda'][iline]))/delta_E_kev[iline]
 
-            
-            #delta_E_kev[iline]
-            
-            
-            #line_center = (const.HC_IN_KEV_A/llist['Lambda'][iline])
-            
-            #factor1 = []
-            #for xs in eedges:
-              #if (line_center)-(width[iline]/2) < xs <= (line_center)+(width[iline]/2):
-               # x = (xs-(const.HC_IN_KEV_A/llist['Lambda'][iline]))/width[iline]
+            #print(tau[iline], const.HC_IN_KEV_A/llist['Lambda'][iline], llist['Element'][iline],llist['Ion'][iline])
 
-               # values = 1. - factor*numpy.exp(-x**2)
-              #else:
-                #values = 1.0
-              
-              #factor1.append(values)
-              #print(factor1)
-            #print(iline,tau[iline], llist['Lambda'][iline], llist['Element'][iline],llist['Ion'][iline])
-
-              
-              #file.write('%f\t''%f\t''%f\n'%(xs,values,factor))
             
             #print(tau[iline], const.HC_IN_KEV_A/llist['Lambda'][iline], factor)
             #print(tau[iline], llist['Lambda'][iline], factor)
 
-            #llist['Epsilon'][iline]=llist['Epsilon'][iline]*factor
-
-            #print(x, width[iline])
+            
             
             spec += broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
+              width[iline],eedges)*llist['Epsilon'][iline]-(broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
+                           delta_E_kev[iline],eedges)*llist['Epsilon'][iline] *factor1)
+
+
+
+          elif  tau[iline]>=10 and tau[iline]<23:
+            
+            factor =(-0.000004*(tau[iline]**3))+(0.0005*(tau[iline]**2))-(0.0189*tau[iline])+0.2468
+            #factor = ((1-(math.exp(-tau[iline])))/(tau[iline]))
+            factor1 = 1-factor
+
+            #print(tau[iline], llist['Lambda'][iline], llist['Element'][iline],llist['Ion'][iline])
+
+            
+            #print(tau[iline], const.HC_IN_KEV_A/llist['Lambda'][iline], factor)
+            #print(tau[iline], llist['Lambda'][iline], factor)
+
+            
+            
+            #spec += broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
+              #             width[iline],eedges)*llist['Epsilon'][iline]-(broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
+               #            delta_E_kev[iline],eedges)*llist['Epsilon'][iline] *factor1*(width[iline]/delta_E_kev[iline]))
+
+
+            spec += broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
                            width[iline],eedges)*llist['Epsilon'][iline]-(broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
-                           delta_E_kev[iline],eedges)*llist['Epsilon'][iline] *factor1*(width[iline]/delta_E_kev[iline]))
-
-            #print(llist['Lambda'][iline], tau[iline])
-
-            #spec_f =  (broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
-                          # delta_E_kev[iline],eedges)*llist['Epsilon'][iline]*factor1)
-
-            #spec=spec-spec_f
-
-            #print(llist['Lambda'][iline], width[iline], delta_E_kev[iline])
+                           delta_E_kev[iline],eedges)*llist['Epsilon'][iline] *factor1)
 
 
-            #file_out = open('spec.dat','w+')
-            #for  i in range(len(spec)):
-            #  file_out.write("%e\t""%e\t""%e\t""%e\n"%(spec[i],spec1[i],spec2[i], eedges[i]))
 
-            #file_out.close()
 
-            #y = (eedges-const.HC_IN_KEV_A/llist['Lambda'][iline])/width[iline]
-            #print(len(spec))
+          else:
+            factor=0.01
+            factor1 = 1-factor
 
-            
-            #file.close()
-            #(broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
-            #               1.0,eedges)*llist['Epsilon'][iline]*factor1)
+
+            spec += broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
+                           width[iline],eedges)*llist['Epsilon'][iline]-(broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
+                           delta_E_kev[iline],eedges)*llist['Epsilon'][iline] *factor1)
+
+
+
+
+
+
+
 
             
 
-          
+           
             
 
 
-        '''
-          for taus in range(len(tau)):
-            if tau[taus] > 0.5 and tau[taus]<1:
-              #print(self.lines['Element'][0], self.lines['Lambda'][taus],tau[taus])
-              factor = (1-(math.exp(-tau[taus])))
-              spec[taus] = spec[taus] * (1-factor)
-          
-  
-            if tau[taus] >= 1:
-              #print(tau[taus], self.lines['Lambda'][taus], self.lines['Element'][taus])
-              factor = (1-(math.exp(-tau[taus])))/(tau[taus])
-              spec[taus] = spec[taus] * (factor)
-
-          
-
-        '''         
+        
         
         t1 = time.time()
 #        print("Broadeninging %i lines, in %f seconds"%(len(igood), t1-t0))
