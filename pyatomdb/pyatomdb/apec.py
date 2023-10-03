@@ -9,7 +9,7 @@ Adam Foster September 16th 2015
 
 import numpy, copy, pickle
 import os, time
-import util, atomdb, const, atomic
+from . import util, atomdb, const, atomic
 import scipy, ctypes
 import astropy.io.fits as pyfits
 #from joblib import Parallel, delayed

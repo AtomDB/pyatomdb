@@ -19,7 +19,7 @@ Adam Foster August 28th 2015
 
 import os, datetime, numpy, re, time, getpass
 import urllib.request, urllib.error, urllib.parse
-import util, apec, const, atomic, spectrum
+from . import util, apec, const, atomic, spectrum
 
 import astropy.io.fits as pyfits
 from scipy import stats, integrate

@@ -30,9 +30,9 @@ try:
 except ImportError:
   import pyfits
 
-import numpy, os, hashlib, pickle, math
+import numpy, os, hashlib, pickle, math, re
 # other pyatomdb modules
-import atomic, util, const, atomdb, apec
+from . import atomic, util, const, atomdb, apec
 
 import time, wget
 import warnings, requests
@@ -3033,7 +3033,8 @@ class CIESession_RS(CIESession):
 
     #else:
       #print("File osc.fits exists.")
-  def __init__(self, cocofile="$ATOMDB/apec_coco.fits",\
+  def __init__(self, oscfile="$ATOMDB/apec_osc.fits",\
+                     cocofile="$ATOMDB/apec_coco.fits",\
                      elements=False,\
                      abundset='AG89'):
     """
@@ -3057,18 +3058,22 @@ class CIESession_RS(CIESession):
     """
     
 
-    file_osc = "$ATOMDB/osc.fits"
-    f_osc = os.path.expandvars(file_osc)
-    atomdb_path = os.path.expandvars("$ATOMDB")
+#    file_oscfile = "$ATOMDB/osc.fits"
+    f_osc = os.path.expandvars(oscfile)
+#    atomdb_path = os.path.expandvars("$ATOMDB")
 
 
     if not os.path.exists(f_osc):
-      wget.download('https://hea-www.cfa.harvard.edu/AtomDB/releases/osc.fits', out=atomdb_path)
+      curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
+      fname = f_osc.split('/')[-1]
+      f = fname.split('_')
+      fname = f[0]+'_v'+curversion+'_'+f[1]
+      url =  const.FTPPATH+'/releases/'+fname
+      wget.download(url, out=os.path.expandvars("$ATOMDB"))
+      
+      os.symlink(os.path.expandvars("$ATOMDB/"+fname), os.path.expandvars("$ATOMDB/apec_osc.fits"))
 
-    linefile="$ATOMDB/osc.fits"
-
-
-
+    linefile=oscfile
 
 
 
