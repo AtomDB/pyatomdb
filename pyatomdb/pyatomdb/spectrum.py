@@ -3002,27 +3002,33 @@ class CIESession_RS(CIESession):
 
   Examples
   --------
+  >> import pyatomdb,atomdb
 
   Create a session instance:
 
-  >>> s=CIESession()
+  >>> cie_rs = pyatomdb.spectrum.CIESession_RS()
 
   Set up the responses, in this case a dummy response from 0.1 to 10 keV,
   with area 1cm^2 in each bin
 
   >>> ebins = numpy.linspace(0.1,10,1000)
-  >>> s.set_response(ebins, raw=True)
+  >>> cie_rs.set_response(ebins, raw=True)
 
   (Alternatively, for a real response file, s.set_response(rmffile, arf=arffile)
 
   Turn on thermal broadening
 
-  >>> s.set_broadening(True)
+  >>> cie_rs.set_broadening(True)
   Will thermally broaden lines with emissivity > 1.000000e-18 ph cm3 s-1
+  
+  Specify abundance
 
-  Return spectrum at 1.0keV
+  >>>Abund= atomdb.get_abundance(abundfile=False, \
+                abundset='AG89', element=[-1], datacache=False, settings=False, show=False)
 
-  >>> spec = s.return_spectrum(1.0)
+  Return spectrum at 1.0keV and density = 1cm^-3
+
+  >>> spec = cie_rs.return_spectrum(1.0, 1.0, Ab=Abund)
 
   spec is in photons cm^5 s^-1 bin^-1; ebins are the bin edges (so spec is
   1 element shorter than ebins)
