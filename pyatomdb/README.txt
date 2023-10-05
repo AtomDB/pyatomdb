@@ -214,3 +214,8 @@ Corrected bug with return_spectrum leading to overestimate in E-E brems of ~20%
 0.10.13
 February 6th 2023
 Another attempt to fix issues with curl library
+
+0.11.0
+October 5th 2023
+Added rsapec model
+
