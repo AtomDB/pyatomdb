@@ -338,26 +338,24 @@ a separate temperature set for line broadening, and others will be added in
 the ``wrapper`` directory.
 
 
---------------------------------
-The rsapec module
---------------------------------
+----------------------------------
+Resonant Scattering (rsapec) model
+----------------------------------
 
-The rsapec module can be used to model line emissivities of optically thick lines. The following code shows an application of the resonance scattering model on the Hitomi spectrum of Perseus cluster.
+The RSapec model can be used to model line emissivities of optically thick lines. The following code shows an application of the resonance scattering model on the Hitomi spectrum of Perseus cluster.
 
-+++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++
 Example script using rsapec model in PyXSPEC
-+++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++
 
 .. literalinclude:: ../examples/rsapec.py
 
 .. figure:: ../examples/Rsapec_hitomi.svg
     :align: center
-    :alt: Spectrum Example 1
+    :alt: rsapec example
     :figclass: align-center
 
     The rsapec model plotted over the Hitomi observation of Perseus outer core
-
-
 
 --------------------
 Individual Use Cases

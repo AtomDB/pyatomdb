@@ -1,7 +1,7 @@
 atomic module
 =============
 
-This modules contains basic atomic parameters (i.e. atomic numbers, element symbols)
+This module contains basic atomic parameters (i.e. atomic numbers, element symbols)
 
 .. automodule:: pyatomdb.atomic
     :members:
