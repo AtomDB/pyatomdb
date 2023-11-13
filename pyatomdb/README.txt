@@ -219,3 +219,6 @@ Another attempt to fix issues with curl library
 October 5th 2023
 Added rsapec model
 
+0.11.0
+November 13th 2023
+Bugfix to atomic.elsymb_to_Z. Thank you to Guan-Fu Liu for spotting this.
