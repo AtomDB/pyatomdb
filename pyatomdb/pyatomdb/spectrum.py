@@ -1781,7 +1781,7 @@ class CIESession():
   cocofile : string or HDUList, optional
     The continuum emissivity data file (either name or already open)
   elements : iterable of int
-       Elements to include, listed by atomic number. if not set, include all.
+    Elements to include, listed by atomic number. if not set, include all.
   abundset : string
     The abundance set to use. Default AG89.
 
@@ -2695,7 +2695,7 @@ class CIESession():
     Returns
     -------
     emiss_aeff : array(float)
-      Emissivity * Aeff
+      Emissivity \* Aeff
     """
 
 
@@ -5960,13 +5960,16 @@ class NEISession(CIESession):
     -------
     ret : dict
       Dictionary containing:
-      Te, tau, teunit: as input
-      wavelength : line wavelength (A)
-      energy : line energy (keV)
-      epsilon : emissivity in ph cm^3 s-1 (or ph cm^5 s^-1 if apply_aeff=True)
-                first index is temperature, second is tau. If Te or Tau was
-                supplied as a scalar, then that index is removed
 
+        Te, tau, teunit: as input
+
+        wavelength : line wavelength (A)
+
+        energy : line energy (keV)
+
+        epsilon : emissivity in ph cm^3 s-1 (or ph cm^5 s^-1 if apply_aeff=True)
+                  first index is temperature, second is tau. If Te or Tau was
+                  supplied as a scalar, then that index is removed
     """
 
     Tevec, Teisvec = util.make_vec(Telist)
@@ -6983,11 +6986,15 @@ class PShockSession(NEISession):
     -------
     ret : dict
       Dictionary containing:
-      Te, tau, teunit: as input
-      wavelength : line wavelength (A)
-      energy : line energy (keV)
-      epsilon : emissivity in ph cm^3 s-1 (or ph cm^5 s^-1 if apply_aeff=True)
-                first index is temperature, second is tau.
+ 
+        Te, tau, teunit: as input
+
+        wavelength : line wavelength (A)
+    
+        energy : line energy (keV)
+      
+        epsilon : emissivity in ph cm^3 s-1 (or ph cm^5 s^-1 if apply_aeff=True)
+                  first index is temperature, second is tau.
 
     """
 
