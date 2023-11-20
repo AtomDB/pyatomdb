@@ -15,7 +15,7 @@
 import sys
 import os
 import shlex
-import numpydoc
+#import numpydoc
 
 try:
   from unittest.mock import MagicMock
