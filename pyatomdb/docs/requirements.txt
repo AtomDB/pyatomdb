@@ -4,4 +4,3 @@ sphinx
 scipy
 requests
 joblib
-numpydoc
