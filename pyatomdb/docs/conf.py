@@ -145,7 +145,7 @@ todo_include_todos = True
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 
 if not on_rtd:  # only import and set the theme if we're building docs locally
     import sphinx_rtd_theme
