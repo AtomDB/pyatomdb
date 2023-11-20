@@ -15,6 +15,7 @@
 import sys
 import os
 import shlex
+import numpydoc
 
 try:
   from unittest.mock import MagicMock
@@ -60,7 +61,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.coverage',
     'sphinx.ext.autosummary',
-#    'numpydoc',
+    'numpydoc',
     'sphinx.ext.todo',
     'sphinx.ext.mathjax',
 ]
