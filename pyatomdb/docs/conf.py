@@ -60,7 +60,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.coverage',
     'sphinx.ext.autosummary',
-    'numpydoc',
+#    'numpydoc',
     'sphinx.ext.todo',
     'sphinx.ext.mathjax',
 ]
