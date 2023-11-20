@@ -83,7 +83,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'PyAtomDB'
-copyright = u'2015-2020, Adam Foster'
+copyright = u'2015-2023, Adam Foster'
 author = u'Adam Foster'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -145,7 +145,7 @@ todo_include_todos = True
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-html_theme = 'default'
+html_theme = 'alabaster'
 
 if not on_rtd:  # only import and set the theme if we're building docs locally
     import sphinx_rtd_theme
