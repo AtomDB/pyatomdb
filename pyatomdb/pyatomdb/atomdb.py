@@ -355,7 +355,7 @@ def _ea_mazzotta_iron(T_eV, c):
   for i in range(len(T_eV)):
     y = c[0]/T_eV[i]
     if (y < 50.0):
-      f1_val = _f1_fcn(y)
+      f1_val = _f1_fcn(numpy.array([y]))
       ea = (6.69e7/numpy.sqrt(T_eV[i]))* numpy.exp(-y) * 1.0e-16 * \
            (c[1]+\
             c[2]*(1-y*f1_val)+\
@@ -4383,8 +4383,8 @@ def get_data(Z, z1, ftype, datacache=False, \
 
       if not(havedata):
         if settings:
-          if settings['filemap']:
-            fmapfile = settings['filemap']
+          if settings['FileMap']:
+            fmapfile = settings['FileMap']
           if settings['atomdbroot']:
             atomdbroot = settings['atomdbroot']
 
@@ -6335,3 +6335,46 @@ def _lorentz_levpop(version):
                            version, linelist['ID'][iline])
         f.write(s)
   f.close()
+
+
+def format_level(level):
+  """
+  Take the output of a level from a level file and format it nicely
+
+  Parameters
+  ----------
+  level : array
+    The single line from an atomdb LV file corresponding to a level
+
+  Returns
+  -------
+  str
+    The formatted string.
+
+  Example
+  -------
+  # Read in O VII levels
+  >>> a = pyatomdb.atomdb.get_data(8,7,'LV')
+  # Format level 15 nicely
+  >>> s = pyatomdb.atomdb.format_level(a[1].data[15])
+  # Print
+  >>> print(s)
+  """
+  llist = "SPDFGHIKLMNOPQRTUVWXYZ"
+  s = ""
+
+  s += "%40s $"%(level['ELEC_CONFIG'])
+  if level['S_QUAN'] != -1:
+    s+="^{%i}"%(numpy.int(level['S_QUAN']*2)+1)
+  if level['L_QUAN'] != -1:
+    s+="%s"%(llist[level['L_QUAN']])
+  if level['LEV_DEG'] != -1:
+    if level['LEV_DEG']%2 == 0:
+      s+="_{%i}"%(level['LEV_DEG']/2)
+    else:
+      s+="_{%i/%i}"%(level['LEV_DEG'],2)
+  s+='$'
+  return(s)
+
+
+

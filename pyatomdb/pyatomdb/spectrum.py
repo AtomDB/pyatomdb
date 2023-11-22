@@ -511,12 +511,12 @@ def __add_lines(Z, abund, lldat, ebins, z1=False, z1_drv=False, \
   if broadening:
     if  bunits == 'a':
       for ll in l:
-        spectrum+=atomdb.addline2(ebins, const.HC_IN_KEV_A/ll['lambda'], \
+        spectrum+=atomdb._addline2(ebins, const.HC_IN_KEV_A/ll['lambda'], \
                  ll['epsilon']* abund,\
                  broadening*const.HC_IN_KEV_A/(ll['lambda']**2))
     else:
       for ll in l:
-        spectrum+=atomdb.addline2(ebins, const.HC_IN_KEV_A/ll['lambda'], \
+        spectrum+=atomdb._addline2(ebins, const.HC_IN_KEV_A/ll['lambda'], \
                  ll['epsilon']* abund,\
                  broadening)
   else:
@@ -1941,7 +1941,8 @@ class CIESession():
     self.arffile=False
     self.raw_response=False
 
-
+    # verbosity
+    self.verbose = False
 
 
   def _session_initialise2(self):
@@ -1974,7 +1975,9 @@ class CIESession():
 
   def set_broadening(self, thermal_broadening, broaden_limit=False, \
                            velocity_broadening=0.0, \
-                           velocity_broadening_units='km/s'):
+                           velocity_broadening_units='km/s',\
+                           thermal_broaden_temperature=None,\
+                           teunit='keV'):
 
     """
     Turn on or off thermal broadening, and the emissivity limit for
@@ -1992,7 +1995,9 @@ class CIESession():
       velocity broadening to apply. If <=0, not applied
     velocity_broadening_units : string
       Units of velocity_broadening. 'km/s' is default and only value so far.
-
+    thermal_broaden_temperature : float
+      If not None, use this temperature for all line broadening instead of
+      plasma temperature (keV)
     Notes
     -----
     Updates attributes thermal_broadening, broaden_limit, velocity_broadening,
@@ -2003,10 +2008,11 @@ class CIESession():
     if broaden_limit != False:
       self.broaden_limit = broaden_limit
 
-    #if self.thermal_broadening==True:
-      #print("Will thermally broaden lines with emissivity > %e ph cm3 s-1"%(self.broaden_limit))
-    #else:
-      #print("Will not thermally broaden lines")
+    if self.verbose:
+      if self.thermal_broadening==True:
+        print("Will thermally broaden lines with emissivity > %e ph cm3 s-1"%(self.broaden_limit))
+      else:
+        print("Will not thermally broaden lines")
 
     self.velocity_broadening=velocity_broadening
 
@@ -2024,6 +2030,13 @@ class CIESession():
 
     self.spectra.velocity_broadening=self.velocity_broadening
     self.spectra.velocity_broadening_units=self.velocity_broadening_units
+    if thermal_broaden_temperature is not None:
+      T = util.convert_temp(thermal_broaden_temperature, teunit, 'K')
+      self.thermal_broaden_temperature=T
+      self.spectra.thermal_broaden_temperature=T
+    else:
+      self.thermal_broaden_temperature=None
+      self.spectra.thermal_broaden_temperature=None
 
 
 
@@ -2057,7 +2070,9 @@ class CIESession():
       The spectral bins on which to return the spectrum (keV). Can be
       different from specbins depending on the spectrum
     self.response_set : bool
-      A resonse has been loaded
+      A response has been loaded
+    self.response_type : string
+      'raw', 'standard' or 'sparse' depending on the type implemented
     self.specbins_set : bool
       The spectral bins are set
     self.ebins_checksum : string
@@ -2073,6 +2088,11 @@ class CIESession():
       If true, the rmf variable contains the energy bin edges (keV) for all
       the bins, and each bin has a perfect response. This is effectively
       a dummy response
+    sparse : bool
+      If true, the rmf is stored as a sparse matrix and solved using sparse
+      matrix algebra. Useful for large RMFs (e.g. XRISM).
+      Tests show accuracy to 1 part in 10^{15}.
+      Ignored if raw==True
 
     Returns
     -------
@@ -2081,6 +2101,8 @@ class CIESession():
     """
 
     if raw==True:
+      if sparse:
+        warnings.warn("Sparse matrix requested with raw response. Ignoring.")
       # make a diagonal perfect response
       self.specbins = rmf
       self.ebins_out = rmf
@@ -2093,6 +2115,7 @@ class CIESession():
       self.arf = False
       self.ebins_checksum =hashlib.md5(self.specbins).hexdigest()
       self.raw_response=True
+      self.response_type = 'raw'
     else:
 
       if util.keyword_check(arf):
@@ -2152,47 +2175,115 @@ class CIESession():
 
     # bugfix: not all missions index from 0 (or 1).
     # Use chanoffset to correct for this.
-      chanoffset = self.rmf['EBOUNDS'].data['CHANNEL'][0]
 
-      self.rmfmatrix = numpy.zeros([len(self.rmf[matrixname].data),len(self.rmf['EBOUNDS'].data)])
-      for ibin, i in enumerate(self.rmf[matrixname].data):
+      if not sparse:
 
-        lobound = 0
-
-        fchan = i['F_CHAN']*1
-        nchan = i['N_CHAN']*1
-
-        if numpy.isscalar(fchan):
-          fchan = numpy.array([fchan])
-        fchan -= chanoffset
-        if numpy.isscalar(nchan):
-          nchan = numpy.array([nchan])
-
-        for j in range(len(fchan)):
-          ilo = fchan[j]
-          if ilo < 0: continue
-
-          ihi = fchan[j] + nchan[j]
-          self.rmfmatrix[ibin,ilo:ihi]=i['MATRIX'][lobound:lobound+nchan[j]]
-          lobound = lobound+nchan[j]
+        chanoffset = self.rmf['EBOUNDS'].data['CHANNEL'][0]
 
 
+        self.rmfmatrix = numpy.zeros([len(self.rmf[matrixname].data),len(self.rmf['EBOUNDS'].data)])
+        for ibin, i in enumerate(self.rmf[matrixname].data):
 
-      self.specbins, self.ebins_out = _get_response_ebins(self.rmf)
+          lobound = 0
 
-      if self.ebins_out[-1] < self.ebins_out[0]:
-        # need to reverse things
-        self.ebins_out=self.ebins_out[::-1]
-        self.rmfmatrix = self.rmfmatrix[:,::-1]
+          fchan = i['F_CHAN']*1
+          nchan = i['N_CHAN']*1
 
-      self.specbin_units='keV'
-      self.aeff = self.rmfmatrix.sum(1)
-      if util.keyword_check(self.arf):
-        self.aeff *=self.arf
-      self.response_set = True
-      self.specbins_set = True
+          if numpy.isscalar(fchan):
+            fchan = numpy.array([fchan])
+          fchan -= chanoffset
+          if numpy.isscalar(nchan):
+            nchan = numpy.array([nchan])
 
-      self.ebins_checksum =hashlib.md5(self.specbins).hexdigest()
+          for j in range(len(fchan)):
+            ilo = fchan[j]
+            if ilo < 0: continue
+
+            ihi = fchan[j] + nchan[j]
+            self.rmfmatrix[ibin,ilo:ihi]=i['MATRIX'][lobound:lobound+nchan[j]]
+            lobound = lobound+nchan[j]
+
+        self.specbins, self.ebins_out = _get_response_ebins(self.rmf)
+
+        if self.ebins_out[-1] < self.ebins_out[0]:
+          # need to reverse things
+          self.ebins_out=self.ebins_out[::-1]
+          self.rmfmatrix = self.rmfmatrix[:,::-1]
+
+        self.specbin_units='keV'
+        self.aeff = self.rmfmatrix.sum(1)
+        if util.keyword_check(self.arf):
+          self.aeff *=self.arf
+        self.response_set = True
+        self.specbins_set = True
+        self.response_type = 'standard'
+
+        self.ebins_checksum =hashlib.md5(self.specbins).hexdigest()
+
+      else:
+        # sparse matrix time!
+        data=[]
+        row=[]
+        col=[]
+
+        chanoffset = self.rmf['EBOUNDS'].data['CHANNEL'][0]
+
+        for ibin, i in enumerate(self.rmf[matrixname].data):
+          lobound = 0
+          for ngrp in range(i['N_GRP']):
+            fchan = i['F_CHAN']*1
+            nchan = i['N_CHAN']*1
+
+            if numpy.isscalar(fchan):
+              fchan = numpy.array([fchan])
+            fchan -= chanoffset
+            if numpy.isscalar(nchan):
+              nchan = numpy.array([nchan])
+
+            for j in range(len(fchan)):
+              ilo = fchan[j]
+              if ilo < 0: continue
+
+              ihi = fchan[j] + nchan[j]
+              data.extend(i['MATRIX'][lobound:lobound+nchan[j]])
+              row.extend(range(ilo,ihi))
+              col.extend([ibin]*nchan[j])
+              lobound = lobound+nchan[j]
+
+        self.specbins, self.ebins_out = _get_response_ebins(self.rmf)
+
+        data = numpy.array(data)
+        row = numpy.array(row)
+        col = numpy.array(col)
+
+        if self.ebins_out[-1] < self.ebins_out[0]:
+          # need to reverse things
+          self.ebins_out=self.ebins_out[::-1]
+          col = len(self.ebins_out)-col-1
+
+
+        self.rmfmatrix =  bsr_array((data, (row, col)), shape=(len(self.specbins)-1, len(self.ebins_out)-1),\
+                          dtype=data.dtype)
+
+
+
+        self.specbin_units='keV'
+        self.aeff = self.rmfmatrix.sum(1)
+        if util.keyword_check(self.arf):
+          self.aeff *=self.arf
+        self.response_set = True
+        self.specbins_set = True
+        self.response_type = 'sparse'
+
+        self.ebins_checksum =hashlib.md5(self.specbins).hexdigest()
+
+
+
+    # this is now a check for 0 minimums
+    if self.specbins_set:
+      if self.specbins[0] <=0:
+        warnings.warn('Response minimum energy is 0 keV, setting to small finite value (%e keV)'%(self.specbins[1]*1e-6))
+        self.specbins[0] = self.specbins[1]*1e-6
 
 
   def return_spectrum(self, te, teunit='keV', nearest=False,\
@@ -2327,29 +2418,32 @@ class CIESession():
     """
 
     # if the response is raw, no need to matrix multiply (diagonal response, effectively)
-    if self.raw_response:
+    if self.response_type=='raw':
       return spectrum
 
+    elif self.response_type=='standard':
+      arfdat = self.arf
 
-    arfdat = self.arf
+      ret = spectrum*self.arf
 
-#    if arfdat:
- #     res = spectrum * arfdat['SPECRESP'].data['SPECRESP']
- #   else:
-  #    res = spectrum*1.0
-    ret = spectrum*self.arf
-
-
-    try:
-      ret = numpy.matmul(ret,self.rmfmatrix)
-    except ValueError:
       try:
-        ret = numpy.matmul(ret,self.rmfmatrix.transpose())
+        ret = numpy.matmul(ret,self.rmfmatrix)
       except ValueError:
-        if ret == 0:
-          ret = numpy.zeros(len(self.ebins_out)-1)
-    return ret
+        try:
+          ret = numpy.matmul(ret,self.rmfmatrix.transpose())
+        except ValueError:
+          if ret == 0:
+            ret = numpy.zeros(len(self.ebins_out)-1)
+      return ret
+    elif self.response_type=='sparse':
+      arfdat = self.arf
+      ret = spectrum*self.arf
+      ret = (self.rmfmatrix*ret).sum(1)
 
+      return(ret)
+
+    else:
+      raise util.OptionError('Unknown response type %s'%(self.response_type))
 
   def _set_apec_files(self, linefile, cocofile):
     """
@@ -2470,8 +2564,6 @@ class CIESession():
 
     else:
       self.abund[elements]=abund
-
-    
 
 
 
@@ -2953,6 +3045,56 @@ class CIESession():
 
     return
 
+
+
+  def format_linelist(self, linelist):
+    """
+    Print out the line list in a nice format, with all the transitions
+    described in more detail
+
+    Parameters
+    ----------
+    linelist : numpy.array(dtype=linelist)
+      The linelist returned from "return_linelist"
+    Returns
+    -------
+    str : the formatted linelist
+    """
+
+    s=""
+
+    header1 = ""
+    header2 = ""
+    header1 += 'Z  z1    Ion    '
+    header2 += '__ __ __________'
+    if 'ion_drv' in linelist.dtype.names:
+      header1 += " z1drv"
+      header2 += " -----"
+    header1 += "  Wave (A)   En (keV)   Epsilon  UpLev LoLev"
+    header2 += " ---------- --------- ---------- ----- -----"
+
+    for l in linelist:
+      s += "%2i %2i %10s"% (l['Element'], l['Ion'], atomic.spectroscopic_name(l['Element'], l['Ion']))
+
+      if 'Ion_drv' in l.dtype.names:
+        s+= "   %2i   "%(l['Ion_drv'])
+
+      s += " %10f %10f %10e %5i -> %5i ;" % ( l['Lambda'], const.HC_IN_KEV_A/l['Lambda'], l['Epsilon'], l['UpperLev'], l['LowerLev'])
+
+      d = atomdb.get_data(l['Element'], l['Ion'], 'LV', datacache=self.datacache)
+
+      try:
+        ul = d[1].data[l['UpperLev']-1]
+        ll = d[1].data[l['LowerLev']-1]
+        s+= atomdb.format_level(ul)
+        s+= " -> "
+        s+= atomdb.format_level(ll)
+      except:
+        if ul >=10000:
+          s+= " DR Satellite Line"
+      s+="\n"
+
+    return(s)
 
 
 
@@ -3685,8 +3827,8 @@ class _CIESpectrum():
                                 (linedata[0].header['CHECKSUM'],\
                                  cocodata[0].header['CHECKSUM']))
     havepicklefile = False
-    #if os.path.isfile(picklefname):
-    #  havepicklefile = True
+    if os.path.isfile(picklefname):
+      havepicklefile = True
 
     if havepicklefile:
       try:
@@ -3869,6 +4011,12 @@ class _CIESpectrum():
       nel=0.0
       rawabund = atomdb.get_abundance(datacache=self.datacache)
 
+    # get the line broadening temperature. Typically this is kT unless
+    # overridden using XXXSession.set_broadening
+    if self.thermal_broaden_temperature is not None:
+      Tb= util.convert_temp(self.thermal_broaden_temperature, 'K', 'keV')
+    else:
+      Tb=kT
     for Z in elements:
       abund = abundance[Z]
       if abund > 0:
@@ -3879,7 +4027,7 @@ class _CIESpectrum():
 
         if len(ikT) == 1:
           ss = self.spectra[ikT[0]][Z].return_spectrum(self.ebins,\
-                                  kT,\
+                                  Tb,\
                                   ebins_checksum = self.ebins_checksum,\
                                   thermal_broadening = self.thermal_broadening,\
                                   broaden_limit = epslimit,\
@@ -3892,7 +4040,7 @@ class _CIESpectrum():
 
         else:
           ss1 = self.spectra[ikT[0]][Z].return_spectrum(self.ebins,\
-                                  kT,\
+                                  Tb,\
                                   ebins_checksum = self.ebins_checksum,\
                                   thermal_broadening = self.thermal_broadening,\
                                   broaden_limit = epslimit,\
@@ -3904,7 +4052,7 @@ class _CIESpectrum():
                                   abund
 
           ss2 = self.spectra[ikT[1]][Z].return_spectrum(self.ebins,\
-                                  kT,\
+                                  Tb,\
                                   ebins_checksum = self.ebins_checksum,\
                                   thermal_broadening = self.thermal_broadening,\
                                   broaden_limit = epslimit,\
@@ -3927,7 +4075,17 @@ class _CIESpectrum():
 
     if do_eebrems:
       eespec = calc_ee_brems_spec(self.ebins, kT, nel)
-      s+= eespec
+
+      # Here we divide the eebrems by nel/nH so that the resulting
+      # spectrum simply needs to
+      # be  multiplied by nenH
+      try:
+        nH =rawabund[1]*abundance[1]
+      except KeyError:
+        print("Warning: as this plasma has no hydrogen in it, assuming nH=1 for electron-electron bremstrahlung renorm")
+        nH=1.0
+
+      s+= eespec/(nel/nH)
 
     return s
 
@@ -4258,7 +4416,6 @@ class _CIESpectrum():
           linelist=elemlinelist
         else:
           linelist =  numpy.append(linelist, elemlinelist)
-        print(linelist)
 
     return linelist
 
@@ -5108,7 +5265,6 @@ class _LineData():
         # identify all the good lines!
         igood = numpy.where(((elines >= emin) & (eneg < emax))  |\
                   ((elines < emin) & (eplu < emin)))[0]
-        #print(len(igood),emin,emax)
         spec = numpy.zeros(len(eedges))
         t0 = time.time()
         for iline in igood:
@@ -6400,7 +6556,17 @@ class _NEISpectrum(_CIESpectrum):
           nel += sum(ionfrac_all[Z]*numpy.arange(Z+1))*rawabund[Z]*abundance[Z]
 
       eespec = calc_ee_brems_spec(self.ebins, kT, nel)
-      totspec += eespec
+
+      # Here we divide the eebrems by nel/nH so that the resulting
+      # spectrum simply needs to
+      # be  multiplied by nenH
+
+      try:
+        nH =rawabund[1]*abundance[1]
+      except KeyError:
+        print("Warning: as this plasma has no hydrogen in it, assuming nH=1 for electron-electron bremstrahlung renorm")
+        nH=1.0
+      totspec += eespec/(nel/nH)
     return totspec
 
 
@@ -6624,7 +6790,7 @@ class _NEISpectrum(_CIESpectrum):
             # only 1 temperature
 
             # get the linelist
-            llist = self.spectra[ikT[0]][Z][z1].return_linelist(specrange,\
+            llist = self.spectra[ikT[0]][Z][z1_drv].return_linelist(specrange,\
                                      specunit=specunit)
 
             # correct for ion fraction
