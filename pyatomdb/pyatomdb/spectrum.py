@@ -35,8 +35,8 @@ import numpy, os, hashlib, pickle, math, re
 from . import atomic, util, const, atomdb, apec
 
 import time, wget
-import warnings, requests
-from scipy.integrate import quad
+import warnings
+#from scipy.integrate import quad
 
 def __make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
                   cocofile="$ATOMDB/apec_coco.fits",\
@@ -1964,12 +1964,12 @@ class CIESession():
     self.cdf = _Gaussian_CDF()
 
 
-  def ionfraction(self, T, Z, teunit='K'):
-
-    settings=apec.parse_par_file(os.path.expandvars('$ATOMDB/apec.par'))
-    ionfrac = atomdb._get_precalc_ionfrac(os.path.expandvars(settings['IonBalanceTable']), Z , T)
-
-    return ionfrac
+#  def ionfraction(self, T, Z, teunit='K'):
+#
+#    settings=apec.parse_par_file(os.path.expandvars('$ATOMDB/apec.par'))
+#    ionfrac = atomdb._get_precalc_ionfrac(os.path.expandvars(settings['IonBalanceTable']), Z , T)
+#
+#    return ionfrac
 
 
 
@@ -2042,7 +2042,7 @@ class CIESession():
 
 
 
-  def set_response(self, rmf, arf=False, raw=False):
+  def set_response(self, rmf, arf=False, raw=False, sparse=False):
     """
     Set the response. rmf, arf can either be the filenames or the
     opened files (latter is faster if called repeatedly)
