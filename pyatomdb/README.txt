@@ -226,3 +226,7 @@ Bugfix to atomic.elsymb_to_Z. Thank you to Guan-Fu Liu for spotting this.
 0.11.2
 November 22nd 2023
 Added formatting to level list print outs, in spectrum.CIESession.format_linelist
+
+0.11.3
+December 5th 2023
+Bugfix to spectrum.py, resolving issue 47
