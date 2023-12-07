@@ -22,7 +22,7 @@ kT = 0.8 # temperature in keV
 tau = 1e11 # n_e*t cm^-3 s
 kT_init=0.01 # initial temperature (for initial ion distribution)
 
-spec = sess.return_spectrum(kT, tau, Te_init=kT_init)
+spec = sess.return_spectrum(kT, tau, init_pop=kT_init)
 
 # note returned spectrum has units of photons cm^5 s^-1 bin^-1, and  has 1 less
 # value than the energy bin grid. Prepend a 0 to it for plotting purposes
@@ -40,12 +40,12 @@ sess.set_response('../tests/testdata/aciss_heg1_cy19.grmf', \
                    arf='../tests/testdata/aciss_heg1_cy19.garf')
 
 # return the spectrum
-spec = sess.return_spectrum(kT, tau, Te_init=kT_init)
+spec = sess.return_spectrum(kT, tau, init_pop=kT_init)
 ax.plot(sess.ebins_out, numpy.append(0, spec), drawstyle='steps', label='HEG Ioniz')
 
 # same again, but for a recombining spectrum - set initial temperature > kT
 kT_init=10.0
-spec = sess.return_spectrum(kT, tau, Te_init=kT_init)
+spec = sess.return_spectrum(kT, tau, init_pop=kT_init)
 
 # plot the results
 ax.plot(sess.ebins_out, numpy.append(0, spec), drawstyle='steps', label='HEG Recomb')

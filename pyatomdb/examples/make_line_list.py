@@ -30,36 +30,42 @@ wl = [8.0,9.0]
 Te = 1e7
 
 # get equilibrium line list
+CIE = pyatomdb.spectrum.CIESession()
 
-res = pyatomdb.spectrum.list_lines(wl,Te=Te, teunit='K', minepsilon=1e-18)
+res = CIE.return_linelist(Te, wl, specunit = 'A', teunit='K')
+
+#trim off the weaker lines
+res = res[res['Epsilon']> 1e-18]
 
 # reprocess lines for printing
 print("Unsorted line list:")
-pyatomdb.spectrum.print_lines(res)
+print(CIE.format_linelist(res))
 
-# re-sort lines, for a giggle
+# re-sort lines
 # for more information, look up numpy.sort: res is a numpy array.
 # http://docs.scipy.org/doc/numpy/reference/generated/numpy.sort.html
 
 res.sort(order=['Epsilon'])
-print("sorted by Emissivity:")
-pyatomdb.spectrum.print_lines(res)
+res=res[::-1]
+print("Top 10 sorted by Emissivity:")
+print(CIE.format_linelist(res[:10]))
 
 # re-sort by element, ion then emissivity
 res.sort(order=['Element','Ion','Epsilon'])
-print("sorted by Element, Ion, Emissivity:")
-pyatomdb.spectrum.print_lines(res)
+print("Top 10 sorted by Element, Ion, Emissivity:")
+print(CIE.format_linelist(res[:10]))
 
 
 # now do an NEI version. This is slow at the moment, but functional.
 Te_init = 1e4
 tau = 1e11
-res_nei = pyatomdb.spectrum.list_nei_lines(wl,Te=Te, teunit='K', \
-                                           minepsilon=1e-18,\
-                                           Te_init=Te_init,\
-                                           tau = tau)
-print("NEI linelist (this takes a while):")
-pyatomdb.spectrum.print_lines(res_nei)
+NEI = pyatomdb.spectrum.NEISession()
+res_nei = NEI.return_linelist(Te, tau, wl, teunit='K', \
+                              specunit='A',\
+                              init_pop=Te_init)
+res_nei = res_nei[res_nei['Epsilon']> 1e-19]
+print("NEI linelist:")
+print(NEI.format_linelist(res_nei[:10]))
                         
 
 

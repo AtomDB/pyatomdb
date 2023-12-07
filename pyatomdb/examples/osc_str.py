@@ -16,9 +16,9 @@ t = time.process_time()
 
 
 
-if os.path.exists('apec_v3.0.9_osc.fits') == False:
+if os.path.exists(os.path.expandvars('$ATOMDB/apec_v3.0.9_osc.fits')) == False:
 
-	emi_file = fits.open('$ATOMDB/apec_v3.0.9_line.fits')  ## opening fits file
+	emi_file = fits.open(os.path.expandvars('$ATOMDB/apec_v3.0.9_line.fits'))  ## opening fits file
 
 	for j in range(2,len(emi_file)):  ### running loops on emissivity extension ##
 
@@ -97,7 +97,7 @@ else:
 
 	## limiting upper wavelength limit to 40 angstorm
 
-	linefile = "apec_v3.0.9_osc.fits"
+	linefile = "$ATOMDB/apec_v3.0.9_osc.fits"
 
 	lfile = os.path.expandvars(linefile)
 	linedata = fits.open(lfile)
@@ -137,7 +137,7 @@ else:
 		
 
 
-	linedata.writeto('apec_v3.0.9_osc.fits', overwrite=True)
+	linedata.writeto(os.path.expandvars('$ATOMDB/apec_v3.0.9_osc.fits'), overwrite=True)
 
 
 

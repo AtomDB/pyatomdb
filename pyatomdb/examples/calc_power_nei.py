@@ -1,4 +1,5 @@
-import pyatomdb, numpy, os
+import pyatomdb, numpy, os, pylab
+import astropy.io.fits as pyfits
 
 """
 This code is an example of generating a cooling curve: the total power
@@ -21,185 +22,112 @@ Usage: python3 calc_power_nei.py
 """
 
 
-
-def calc_power_oneelem_oneT_nei(Z, Elo, Ehi, Tau, ihdu,linefile="$ATOMDB/apec_line.fits",\
-                       cocofile="$ATOMDB/apec_coco.fits", datacache=False):
-  """
-  Calculate the radiated power between 2 different energies
-
-  INPUTS
-  ------
-  Z : int
-    The element atomic number
-  Elo : float
-    The lower energy bound
-  Ehi : float
-    The upper energy bound
-  Tau : float
-    Fluence in cm^{-3} s
-  ihdu : int
-    The HDU to use, from 2 to 52. Each is a different temperature from
-    10^4 to 10^9K in log space.
-  linefile : string/HDUlist
-    If a string, filename of the line emission. If HDU list, that file, already open
-  cocofile : string/HDUlist
-    If a string, filename of the continuum emission. If HDU list, that file, already open
-
-  """
-
-  # make energy bins
-  ebins = numpy.linspace(Elo, Ehi, 10000)
-  en = (ebins[1:]+ebins[:-1])/2
-
-  # get the ionization balance
-  
-  ### ADJUST THINGS HERE  
-  ### HERE I HARDWIRE IONIZATION FROM NEUTRAL. CHANGE IF DESIRED ###
-  init_pop = numpy.zeros(Z+1)
-  init_pop[0] = 1.0
-  ### END ADJUST THINGS HERE  
-  
-  ionbal = pyatomdb.apec.solve_ionbal_eigen(Z, linefile[1].data['kT'][ihdu-2],\
-                                              tau = Tau, teunit='keV', \
-                                              datacache=datacache, init_pop=init_pop)
-  
-  # to store the total spectrum
-  s = 0
-
-  for z1 in range(1,Z+2):
-    ib = ionbal[z1-1]
-    if ib < 1e-10:
-      # ignore small ion fractions, <1e-10 is a rounding error
-      continue
-    
-    else:
-      # calculate the spectrum
-      spec = pyatomdb.spectrum.make_ion_spectrum(ebins, ihdu, Z, z1, \
-                                                 linefile=linefile,\
-                                                 cocofile=cocofile) * ib
-    # add to total spectrum
-    s+=spec
-
-  # now you have a spectrum in photons. Convert to keV
-  E = s*en # energy in keV cm^3 s^-1
-
-  return sum(E)
-
-def calc_power_oneT_nei(Zlist, Elo, Ehi, Tau, ihdu, \
-                    linefile="$ATOMDB/apec_line.fits",\
-                    cocofile="$ATOMDB/apec_coco.fits",\
-                    datacache=False):
-  """
-  Zlist : [int]
-    List of element nuclear charges
-  Elo : float
-    The lower energy bound
-  Ehi : float
-    The upper energy bound
-  Tau : float
-    Fluence in cm^{-3} s
-  ihdu : int
-    The HDU to use, from 2 to 52. Each is a different temperature from
-    10^4 to 10^9K in log space.
-  linefile : string/HDUlist
-    If a string, filename of the line emission. If HDU list, that file, already open
-  cocofile : string/HDUlist
-    If a string, filename of the continuum emission. If HDU list, that file, already open
-  """
-  E={}
-  print("Starting T=%ekeV, iteration %i of %i"%(linefile[1].data['kT'][ihdu-2],\
-                                                ihdu-2, len(linefile[1].data)))
-  for Z in Zlist:
-    E[Z] = calc_power_oneelem_oneT_nei(Z, Elo, Ehi, Tau, ihdu, \
-                                   linefile = linefile, \
-                                   cocofile = cocofile, \
-                                   datacache = datacache)
-  return E
-
-def calc_power_nei(Zlist, Elo, Ehi, Tau, hdulist=range(2,53), linefile="$ATOMDB/apec_line.fits",\
-                       cocofile="$ATOMDB/apec_coco.fits", datacache=False):
-
-  """
-  Zlist : [int]
-    List of element nuclear charges
-  Elo : float
-    The lower energy bound
-  Ehi : float
-    The upper energy bound
-  Tau : float
-    Fluence in cm^{-3} s
-  hdulist : [int]
-    The HDUs to calculate the emission on, from 2 to 52. Each is a different temperature from
-    10^4 to 10^9K in log space. If not given, will do for all 51 temperatures.
-  linefile : string/HDUlist
-    If a string, filename of the line emission. If HDU list, that file, already open
-  cocofile : string/HDUlist
-    If a string, filename of the continuum emission. If HDU list, that file, already open
-  """
+def calc_power(Zlist, nei, Tlist, Taulist):
+  init_pop = 'ionizing'
   res = {}
-  res['power'] = {}
+  res['power'] = numpy.zeros([len(Tlist), len(Taulist)])
   res['temperature'] = []
-  for i, ihdu in enumerate(hdulist):
-    # Get temperature (there are more sophisticated ways to do this, this should just work for what you need)
-    T = 10**(4+(0.1*(ihdu-2)))
+  res['tau'] = []
+  
+  # get photon energy of each bin
+  en = nei.ebins_out
+  en = (en[1:]+en[:-1])/2
+  
+  for i, T in enumerate(Tlist):
+    kT = T/(1000*11604.5)
+    res['temperature'].append(kT)
+    for j, Tau in enumerate(Taulist):
+      print("Doing temperature iteration %i of %i"%(i, len(Tlist)))
+      
+      res['tau'].append(Tau)
 
 
-    res['temperature'].append(T)
-    res['power'][i] = calc_power_oneT_nei(Zlist, Elo, Ehi, Tau, ihdu, linefile = linefile,\
-                      cocofile = cocofile, datacache=datacache)
+      # This code would go through each element 1 by 1.
+      # We will do all elements at the same time to simplify
+      
+#      for Z in Zlist:
+#        if Z==0:
+#          # This is the electron-electron bremstrahlung component alone
+#
+#          #set all abundances to 1 (I need a full census of electrons in the plasma for e-e brems)
+#          nei.set_abund(Zlist[1:], 1.0)
+#          # turn on e-e bremsstrahlung
+#          nei.set_eebrems(True)
+#          spec = nei.return_spectrum(kT, Tau, init_pop=init_pop, \
+#                                     dolines=False, docont=False, dopseudo=False)
+#        else:
+#          # This is everything else, element by element.
+#
+#          # turn off all the elements
+#          nei.set_abund(Zlist[1:], 0.0)
+#          # turn back on this element
+#          nei.set_abund(Z, 1.0)
+#          # turn off e-e bremsstrahlung (avoid double counting)
+#          nei.set_eebrems(False)
+#
+#          spec = nei.return_spectrum(kT, Tau, init_pop=init_pop)
+#
 
-
-  return res
+      spec = nei.return_spectrum(kT, Tau, init_pop=init_pop)
+      E = spec*en
+      res['power'][i][j] = sum(E)
+  return(res)
 
 if __name__=='__main__':
 
-  #### ADJUST THINGS HERE
+
+  ############################
+  #### ADJUST THINGS HERE ####
+  ############################
 
   # Elements to include
-  #Zlist = range(1,31) <- all the elements
-  Zlist = [1,2,6,7,8,10,12,13,14,16,18,20,26,28] #<- just a few
+  #Zlist = range(31) <- all the elements
+  Zlist = [0,1,2,6,7,8,10,12,13,14,16,18,20,26,28] #<- just a few
+  # Note that for this purpose, Z=0 is the electron-electron bremsstrahlung
+  # continuum. This is not a general AtomDB convention, just what I've done here
+  # to make this work.
 
-  # specify energy range you want to integrate over (min = 0.001keV, max=100keV)
-  Elo = 2 #keV
-  Ehi = 10 #
-  
-  
-  # specify the fluence, in cm-3s for the NEI plasma
-  Tau = 1e20
+  # specify photon energy range you want to integrate over (min = 0.001keV, max=100keV)
+  Elo = 0.001 #keV
+  Ehi = 100.0 #
+
+  # temperatures at which to calculate curve (K)
+  Tlist = numpy.logspace(4,9,51)
 
   # specify output file name (default output.txt)
-  outfile = 'output_nei_1e20.txt'
+  outfile = 'output.txt'
 
-  #pre-open the emissivity files (not required, but saves a lot of disk access time)
-  linedata  = pyatomdb.pyfits.open(os.path.expandvars('$ATOMDB/apec_nei_line.fits'))
-  cocodata  = pyatomdb.pyfits.open(os.path.expandvars('$ATOMDB/apec_nei_comp.fits'))
+  ################################
+  #### END ADJUST THINGS HERE ####
+  ################################
 
-  #### END ADJUST THINGS HERE
-  datacache={}
+  # set up the spectrum
+  Zlist = numpy.array([0,1,2,6,7,8,10,12,13,14,16,18,20,26,28]) #<- just a few
+  
+  nei = pyatomdb.spectrum.NEISession(elements=Zlist[Zlist>0])
+  if 0 in Zlist:
+    nei.set_eebrems(True)
+  ebins = numpy.linspace(Elo, Ehi, 10001)
+  nei.set_response(ebins, raw=True)
+  nei.set_eebrems(True)
   # crunch the numbers
-  k = calc_power_nei(Zlist, Elo, Ehi, Tau, linefile = linedata, cocofile = cocodata,\
-                 datacache=datacache)
-
-  # output generation
-  o = open(outfile, 'w')
-
-  # header row
-  s = '# Temperature log10(K)'
-  for i in range(len(Zlist)):
-    s += ' %12i'%(Zlist[i])
-  o.write(s+'\n')
-
-  # for each temperature
-  for i in range(len(k['temperature'])):
-    s = '%22e'%(numpy.log10(k['temperature'][i]))
-    for Z in Zlist:
-      s+=' %12e'%(k['power'][i][Z])
-    o.write(s+'\n')
-
-  # notes
-  o.write("# Total Emissivity in keV cm^3 s^-1 for each element with AG89 abundances, between %e and %e keV\n"%(Elo, Ehi))
-  o.write("# To get cooling power, multiply by Ne NH")
-  o.write("# Calculated with Tau = %e cm^{-3} s"%(Tau))
-  o.close
+  Taulist = [1e8, 1e10, 1e14]
+  k = calc_power(Zlist, nei, Tlist, Taulist)
 
 
+  fig = pylab.figure()
+  fig.show()
+  ax = fig.add_subplot(111)
+
+  for i, tau in enumerate(Taulist):
+    ax.loglog(k['temperature'], k['power'][:,i]*pyatomdb.const.ERG_KEV, label=repr(int(numpy.log10(tau))))
+  ax.legend(loc=0)
+  pylab.draw()
+  
+  ax.set_xlabel("Temperature (keV)")
+  ax.set_ylabel("Radiated Power 0.001-100keV\n(erg cm$^{3}$ s$^{-1}$)")
+  
+
+  zzz=input("Press enter to continue")
+  fig.savefig('calc_power_nei_examples_1_1.pdf')
+  fig.savefig('calc_power_nei_examples_1_1.svg')
