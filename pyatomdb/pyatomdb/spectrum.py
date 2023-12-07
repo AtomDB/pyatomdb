@@ -3066,13 +3066,15 @@ class CIESession():
     header1 = ""
     header2 = ""
     header1 += 'Z  z1    Ion    '
-    header2 += '__ __ __________'
+    header2 += '-- -- ----------'
     if 'ion_drv' in linelist.dtype.names:
       header1 += " z1drv"
       header2 += " -----"
-    header1 += "  Wave (A)   En (keV)   Epsilon  UpLev LoLev"
-    header2 += " ---------- --------- ---------- ----- -----"
+    header1 += "  Wave (A)     En (keV)    Epsilon  UpLev LoLev"
+    header2 += " ----------   ---------  ---------- ----- -----"
 
+    s += header1+'\n'
+    s += header2+'\n'
     for l in linelist:
       s += "%2i %2i %10s"% (l['Element'], l['Ion'], atomic.spectroscopic_name(l['Element'], l['Ion']))
 
@@ -3083,17 +3085,22 @@ class CIESession():
 
       d = atomdb.get_data(l['Element'], l['Ion'], 'LV', datacache=self.datacache)
 
+      ll = d[1].data[l['LowerLev']-1]
+        
       try:
         ul = d[1].data[l['UpperLev']-1]
         ll = d[1].data[l['LowerLev']-1]
         s+= atomdb.format_level(ul)
         s+= " -> "
         s+= atomdb.format_level(ll)
+        
       except:
-        if ul >=10000:
+#        ul = d[1].data[l['UpperLev']-1]
+        ll = d[1].data[l['LowerLev']-1]
+        if l['UpperLev'] >=10000:
           s+= " DR Satellite Line"
       s+="\n"
-
+    
     return(s)
 
 
@@ -4466,7 +4473,7 @@ class _CIESpectrum_RS(_CIESpectrum):
     self.datacache = {}
     self.SessionType = 'CIE'
 
-    picklefname = os.path.expandvars('$ATOMDB/spectra_%s_%s.pkl'%\
+    picklefname = os.path.expandvars('$ATOMDB/spectra_RS_%s_%s.pkl'%\
                                 (linedata[0].header['CHECKSUM'],\
                                  cocodata[0].header['CHECKSUM']))
     
@@ -6483,8 +6490,11 @@ class _NEISpectrum(_CIESpectrum):
     ikT, f = self.get_nearest_Tindex(kT, teunit='keV', nearest=nearest, log_interp=log_interp)
 
     # check the params:
-    if elements==False:
-      elements=range(1,const.MAXZ_NEI+1)
+    try:
+      if elements==False:
+        elements=range(1,const.MAXZ_NEI+1)
+    except:
+      pass
 
 
     if abundance == False:

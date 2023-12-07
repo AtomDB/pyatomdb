@@ -6365,7 +6365,7 @@ def format_level(level):
 
   s += "%40s $"%(level['ELEC_CONFIG'])
   if level['S_QUAN'] != -1:
-    s+="^{%i}"%(numpy.int(level['S_QUAN']*2)+1)
+    s+="^{%i}"%(int(level['S_QUAN']*2)+1)
   if level['L_QUAN'] != -1:
     s+="%s"%(llist[level['L_QUAN']])
   if level['LEV_DEG'] != -1:
