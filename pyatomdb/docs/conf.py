@@ -15,6 +15,7 @@
 import sys
 import os
 import shlex
+#import numpydoc
 
 try:
   from unittest.mock import MagicMock
@@ -63,6 +64,8 @@ extensions = [
     'numpydoc',
     'sphinx.ext.todo',
     'sphinx.ext.mathjax',
+    'sphinx.ext.viewcode',
+    'sphinx_rtd_theme',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -81,7 +84,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'PyAtomDB'
-copyright = u'2015-2020, Adam Foster'
+copyright = u'2015-2023, Adam Foster'
 author = u'Adam Foster'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -98,7 +101,7 @@ release = get_version('../pyatomdb/__init__.py')
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = 'en'
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
@@ -143,7 +146,7 @@ todo_include_todos = True
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-html_theme = 'default'
+html_theme = 'sphinx_rtd_theme'
 
 if not on_rtd:  # only import and set the theme if we're building docs locally
     import sphinx_rtd_theme

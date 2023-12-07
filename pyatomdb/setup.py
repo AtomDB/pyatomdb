@@ -68,6 +68,7 @@ setup(name='pyatomdb',
       zip_safe=False,
       long_description = README_TEXT,\
       install_requires=[
+      "numpydoc",\
       "requests",\
       "wget",\
       "numpy>=1.9.0",\
