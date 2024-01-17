@@ -5,6 +5,7 @@ integer nuclear charge to element symbols, etc.
 Version -.1 - initial release
 Adam Foster July 17th 2015
 """
+llist = 'spdfghiklmnoqrtuvwxyzABCDEFGHIJKLMNOP'
 
 import re, numpy
 ################################################################################
@@ -456,21 +457,20 @@ def spectroscopictoz0(name):
 #*******************************************************************************
 
 def occup_to_cfg(occlist) :
-  l_list = ['s','p','d','f','g','h','i','k','l','m','n','o','q','r',
-            't','u','v','w','x','y','z']
+#  l_list = ['s','p','d','f','g','h','i','k','l','m','n','o','q','r',
+#            't','u','v','w','x','y','z', 'A','B','C','D','E','F','G','H','I','J']
 
   cfgstr=''
   l=0
   n=0
   for j, i in enumerate(occlist) :
-#    print repr(i) +' '+ repr(n) +' '+ repr(l)
     if (l+1 >= n):
       l = 0
       n += 1
     else:
       l += 1
     if (i > 0):
-      cfgstr = cfgstr+' '+repr(n)+l_list[l]+repr(i)
+      cfgstr = cfgstr+' '+repr(n)+llist[l]+repr(i)
 
 # return minus leading blank
 
@@ -676,17 +676,16 @@ def Z_to_mass(Z, raw = False):
 #------------------------------------------------------------------------------
 
 def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
-#  print cfgstr
+
   if len(cfgstr)==0:
     cfgstr = '1s2'
   cfgsplit = cfgstr.split(' ')
   n = []
   l = []
   o = []
-  llist='spdfghiklmnoqrt'
+
   for cfg in cfgsplit:
-#    print cfg
-#    print n,l,o
+
     ntmp = re.search("^[0-9]+",cfg)
     n.append(int(ntmp.group(0)))
     ltmp = re.search("[a-zA-Z]",cfg)
@@ -697,25 +696,22 @@ def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
   # find the max nl shell
   if shlmax == -1:
     maxshl = -1
-#    print 'boo'
     for i in range(len(n)):
       shlind = 0
-#      print 'b2'
       shlind=sum(range(1,n[i]+1))
       maxshl = max([maxshl, shlind])
+
   else:
     maxshl=shlmax
-#  print maxshl
+
   occup = numpy.zeros(maxshl, dtype=int)
-#  print occup
+
   for i in range(len(n)):
     shlind = 0
     if n[i] > 1:
       for iin in range(1,n[i]):
         shlind = shlind + iin
       shlind = shlind + l[i]
-#    print shlind, n[i], l[i], o[i]
-#    print occup, shlind
     occup[shlind] = occup[shlind] + o[i]
 
   inext = 0
@@ -726,18 +722,14 @@ def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
 
     firstoccup = min(numpy.where(occup>0)[0])
     if firstoccup > 0:
-#    print "HI2!"
-#    print occup
+
       for i in range(len(occup)):
         if ((occup[i] == 0) &(occup.sum() < nel)):
-  #        print "arse",occup.sum()+4*lnext+2, nel
           if (nel-occup.sum()==6) &\
              (4*lnext+2 != 6):
             pass
           elif (occup.sum()+4*lnext+2 <= nel):
-  #          print "PING:"
             occup[i] = occup[i] + 4*lnext+2
-  #          print occup
         else:
           break
 
@@ -753,10 +745,8 @@ def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
     lnext = 0
     nnext = 1
     onext = 2
-  #  print "HI!"
-  #  print (sum(occup), nel)
+
     while (sum(occup) < nel):
-  #    print occup
       if occup[inext] == 0:
         if (onext > (nel-sum(occup))):
           occup[inext] += nel-sum(occup)
@@ -771,9 +761,10 @@ def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
       onext = 4*lnext+2
       inext += 1
   else:
-##    print "WHAT!", occup
+
     # we have an array defining the number of electrons total in each N shell
     # such as in FAC
+
     inext = 0
     nnext = 1
     shell_n = numpy.zeros(len(occup), dtype=int)
@@ -783,16 +774,12 @@ def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
       shell_l[inext:inext+nnext]=numpy.arange(nnext)
       inext += nnext
       nnext += 1
-##    print "shell_n",shell_n
-##    print "shell_l",shell_l
     for i_n in range(len(noccup)):
       nnext = i_n+1
       i = numpy.where(shell_n == nnext)[0]
       nel_tot = sum(occup[i])
       nel_targ = noccup[i_n]
-##      print "occup: ", occup
-##      print "Gives nel_tot=%i for n=%i, while nel_targ=%i" %\
-##            (nel_tot, nnext, nel_targ)
+
       # if the number of electrons match
       if nel_tot == nel_targ: continue
 
@@ -802,41 +789,30 @@ def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
         print("   %i vs %i" %(nel_tot, nel_targ))
 
       while nel_tot< nel_targ:
-##        print occup
+
         #find empty l shells
         lposs = []
         for il in i:
-##          print "Try n = %i, l=%i, il=%i"%(nnext, shell_l[il], il)
-##          print "shell_l[il]*4+2=%i, nel_targ-nel_tot=%i" % \
-##                (shell_l[il]*4+2,nel_targ-nel_tot)
-##          print "occup[%i] = %i" %(il, occup[il])
           if ((occup[il]==0) &(shell_l[il]*4+2 <= (nel_targ-nel_tot))):
             lposs.append(shell_l[il])
-##            print "Good!"
+
         # get number of occupancies
         shell_occup = numpy.array(lposs)*4+2
 
         delta_nel = nel_targ - nel_tot
         k = numpy.where(shell_occup == delta_nel)[0]
-##        print "k=",k
         if len(k) ==1:
           k = k[0]
           ind = numpy.where((shell_n==nnext) & (shell_l==lposs[k]))[0][0]
-##          print "setting occup[%i]=shell_occup[%i]=%i"% \
-##                (ind, k, shell_occup[k])
           occup[ind] =shell_occup[k]
-##          print occup
         else:
-##          print nnext, lposs
           ind = numpy.where((shell_n==nnext) & (shell_l==lposs[0]))[0][0]
           occup[ind] = shell_occup[0]
 
         nel_tot = sum(occup[i])
-##        zzz=raw_input()
 
 
   if ((nel > 0) & (sum(occup) != nel)):
-#    print occup
     return occup,False
   else:
     return occup, True
@@ -847,7 +823,6 @@ def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
 #------------------------------------------------------------------------------
 
 def occup_to_config(occup):
-  llist='spdfghiklmnopqrstuvwxyz'
 
   s = ''
   lnext = 0
@@ -877,8 +852,6 @@ def parse_config(cfgstr):
   except AttributeError:
     c = cfgstr.split()
 
-
-  llist= 'spdfghiklmnoqrtuvwxyz'
 
   ret=[]
   for ic in c:
@@ -924,13 +897,12 @@ def get_maxn(cfgstr):
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 
-def parse_eissner(cfgstr, nel=0, levelmap=None):
-
+def parse_eissner(cfgstr, nel=0, levelmap=None, lmax_set=None):
   if levelmap is not None:
     # levelmap is a list of n, l for each level
     # with i['N'] and i['L'] giving the infos
     shelllist='123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-    llist = 'spdfghiklmnoqrtuvwxyz'
+
     cfg = cfgstr.strip()
     try:
       cfg = cfg.decode('ascii')
@@ -960,7 +932,6 @@ def parse_eissner(cfgstr, nel=0, levelmap=None):
     i=0
     while i < len(cfg):
       cfgtmp = cfg[i:i+3]
-      #print(cfgtmp)
       if cfgtmp[-1].islower():
         if len(cfg)>=i+4:
           if cfg[i+3].islower():
@@ -974,9 +945,28 @@ def parse_eissner(cfgstr, nel=0, levelmap=None):
         ishell = shelllist.index(cfgtmp[2])
       else:
         ishell = shelllist.index(cfgtmp[3])-35+len(shelllist)+(26*(shelllist.index(cfgtmp[2])-35))
+      try:
+        n = levelmap[ishell]['N']
+        l = levelmap[ishell]['L']
+      except IndexError:
+        # too many shells?
+        if ishell >= len(levelmap):
+          last_n = levelmap[-1]['N']
+          last_l = levelmap[-1]['L']
+          if last_l < last_n -1:
+            n=last_n
+            l=last_l+1
+          else:
+            n=last_n+1
+            l=0
+          levelmap= numpy.append(levelmap, \
+                                 numpy.zeros(1, \
+                                 dtype=numpy.dtype({'names':['N','L'],\
+                                                    'formats':[int, int]})))
+          levelmap[-1]['N'] = n
+          levelmap[-1]['L'] = l
 
-      n = levelmap[ishell]['N']
-      l = levelmap[ishell]['L']
+
       lsymb = llist[l]
       ret += "%i%s%i "%(n,lsymb,nelec)
     ret = ret[:-1]
@@ -984,7 +974,7 @@ def parse_eissner(cfgstr, nel=0, levelmap=None):
 
   else:
     shelllist='123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-    llist = 'spdfghiklmnoqrtuvwxyz'
+
     cfg = cfgstr.strip()
     try:
       cfg = cfg.decode('ascii')
@@ -999,7 +989,6 @@ def parse_eissner(cfgstr, nel=0, levelmap=None):
 #      cfg=cfg[:i]+'$^'+cfg[i+1:]
 #  cfg = re.sub('^', '', cfgcopy)
 
-#  print(cfg)
 
     if len(cfg)%3 == 0:
       # find the initial split. Want configuration to start with 5 (or 6, or 7)
@@ -1023,7 +1012,6 @@ def parse_eissner(cfgstr, nel=0, levelmap=None):
     i=0
     while i < len(cfg):
       cfgtmp = cfg[i:i+3]
-      #print(cfgtmp)
       if cfgtmp[-1].islower():
         if len(cfg)>=i+4:
           if cfg[i+3].islower():

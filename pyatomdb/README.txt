@@ -230,3 +230,7 @@ Added formatting to level list print outs, in spectrum.CIESession.format_linelis
 0.11.3
 December 5th 2023
 Bugfix to spectrum.py, resolving issue 47
+
+0.11.4
+January 17th 2024
+Updated atomic.py to hold uniform L shell labels up to L=27
