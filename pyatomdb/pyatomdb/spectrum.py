@@ -4002,7 +4002,7 @@ class _CIESpectrum():
     ikT, f = self.get_nearest_Tindex(kT, teunit='keV', nearest=nearest, log_interp=log_interp)
 
     # check the params:
-    if elements==False:
+    if elements is False:
       elements=range(1,const.MAXZ_CIE+1)
 
 
@@ -4384,7 +4384,7 @@ class _CIESpectrum():
     ikT, f = self.get_nearest_Tindex(kT, teunit='keV', nearest=nearest)
 
     # check the params:
-    if elements==False:
+    if elements is False:
       elements=range(1,const.MAXZ_CIE+1)
 
 
@@ -4561,7 +4561,7 @@ class _CIESpectrum_RS(_CIESpectrum):
     ikT, f = self.get_nearest_Tindex(kT, teunit='keV', nearest=nearest, log_interp=log_interp)
 
     # check the params:
-    if elements==False:
+    if elements is False:
       elements=range(1,const.MAXZ_CIE+1)
 
 
@@ -6393,7 +6393,7 @@ class _NEISpectrum(_CIESpectrum):
       Array of all the ion fractions.
   """
     init_pop_calc={}
-    if elements==False:
+    if elements is False:
       elements = self.elements
     # check the format of init_pop
     if isinstance(init_pop, str):
@@ -6491,7 +6491,7 @@ class _NEISpectrum(_CIESpectrum):
 
     # check the params:
     try:
-      if elements==False:
+      if elements is False:
         elements=range(1,const.MAXZ_NEI+1)
     except:
       pass
@@ -6733,7 +6733,7 @@ class _NEISpectrum(_CIESpectrum):
     ikT, f = self.get_nearest_Tindex(kT, teunit='keV', nearest=nearest, log_interp=log_interp)
 
     # check the params:
-    if elements==False:
+    if elements is False:
       elements=range(1,const.MAXZ_NEI+1)
 
 
@@ -7376,7 +7376,7 @@ class _PShockSpectrum(_NEISpectrum):
       Array of all the ion fractions.
   """
     init_pop_calc={}
-    if elements==False:
+    if elements is False:
       elements = self.elements
     # check the format of init_pop
     if isinstance(init_pop, str):
@@ -7508,7 +7508,7 @@ class _PShockSpectrum(_NEISpectrum):
     ikT, f = self.get_nearest_Tindex(kT, teunit='keV', nearest=nearest, log_interp=log_interp)
 
     # check the params:
-    if elements==False:
+    if elements is False:
       elements=range(1,const.MAXZ_NEI+1)
 
 
@@ -7749,7 +7749,7 @@ class _PShockSpectrum(_NEISpectrum):
     ikT, f = self.get_nearest_Tindex(kT, teunit='keV', nearest=nearest, log_interp=log_interp)
 
     # check the params:
-    if elements==False:
+    if elements is False:
       elements=range(1,const.MAXZ_NEI+1)
 
 
