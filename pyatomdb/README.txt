@@ -234,3 +234,7 @@ Bugfix to spectrum.py, resolving issue 47
 0.11.4
 January 17th 2024
 Updated atomic.py to hold uniform L shell labels up to L=27
+
+0.11.5
+May 15th 2024
+Updated rmf handling routines in spectrum.py to handle RMF with inconsistent F_CHAN and EBOUNDS indexing.

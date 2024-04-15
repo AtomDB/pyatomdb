@@ -1603,7 +1603,7 @@ class _Gaussian_CDF():
 
     # interpolate to get the appropriate CDF values
     ret=numpy.interp(etmp, self.x, self.cdf)
-    
+
 
     return ret
 
@@ -2178,7 +2178,37 @@ class CIESession():
 
       if not sparse:
 
+
         chanoffset = self.rmf['EBOUNDS'].data['CHANNEL'][0]
+
+        # ERROR CHECK FOR LEM RMF Files
+        #
+        # Somehow these files are indexed from both 1 and zero.
+        # Check will be to look at the minimum and maximum channels
+        # requested, if they are > channoffset, issue a warning, but continue
+        #
+        # Hopefully check can be removed someday...
+        # ARF 2024-04-15 <- date added for posterity to see when "someday" occurs...
+
+        min_bin = numpy.zeros(len(self.rmf[matrixname].data), dtype=int)
+        max_bin = numpy.zeros(len(self.rmf[matrixname].data), dtype=int)
+
+        for i in range(len(self.rmf[matrixname].data)):
+           min_bin[i] = numpy.min(self.rmf[matrixname].data['F_CHAN'][i])
+           max_bin[i] = numpy.max(self.rmf[matrixname].data['F_CHAN'][i]+self.rmf[matrixname].data['N_CHAN'][i])-1
+
+        min_bin = min_bin.min()
+        max_bin = max_bin.max()
+
+        if max_bin > max(self.rmf['EBOUNDS'].data['CHANNEL']):
+          if ((min_bin > 0) & (chanoffset==0)):
+            # RAISE A WARNING
+            warnings.warn("Using an rmf file with inconsistent E_BOUNDS and F_CHAN indexing. Continuing, but check your RMF file.", RuntimeWarning)
+
+            # hack is to set chanoffset back to zero
+            chanoffset = min_bin
+
+        # END LEM Error Check fix
 
 
         self.rmfmatrix = numpy.zeros([len(self.rmf[matrixname].data),len(self.rmf['EBOUNDS'].data)])
@@ -2227,6 +2257,37 @@ class CIESession():
         col=[]
 
         chanoffset = self.rmf['EBOUNDS'].data['CHANNEL'][0]
+
+        # ERROR CHECK FOR LEM RMF Files
+        #
+        # Somehow these files are indexed from both 1 and zero.
+        # Check will be to look at the minimum and maximum channels
+        # requested, if they are > channoffset, issue a warning, but continue
+        #
+        # Hopefully check can be removed someday...
+        # ARF 2024-04-15 <- date added for posterity to see when "someday" occurs...
+
+        min_bin = numpy.zeros(len(self.rmf[matrixname].data), dtype=int)
+        max_bin = numpy.zeros(len(self.rmf[matrixname].data), dtype=int)
+
+        for i in range(len(self.rmf[matrixname].data)):
+           min_bin[i] = numpy.min(self.rmf[matrixname].data['F_CHAN'][i])
+           max_bin[i] = numpy.max(self.rmf[matrixname].data['F_CHAN'][i]+self.rmf[matrixname].data['N_CHAN'][i])-1
+
+        min_bin = min_bin.min()
+        max_bin = max_bin.max()
+
+        if max_bin > max(self.rmf['EBOUNDS'].data['CHANNEL']):
+          if ((min_bin > 0) & (chanoffset==0)):
+            # RAISE A WARNING
+            warnings.warn("Using an rmf file with inconsistent E_BOUNDS and F_CHAN indexing. Continuing, but check your RMF file.", RuntimeWarning)
+
+            # hack is to set chanoffset back to zero
+            chanoffset = min_bin
+
+        # END LEM Error Check fix
+
+
 
         for ibin, i in enumerate(self.rmf[matrixname].data):
           lobound = 0
@@ -3086,21 +3147,21 @@ class CIESession():
       d = atomdb.get_data(l['Element'], l['Ion'], 'LV', datacache=self.datacache)
 
       ll = d[1].data[l['LowerLev']-1]
-        
+
       try:
         ul = d[1].data[l['UpperLev']-1]
         ll = d[1].data[l['LowerLev']-1]
         s+= atomdb.format_level(ul)
         s+= " -> "
         s+= atomdb.format_level(ll)
-        
+
       except:
 #        ul = d[1].data[l['UpperLev']-1]
         ll = d[1].data[l['LowerLev']-1]
         if l['UpperLev'] >=10000:
           s+= " DR Satellite Line"
       s+="\n"
-    
+
     return(s)
 
 
@@ -3169,7 +3230,7 @@ class CIESession_RS(CIESession):
 
   >>> cie_rs.set_broadening(True)
   Will thermally broaden lines with emissivity > 1.000000e-18 ph cm3 s-1
-  
+
   Specify abundance
 
   >>>Abund= atomdb.get_abundance(abundfile=False, \
@@ -3183,7 +3244,7 @@ class CIESession_RS(CIESession):
   1 element shorter than ebins)
   """
 
-  
+
       #print("File osc.fits downloaded successfully.")
 
     #else:
@@ -3211,7 +3272,7 @@ class CIESession_RS(CIESession):
     -------
     None
     """
-    
+
 
 #    file_oscfile = "$ATOMDB/osc.fits"
     f_osc = os.path.expandvars(oscfile)
@@ -3225,7 +3286,7 @@ class CIESession_RS(CIESession):
       fname = f[0]+'_v'+curversion+'_'+f[1]
       url =  const.FTPPATH+'/releases/'+fname
       wget.download(url, out=os.path.expandvars("$ATOMDB"))
-      
+
       os.symlink(os.path.expandvars("$ATOMDB/"+fname), os.path.expandvars("$ATOMDB/apec_osc.fits"))
 
     linefile=oscfile
@@ -3359,7 +3420,7 @@ class CIESession_RS(CIESession):
 
 
 
-  
+
 
   def return_line_emissivity(self, Te, Z, z1, up, lo, \
                              specunit='A', teunit='keV', \
@@ -4476,7 +4537,7 @@ class _CIESpectrum_RS(_CIESpectrum):
     picklefname = os.path.expandvars('$ATOMDB/spectra_RS_%s_%s.pkl'%\
                                 (linedata[0].header['CHECKSUM'],\
                                  cocodata[0].header['CHECKSUM']))
-    
+
     self.spectra={}
     self.kTlist = numpy.array(linedata[1].data['kT'].data)
     self.spectra['kTlist']=numpy.array(linedata[1].data['kT'].data)
@@ -4499,7 +4560,7 @@ class _CIESpectrum_RS(_CIESpectrum):
         else:
           c = False
 
-        
+
         self.spectra[ihdu][Z]=_ElementSpectrum_RS(ldat[Zarr[:,Z]],\
                                               c, \
                                               Z)
@@ -5417,7 +5478,7 @@ class _LineData_RS():
 
 
 
-    
+
     Abund = [1.0, 0.09772372209558111,  1.4454397707459272e-11,  1.4125375446227541e-11, 3.9810717055349735e-10,  0.0003630780547701018,  0.00011220184543019652,  0.0008511380382023759, 3.63078054770101e-08,  0.0001230268770812381, 2.1379620895022326e-06, 3.8018939632056124e-05,  2.9512092266663837e-06,  3.5481338923357534e-05,  2.818382931264455e-07,  1.62181009735893e-05,  3.162277660168379e-07,  3.63078054770101e-06,  1.3182567385564074e-07,  2.2908676527677747e-06,  1.2589254117941675e-09,  9.772372209558112e-08,  1e-08,  4.677351412871981e-07,  2.4547089156850283e-07,  4.6773514128719816e-05,  8.317637711026709e-08,  1.778279410038923e-06,  1.62181009735893e-08,  3.981071705534969e-08]
     #Abund = [1.0,  0.08413951416451965, 1.2589254117941675e-11, 2.39883291901949e-11,  5.011872336272725e-10,  0.00024547089156850334,  7.244359600749905e-05,  0.0005370317963702533,  3.63078054770101e-08, 0.00011220184543019652,  1.9952623149688787e-06,  3.467368504525317e-05,  2.9512092266663837e-06,  3.3113112148259076e-05,  2.8840315031266057e-07,  1.3803842646028839e-05,  3.162277660168379e-07, 3.1622776601683796e-06, 1.3182567385564074e-07,  2.1379620895022326e-06, 1.2589254117941675e-09,  7.94328234724282e-08,  1e-08,  4.365158322401656e-07,  2.3442288153199225e-07,  2.818382931264455e-05,  8.317637711026709e-08,  1.698243652461746e-06,  1.62181009735893e-08,  4.1686938347033556e-08]
 
@@ -5426,10 +5487,10 @@ class _LineData_RS():
     self.lines['Epsilon']=self.lines['Epsilon']
 
     #print(self.osc)
-    
+
     '''
     #print(self.elements)
-    if len(self.elements) != 0:      
+    if len(self.elements) != 0:
       # read the ionization balance table
       ionfrac = atomdb._get_precalc_ionfrac(os.path.expandvars(settings['IonBalanceTable']),self.elements[0] , T)
       #else:
@@ -5437,27 +5498,27 @@ class _LineData_RS():
       # calculate the ionization balance
       #ionftmp = apec.calc_full_ionbal(T, 1e14, Te_init=T, Zlist=[self.elements[1]], extrap=True)
       #ionfrac = ionftmp[self.elements[1]]
-    
-  
-   
+
+
+
       energy_priyankev = const.HC_IN_KEV_A/self.lines['Lambda']
-      
+
       ion=ionfrac[self.lines['Ion']-1]
       #print(energy_kev, self.lines['Lambda'],ion)
-      
+
       u_th_sq= 2*const.BOLTZMAN_CONSTANT*T/(2*self.lines['Element'][0]*(const.PROTON_MASS)*((100*(const.LIGHTSPEED))**2))
-      
-      
+
+
       u_turb_sq =  2* (((1000*velocity_broadening)/const.LIGHTSPEED)**2)
-      
-     
+
+
       delta_E = 1.60218e-9*energy_kev*math.sqrt(u_th_sq + u_turb_sq )
 
-      
-    
+
+
       tau = 1.15e23*N_e*0.83*Abund[self.lines['Element'][0]-1]*ion*(math.pi**0.5)*(2**0.5)*(const.PLANCK_CONSTANT)*(const.CLASSICAL_ELECTRON_RADIUS)*(const.LIGHTSPEED*100)*self.lines['Oscil_str']/delta_E
-      
-      
+
+
 
 
       self.lines['Epsilon'] = self.line_stock['Epsilon']
@@ -5467,8 +5528,8 @@ class _LineData_RS():
           #print(self.lines['Element'][0], self.lines['Lambda'][taus],tau[taus])
           factor = (1-(math.exp(-tau[taus])))
           self.lines['Epsilon'][taus] = self.lines['Epsilon'][taus] * (1-factor)
-          
-  
+
+
         if tau[taus] >= 1:
           print(tau[taus], self.lines['Lambda'][taus], self.lines['Element'][taus])
           factor = (1-(math.exp(-tau[taus])))/(tau[taus])
@@ -5477,15 +5538,15 @@ class _LineData_RS():
 
 
       '''
-     
+
     #start = time.time()
     #print(start)
-      
-    
 
 
 
-    
+
+
+
 
     if ebins_checksum == False:
         # generate the checksum
@@ -5573,7 +5634,7 @@ class _LineData_RS():
           vb = (velocity_broadening * 1e5)**2
 
         wcoeff = numpy.sqrt(Tb+vb) / (const.LIGHTSPEED*1e2)
-        
+
 
         elines = self.lineenergies[ind]
 
@@ -5592,12 +5653,12 @@ class _LineData_RS():
         igood = numpy.where(((elines >= emin) & (eneg < emax))  |\
                   ((elines < emin) & (eplu < emin)))[0]
         spec = numpy.zeros(len(eedges))
-        
+
         t0 = time.time()
         #print(igood)
-        
-        
-        if len(llist['Element']) != 0:      
+
+
+        if len(llist['Element']) != 0:
       # read the ionization balance table
           ionfrac = atomdb._get_precalc_ionfrac(os.path.expandvars(settings['IonBalanceTable']),llist['Element'][0] , T)
           #print(ionfrac)
@@ -5613,25 +5674,25 @@ class _LineData_RS():
           u_turb_sq =  2* (((1000*velocity_broadening)/const.LIGHTSPEED)**2)
           delta_E = 1.60218e-9*energy_kev*math.sqrt(u_th_sq + u_turb_sq )
           delta_E_kev= energy_kev*math.sqrt(u_th_sq + u_turb_sq )
-          
-        
 
-          
-          if numpy.array(Ab).size==30:       
+
+
+
+          if numpy.array(Ab).size==30:
 
            # tau = N_e*0.83*Abund[llist['Element'][0]-1]*ion*(math.pi**0.5)*(2**0.5)*Ab[llist['Element'][0]-1]*(const.PLANCK_CONSTANT)*(const.CLASSICAL_ELECTRON_RADIUS)*(const.LIGHTSPEED*100)*llist['Oscil_str']/delta_E
 
             tau = N_e*0.83*Abund[llist['Element'][0]-1]*ion*(math.pi**0.5)*Ab[llist['Element'][0]-1]*(const.PLANCK_CONSTANT)*(const.CLASSICAL_ELECTRON_RADIUS)*(const.LIGHTSPEED*100)*llist['Oscil_str']/delta_E
 
 
-          
+
 
 
           elif numpy.array(Ab).size ==14:
 
 
             elem=[1,2,6,7,8,10,12,13,14,16,18,20,26,28]
-          
+
             abundan = numpy.ones(30)
 
             for i in range(len(elem)):
@@ -5642,19 +5703,19 @@ class _LineData_RS():
 
 
 
-          
 
 
-          
+
+
           elif Ab.size==1:
 
             tau = N_e*0.83*Abund[llist['Element'][0]-1]*ion*(math.pi**0.5)*Ab*(const.PLANCK_CONSTANT)*(const.CLASSICAL_ELECTRON_RADIUS)*(const.LIGHTSPEED*100)*llist['Oscil_str']/delta_E
-            
-          
+
+
           #print(math.sqrt(u_th_sq + u_turb_sq ),energy_kev)
 
         #print(llist[igood])
-        
+
         #zzz=input()
 
         #def integrand(x,number):
@@ -5676,26 +5737,26 @@ class _LineData_RS():
             spec += broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
                           width[iline],eedges)*llist['Epsilon'][iline]
             #print(tau[iline], llist['Lambda'][iline], Ab[llist['Element'][0]-1], N_e, Abund[llist['Element'][0]-1])
-            
+
 
 
 
           #elif tau[iline] >= 0.5 and tau[iline]<10:
           elif tau[iline] > 0.1 and tau[iline]<10:
-            
-            
+
+
             factor = (0.00001*(tau[iline]**4))-(0.0008**(tau[iline]**3))+(0.0209**(tau[iline]**2))-(0.2254*tau[iline])+0.9828
             #factor = ((1-(math.exp(-tau[iline])))/(tau[iline]))
             factor1 = 1-factor
 
             #print(tau[iline], const.HC_IN_KEV_A/llist['Lambda'][iline], llist['Element'][iline],llist['Ion'][iline])
 
-            
+
             #print(tau[iline], const.HC_IN_KEV_A/llist['Lambda'][iline], factor)
             #print(tau[iline], llist['Lambda'][iline], factor)
 
-            
-            
+
+
             spec += broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
               width[iline],eedges)*llist['Epsilon'][iline]-(broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
                            delta_E_kev[iline],eedges)*llist['Epsilon'][iline] *factor1)
@@ -5703,19 +5764,19 @@ class _LineData_RS():
 
 
           elif  tau[iline]>=10 and tau[iline]<23:
-            
+
             factor =(-0.000004*(tau[iline]**3))+(0.0005*(tau[iline]**2))-(0.0189*tau[iline])+0.2468
             #factor = ((1-(math.exp(-tau[iline])))/(tau[iline]))
             factor1 = 1-factor
 
             #print(tau[iline], llist['Lambda'][iline], llist['Element'][iline],llist['Ion'][iline])
 
-            
+
             #print(tau[iline], const.HC_IN_KEV_A/llist['Lambda'][iline], factor)
             #print(tau[iline], llist['Lambda'][iline], factor)
 
-            
-            
+
+
             #spec += broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
               #             width[iline],eedges)*llist['Epsilon'][iline]-(broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
                #            delta_E_kev[iline],eedges)*llist['Epsilon'][iline] *factor1*(width[iline]/delta_E_kev[iline]))
@@ -5744,19 +5805,19 @@ class _LineData_RS():
 
 
 
-            
-
-           
-            
 
 
-        
-        
+
+
+
+
+
+
         t1 = time.time()
 #        print("Broadeninging %i lines, in %f seconds"%(len(igood), t1-t0))
         spec = spec[1:]-spec[:-1]
         #print(spec)
-        
+
 
 
         # Then add on the weak lines
@@ -7162,13 +7223,13 @@ class PShockSession(NEISession):
     -------
     ret : dict
       Dictionary containing:
- 
+
         Te, tau, teunit: as input
 
         wavelength : line wavelength (A)
-    
+
         energy : line energy (keV)
-      
+
         epsilon : emissivity in ph cm^3 s-1 (or ph cm^5 s^-1 if apply_aeff=True)
                   first index is temperature, second is tau.
 
