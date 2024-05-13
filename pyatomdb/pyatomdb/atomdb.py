@@ -19,10 +19,12 @@ Adam Foster August 28th 2015
 
 import os, datetime, numpy, re, time, getpass
 import urllib.request, urllib.error, urllib.parse
-from . import util, apec, const, atomic, spectrum
+import util, apec, const, atomic, spectrum
 
 import astropy.io.fits as pyfits
-from scipy import stats, integrate
+from scipy import stats, integrate, math
+import glob
+import convert_rates
 
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -355,7 +357,7 @@ def _ea_mazzotta_iron(T_eV, c):
   for i in range(len(T_eV)):
     y = c[0]/T_eV[i]
     if (y < 50.0):
-      f1_val = _f1_fcn(numpy.array([y]))
+      f1_val = _f1_fcn(y)
       ea = (6.69e7/numpy.sqrt(T_eV[i]))* numpy.exp(-y) * 1.0e-16 * \
            (c[1]+\
             c[2]*(1-y*f1_val)+\
@@ -2803,6 +2805,245 @@ def _calc_ionrec_ea(cidat, Te, extrap=False):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
+def func(u, y):
+  """
+  Function for numerical integration.
+  """
+  return numpy.exp(-u * y) / u
+
+
+
+'''
+
+def calculate_C_DI(Z, z1, T):
+  from scipy import integrate
+  """
+  Calculate C_DI based on the given parameters.
+
+  Parameters:
+  A, B, C, D, E, I, T : array-like
+      Arrays containing values for A, B, C, D, E, I, and T respectively.
+  Parameters are read from the fits file inside $ATOMDB/APED
+
+  Returns:
+  float:
+      The calculated value of C_DI.
+  """
+
+  element_name_array = numpy.array(['h', 'he', 'li', 'be', 'b', 'c', 'n', 'o', 'f', 'ne', 'na', \
+            'mg', 'al', 'si', 'p', 's', 'cl', 'k', 'sc', 'ti', 'v', \
+            'cr', 'mn', 'fe', 'co', 'ni', 'cu', 'zn', 'ar'])
+
+  element_arr = numpy.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, \
+                  16, 17, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 18])
+
+  index_di = numpy.where(element_arr==int(Z))[0][0]
+  ele_name = element_name_array[int(index_di)]
+
+
+  ## reading fits file
+  aped_path = os.path.expandvars('$ATOMDB/APED')
+  ele_file = glob.glob(f'{aped_path}/{ele_name}/{ele_name}_{int(z1)}/*DI.fits')[0]
+  print(ele_file)
+  file_data = pyfits.open(ele_file)[1].data
+  A = file_data['A']
+  B = file_data['B']
+  C = file_data['C']
+  D = file_data['D']
+  E = file_data['E']
+  I = file_data['Ionization_pot']
+
+  KBOLTZ = 8.617385e-5
+  C_Di = numpy.zeros_like(A)  # Initialize array to store intermediate values for each element
+
+  for j in range(len(A)):
+      c1 = (A[j] + B[j])
+      c2 = (-A[j] - (2 * B[j]))
+      c3 = B[j]
+      c4 = C[j]
+      c5 = 1.5 * (I[j] / 0.511e6) * C[j]
+      c6 = 0.25 * ((I[j] / 0.511e6) ** 2) * C[j]
+      c7 = D[j]
+      c8 = E[j]
+
+      k = 8.6173303e-5  # in eV/K
+      y = I[j] / (k * T)
+
+      w1 = (1 / y) * numpy.exp(-y)
+      w2 = integrate.quad(func, 1, numpy.inf, args=(y))[0]
+      E1 = w2
+      w3 = (numpy.exp(-y)) - (y * E1)
+      w4 = (1 / y) * E1
+      w5 = (1 / (y * y)) * (numpy.exp(-y) + E1)
+      w6 = (((3 + y) / (y * y * y)) * numpy.exp(-y)) + ((2 / (y ** 3)) * E1)
+
+      if y < 0.6:
+          w7 = -((((math.pi) / y) ** (0.5)) * (0.577216 + 1.38629436112 + math.log(y))) + 4 - (
+                      4 * y / 9) + (2 * y * y / 25) - ((2 * y * y * y) / 147) + ((y ** 4) / 486)
+      elif 0.6 <= y <= 20:
+          w7 = ((numpy.exp(-y)) * (1.000224 - (0.11301 / (y ** 0.5)) + (1.851039 / y) + (
+                      0.019731 * math.log(y) / (y ** 0.5)))) / ((y + 0.921832) * (y + 2.651957))
+      elif y > 20:
+          w7 = (numpy.exp(-y) / (y * y)) * (1 - (2 / y) + (23 / (4 * y * y)) - (22 / (y * y * y)) + (
+                      1689 / (16 * (y ** 4))) - (4881 / (8 * (y ** 5))))
+
+      if y < 0.5:
+          w8 = (0.577216 * math.log(y)) + (0.5 * (math.log(y)) * (math.log(y))) - y + (y * y / 8) - (
+                      y * y * y / 54) + (y * y * y * y / 384) - ((y ** 5) / 3000) + 0.989056
+      elif 0.5 <= y <= 20:
+          w8 = ((numpy.exp(-y)) * (0.999610841 + (3.50020361 / y) - (0.247885719 / (y * y)) + (
+                      0.00100539168 / (y * y * y)) + (1.39e-3 / (y * y * y * y)))) / (
+                               (y + 1.84193516) * (y + 4.64044905))
+      elif y > 20:
+          w8 = ((numpy.exp(-y)) / y) * ((1 / y) - (3 / (y ** 2)) + (11 / (y ** 3)) - (50 / (y ** 4)) + (
+                      274 / (y ** 5)) - (1764 / (y ** 6)) + (13068 / (y ** 7)))
+
+      r0 = 2.8284 / ((math.pi * ((k * T) ** 3) * 0.511e6) ** 0.5)
+
+      C_Di[j] = r0 * ((c1 * w1) + (c2 * w2) + (c3 * w3) + (c4 * w4) + (c5 * w5) + (c6 * w6) + (c7 * w7) + (
+                  c8 * w8))
+
+  C_DI = numpy.sum(C_Di)
+
+  return C_DI
+
+
+
+def calculate_C_DEA(Z, z1, T):
+  from scipy import integrate
+  """
+  Calculate C_DEA based on provided parameters.
+
+  Parameters:
+      AEA (array-like): Array of AEA values.
+      BEA (array-like): Array of BEA values.
+      CEA (array-like): Array of CEA values.
+      DEA (array-like): Array of DEA values.
+      EEA (array-like): Array of EEA values.
+      IEA (array-like): Array of IEA values.
+      T (float): Temperature value.
+
+  Returns:
+      float: Calculated C_DEA value.
+  """
+
+  element_name_array = numpy.array(['h', 'he', 'li', 'be', 'b', 'c', 'n', 'o', 'f', 'ne', 'na', \
+            'mg', 'al', 'si', 'p', 's', 'cl', 'k', 'sc', 'ti', 'v', \
+            'cr', 'mn', 'fe', 'co', 'ni', 'cu', 'zn', 'ar'])
+
+  element_arr = numpy.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, \
+                  16, 17, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 18])
+
+  index_di = numpy.where(element_arr==int(Z))[0][0]
+  ele_name = element_name_array[int(index_di)]
+
+
+  ## reading fits file
+  aped_path = os.path.expandvars('$ATOMDB/APED')
+  ele_file = glob.glob(f'{aped_path}/{ele_name}/{ele_name}_{int(z1)}/*EA.fits')[0]
+  file_data = pyfits.open(ele_file)[1].data
+  AEA = file_data['A']
+  BEA = file_data['B']
+  CEA = file_data['C']
+  DEA = file_data['D']
+  EEA = file_data['E']
+  IEA = file_data['Ionization_pot']
+
+
+  KBOLTZ = 8.617385e-5
+  C_Dea = numpy.zeros(len(AEA))  # Initialize array to store intermediate results
+
+  for j in range(len(AEA)):
+      d1 = AEA[j]  
+      d2 = BEA[j] 
+      d3 = CEA[j]
+      d4 = 2 * DEA[j]
+      d5 = EEA[j]
+
+      k = 8.6173303e-5    # in eV/K 
+      y = IEA[j] / (k * T)
+
+      m1 = (1/y) * numpy.exp(-y)
+      m2 = integrate.quad(func, 1, numpy.inf, args=(y))[0]
+      E1 = m2
+      m3 = (numpy.exp(-y)) - (y * E1)
+      m4 = ((1 - y) * numpy.exp(-y) * 0.5) + (y * y * 0.5 * E1)
+      m5 = (1/y) * E1
+
+      r0 = 2.8284 / ((math.pi * ((k * T)**3) * 0.511e6)**0.5)
+
+      C_Dea[j] = r0 * ((d1 * m1) + (d2 * m2) + (d3 * m3) + (d4 * m4) + (d5 * m5))
+
+  C_DEA = numpy.sum(C_Dea)
+  return C_DEA
+
+'''
+
+# Example usage:
+# Provide arrays A, B, C, D, E, I, and T
+# C_DI = calculate_C_DI(A, B, C, D, E, I, T)
+
+def read_udi(element_number, ion_number):
+  element_name_array = ['h', 'he', 'li', 'be', 'b', 'c', 'n', 'o', 'f', 'ne', 'na', \
+            'mg', 'al', 'si', 'p', 's', 'cl', 'k', 'sc', 'ti', 'v', \
+            'cr', 'mn', 'fe', 'co', 'ni', 'cu', 'zn', 'ar']
+
+  element_arr = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, \
+          16, 17, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 18]
+
+  #print(numpy.where(element_arr==element_number)[0])
+  element_name = element_name_array[numpy.where(element_arr==element_number)[0][0]]
+
+  atomdb_path = os.path.expandvars('$ATOMDB/APED')  
+  IR_file = glob.glob(f'{atomdb_path}/{element_name}/{element_name}_{int(ion_number)}/*_IR_v3_1_0.fits')[0]
+  with pyfits.open(IR_file) as hdu:
+    ci_ionrec = hdu[1].data['IONREC_PAR']
+    ci_index = numpy.where(hdu[1].data['TR_TYPE'] == 'CI')[0]
+    ci_index = ci_index[ci_index>0]
+
+    ci_coeff_dtype=numpy.dtype( {'names':['I_keV', 'A', 'B', 'C', 'D', 'E'],
+                  'formats':[float, float, float, float, float, float]})
+    ci_coeff = numpy.zeros(len(ci_index), dtype=ci_coeff_dtype)
+    #print(ci_coeff) 
+    for ci_i, ci_n in enumerate(ci_coeff.dtype.names):
+      ci_coeff[ci_n] = ci_ionrec[ci_index,ci_i]
+
+    #else:
+    #  ci_coeff = numpy.zeros((len(ci_index),5))
+
+  return ci_coeff
+
+
+def read_uea(element_number, ion_number):
+  element_name_array = ['h', 'he', 'li', 'be', 'b', 'c', 'n', 'o', 'f', 'ne', 'na', \
+            'mg', 'al', 'si', 'p', 's', 'cl', 'k', 'sc', 'ti', 'v', \
+            'cr', 'mn', 'fe', 'co', 'ni', 'cu', 'zn', 'ar']
+
+  element_arr = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, \
+          16, 17, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 18]
+
+  element_name = element_name_array[numpy.where(element_arr==element_number)[0][0]]
+
+  atomdb_path = os.path.expandvars('$ATOMDB/APED')   
+  IR_file = glob.glob(f'{atomdb_path}/{element_name}/{element_name}_{int(ion_number)}/*_IR_v3_1_0.fits')[0]
+  with pyfits.open(IR_file) as hdu:
+    ea_ionrec = hdu[1].data['IONREC_PAR']
+    ea_index = numpy.where(hdu[1].data['TR_TYPE'] == 'EA')[0]
+    #ea_index = ea_index[ea_index>0]
+    
+    ea_coeff_dtype=numpy.dtype( {'names':['I_keV', 'A', 'B', 'C', 'D', 'E'],
+                  'formats':[float, float, float, float, float, float]})
+    ea_coeff = numpy.zeros(len(ea_index), dtype=ea_coeff_dtype)
+    #print(ci_coeff) 
+    for ea_i, ea_n in enumerate(ea_coeff.dtype.names):
+      ea_coeff[ea_n] = ea_ionrec[ea_index,ea_i]
+
+  return ea_coeff
+
+
+
+
+
 def get_ionrec_rate(Te_in, irdat_in=False, lvdat_in=False, Te_unit='K', \
                      lvdatp1_in=False, ionpot=False, separate=False,\
                      Z=-1, z1=-1, settings=False, datacache=False,\
@@ -2898,7 +3139,7 @@ def get_ionrec_rate(Te_in, irdat_in=False, lvdat_in=False, Te_unit='K', \
 
   if (z1>=0) &( Z>=0):
 
-    lvdat = get_data(Z,z1, 'LV',settings=settings, datacache=datacache)
+    lvdat = get_data(Z,z1, 'LV', settings=settings, datacache=datacache)
   elif isinstance(lvdat_in, str):
     #string (assumed filename)
     lvdat = pyfits.open(lvdat_in)
@@ -2933,19 +3174,41 @@ def get_ionrec_rate(Te_in, irdat_in=False, lvdat_in=False, Te_unit='K', \
     ionpot = False
   # Start with the CI data
   ici = numpy.where(irdat[1].data['TR_TYPE']=='CI')[0]
+  #print(ici)
+  element_number = irdat[1].data['ELEMENT'][int(ici)]
+  ion_number = irdat[1].data['ION_INIT'][int(ici)]
 
-  for i in ici:
-    tmp=get_maxwell_rate(Te, irdat, i, lvdat, Te_unit='K', \
-                         lvdatap1=lvdatp1, ionpot = False,\
-                         force_extrap=extrap)
-    ciret += tmp
+  #for i in ici:
+  #  tmp=get_maxwell_rate(Te, irdat, i, lvdat, Te_unit='K', \
+  #                       lvdatap1=lvdatp1, ionpot = False,\
+  #                       force_extrap=extrap)
+  #print(Te)
+  for i in Te:
+    #tmp = calculate_C_DI(element_number, ion_number, float(i))
+    
+    #print(udicoeff)
+    udicoeff = read_udi(element_number,ion_number)
+    
+    udirates = convert_rates.eval_udi(udicoeff, [i /(11604.5*1000)])
+
+    ciret += udirates
+
+   
+    ueacoeff = read_uea(element_number,ion_number)
+    
+    altuearates = convert_rates.eval_uea(ueacoeff, [i /(11604.5*1000)], altmethod=True)
+
+    earet +=  altuearates
 
   iea = numpy.where(irdat[1].data['TR_TYPE']=='EA')[0]
-  for i in iea:
-    tmp=get_maxwell_rate(Te, irdat, i, lvdat, Te_unit='K', \
-                         lvdatap1=lvdatp1, ionpot = False,\
-                         force_extrap=extrap)
-    earet += tmp
+  #for i in iea:
+    #tmp=get_maxwell_rate(Te, irdat, i, lvdat, Te_unit='K', \
+    #                     lvdatap1=lvdatp1, ionpot = False,\
+    #                     force_extrap=extrap)
+
+  #for i in Te:
+  #  tmp = calculate_C_DEA(Z, z1, float(i))
+    
 
   irr = numpy.where(irdat[1].data['TR_TYPE']=='RR')[0]
 
@@ -4310,13 +4573,13 @@ def get_data(Z, z1, ftype, datacache=False, \
 
   if ftype=='ALL':
     # call for each dtype
-    #print("Fetching all data for Z=%i, z1=%i"%(Z, z1))
+    print("Fetching all data for Z=%i, z1=%i"%(Z, z1))
     for ftype in ['IR','LV','LA','EC','PC','DR','AI','PI']:
       tmp=get_data(Z, z1, ftype, datacache=datacache, \
                    settings=settings, \
        indexzero=indexzero, \
        offline=offline)
-    #print("All data successfully retrieved")
+    print("All data successfully retrieved")
     return True
 
 
@@ -4383,8 +4646,8 @@ def get_data(Z, z1, ftype, datacache=False, \
 
       if not(havedata):
         if settings:
-          if settings['FileMap']:
-            fmapfile = settings['FileMap']
+          if settings['filemap']:
+            fmapfile = settings['filemap']
           if settings['atomdbroot']:
             atomdbroot = settings['atomdbroot']
 
@@ -6335,46 +6598,4 @@ def _lorentz_levpop(version):
                            version, linelist['ID'][iline])
         f.write(s)
   f.close()
-
-
-def format_level(level):
-  """
-  Take the output of a level from a level file and format it nicely
-
-  Parameters
-  ----------
-  level : array
-    The single line from an atomdb LV file corresponding to a level
-
-  Returns
-  -------
-  str
-    The formatted string.
-
-  Example
-  -------
-  # Read in O VII levels
-  >>> a = pyatomdb.atomdb.get_data(8,7,'LV')
-  # Format level 15 nicely
-  >>> s = pyatomdb.atomdb.format_level(a[1].data[15])
-  # Print
-  >>> print(s)
-  """
-  llist = "SPDFGHIKLMNOPQRTUVWXYZ"
-  s = ""
-
-  s += "%40s $"%(level['ELEC_CONFIG'])
-  if level['S_QUAN'] != -1:
-    s+="^{%i}"%(int(level['S_QUAN']*2)+1)
-  if level['L_QUAN'] != -1:
-    s+="%s"%(llist[level['L_QUAN']])
-  if level['LEV_DEG'] != -1:
-    if level['LEV_DEG']%2 == 0:
-      s+="_{%i}"%(level['LEV_DEG']/2)
-    else:
-      s+="_{%i/%i}"%(level['LEV_DEG'],2)
-  s+='$'
-  return(s)
-
-
 
