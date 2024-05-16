@@ -264,7 +264,7 @@ def _ci_younger(Te, c):
   array(float)
     returns ionization rate in cm^3 s^-1
   """
-  KBOLTZ = 8.617385e-8  #keV/K
+  KBOLTZ = const.KBOLTZ  #keV/K
 
   T_eV = 1.e3*KBOLTZ*Te
   x = c[0]/T_eV
@@ -291,7 +291,7 @@ def _ea_mazzotta(Te, c, par_type):
      par_type is the number denoting the type of the parameter
      returns excitation-autoionization rate in cm^3 s^-1"""
 
-  KBOLTZ = 8.617385e-8  #keV/K
+  KBOLTZ = const.KBOLTZ #keV/K
 
   T_eV = 1.e3*KBOLTZ*Te
   ea = numpy.zeros(len(Te), dtype=float)
@@ -372,7 +372,7 @@ def _ea_mazzotta_iron(T_eV, c):
 #-------------------------------------------------------------------------------
 
 def _rr_shull(Te, c):
-  KBOLTZ = 8.617385e-8  #keV/K
+  KBOLTZ = const.KBOLTZ  #keV/K
 
   rr = c[0]* (Te/1e4)**(-c[1])
   return rr
@@ -2869,17 +2869,7 @@ def get_ionrec_rate(Te_in, irdat_in=False, lvdat_in=False, Te_unit='K', \
     isiter=False
     Te = numpy.array([Te])
 
-  # check units of Te
-  if Te_unit.lower()=='k':
-    pass
-  elif Te_unit.lower()=='ev':
-    Te /=const.KBOLTZ
-    Te *=1000.0
-  elif Te_unit.lower()=='kev':
-    Te /=const.KBOLTZ
-  else:
-    print("ERROR: units should be k, eV or keV")
-    return -1
+  T = util.convert_temp(Te, Te_unit, 'K')
 
    # check IR data
   # see the type of the IR data
@@ -2922,10 +2912,10 @@ def get_ionrec_rate(Te_in, irdat_in=False, lvdat_in=False, Te_unit='K', \
 
   # -- OK, so now inputs should be *largely* settled -- *
 
-  ciret = numpy.zeros(len(Te), dtype=float)
-  earet = numpy.zeros(len(Te), dtype=float)
-  rrret = numpy.zeros(len(Te), dtype=float)
-  drret = numpy.zeros(len(Te), dtype=float)
+  ciret = numpy.zeros(len(T), dtype=float)
+  earet = numpy.zeros(len(T), dtype=float)
+  rrret = numpy.zeros(len(T), dtype=float)
+  drret = numpy.zeros(len(T), dtype=float)
 
   try:
     ionpot = irdat[1].header['IONPOT']
@@ -2935,14 +2925,14 @@ def get_ionrec_rate(Te_in, irdat_in=False, lvdat_in=False, Te_unit='K', \
   ici = numpy.where(irdat[1].data['TR_TYPE']=='CI')[0]
 
   for i in ici:
-    tmp=get_maxwell_rate(Te, irdat, i, lvdat, Te_unit='K', \
+    tmp=get_maxwell_rate(T, irdat, i, lvdat, Te_unit='K', \
                          lvdatap1=lvdatp1, ionpot = False,\
                          force_extrap=extrap)
     ciret += tmp
 
   iea = numpy.where(irdat[1].data['TR_TYPE']=='EA')[0]
   for i in iea:
-    tmp=get_maxwell_rate(Te, irdat, i, lvdat, Te_unit='K', \
+    tmp=get_maxwell_rate(T, irdat, i, lvdat, Te_unit='K', \
                          lvdatap1=lvdatp1, ionpot = False,\
                          force_extrap=extrap)
     earet += tmp
@@ -2950,14 +2940,14 @@ def get_ionrec_rate(Te_in, irdat_in=False, lvdat_in=False, Te_unit='K', \
   irr = numpy.where(irdat[1].data['TR_TYPE']=='RR')[0]
 
   for i in irr:
-    tmp=get_maxwell_rate(Te, irdat, i, lvdat, Te_unit='K', \
+    tmp=get_maxwell_rate(T, irdat, i, lvdat, Te_unit='K', \
                          lvdatap1=lvdatp1, ionpot = False,\
                          force_extrap=extrap)
     rrret += tmp
 
   idr = numpy.where(irdat[1].data['TR_TYPE']=='DR')[0]
   for i in idr:
-    tmp=get_maxwell_rate(Te, irdat, i, lvdat, Te_unit='K', \
+    tmp=get_maxwell_rate(T, irdat, i, lvdat, Te_unit='K', \
                          lvdatap1=lvdatp1, ionpot = False,\
                          force_extrap=extrap)
 
@@ -3074,16 +3064,9 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
   else:
     Te_arr = Te
 
-#  Te_arr = numpy.array(Te)
-  if Te_unit.lower()=='ev':
-    Te_arr = Te_arr*1000/const.KBOLTZ
-  elif Te_unit.lower() == 'kev':
-    Te_arr = Te_arr/const.KBOLTZ
-  elif Te_unit.lower() == 'k':
-    Te_arr = 1.0* Te_arr
-  else:
-    print('ERROR: Unknown Te_unit "%s": should be "K" or "keV"' % (Te_unit))
-    return False
+
+  T = util.convert_temp(Te_arr, Te_unit, 'K')
+
 
   # CHECK THE INPUTS
   # 1: the collional excitation data
@@ -3126,7 +3109,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
   # check colldata is real
   if colldata==False:
     print("No collisional data found. Returning zeros")
-    ret = numpy.zeros(len(Te_arr), dtype=float)
+    ret = numpy.zeros(len(T), dtype=float)
     if dtype in ['EC','PC']:
       if not(isiter):
         ret = ret[0]
@@ -3183,7 +3166,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
         if len(index)==0:
           print("Warning: no data found for electron excitation from "+\
                 "level %i to %i"%(initlev, finallev))
-          ret = numpy.zeros(len(Te_arr), dtype=float)
+          ret = numpy.zeros(len(T), dtype=float)
           if not isiter:
             ret = ret[0]
           if exconly:
@@ -3198,7 +3181,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
         if len(index)==0:
           print("Warning: no data found for proton excitation from "+\
                 "level %i to %i"%(initlev, finallev))
-          ret = numpy.zeros(len(Te_arr), dtype=float)
+          ret = numpy.zeros(len(T), dtype=float)
           if not isiter:
             ret = ret[0]
           if exconly:
@@ -3217,7 +3200,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
           print("Warning: no data found for collisional ionization from "+\
                 "ion %i, level %i to ion %i, level %i"%\
                  (z1, initlev, z1+1, finallev))
-          ret = numpy.zeros(len(Te_arr), dtype=float)
+          ret = numpy.zeros(len(T), dtype=float)
           if not isiter:
             ret = ret[0]
           return ret
@@ -3234,7 +3217,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
           print("Warning: no data found for collisional ionization from "+\
                 "ion %i, level %i to ion %i, level %i"%\
                  (z1, initlev, z1-1, finallev))
-          ret = numpy.zeros(len(Te_arr), dtype=float)
+          ret = numpy.zeros(len(T), dtype=float)
           if not isiter:
             ret = ret[0]
           return ret
@@ -3274,7 +3257,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                                  ecdat['max_temp'],\
                                  ecdat['temperature'],\
                                  ecdat['effcollstrpar'],\
-                                 delta_E/1e3, Te_arr, Ztmp, degl, degu, \
+                                 delta_E/1e3, T, Ztmp, degl, degu, \
                                  force_extrap=force_extrap, ladat=ladat, \
                                  levdat=lvdata)
 
@@ -3330,28 +3313,28 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                          cidat['max_temp'],\
                                  cidat['temperature'],\
                                  cidat['ionrec_par'],\
-                                 delta_E/1e3, Te_arr, Ztmp, degl, degu)
+                                 delta_E/1e3, T, Ztmp, degl, degu)
 
     elif ((cidat['par_type']>const.CI_DERE) &\
           (cidat['par_type']<=const.CI_DERE+20)):
       ionpot = float(colldata[1].header['IP_DERE'])
-      ci = _calc_ionrec_ci(cidat, Te_arr, extrap=force_extrap, ionpot=ionpot)
+      ci = _calc_ionrec_ci(cidat, T, extrap=force_extrap, ionpot=ionpot)
     else:
-      ci = _calc_ionrec_ci(cidat,Te_arr, extrap=force_extrap)
+      ci = _calc_ionrec_ci(cidat,T, extrap=force_extrap)
       if sum(numpy.isnan(ci))>0:
         if not silent:
           print("calc_ionrec_rate: CI(%10s -> %10s): Te out of range min->max=%e->%e:"%\
                     (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                      atomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
                      cidat['min_temp'], cidat['max_temp']),\
-                     Te_arr[numpy.isnan(ci)])
+                     T[numpy.isnan(ci)])
       if sum(ci[numpy.isfinite(ci)] < 0)>0:
         if not silent:
           s= "calc_ionrec_rate: CI(%10s -> %10s): negative CI found: =%e->%e:"%\
                     (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                      atomic.spectroscopic_name(cidat['element'],cidat['ion_final']))
           for i in  numpy.where(ci[numpy.isfinite(ci)] < 0)[0]:
-            s += " %e:%e, " % (Te_arr[i],ci[i])
+            s += " %e:%e, " % (T[i],ci[i])
           print(s)
 
 
@@ -3359,26 +3342,26 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
 
   elif dtype=='EA':
     cidat = colldata[1].data[index]
-    ea = _calc_ionrec_ea(cidat,Te_arr, extrap=force_extrap)
+    ea = _calc_ionrec_ea(cidat,T, extrap=force_extrap)
     if sum(numpy.isnan(ea))>0:
       if not silent:
         print("calc_ionrec_rate: EA(%10s -> %10s): Te out of range min->max=%e->%e:"%\
                  (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                  atomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
                  cidat['min_temp'], cidat['max_temp']),\
-                 Te_arr[numpy.isnan(ea)])
+                 T[numpy.isnan(ea)])
     if sum(ea[numpy.isfinite(ea)] < 0)>0:
       if not silent:
         s= "calc_ionrec_rate: EA(%10s -> %10s): negative EA found: =%e->%e:"%\
                 (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                  atomic.spectroscopic_name(cidat['element'],cidat['ion_final']))
         for i in  numpy.where(ea[numpy.isfinite(ea)] < 0)[0]:
-          s += " %e:%e, " % (Te_arr[i],ea[i])
+          s += " %e:%e, " % (T[i],ea[i])
         print(s)
     return ea
   elif dtype=='DR':
     cidat = colldata[1].data[index]
-    dr = _calc_ionrec_dr(cidat,Te_arr, extrap=force_extrap)
+    dr = _calc_ionrec_dr(cidat,T, extrap=force_extrap)
 
     if sum(numpy.isnan(dr))>0:
       if not silent:
@@ -3387,7 +3370,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                 (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                  atomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
                  cidat['min_temp'], cidat['max_temp']),\
-                 Te_arr[numpy.isnan(dr)])
+                 T[numpy.isnan(dr)])
     if sum(dr[numpy.isfinite(dr)] < 0)>0:
       if not silent:
 
@@ -3395,28 +3378,28 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                   (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                    atomic.spectroscopic_name(cidat['element'],cidat['ion_final']))
         for i in  numpy.where(dr[numpy.isfinite(dr)] < 0)[0]:
-          s += " %e:%e, " % (Te_arr[i],dr[i])
+          s += " %e:%e, " % (T[i],dr[i])
         print(s)
     return dr
 
 
   elif dtype=='RR':
     cidat = colldata[1].data[index]
-    rr = _calc_ionrec_rr(cidat,Te_arr, extrap=force_extrap)
+    rr = _calc_ionrec_rr(cidat,T, extrap=force_extrap)
     if sum(numpy.isnan(rr))>0:
       if not silent:
         print("calc_ionrec_rate: RR(%10s -> %10s): Te out of range min->max=%e->%e:"%\
                 (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                  atomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
                  cidat['min_temp'], cidat['max_temp']),\
-                 Te_arr[numpy.isnan(r)])
+                 T[numpy.isnan(r)])
     if sum(rr[numpy.isfinite(rr)] < 0)>0:
       if not silent:
         s= "calc_ionrec_rate: RR(%10s -> %10s): negative RR found: =%e->%e:"%\
                   (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                    atomic.spectroscopic_name(cidat['element'],cidat['ion_final']))
         for i in  numpy.where(rr[numpy.isfinite(rr)] < 0)[0]:
-          s += " %e:%e, " % (Te_arr[i],rr[i])
+          s += " %e:%e, " % (T[i],rr[i])
         print(s)
     return rr
 
@@ -3424,7 +3407,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
 
   elif dtype=='XR':
     cidat = colldata[1].data[index]
-    xr = _calc_ionrec_rr(cidat,Te_arr, extrap=force_extrap)
+    xr = _calc_ionrec_rr(cidat,T, extrap=force_extrap)
     if sum(numpy.isnan(xr))>0:
       if not silent:
 
@@ -3437,7 +3420,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
 
   elif dtype=='XD':
     cidat = colldata[1].data[index]
-    xr = _calc_ionrec_dr(cidat,Te_arr, extrap=force_extrap)
+    xr = _calc_ionrec_dr(cidat,T, extrap=force_extrap)
     if sum(numpy.isnan(xr))>0:
       if not silent:
 
@@ -3493,10 +3476,10 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                          cidat['max_temp'],\
                          cidat['temperature'],\
                          cidat['ionrec_par'],\
-                         delta_E/1e3, Te_arr, Ztmp, degl, degu)
+                         delta_E/1e3, T, Ztmp, degl, degu)
 
     else:
-      xi = _calc_ionrec_ci(cidat,Te_arr, extrap=force_extrap)
+      xi = _calc_ionrec_ci(cidat,T, extrap=force_extrap)
       if (xi < 0.0):
         print("calc_ionrec_rate: CI(%10s -> %10s,T=%9.3e) = %8g"%\
                   (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
