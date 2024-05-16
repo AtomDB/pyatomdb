@@ -3078,6 +3078,9 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
     if dtype==False:
       if colldata[1].header['HDUCLAS1']=='COLL_STR':
         dtype='EC'
+      elif colldata[1].header['HDUCLAS1'] == 'IONREC':
+      # get the type:
+        dtype = colldata[1].data.field('TR_TYPE')[index]
     # get the Z, z1
     if dtype=='EC':
       Z=colldata[1].header['ELEMENT']
@@ -3089,13 +3092,13 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
     # Check we have Z & z1 & dtype specified
     if ((dtype != False) & (Z>0) & (z1>0)):
       # we should have data...
-      if dtype in ['CI','EA','XI']:
+      if dtype.upper() in ['CI','EA','XI']:
         colldata = get_data(Z,z1,'IR', settings=settings, datacache=datacache)
-      elif dtype in ['RR','DR','XR','XD']:
+      elif dtype.upper() in ['RR','DR','XR','XD']:
         colldata = get_data(Z,z1-1,'IR', settings=settings, datacache=datacache)
-      elif dtype == 'EC':
+      elif dtype.upper() == 'EC':
         colldata = get_data(Z,z1,'EC', settings=settings, datacache=datacache)
-      elif dtype == 'PC':
+      elif dtype.upper() == 'PC':
         colldata = get_data(Z,z1,'PC', settings=settings, datacache=datacache)
       else:
         print("Error: unknown dtype %s"%(dtype))
@@ -3110,7 +3113,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
   if colldata==False:
     print("No collisional data found. Returning zeros")
     ret = numpy.zeros(len(T), dtype=float)
-    if dtype in ['EC','PC']:
+    if dtype.upper() in ['EC','PC']:
       if not(isiter):
         ret = ret[0]
       if exconly:
@@ -3124,9 +3127,9 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
   if Z<0:
     Z = colldata[1].header['ELEMENT']
   if z1<0:
-    if dtype in ['EC','PC','EA','CI','XI']:
+    if dtype.upper() in ['EC','PC','EA','CI','XI']:
       z1 = colldata[1].header['ION_STAT']+1
-    elif dtype in ['XR','DR','RR','XD']:
+    elif dtype.upper() in ['XR','DR','RR','XD']:
       z1 = colldata[1].header['ION_STAT']+2
 
   # Now get the correct transition
@@ -3146,9 +3149,9 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
       return False
 
     if z1<0:
-      if dtype in ['EC','PC','EA','CI','XI']:
+      if dtype.upper() in ['EC','PC','EA','CI','XI']:
         z1 = colldata[1].header['ION_STAT']+1
-      elif dtype in ['XR','DR','RR','XD']:
+      elif dtype.upper() in ['XR','DR','RR','XD']:
         z1 = colldata[1].header['ION_STAT']+2
 
 
@@ -3160,7 +3163,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
       return False
     else:
 
-      if dtype=='EC':
+      if dtype.upper()=='EC':
         index = numpy.where((colldata[1].data['lower_lev']==initlev) &\
                             (colldata[1].data['upper_lev']==finallev))[0]
         if len(index)==0:
@@ -3175,7 +3178,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
             return ret, ret
         else:
           index = index[0]
-      elif dtype =='PC':
+      elif dtype.upper() =='PC':
         index = numpy.where((colldata[1].data['lowerlev']==initlev) &\
                             (colldata[1].data['upperlev']==finallev))[0]
         if len(index)==0:
@@ -3190,7 +3193,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
             return ret, ret
         else:
           index = index[0]
-      elif dtype in ['CI','XI','EA']:
+      elif dtype.upper() in ['CI','XI','EA']:
         index = numpy.where((colldata[1].data['level_init']==initlev) &\
                             (colldata[1].data['level_final']==finallev) &\
                             (colldata[1].data['tr_type']==dtype) &\
@@ -3207,7 +3210,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
         else:
           index = index[0]
 
-      elif dtype in ['RR','XR','DR','XD']:
+      elif dtype.upper() in ['RR','XR','DR','XD']:
         index = numpy.where((colldata[1].data['level_init']==initlev) &\
                             (colldata[1].data['level_final']==finallev) &\
                             (colldata[1].data['tr_type']==dtype) &\
@@ -3226,7 +3229,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
 
   # convert the data.
 
-  if dtype=='EC':
+  if dtype.upper()=='EC':
     # go through all the different possibilities for collisional excitation data.
     ecdat = colldata[1].data[index]
     upind = ecdat['upper_lev']
@@ -3277,7 +3280,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
     else:
       return exc, dex
 
-  elif dtype=='CI':
+  elif dtype.upper()=='CI':
     cidat = colldata[1].data[index]
 
     if ((cidat['par_type']>const.INTERP_I_UPSILON) & \
@@ -3340,7 +3343,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
 
     return ci
 
-  elif dtype=='EA':
+  elif dtype.upper()=='EA':
     cidat = colldata[1].data[index]
     ea = _calc_ionrec_ea(cidat,T, extrap=force_extrap)
     if sum(numpy.isnan(ea))>0:
@@ -3359,7 +3362,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
           s += " %e:%e, " % (T[i],ea[i])
         print(s)
     return ea
-  elif dtype=='DR':
+  elif dtype.upper()=='DR':
     cidat = colldata[1].data[index]
     dr = _calc_ionrec_dr(cidat,T, extrap=force_extrap)
 
@@ -3383,7 +3386,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
     return dr
 
 
-  elif dtype=='RR':
+  elif dtype.upper()=='RR':
     cidat = colldata[1].data[index]
     rr = _calc_ionrec_rr(cidat,T, extrap=force_extrap)
     if sum(numpy.isnan(rr))>0:
@@ -3405,7 +3408,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
 
 
 
-  elif dtype=='XR':
+  elif dtype.upper()=='XR':
     cidat = colldata[1].data[index]
     xr = _calc_ionrec_rr(cidat,T, extrap=force_extrap)
     if sum(numpy.isnan(xr))>0:
@@ -3418,7 +3421,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
 
     return xr
 
-  elif dtype=='XD':
+  elif dtype.upper()=='XD':
     cidat = colldata[1].data[index]
     xr = _calc_ionrec_dr(cidat,T, extrap=force_extrap)
     if sum(numpy.isnan(xr))>0:
@@ -3432,7 +3435,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
     return xr
 
 
-  elif dtype=='XI':
+  elif dtype.upper()=='XI':
     cidat = colldata[1].data[index]
 
     if ((cidat['par_type']>900) & \
