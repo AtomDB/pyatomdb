@@ -10,7 +10,7 @@ KBOLTZ = 8.617385e-8#  /*!< in units of keV/K *== 1/(11604.5*1000)/
 M_E = 2.7182818284590452354 # /*!< Euler e */
 UPSILON_COLL_COEFF = 8.629e-6 # /*!< sqrt{2 pi / kB} hbar^2/m_e^{1.5} */
 ERG_KEV = 1.60219e-9
-ME_KEV = 510.0
+ME_KEV = 510.99895
 RYDBERG = 0.013605804
 BREMS_COEFF = 1.6542996e-20
 PLANCK_CONSTANT = 6.626176e-27 # erg-seconds
