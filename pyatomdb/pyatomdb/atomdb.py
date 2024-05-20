@@ -24,7 +24,10 @@ import util, apec, const, atomic, spectrum
 import astropy.io.fits as pyfits
 from scipy import stats, integrate, math
 import glob
-import convert_rates
+import sys
+import numpy
+import scipy.special
+#import convert_rates
 
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -2983,7 +2986,8 @@ def calculate_C_DEA(Z, z1, T):
 # Provide arrays A, B, C, D, E, I, and T
 # C_DI = calculate_C_DI(A, B, C, D, E, I, T)
 
-def read_udi(element_number, ion_number):
+def read_udi(irdat, index):
+  '''
   element_name_array = ['h', 'he', 'li', 'be', 'b', 'c', 'n', 'o', 'f', 'ne', 'na', \
             'mg', 'al', 'si', 'p', 's', 'cl', 'k', 'sc', 'ti', 'v', \
             'cr', 'mn', 'fe', 'co', 'ni', 'cu', 'zn', 'ar']
@@ -2994,27 +2998,31 @@ def read_udi(element_number, ion_number):
   #print(numpy.where(element_arr==element_number)[0])
   element_name = element_name_array[numpy.where(element_arr==element_number)[0][0]]
 
-  atomdb_path = os.path.expandvars('$ATOMDB/APED')  
+  #atomdb_path = os.path.expandvars('$ATOMDB/APED')  
   IR_file = glob.glob(f'{atomdb_path}/{element_name}/{element_name}_{int(ion_number)}/*_IR_v3_1_0.fits')[0]
-  with pyfits.open(IR_file) as hdu:
-    ci_ionrec = hdu[1].data['IONREC_PAR']
-    ci_index = numpy.where(hdu[1].data['TR_TYPE'] == 'CI')[0]
-    ci_index = ci_index[ci_index>0]
+  #with pyfits.open(IR_file) as hdu:
+  '''
+  hdu = irdat
+  ci_ionrec = hdu[1].data['IONREC_PAR']
+  #ci_index = numpy.where(hdu[1].data['PAR_TYPE'] == index)[0]
+  ci_index = [index]
+  
 
-    ci_coeff_dtype=numpy.dtype( {'names':['I_keV', 'A', 'B', 'C', 'D', 'E'],
-                  'formats':[float, float, float, float, float, float]})
-    ci_coeff = numpy.zeros(len(ci_index), dtype=ci_coeff_dtype)
-    #print(ci_coeff) 
-    for ci_i, ci_n in enumerate(ci_coeff.dtype.names):
-      ci_coeff[ci_n] = ci_ionrec[ci_index,ci_i]
+  ci_coeff_dtype=numpy.dtype( {'names':['I_keV', 'A', 'B', 'C', 'D', 'E'],
+                'formats':[float, float, float, float, float, float]})
+  ci_coeff = numpy.zeros(len(ci_index), dtype=ci_coeff_dtype)
+  #print(ci_coeff) 
+  for ci_i, ci_n in enumerate(ci_coeff.dtype.names):
+    ci_coeff[ci_n] = ci_ionrec[ci_index,ci_i]
 
     #else:
     #  ci_coeff = numpy.zeros((len(ci_index),5))
 
-  return ci_coeff
+    return ci_coeff
 
 
-def read_uea(element_number, ion_number):
+def read_uea(irdat, index):
+  '''
   element_name_array = ['h', 'he', 'li', 'be', 'b', 'c', 'n', 'o', 'f', 'ne', 'na', \
             'mg', 'al', 'si', 'p', 's', 'cl', 'k', 'sc', 'ti', 'v', \
             'cr', 'mn', 'fe', 'co', 'ni', 'cu', 'zn', 'ar']
@@ -3024,21 +3032,156 @@ def read_uea(element_number, ion_number):
 
   element_name = element_name_array[numpy.where(element_arr==element_number)[0][0]]
 
-  atomdb_path = os.path.expandvars('$ATOMDB/APED')   
-  IR_file = glob.glob(f'{atomdb_path}/{element_name}/{element_name}_{int(ion_number)}/*_IR_v3_1_0.fits')[0]
-  with pyfits.open(IR_file) as hdu:
-    ea_ionrec = hdu[1].data['IONREC_PAR']
-    ea_index = numpy.where(hdu[1].data['TR_TYPE'] == 'EA')[0]
-    #ea_index = ea_index[ea_index>0]
-    
-    ea_coeff_dtype=numpy.dtype( {'names':['I_keV', 'A', 'B', 'C', 'D', 'E'],
-                  'formats':[float, float, float, float, float, float]})
-    ea_coeff = numpy.zeros(len(ea_index), dtype=ea_coeff_dtype)
-    #print(ci_coeff) 
-    for ea_i, ea_n in enumerate(ea_coeff.dtype.names):
-      ea_coeff[ea_n] = ea_ionrec[ea_index,ea_i]
+  #atomdb_path = os.path.expandvars('$ATOMDB/APED')   
+  #IR_file = glob.glob(f'{atomdb_path}/{element_name}/{element_name}_{int(ion_number)}/*_IR_v3_1_0.fits')[0]
+  #with pyfits.open(IR_file) as hdu:
+  '''
+  hdu = irdat
+  ea_ionrec = hdu[1].data['IONREC_PAR']
+  #ea_index = numpy.where(hdu[1].data['PAR_TYPE'] == index)[0]
+  ea_index = [index]
+  
+  ea_coeff_dtype=numpy.dtype( {'names':['I_keV', 'A', 'B', 'C', 'D', 'E'],
+                'formats':[float, float, float, float, float, float]})
+  ea_coeff = numpy.zeros(len(ea_index), dtype=ea_coeff_dtype)
+  #print(ci_coeff) 
+  for ea_i, ea_n in enumerate(ea_coeff.dtype.names):
+    ea_coeff[ea_n] = ea_ionrec[ea_index,ea_i]
 
   return ea_coeff
+
+
+######
+## some constant
+mec2 = 510.99895000
+g7a1 = 3.480230906913262     # sqrt(pi)*(gamma1+ ln(4))
+g7a2 = 1.772453850905516     # sqrt(pi)
+g7a3 = 1.360544217687075E-02 # 2/147
+g7a4 = 0.4444444444444444    # 4/9
+g7c1 = -4881/8.
+g7c2 =  1689/16.
+p7 = numpy.array([1.000224,-0.113011,1.851039,0.0197311,0.921832,2.651957])
+gamma1 = 0.577215664901532860606512    #Euler's constant
+arrc = numpy.array([0.999610841,3.50020361,-0.247885719,0.0100539168,1.39075390e-3,1.84193516,4.64044905])
+r01 = 4.783995473666830e-10   #=2*sqrt(2/pi)*c*1e-18
+
+
+def eval_udi_shell(coeff, kT):
+  eion = coeff['I_keV']
+  y = eion/kT
+  lam = eion/mec2
+  en1 = numpy.exp(y) * scipy.special.exp1( y)
+  
+  g=numpy.zeros((8, len(kT)))
+  g[0,:] = 1/y
+  g[1,:] = en1
+  g[2,:] = scipy.special.expn(2, y)*numpy.exp(y)
+  g[3,:] = en1/y
+  g[4,:] = (1+en1)/y**2
+  g[5,:] = (3+y+2*en1)/y**3
+  
+  
+  k = numpy.where(y<0.6)[0]
+  if len(k) > 0:
+    yy = y[k]
+    g[6,k] = numpy.exp(yy) * \
+          ((((yy / 486.0 - g7a3) * yy + 0.08) * yy - g7a4) * yy + 4 \
+          - (g7a2 * numpy.log(yy) + g7a1) / numpy.sqrt(yy))
+  
+  k = numpy.where((y>=0.6) & (y<=20.0))[0]
+  if len(k) > 0:
+    yy=y[k]
+    g[6,k] = (p7[0] + (p7[1] + p7[3] * numpy.log(yy)) /\
+              numpy.sqrt(yy) + p7[2] / yy) / (yy + p7[4]) / (yy + p7[5])
+              
+  k = numpy.where(y>20.0)[0]
+  if len(k) > 0:
+    yy=y[k]
+    g[6,k] = (((((g7c1 / yy + g7c2) / yy - 22.0) /\
+                 yy + 5.75) / yy - 2) / yy + 1)/yy**2
+
+
+  k = numpy.where(y<0.5)[0]
+  if len(k) > 0:
+    yy = y[k]
+    g[7,k] = (((((-yy / 3000.0 - (1.0 / 384.0)) * yy - (1.0 / 54.0)) * yy +\
+             0.125) * yy - 1.) * yy + 0.989056 + \
+              (numpy.log(yy) / 2.0 + gamma1) * numpy.log(yy)) * numpy.exp(yy)
+  
+
+  k = numpy.where(((y>=0.5) & (y<=20.0)))[0]
+  if len(k) > 0:
+    yy = y[k]
+  #    print(yy)
+    g[7,k] = ((((arrc[4] / yy + arrc[3]) / yy + arrc[2]) / yy + arrc[1]) / yy + arrc[0]) /\
+               (yy + arrc[5]) / (yy + arrc[6])
+  k = numpy.where(y>20.0)[0]
+  if len(k) > 0:
+    yy = y[k]
+    g[7,k] = ((((((13068 / yy - 1764) / yy + 274) / yy - 50) / yy +\
+               11) / yy - 3) / yy + 1) / yy**2
+
+  
+  shlout =  coeff['A'] * 1e24*(g[0,:] - g[1,:]) + \
+      coeff['B'] * 1e24* (g[0,:] - 2 * g[1,:] + g[2,:]) + \
+      coeff['C'] * 1e24* (g[3,:] + 1.5 * lam * g[4,:] + 0.25 * lam**2 * g[5,:]) + \
+      coeff['D'] * 1e24* g[6,:] +\
+      coeff['E'] * 1e24* g[7,:]
+
+  shlout *= r01 * numpy.exp(-y) / eion**2 * y**1.5 * numpy.sqrt(lam)
+  
+  return(shlout)
+
+def eval_udi(coeff, kT):
+  rate = numpy.zeros(len(kT))
+  for i in range(len(coeff)):
+    rate += eval_udi_shell(coeff[i], kT)
+
+  return(rate)
+      
+def eval_uea_shell(coeff, kT, altmethod=False):
+  eion = coeff['I_keV']
+  y = eion/kT
+  lam = eion/mec2
+  exp1=scipy.special.exp1( y)
+  en1 = numpy.exp(y) * exp1
+  eminusy = numpy.exp(-y)
+
+  m1 = (1/y)* eminusy
+  m2 = exp1
+  m3 = eminusy- y*exp1
+  m4 = (1-y)*eminusy/2 + y**2*exp1/2
+  m5 = exp1/y
+  
+  c_ea = m1 * coeff['A']* 1e24 +\
+         m2 * coeff['B']* 1e24 +\
+         m3 * coeff['C']* 1e24 +\
+         m4 * 2 * coeff['D']* 1e24 +\
+         m5 * coeff['E']* 1e24
+         
+  c_ea *=eminusy*y**1.5*numpy.sqrt(lam)/eion**2
+  
+  if altmethod:
+
+    em1 = scipy.special.expn(1, y)*numpy.exp(y)
+    em2 = scipy.special.expn(2, y)*numpy.exp(y)
+    em3 = scipy.special.expn(3, y)*numpy.exp(y)
+    c_ea = coeff['A']*1e24 + y * (coeff['B']*1e24*em1 + coeff['C']*1e24 * em2 + 2*coeff['D']*1e24 * em3) + coeff['E']*1e24*em1
+    c_ea *=  numpy.exp(-y)/eion**2 * y**1.5 * lam**0.5
+  else:
+    #print("NORMMETHOD")
+    r0tmp=r01*1
+
+  
+  return(r01*c_ea)
+
+def eval_uea(coeff, kT, altmethod=False):
+  rate = numpy.zeros(len(kT))
+  for i in range(len(coeff)):
+#    print(coeff[i])
+    rate += eval_uea_shell(coeff[i], kT, altmethod=altmethod)
+
+  return(rate)
 
 
 
@@ -3167,44 +3310,45 @@ def get_ionrec_rate(Te_in, irdat_in=False, lvdat_in=False, Te_unit='K', \
   earet = numpy.zeros(len(Te), dtype=float)
   rrret = numpy.zeros(len(Te), dtype=float)
   drret = numpy.zeros(len(Te), dtype=float)
-
+  
   try:
     ionpot = irdat[1].header['IONPOT']
   except KeyError:
     ionpot = False
   # Start with the CI data
-  ici = numpy.where(irdat[1].data['TR_TYPE']=='CI')[0]
   #print(ici)
-  element_number = irdat[1].data['ELEMENT'][int(ici)]
-  ion_number = irdat[1].data['ION_INIT'][int(ici)]
+  #print(irdat[1].data['ELEMENT'])
 
+  #element_number = irdat[1].data['ELEMENT'][int(ici)]
+  #ion_number = irdat[1].data['ION_INIT'][int(ici)]
+  
   #for i in ici:
   #  tmp=get_maxwell_rate(Te, irdat, i, lvdat, Te_unit='K', \
   #                       lvdatap1=lvdatp1, ionpot = False,\
   #                       force_extrap=extrap)
   #print(Te)
-  for i in Te:
-    #tmp = calculate_C_DI(element_number, ion_number, float(i))
-    
-    #print(udicoeff)
-    udicoeff = read_udi(element_number,ion_number)
-    
-    udirates = convert_rates.eval_udi(udicoeff, [i /(11604.5*1000)])
 
-    ciret += udirates
-
-   
-    ueacoeff = read_uea(element_number,ion_number)
-    
-    altuearates = convert_rates.eval_uea(ueacoeff, [i /(11604.5*1000)], altmethod=True)
-
-    earet +=  altuearates
-
+  ici = numpy.where(irdat[1].data['TR_TYPE']=='CI')[0]
+  print(ici)
+  for i in ici:
+    print(i)
+    if i > 0:
+      tmp=get_maxwell_rate(Te, irdat, i, lvdat, Te_unit='K', \
+                         lvdatap1=lvdatp1, ionpot = False,\
+                         force_extrap=extrap)
+      ciret += tmp
+      #print(ciret)
+  
+  
+  
   iea = numpy.where(irdat[1].data['TR_TYPE']=='EA')[0]
-  #for i in iea:
-    #tmp=get_maxwell_rate(Te, irdat, i, lvdat, Te_unit='K', \
-    #                     lvdatap1=lvdatp1, ionpot = False,\
-    #                     force_extrap=extrap)
+  #print(iea)
+  for i in iea:
+    tmp=get_maxwell_rate(Te, irdat, i, lvdat, Te_unit='K', \
+                         lvdatap1=lvdatp1, ionpot = False,\
+                         force_extrap=extrap)
+    earet+= tmp
+    #print(earet)
 
   #for i in Te:
   #  tmp = calculate_C_DEA(Z, z1, float(i))
@@ -3249,6 +3393,8 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                      finallev=False, initlev=False,\
                      Z=-1, z1=-1, dtype=False, exconly=False,\
                      datacache=False, settings=False, ladat=False):
+  
+  print(colldata)
   """
   Get the maxwellian rate for a transition from a file, typically for ionization,
   recombination or excitation.
@@ -3350,6 +3496,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
 
   # CHECK THE INPUTS
   # 1: the collional excitation data
+  #print(colldata[1].header)
   if colldata:
     if Z>=0 | z1 >=0:
       print('ERROR: specified colldata, Z and z1. Either specify colldata or Z, z1 & dtype')
@@ -3558,6 +3705,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
       return exc, dex
 
   elif dtype=='CI':
+    '''
     cidat = colldata[1].data[index]
 
     if ((cidat['par_type']>const.INTERP_I_UPSILON) & \
@@ -3617,10 +3765,16 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
             s += " %e:%e, " % (Te_arr[i],ci[i])
           print(s)
 
-
+    '''
+    element_number = colldata[1].data['ELEMENT'][int(index)]
+    ion_number = colldata[1].data['ION_INIT'][int(index)]
+    for te_i in Te_arr:
+      udicoeff = read_udi(colldata,index)
+      ci = eval_udi(udicoeff, [te_i /(11604.5*1000)])
     return ci
 
   elif dtype=='EA':
+    '''
     cidat = colldata[1].data[index]
     ea = _calc_ionrec_ea(cidat,Te_arr, extrap=force_extrap)
     if sum(numpy.isnan(ea))>0:
@@ -3637,8 +3791,20 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                  atomic.spectroscopic_name(cidat['element'],cidat['ion_final']))
         for i in  numpy.where(ea[numpy.isfinite(ea)] < 0)[0]:
           s += " %e:%e, " % (Te_arr[i],ea[i])
-        print(s)
+       
+    '''
+    element_number = colldata[1].data['ELEMENT'][int(index)]
+    ion_number = colldata[1].data['ION_INIT'][int(index)]
+    for te_i in Te_arr:
+      ueacoeff = read_uea(colldata,index)
+      
+      ea = eval_uea(ueacoeff, [te_i /(11604.5*1000)], altmethod=True)
+
+    
     return ea
+
+
+
   elif dtype=='DR':
     cidat = colldata[1].data[index]
     dr = _calc_ionrec_dr(cidat,Te_arr, extrap=force_extrap)
@@ -3767,7 +3933,6 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                    Te,xi))
         xi=0.0
     return xi
-
 
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
