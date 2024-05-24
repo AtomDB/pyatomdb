@@ -3018,7 +3018,7 @@ def read_udi(irdat, index):
     #else:
     #  ci_coeff = numpy.zeros((len(ci_index),5))
 
-    return ci_coeff
+  return ci_coeff
 
 
 def read_uea(irdat, index):
@@ -3393,8 +3393,6 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                      finallev=False, initlev=False,\
                      Z=-1, z1=-1, dtype=False, exconly=False,\
                      datacache=False, settings=False, ladat=False):
-  
-  print(colldata)
   """
   Get the maxwellian rate for a transition from a file, typically for ionization,
   recombination or excitation.
