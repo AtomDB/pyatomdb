@@ -19,7 +19,7 @@ Adam Foster August 28th 2015
 
 import os, datetime, numpy, re, time, getpass
 import urllib.request, urllib.error, urllib.parse
-import util, apec, const, atomic, spectrum
+from . import util, apec, const, atomic, spectrum
 
 import astropy.io.fits as pyfits
 from scipy import stats, integrate, math
@@ -3328,14 +3328,27 @@ def get_ionrec_rate(Te_in, irdat_in=False, lvdat_in=False, Te_unit='K', \
   #                       force_extrap=extrap)
   #print(Te)
 
+  ## reading urdam_pelata keyword
+  ## if exists will use v3.1.0
+  try:
+    filetype1 = irdat[1].header['filetype']
+  except KeyError:
+    filetype1 = 'none'
   ici = numpy.where(irdat[1].data['TR_TYPE']=='CI')[0]
-  print(ici)
+ 
   for i in ici:
-    print(i)
-    if i > 0:
+    
+    if filetype1 == 'urdam_peleta':
+      if i > 0:
+        tmp=get_maxwell_rate(Te, irdat, i, lvdat, Te_unit='K', \
+                         lvdatap1=lvdatp1, ionpot = False,\
+                         force_extrap=extrap)
+        ciret += tmp
+    if filetype1 == 'none':
       tmp=get_maxwell_rate(Te, irdat, i, lvdat, Te_unit='K', \
                          lvdatap1=lvdatp1, ionpot = False,\
                          force_extrap=extrap)
+
       ciret += tmp
       #print(ciret)
   
@@ -3508,7 +3521,12 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
       Z=colldata[1].header['ELEMENT']
       z1=colldata[1].header['ION_STAT']+1
 
-
+    ## reading urdam_pelata keyword
+    ## if exists will use v3.1.0
+    try:
+      filetype1 = colldata[1].header['filetype']
+    except KeyError:
+      filetype1 = 'none'
 
   else:
     # Check we have Z & z1 & dtype specified
@@ -3581,7 +3599,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
 
     if (finallev==False | initlev == False):
       print("Error: if not specifying index, must specify finallev and ", end=' ')
-      print("initlev")
+      #print("initlev")
       return False
     else:
 
@@ -3650,7 +3668,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
           index = index[0]
 
   # convert the data.
-
+  
   if dtype=='EC':
     # go through all the different possibilities for collisional excitation data.
     ecdat = colldata[1].data[index]
@@ -3702,102 +3720,113 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
     else:
       return exc, dex
 
+  
+
   elif dtype=='CI':
-    '''
-    cidat = colldata[1].data[index]
 
-    if ((cidat['par_type']>const.INTERP_I_UPSILON) & \
-        (cidat['par_type']<=const.INTERP_I_UPSILON+20)):
+    if filetype1 == 'urdam_peleta':
+      element_number = colldata[1].data['ELEMENT'][int(index)]
+      ion_number = colldata[1].data['ION_INIT'][int(index)]
+      for te_i in Te_arr:
+        udicoeff = read_udi(colldata,index)
+        ci = eval_udi(udicoeff, [te_i /(11604.5*1000)])
+    
+    
+    if filetype1 == 'none':
 
+      
+      cidat = colldata[1].data[index]
+      
 
-
-      upind = cidat['upper_lev']
-      loind = cidat['lower_lev']
-      if not(lvdata):
-        lvdata = get_data(z,z1,'LV', settings=settings, datacache=datacache)
-      if not(lvdatap1):
-        lvdatap1 = get_data(z,z1+1,'LV', settings=settings, datacache=datacache)
-
-      uplev = lvdatap1[1].data[upind-1]
-      lolev = lvdata[1].data[loind-1]
-
-      # get the ionization potential
-      if not(ionpot):
-#        print "fixing ionpot"
-        ionpot = colldata[1].header['IONPOT']
-#      else:
-#        print "I don't need to fix ionpot, it is ", ionpot
-
-      delta_E = ionpot + uplev['energy']-lolev['energy']
-      Ztmp = lvdata[1].header['ELEMENT']
-      degl = lolev['lev_deg']
-      degu = uplev['lev_deg']
+      if ((cidat['par_type']>const.INTERP_I_UPSILON) & \
+          (cidat['par_type']<=const.INTERP_I_UPSILON+20)):
 
 
-      ci, dex = _calc_maxwell_rates(cidat['par_type'],\
-                         cidat['min_temp'],\
-                         cidat['max_temp'],\
-                                 cidat['temperature'],\
-                                 cidat['ionrec_par'],\
-                                 delta_E/1e3, Te_arr, Ztmp, degl, degu)
 
-    elif ((cidat['par_type']>const.CI_DERE) &\
-          (cidat['par_type']<=const.CI_DERE+20)):
-      ionpot = float(colldata[1].header['IP_DERE'])
-      ci = _calc_ionrec_ci(cidat, Te_arr, extrap=force_extrap, ionpot=ionpot)
-    else:
-      ci = _calc_ionrec_ci(cidat,Te_arr, extrap=force_extrap)
-      if sum(numpy.isnan(ci))>0:
-        if not silent:
-          print("calc_ionrec_rate: CI(%10s -> %10s): Te out of range min->max=%e->%e:"%\
-                    (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
-                     atomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
-                     cidat['min_temp'], cidat['max_temp']),\
-                     Te_arr[numpy.isnan(ci)])
-      if sum(ci[numpy.isfinite(ci)] < 0)>0:
-        if not silent:
-          s= "calc_ionrec_rate: CI(%10s -> %10s): negative CI found: =%e->%e:"%\
-                    (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
-                     atomic.spectroscopic_name(cidat['element'],cidat['ion_final']))
-          for i in  numpy.where(ci[numpy.isfinite(ci)] < 0)[0]:
-            s += " %e:%e, " % (Te_arr[i],ci[i])
-          print(s)
+        upind = cidat['upper_lev']
+        loind = cidat['lower_lev']
+        if not(lvdata):
+          lvdata = get_data(z,z1,'LV', settings=settings, datacache=datacache)
+        if not(lvdatap1):
+          lvdatap1 = get_data(z,z1+1,'LV', settings=settings, datacache=datacache)
 
-    '''
-    element_number = colldata[1].data['ELEMENT'][int(index)]
-    ion_number = colldata[1].data['ION_INIT'][int(index)]
-    for te_i in Te_arr:
-      udicoeff = read_udi(colldata,index)
-      ci = eval_udi(udicoeff, [te_i /(11604.5*1000)])
+        uplev = lvdatap1[1].data[upind-1]
+        lolev = lvdata[1].data[loind-1]
+
+        # get the ionization potential
+        if not(ionpot):
+          ionpot = colldata[1].header['IONPOT']
+
+
+        delta_E = ionpot + uplev['energy']-lolev['energy']
+        Ztmp = lvdata[1].header['ELEMENT']
+        degl = lolev['lev_deg']
+        degu = uplev['lev_deg']
+
+
+        ci, dex = _calc_maxwell_rates(cidat['par_type'],\
+                           cidat['min_temp'],\
+                           cidat['max_temp'],\
+                                   cidat['temperature'],\
+                                   cidat['ionrec_par'],\
+                                   delta_E/1e3, Te_arr, Ztmp, degl, degu)
+
+      elif ((cidat['par_type']>const.CI_DERE) &\
+            (cidat['par_type']<=const.CI_DERE+20)):
+        ionpot = float(colldata[1].header['IP_DERE'])
+        ci = _calc_ionrec_ci(cidat, Te_arr, extrap=force_extrap, ionpot=ionpot)
+
+
+
+      else:
+        ci = _calc_ionrec_ci(cidat,Te_arr, extrap=force_extrap)
+        if sum(numpy.isnan(ci))>0:
+          if not silent:
+            print("calc_ionrec_rate: CI(%10s -> %10s): Te out of range min->max=%e->%e:"%\
+                      (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
+                       atomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
+                       cidat['min_temp'], cidat['max_temp']),\
+                       Te_arr[numpy.isnan(ci)])
+        if sum(ci[numpy.isfinite(ci)] < 0)>0:
+          if not silent:
+            s= "calc_ionrec_rate: CI(%10s -> %10s): negative CI found: =%e->%e:"%\
+                      (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
+                       atomic.spectroscopic_name(cidat['element'],cidat['ion_final']))
+            for i in  numpy.where(ci[numpy.isfinite(ci)] < 0)[0]:
+              s += " %e:%e, " % (Te_arr[i],ci[i])
+            print(s)
+
     return ci
 
   elif dtype=='EA':
-    '''
-    cidat = colldata[1].data[index]
-    ea = _calc_ionrec_ea(cidat,Te_arr, extrap=force_extrap)
-    if sum(numpy.isnan(ea))>0:
-      if not silent:
-        print("calc_ionrec_rate: EA(%10s -> %10s): Te out of range min->max=%e->%e:"%\
-                 (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
-                 atomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
-                 cidat['min_temp'], cidat['max_temp']),\
-                 Te_arr[numpy.isnan(ea)])
-    if sum(ea[numpy.isfinite(ea)] < 0)>0:
-      if not silent:
-        s= "calc_ionrec_rate: EA(%10s -> %10s): negative EA found: =%e->%e:"%\
-                (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
-                 atomic.spectroscopic_name(cidat['element'],cidat['ion_final']))
-        for i in  numpy.where(ea[numpy.isfinite(ea)] < 0)[0]:
-          s += " %e:%e, " % (Te_arr[i],ea[i])
-       
-    '''
-    element_number = colldata[1].data['ELEMENT'][int(index)]
-    ion_number = colldata[1].data['ION_INIT'][int(index)]
-    for te_i in Te_arr:
-      ueacoeff = read_uea(colldata,index)
-      
-      ea = eval_uea(ueacoeff, [te_i /(11604.5*1000)], altmethod=True)
+    if filetype1 == 'urdam_peleta':
+      element_number = colldata[1].data['ELEMENT'][int(index)]
+      ion_number = colldata[1].data['ION_INIT'][int(index)]
+      for te_i in Te_arr:
+        ueacoeff = read_uea(colldata,index)
+  
+        ea = eval_uea(ueacoeff, [te_i /(11604.5*1000)], altmethod=True)
 
+    print(filetype1)
+    if filetype1 == 'none':
+
+      cidat = colldata[1].data[index]
+      print(cidat)
+      ea = _calc_ionrec_ea(cidat,Te_arr, extrap=force_extrap)
+      if sum(numpy.isnan(ea))>0:
+        if not silent:
+          print("calc_ionrec_rate: EA(%10s -> %10s): Te out of range min->max=%e->%e:"%\
+                   (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
+                   atomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
+                   cidat['min_temp'], cidat['max_temp']),\
+                   Te_arr[numpy.isnan(ea)])
+      if sum(ea[numpy.isfinite(ea)] < 0)>0:
+        if not silent:
+          s= "calc_ionrec_rate: EA(%10s -> %10s): negative EA found: =%e->%e:"%\
+                  (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
+                   atomic.spectroscopic_name(cidat['element'],cidat['ion_final']))
+          for i in  numpy.where(ea[numpy.isfinite(ea)] < 0)[0]:
+            s += " %e:%e, " % (Te_arr[i],ea[i])
     
     return ea
 
