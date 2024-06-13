@@ -1498,18 +1498,20 @@ def write_ec_file(fname, dat, clobber=False):
     version = '1.2.0'
   else:
     version = '1.1.0'
-  hdu0.header.update('DATE', now.strftime('%d/%m/%y'))
-  hdu0.header.update('COLL_STR', "Collision Strengths")
-  hdu0.header.update('FILENAME', "Python routine")
-  hdu0.header.update('ORIGIN', "ATOMDB",comment=os.environ['USER']+", AtomDB project")
-  hdu0.header.update('HDUCLASS', "ATOMIC",comment="Atomic Data")
-  hdu0.header.update('HDUCLAS1', "COLL_STR",comment="e + p Collision Strengths")
-  hdu0.header.update('HDUVERS', version,comment="Version of datafile")
+
+
+  hdu0.header['DATE']= (now.strftime('%d/%m/%y'))
+  hdu0.header['COLL_STR']=( "Collision Strengths")
+  hdu0.header['FILENAME']=( "Python routine")
+  hdu0.header['ORIGIN']=("ATOMDB",os.environ['USER']+", AtomDB project")
+  hdu0.header['HDUCLASS']=("ATOMIC","Atomic Data")
+  hdu0.header['HDUCLAS1']=("COLL_STR","e + ion Collision Strengths")
+  hdu0.header['HDUVERS']= (version,"Version of datafile")
 
   print(keys)
   #secondary HDU, hdu1:
   if version == '1.2.0':
-    hdu1 = pyfits.new_table(pyfits.ColDefs(
+    hdu1 = pyfits.BinTableHDU.from_columns(pyfits.ColDefs(
           [pyfits.Column(name='LOWER_LEV',
              format='1J',
              array=dat['data'][keys['lower_lev']]),
@@ -1542,7 +1544,7 @@ def write_ec_file(fname, dat, clobber=False):
              array=dat['data'][keys['reference']])]
            ))
   else:
-    hdu1 = pyfits.new_table(pyfits.ColDefs(
+    hdu1 = pyfits.BinTableHDU.from_columns(pyfits.ColDefs(
           [pyfits.Column(name='LOWER_LEV',
              format='1J',
              array=dat['data'][keys['lower_lev']]),
@@ -1572,24 +1574,24 @@ def write_ec_file(fname, dat, clobber=False):
              array=dat['data'][keys['reference']])]
            ))
 
-  hdu1.header.update('XTENSION', hdu1.header['XTENSION'],
-          comment='Written by '+os.environ['USER']+now.strftime('%a %Y-%m-%d %H:%M:%S')+ 'UTC')
-  hdu1.header.update('EXTNAME', atomic.spectroscopic_name(dat['Z'], dat['z1']),
-          comment='Ion Name', before="TTYPE1")
-  hdu1.header.update('HDUCLASS', 'ATOMIC',
-          comment='Atomic Data', before="TTYPE1")
-  hdu1.header.update('HDUCLAS1', 'COLL_STR',
-          comment='Collision Strengths (e,p)', before="TTYPE1")
-  hdu1.header.update('ELEMENT', dat['Z'],
-          comment='Numer of protons in element', before="TTYPE1")
-  hdu1.header.update('ION_STAT', dat['z1']-1,
-          comment='ion state (0 = neutral)', before="TTYPE1")
-  hdu1.header.update('ION_NAME', atomic.spectroscopic_name(dat['Z'], dat['z1']),
-          comment='Ion Name', before="TTYPE1")
-  hdu1.header.update('N_EXCITE',len(dat['data'][keys['upper_lev']]) ,
-           comment='Number of collisional excitations', before="TTYPE1")
-  hdu1.header.update('HDUVERS1', version,
-           comment='Version of datafile', before="TTYPE1")
+  hdu1.header['XTENSION'] = (hdu1.header['XTENSION'],
+          'Written by '+os.environ['USER']+now.strftime('%a %Y-%m-%d %H:%M:%S')+ 'UTC')
+  hdu1.header['EXTNAME'] = (atomic.spectroscopic_name(dat['Z'], dat['z1']),
+          'Ion Name')
+  hdu1.header['HDUCLASS'] =('ATOMIC',
+          'Atomic Data')
+  hdu1.header['HDUCLAS1'] = ('COLL_STR',
+          'Collision Strengths (e,p)')
+  hdu1.header['ELEMENT'] = (dat['Z'],
+          'Numer of protons in element')
+  hdu1.header['ION_STAT'] = (dat['z1']-1,
+          'ion state (0 = neutral)')
+  hdu1.header['ION_NAME'] = (atomic.spectroscopic_name(dat['Z'], dat['z1']),
+          'Ion Name')
+  hdu1.header['N_EXCITE'] = (len(dat['data'][keys['upper_lev']]) ,
+          'Number of collisional excitations')
+  hdu1.header['HDUVERS1'] = (version,
+          'Version of datafile')
 
   if 'comments' in list(dat.keys()):
     print('adding comments')
@@ -1608,7 +1610,7 @@ def write_ec_file(fname, dat, clobber=False):
     except OSError:
       pass
 
-  print('writing lafile')
+  print('writing ecfile')
   try:
     hdulist.writeto(fname, checksum=True, clobber=clobber)
   except TypeError:
