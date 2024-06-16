@@ -32,7 +32,11 @@ linapprox =  Extension("linear_approx",['linear_approx.c'],\
 
 
 if on_rtd:
-  from mock import Mock as MagicMock
+  try:
+    from unittest.mock import MagicMock
+  except ImportError:
+    from mock import Mock as MagicMock
+
 
   extmos= []
 
