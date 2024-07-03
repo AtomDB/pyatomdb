@@ -30,7 +30,6 @@ linapprox =  Extension("linear_approx",['linear_approx.c'],\
 
 
 
-
 if on_rtd:
   try:
     from unittest.mock import MagicMock
@@ -40,13 +39,13 @@ if on_rtd:
 
   extmos= []
 
-  class Mock(MagicMock):
-      @classmethod
-      def __getattr__(cls, name):
-              return Mock()
+#  class Mock(MagicMock):
+#      @classmethod
+#      def __getattr__(cls, name):
+#              return Mock()
 
   MOCK_MODULES = ['liblinapprox']
-  sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+  sys.modules.update((mod_name, MagicMock()) for mod_name in MOCK_MODULES)
 
 else:
   extmos= [linapprox]
