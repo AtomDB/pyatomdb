@@ -911,7 +911,7 @@ def make_vec(d):
 
 #-------------------------------------------------------------------------------
 
-def write_lv_file(fname, dat, clobber=False):
+def write_lv_file(fname, dat, overwrite=False):
   """
   Write the data in list dat to fname
 
@@ -948,7 +948,7 @@ def write_lv_file(fname, dat, clobber=False):
       - Arad_ref : string(20) : total radiative decay rate reference (bibcode)\n
 
 
-  clobber : bool
+  overwrite : bool
     Overwrite existing file if it exists.
 
   Returns
@@ -1137,22 +1137,22 @@ def write_lv_file(fname, dat, clobber=False):
   hdulist = pyfits.HDUList([hdu0,hdu1])
 
   # write out file (overwrite any existing file)
-  if clobber:
+  if overwrite:
     try:
       os.remove(fname)
     except OSError:
       pass
 
   try:
-    hdulist.writeto(fname, checksum=True, clobber=clobber)
+    hdulist.writeto(fname, checksum=True, overwrite=overwrite)
   except TypeError:
-    hdulist.writeto(fname, clobber=clobber)
+    hdulist.writeto(fname, overwrite=overwrite)
 
   print("file written: "+fname)
 
 #-------------------------------------------------------------------------------
 
-def write_la_file(fname, dat, clobber=False):
+def write_la_file(fname, dat, overwrite=False):
   """
   Write the data in list dat to fname
 
@@ -1177,7 +1177,7 @@ def write_la_file(fname, dat, clobber=False):
       - wave_ref : string(20) : wavelength reference (bibcode)
       - ein_a_ref : string(20) : A-value reference (bibcode)
 
-  clobber : bool
+  overwrite : bool
     Overwrite existing file if it exists.
 
   Returns
@@ -1297,7 +1297,7 @@ def write_la_file(fname, dat, clobber=False):
   hdulist = pyfits.HDUList([hdu0,hdu1])
 
   # write out file (overwrite any existing file)
-  if clobber:
+  if overwrite:
     try:
       os.remove(fname)
     except OSError:
@@ -1305,15 +1305,15 @@ def write_la_file(fname, dat, clobber=False):
 
   print('writing lafile')
   try:
-    hdulist.writeto(fname, checksum=True, clobber=clobber)
+    hdulist.writeto(fname, checksum=True, overwrite=overwrite)
   except TypeError:
-    hdulist.writeto(fname, clobber=clobber)
+    hdulist.writeto(fname, overwrite=overwrite)
 
   print("file written: "+fname)
 
 #-------------------------------------------------------------------------------
 
-def write_ai_file(fname, dat, clobber=False):
+def write_ai_file(fname, dat, overwrite=False):
   """
   Write the data in list dat to fname
 
@@ -1338,7 +1338,7 @@ def write_ai_file(fname, dat, clobber=False):
       - auto_err : float : Error in autoionization rate (s-1)
       - auto_ref : string(20) : Autoionization rate reference (bibcode)
 
-  clobber : bool
+  overwrite : bool
     Overwrite existing file if it exists.
 
   Returns
@@ -1419,7 +1419,7 @@ def write_ai_file(fname, dat, clobber=False):
   hdulist = pyfits.HDUList([hdu0,hdu1])
 
   # write out file (overwrite any existing file)
-  if clobber:
+  if overwrite:
     try:
       os.remove(fname)
     except OSError:
@@ -1427,15 +1427,15 @@ def write_ai_file(fname, dat, clobber=False):
 
   print('writing lafile')
   try:
-    hdulist.writeto(fname, checksum=True, clobber=clobber)
+    hdulist.writeto(fname, checksum=True, overwrite=overwrite)
   except TypeError:
-    hdulist.writeto(fname, clobber=clobber)
+    hdulist.writeto(fname, overwrite=overwrite)
 
   print("file written: "+fname)
 
 #-------------------------------------------------------------------------------
 
-def write_ec_file(fname, dat, clobber=False):
+def write_ec_file(fname, dat, overwrite=False):
   """
   Write the data in list dat to fname
 
@@ -1462,7 +1462,7 @@ def write_ec_file(fname, dat, clobber=False):
       - reference : string(20) : Collisional excitation reference (bibcode)
 
 
-  clobber : bool
+  overwrite : bool
     Overwrite existing file if it exists.
 
   Returns
@@ -1604,7 +1604,7 @@ def write_ec_file(fname, dat, clobber=False):
   hdulist = pyfits.HDUList([hdu0,hdu1])
 
   # write out file (overwrite any existing file)
-  if clobber:
+  if overwrite:
     try:
       os.remove(fname)
     except OSError:
@@ -1612,14 +1612,14 @@ def write_ec_file(fname, dat, clobber=False):
 
   print('writing ecfile')
   try:
-    hdulist.writeto(fname, checksum=True, clobber=clobber)
+    hdulist.writeto(fname, checksum=True, overwrite=overwrite)
   except TypeError:
-    hdulist.writeto(fname, clobber=clobber)
+    hdulist.writeto(fname, overwrite=overwrite)
   print("file written: "+fname)
 
 #-------------------------------------------------------------------------------
 
-def write_ir_file(fname, dat, clobber=False):
+def write_ir_file(fname, dat, overwrite=False):
   """
   Write the data in list dat to fname
 
@@ -1668,7 +1668,7 @@ def write_ir_file(fname, dat, clobber=False):
       - wave_ref : string(20) : Wavelength reference (bibcode)
       - wv_obs_ref : string(20) : Observed wavelength reference (bibcode)
       - br_rat_ref : string(20) : Branching ratio reference (bibcode)
-  clobber : bool
+  overwrite : bool
     Overwrite existing file if it exists.
 
   Returns
@@ -1811,7 +1811,7 @@ def write_ir_file(fname, dat, clobber=False):
   hdulist = pyfits.HDUList([hdu0,hdu1])
 
   # write out file (overwrite any existing file)
-  if clobber:
+  if overwrite:
     try:
       os.remove(fname)
     except OSError:
@@ -1819,9 +1819,9 @@ def write_ir_file(fname, dat, clobber=False):
 
   print('writing irfile')
   try:
-    hdulist.writeto(fname, checksum=True, clobber=clobber)
+    hdulist.writeto(fname, checksum=True, overwrite=overwrite)
   except TypeError:
-    hdulist.writeto(fname, clobber=clobber)
+    hdulist.writeto(fname, overwrite=overwrite)
 
   print("file written: "+fname)
 
@@ -1831,7 +1831,7 @@ def write_ir_file(fname, dat, clobber=False):
 
 #-------------------------------------------------------------------------------
 
-def write_dr_file(fname, dat, lvdat = None,clobber=False):
+def write_dr_file(fname, dat, lvdat = None,overwrite=False):
   """
   Write the data in list dat to fname
 
@@ -1859,7 +1859,7 @@ def write_dr_file(fname, dat, lvdat = None,clobber=False):
       - wave_ref : string(20) : wavelength reference (bibcode)\n
       - wv_obs_ref : string(20) : observed wavelength reference (bibcode)\n
 
-  clobber : bool
+  overwrite : bool
     Overwrite existing file if it exists.
 
   Returns
@@ -2036,7 +2036,7 @@ def write_dr_file(fname, dat, lvdat = None,clobber=False):
     hdulist = pyfits.HDUList([hdu0,hdu1])
 
   # write out file (overwrite any existing file)
-  if clobber:
+  if overwrite:
     try:
       os.remove(fname)
     except OSError:
@@ -2044,9 +2044,9 @@ def write_dr_file(fname, dat, lvdat = None,clobber=False):
 
   print('writing drfile')
   try:
-    hdulist.writeto(fname, checksum=True, clobber=clobber)
+    hdulist.writeto(fname, checksum=True, overwrite=overwrite)
   except TypeError:
-    hdulist.writeto(fname, clobber=clobber)
+    hdulist.writeto(fname, overwrite=overwrite)
 
   print("file written: "+fname)
 
@@ -2295,7 +2295,7 @@ def generate_xspec_ionbal_files(Z, filesuffix, settings = False):
   hdulist[1].header['EXTNAME']='EIGEN'
 
   fname = 'eigen%s_%s.fits'%(atomic.Ztoelsymb(Z).lower(), filesuffix)
-  hdulist.writeto(fname, checksum=True, clobber=True)
+  hdulist.writeto(fname, checksum=True, overwrite=True)
 
 #-------------------------------------------------------------------------------
 
@@ -3131,7 +3131,7 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_lineid.tar.bz2'):
     ladat[1].data=ladat[1].data[isgood]
     ladat[1].header['N_LINES']=sum(isgood)
 
-    ladat.writeto(lafnameout, checksum=True, clobber=True)
+    ladat.writeto(lafnameout, checksum=True, overwrite=True)
     print("wrote %s with %i lines instead of %i"%\
           (lafnameout, sum(isgood), len(isgood)))
 
@@ -3143,7 +3143,7 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_lineid.tar.bz2'):
   ionbal = atomdb.get_data(False, False, 'ionbal')
   mkdir_p('%s/APED/ionbal'%(foldername))
   ionbal.writeto('%s/APED/ionbal/v%s_ionbal.fits'%\
-                (foldername, version), clobber=True, checksum=True)
+                (foldername, version), overwrite=True, checksum=True)
 
   print("Ionbal writen to %s/APED/ionbal/v%s_ionbal.fits"%\
                 (foldername, version))
@@ -3269,7 +3269,7 @@ def generate_web_fitsfiles(version='', outdir=''):
     hdulist = pyfits.HDUList([prihdu,hdu1,hdu2])
 
     hdulist.writeto('%s/apec_v%s_linelist_split_%i.fits'%\
-                   (outdir, version, ifile+1), checksum=True, clobber=True)
+                   (outdir, version, ifile+1), checksum=True, overwrite=True)
     rangedata[ifile]['Lambda_lo']=min(d1['Lambda'])
     rangedata[ifile]['Lambda_hi']=max(d1['Lambda'])
     rangedata[ifile]['filename'] = "apec_v%s_linelist_split_%i.fits"%\
@@ -3278,7 +3278,7 @@ def generate_web_fitsfiles(version='', outdir=''):
   prihdu = pyfits.PrimaryHDU()
   hdulist = pyfits.HDUList([prihdu, hdu])
   hdulist.writeto('%s/apec_v%s_linelist_split_index.fits'%\
-                   (outdir, version), checksum=True, clobber=True)
+                   (outdir, version), checksum=True, overwrite=True)
   print("Finished")
   return
 

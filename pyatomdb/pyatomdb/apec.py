@@ -1482,7 +1482,7 @@ def run_apec(fname):
   lhdulist.insert(0,PrilHDU)
   lhdulist.insert(1,seclHDU)
   tmplhdulist = pyfits.HDUList(lhdulist)
-  tmplhdulist.writeto('%s_line.fits'%(fileroot), clobber=True, checksum=True)
+  tmplhdulist.writeto('%s_line.fits'%(fileroot), overwrite=True, checksum=True)
 
 
   PricHDU = pyfits.PrimaryHDU()
@@ -1490,9 +1490,9 @@ def run_apec(fname):
   chdulist.insert(1,seccHDU)
   tmpchdulist = pyfits.HDUList(chdulist)
   if settings['Ionization']=='CIE':
-    tmpchdulist.writeto('%s_coco.fits'%(fileroot), clobber=True, checksum=True)
+    tmpchdulist.writeto('%s_coco.fits'%(fileroot), overwrite=True, checksum=True)
   elif settings['Ionization']=='NEI':
-    tmpchdulist.writeto('%s_comp.fits'%(fileroot), clobber=True, checksum=True)
+    tmpchdulist.writeto('%s_comp.fits'%(fileroot), overwrite=True, checksum=True)
 
 def calc_total_coco(cocodata, settings):
   """
@@ -4300,12 +4300,12 @@ def wrap_run_apec(fname, readpickle=False, writepickle=False):
   generate_apec_headerblurb(settings, tmplhdulist, tmpchdulist)
 
   # write out results
-  tmplhdulist.writeto('%s_line.fits'%(fileroot), clobber=True, checksum=True)
+  tmplhdulist.writeto('%s_line.fits'%(fileroot), overwrite=True, checksum=True)
 
   if settings['Ionization']=='CIE':
-    tmpchdulist.writeto('%s_coco.fits'%(fileroot), clobber=True, checksum=True)
+    tmpchdulist.writeto('%s_coco.fits'%(fileroot), overwrite=True, checksum=True)
   elif settings['Ionization']=='NEI':
-    tmpchdulist.writeto('%s_comp.fits'%(fileroot), clobber=True, checksum=True)
+    tmpchdulist.writeto('%s_comp.fits'%(fileroot), overwrite=True, checksum=True)
 
 
 def wrap_update_one_ion(fname, linefile, cocofile, fnameout=None):
@@ -4584,12 +4584,12 @@ def wrap_update_one_ion(fname, linefile, cocofile, fnameout=None):
   # generate_apec_headerblurb(settings, tmplhdulist, tmpchdulist)
 
   # write out results
-  #tmplhdulist.writeto('%s_line.fits'%(fileroot), clobber=True, checksum=True)
+  #tmplhdulist.writeto('%s_line.fits'%(fileroot), overwrite=True, checksum=True)
 
   #if settings['Ionization']=='CIE':
-  #  tmpchdulist.writeto('%s_coco.fits'%(fileroot), clobber=True, checksum=True)
+  #  tmpchdulist.writeto('%s_coco.fits'%(fileroot), overwrite=True, checksum=True)
   #elif settings['Ionization']=='NEI':
-  # tmpchdulist.writeto('%s_comp.fits'%(fileroot), clobber=True, checksum=True)
+  # tmpchdulist.writeto('%s_comp.fits'%(fileroot), overwrite=True, checksum=True)
 
 
 
