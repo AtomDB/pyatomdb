@@ -2439,16 +2439,16 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                  'ion_drv', \
                                  'upperlev',\
                                  'lowerlev'],\
-                        'formats':[numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int]})
+                        'formats':[float,\
+                                   float,\
+                                   float,\
+                                   float,\
+                                   int,\
+                                   int,\
+                                   int,\
+                                   int,\
+                                   int,\
+                                   int]})
 
   elif dtype =='linelist_cie':
     ret = numpy.dtype({'names':['lambda',\
@@ -2459,14 +2459,14 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                  'ion', \
                                  'upperlev',\
                                  'lowerlev'],\
-                        'formats':[numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int]})
+                        'formats':[float,\
+                                   float,\
+                                   float,\
+                                   float,\
+                                   int,\
+                                   int,\
+                                   int,\
+                                   int]})
   elif dtype =='linelist_cie_spectrum':
     ret = numpy.dtype({'names':['Lambda',\
                                  'Lambda_Err',\
@@ -2516,16 +2516,16 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                  'Ion_Drv', \
                                  'UpperLev',\
                                  'LowerLev'],\
-                        'formats':[numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int]})
+                        'formats':[float,\
+                                   float,\
+                                   float,\
+                                   float,\
+                                   int,\
+                                   int,\
+                                   int,\
+                                   int,\
+                                   int,\
+                                   int]})
 
   elif dtype == 'linelist_cie_cap':
     ret = numpy.dtype({'names':['Lambda',\
@@ -2536,14 +2536,14 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                  'Ion', \
                                  'UpperLev',\
                                  'LowerLev'],\
-                        'formats':[numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
-                                   numpy.float,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int,\
-                                   numpy.int]})
+                        'formats':[float,\
+                                   float,\
+                                   float,\
+                                   float,\
+                                   int,\
+                                   int,\
+                                   int,\
+                                   int]})
 
 
   elif dtype == 'continuum':

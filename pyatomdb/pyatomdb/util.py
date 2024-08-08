@@ -2411,27 +2411,27 @@ def make_linelist(linefile, outfile):
                                       'Density',\
                                       'Emissivity',\
                                       'Emissivity_Err'],\
-                             'formats':[numpy.float,\
-                                        numpy.float,\
-                                        numpy.float,\
-                                        numpy.float,\
-                                        numpy.int,\
-                                        numpy.int,\
-                                        numpy.int,\
-                                        numpy.int,\
-                                        numpy.int,\
-                                        numpy.int,\
-                                        (numpy.float,nte),\
-                                        (numpy.float,nte),\
-                                        (numpy.float,nte),\
-                                        (numpy.float,nte)]})
+                             'formats':[float,\
+                                        float,\
+                                        float,\
+                                        float,\
+                                        int,\
+                                        int,\
+                                        int,\
+                                        int,\
+                                        int,\
+                                        int,\
+                                        (float,nte),\
+                                        (float,nte),\
+                                        (float,nte),\
+                                        (float,nte)]})
 
   tmpdattype =  numpy.dtype({'names':['Lambda',\
                                       'Lambda_Err',\
                                       'LambdaTh'],\
-                             'formats':[numpy.float,\
-                                        numpy.float,\
-                                        numpy.float]})
+                             'formats':[float,\
+                                        float,\
+                                        float]})
 
   # master data
   ldat_all = numpy.zeros(0, dtype=linedattype)
@@ -2461,15 +2461,15 @@ def make_linelist(linefile, outfile):
                              (ldat_list[z1]['LowerLev']==il['LowerLev']))[0]
         if len(imatch)==0:
           # no match - new line!
-#          tmpkT = numpy.zeros(51, dtype=numpy.float)
+#          tmpkT = numpy.zeros(51, dtype=float)
 #          tmpkT[0] = te[it]
-#          tmpNe = numpy.zeros(51, dtype=numpy.float)
+#          tmpNe = numpy.zeros(51, dtype=float)
 #          tmpNe[0] = dens
-#          tmpEmis = numpy.zeros(51, dtype=numpy.float)
+#          tmpEmis = numpy.zeros(51, dtype=float)
 #          tmpEmis[0] = il['Epsilon']
-#          tmpEmiserr = numpy.zeros(51, dtype=numpy.float)
+#          tmpEmiserr = numpy.zeros(51, dtype=float)
 #          tmpEmiserr[:] = numpy.nan
-#          tmp0 = numpy.float(0)
+#          tmp0 = float(0)
 
 
 #          z = numpy.zeros(1,dtype=linedattype)
