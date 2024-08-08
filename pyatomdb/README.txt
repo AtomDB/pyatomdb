@@ -246,4 +246,4 @@ Documentation issues with Mock and ReadTheDocs being addressed.
 0.11.8
 August 8th 2024
 Updates to replace deprecated keywords/functions in numpy, astropy and scipy.
-Should now work with scipy v0.14 and greater.
+Should now work with scipy v1.14 and greater.
