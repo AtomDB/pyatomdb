@@ -1323,7 +1323,7 @@ def _expand_E_grid(eedges, n,Econt_in_full, cont_in_full):
   C_all = C_all[iord]
 
   ihi = numpy.where(iord>=n)[0]
-  cum_cont = scipy.integrate.cumtrapz(C_all, E_all, initial=0)
+  cum_cont = scipy.integrate.cumulative_trapezoid(C_all, E_all, initial=0)
   C_out = numpy.zeros(len(eedges))
 #  for i in range(len(eedges)):
 #    arg  = numpy.argwhere(iord==n+i)[0][0]
