@@ -247,3 +247,7 @@ Documentation issues with Mock and ReadTheDocs being addressed.
 August 8th 2024
 Updates to replace deprecated keywords/functions in numpy, astropy and scipy.
 Should now work with scipy v1.14 and greater.
+
+0.12.0
+October 1st 2024
+Updated to allow access to AtomDB v3.1.0 files. These differ due to variable length continuum arrays, and required a re-write to the spectrum module and apec modules for reading/writing the files.
