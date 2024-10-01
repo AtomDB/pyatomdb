@@ -1406,7 +1406,7 @@ def run_apec(fname):
 
 # continuum data
       # now make an HDU for all of this
-      CHDUdat = create_chdu_cie(cocodata)
+      CHDUdat = create_chdu_variable_cie(cocodata)
 
       # now update the headers
       iseccHDUdat=iDens+iTe*settings['NumDens']
@@ -1579,6 +1579,57 @@ def continuum_append(a,b):
 
   return c
 
+def continuum_append_variable(a,b):
+  """
+  Join two continuum arrays together, expanding arrays as necessary
+
+  Parameters
+  ----------
+  a: numpy.array(dtype=continuum)
+    The first array
+  b: numpy.array(dtype=continuum)
+    The second array
+
+  Returns
+  c: numpy.array(dtype=continuum)
+    The two arrays combined, with continuum arrays resized as required.
+  """
+  if len(a) == 0:
+    npseudomax = max(b['N_Pseudo'])
+    ncontmax = max(b['N_Cont'])
+    nlines = len(b)
+
+  else:
+    npseudomax = max([max(a['N_Pseudo']), max(b['N_Pseudo'])])
+    ncontmax = max([max(a['N_Cont']), max(b['N_Cont'])])
+    nlines = len(a) + len(b)
+
+  c = numpy.zeros(nlines, dtype=generate_datatypes('continuum',npseudo=npseudomax, ncontinuum=ncontmax))
+  ic = 0
+  if len(a) > 0:
+    for ia in range(len(a)):
+      c['Z'][ic] = a['Z'][ia]
+      c['rmJ'][ic] = a['rmJ'][ia]
+      c['N_Cont'][ic] = a['N_Cont'][ia]
+      c['E_Cont'][ic][:c['N_Cont'][ic]] = a['E_Cont'][ia][:a['N_Cont'][ia]]
+      c['Continuum'][ic][:c['N_Cont'][ic]] = a['Continuum'][ia][:a['N_Cont'][ia]]
+      c['N_Pseudo'][ic] = a['N_Pseudo'][ia]
+      c['E_Pseudo'][ic][:c['N_Pseudo'][ic]] = a['E_Pseudo'][ia][:a['N_Pseudo'][ia]]
+      c['Pseudo'][ic][:c['N_Pseudo'][ic]] = a['Pseudo'][ia][:a['N_Pseudo'][ia]]
+      ic +=1
+  for ib in range(len(b)):
+    c['Z'][ic] = b['Z'][ib]
+    c['rmJ'][ic] = b['rmJ'][ib]
+    c['N_Cont'][ic] = b['N_Cont'][ib]
+    c['E_Cont'][ic][:c['N_Cont'][ic]] = b['E_Cont'][ib][:b['N_Cont'][ib]]
+    c['Continuum'][ic][:c['N_Cont'][ic]] = b['Continuum'][ib][:b['N_Cont'][ib]]
+    c['N_Pseudo'][ic] = b['N_Pseudo'][ib]
+    c['E_Pseudo'][ic][:c['N_Pseudo'][ic]] = b['E_Pseudo'][ib][:b['N_Pseudo'][ib]]
+    c['Pseudo'][ic][:c['N_Pseudo'][ic]] = b['Pseudo'][ib][:b['N_Pseudo'][ib]]
+    ic +=1
+
+  return c
+  
 def create_lhdu_cie(linedata):
 
   # sort the data
@@ -1662,6 +1713,51 @@ def create_chdu_cie(cocodata):
 
 
 
+def create_chdu_variable_cie(cocodata):
+
+#  ncont = max(cocodata['N_Cont'])
+#  npseudo = max(cocodata['N_Pseudo'])
+
+  cols = []
+  cols.append(pyfits.Column(name='Z', format='1J', array=cocodata['Z']))
+  cols.append(pyfits.Column(name='rmJ', format='1J', array=cocodata['rmJ']))
+  cols.append(pyfits.Column(name='N_Cont', format='1J', array=cocodata['N_Cont']))
+  tmp = []
+  for i in range(len(cocodata['E_Cont'])):
+    tmp.append(numpy.array(cocodata['E_Cont'][i][:cocodata['N_Cont'][i]]))
+  cols.append(pyfits.Column(name='E_Cont', format='PE()', unit='keV', array=tmp))
+  tmp = []
+  for i in range(len(cocodata['Continuum'])):
+    tmp.append(numpy.array(cocodata['Continuum'][i][:cocodata['N_Cont'][i]]))
+  cols.append(pyfits.Column(name='Continuum', format='PE()', unit='keV', array=tmp))
+  tmp = []
+  for i in range(len(cocodata['Cont_Err'])):
+    tmp.append(numpy.array(cocodata['Cont_Err'][i][:cocodata['N_Cont'][i]]))
+  cols.append(pyfits.Column(name='Cont_Err', format='PE()', unit='keV', array=tmp))
+
+  cols.append(pyfits.Column(name='N_Pseudo', format='1J', array=cocodata['N_Pseudo']))
+  tmp = []
+  for i in range(len(cocodata['E_Pseudo'])):
+    tmp.append(numpy.array(cocodata['E_Pseudo'][i][:cocodata['N_Pseudo'][i]]))
+  cols.append(pyfits.Column(name='E_Pseudo', format='PE()', unit='keV', array=tmp))
+
+  tmp = []
+  for i in range(len(cocodata['Pseudo'])):
+    tmp.append(numpy.array(cocodata['Pseudo'][i][:cocodata['N_Pseudo'][i]]))
+  cols.append(pyfits.Column(name='Pseudo', format='PE()', unit='keV', array=tmp))
+
+  tmp = []
+  for i in range(len(cocodata['Pseudo_Err'])):
+    tmp.append(numpy.array(cocodata['Pseudo_Err'][i][:cocodata['N_Pseudo'][i]]))
+  cols.append(pyfits.Column(name='Pseudo_Err', format='PE()', unit='keV', array=tmp))
+
+  coldefs = pyfits.ColDefs(cols)
+  tbhdu = pyfits.BinTableHDU.from_columns(coldefs)
+  return tbhdu
+
+
+
+
 def create_lparamhdu_cie(linedata):
 
   cols = []
@@ -1681,8 +1777,8 @@ def create_cparamhdu_cie(cocodata):
   cols.append(pyfits.Column(name='EDensity', format='1E', unit="cm**-3", array=cocodata['EDensity']))
   cols.append(pyfits.Column(name='Time', format='1E', unit="s", array=cocodata['Time']))
   cols.append(pyfits.Column(name='NElement', format='1J', array=cocodata['NElement']))
-  cols.append(pyfits.Column(name='NCont', format='1J', array=cocodata['NCont']))
-  cols.append(pyfits.Column(name='NPseudo', format='1J', array=cocodata['NPseudo']))
+  cols.append(pyfits.Column(name='NCont', format='1J', array=max(cocodata['NCont'])))
+  cols.append(pyfits.Column(name='NPseudo', format='1J', array=max(cocodata['NPseudo'])))
 
   coldefs = pyfits.ColDefs(cols)
   tbhdu = pyfits.BinTableHDU.from_columns(coldefs)
@@ -4223,7 +4319,7 @@ def wrap_run_apec(fname, readpickle=False, writepickle=False):
 
 # continuum data
       # now make an HDU for all of this
-      CHDUdat = create_chdu_cie(cocodata)
+      CHDUdat = create_chdu_variable_cie(cocodata)
 
       # now update the headers
       iseccHDUdat=iDens+iTe*settings['NumDens']
@@ -4445,7 +4541,7 @@ def wrap_update_one_ion(fname, linefile, cocofile, fnameout=None):
   cdat_new = continuum_append(cdat_dat_new,cdat_new)
 
   cdat_new = numpy.sort(cdat_new, order=['Z','rmJ'])
-  CHDUdat = create_chdu_cie(cdat_new)
+  CHDUdat = create_chdu_variable_cie(cdat_new)
 
 
   ldat[hduindex+2].data=LHDUdat.data
