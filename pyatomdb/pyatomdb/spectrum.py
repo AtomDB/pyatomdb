@@ -2252,6 +2252,7 @@ class CIESession():
 
       else:
         # sparse matrix time!
+        from scipy.sparse import bsr_array
         data=[]
         row=[]
         col=[]
@@ -6395,7 +6396,9 @@ class _NEISpectrum(_CIESpectrum):
         self.spectra[ihdu]={}
         self.spectra[ihdu]['kT'] = self.kTlist[ihdu]
         ldat = numpy.array(linedata[ihdu+2].data.data)
-        cdat = numpy.array(cocodata[ihdu+2].data.data)
+        #cdat = numpy.array(cocodata[ihdu+2].data.data)
+        # revision to do with variable length continuum arrays
+        cdat = cocodata[ihdu+2].data
 
 
         Zarr = numpy.zeros([len(ldat), const.MAXZ_NEI+1], dtype=bool)
@@ -6410,10 +6413,32 @@ class _NEISpectrum(_CIESpectrum):
           for z1 in range(1,Z+2):
             isz1 = (ldat['Ion_drv']==z1)
             isgood = isz1*Zarr[:,Z]
-            ccdat = cdat[(cdat['Z']==Z) & (cdat['rmJ']==z1)]
+            icdat = numpy.where((cdat['Z']==Z) & (cdat['rmJ']==z1))[0]
 
-            if len(ccdat)==0:
+            if len(icdat)==0:
               ccdat = [False]
+            else:
+              ccdat=[cdat[icdat[0]]]
+              # this format is very tempremental and space inefficient. Make into a numpy array
+              ccdat = numpy.zeros(1, dtype = apec.generate_datatypes('continuum', \
+                                  npseudo=cdat[icdat[0]]['N_Pseudo'], \
+                                  ncontinuum=cdat[icdat[0]]['N_Cont']))
+              ccdat['Z'] = cdat[icdat[0]]['Z']
+              ccdat['rmJ'] = cdat[icdat[0]]['rmJ']
+              ccdat['N_Cont'] = cdat[icdat[0]]['N_Cont']
+              ccdat['N_Pseudo'] = cdat[icdat[0]]['N_Pseudo']
+
+              ccdat['E_Pseudo'] = cdat[icdat[0]]['E_Pseudo'][:ccdat['N_Pseudo'][0]]
+              ccdat['Pseudo'] = cdat[icdat[0]]['Pseudo'][:ccdat['N_Pseudo'][0]]
+              ccdat['E_Cont'] = cdat[icdat[0]]['E_Cont'][:ccdat['N_Cont'][0]]
+              ccdat['Continuum'] = cdat[icdat[0]]['Continuum'][:ccdat['N_Cont'][0]]
+
+
+#              for i in ccdat.dtype.names:
+
+#                ccdat[i]=cdat[icdat[0]][i]
+
+
             self.spectra[ihdu][Z][z1]=_ElementSpectrum(ldat[isgood],\
                                                   ccdat[0], Z, z1_drv=z1)
 
