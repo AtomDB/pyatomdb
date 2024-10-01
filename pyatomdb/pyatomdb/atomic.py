@@ -685,6 +685,7 @@ def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
   o = []
 
   for cfg in cfgsplit:
+    cfg=cfg.lower()
 
     ntmp = re.search("^[0-9]+",cfg)
     n.append(int(ntmp.group(0)))
