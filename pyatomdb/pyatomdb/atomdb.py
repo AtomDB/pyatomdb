@@ -62,7 +62,7 @@ def write_filemap(d, filemap, atomdbroot=''):
     # If that's not set, do nothing.
 
     if len(atomdbroot) > 0:
-      d['misc'][i] = re.sub(atomdbroot,'$ATOMDB',d['misc'][i])
+      d['misc'][i] = re.sub(atomdbroot,'$ATOMDB',d['misc'][i].decode())
     else:
       # see if the ATOMDB environment variable is set
       if 'ATOMDB' in list(os.environ.keys()):
@@ -89,7 +89,7 @@ def write_filemap(d, filemap, atomdbroot=''):
         # If that's not set, do nothing.
 
         if len(atomdbroot) > 0:
-          d[tt][i] = re.sub(atomdbroot,'$ATOMDB',d[tt][i])
+          d[tt][i] = re.sub(atomdbroot,'$ATOMDB',d[tt][i].decode())
         else:
           # see if the ATOMDB environment variable is set
           if 'ATOMDB' in list(os.environ.keys()):
@@ -4496,8 +4496,9 @@ def get_data(Z, z1, ftype, datacache=False, \
 
   else:
     if settings:
-      if settings['filemap']:
-        fmapfile = settings['filemap']
+      print(settings)
+      if settings['FileMap']:
+        fmapfile = settings['FileMap']
       if 'atomdbroot' in list(settings.keys()):
         if settings['atomdbroot']:
           atomdbroot = settings['atomdbroot']

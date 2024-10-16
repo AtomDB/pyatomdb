@@ -1606,13 +1606,21 @@ def continuum_append_variable(a,b):
 
   c = numpy.zeros(nlines, dtype=generate_datatypes('continuum',npseudo=npseudomax, ncontinuum=ncontmax))
   ic = 0
+  
   if len(a) > 0:
     for ia in range(len(a)):
+#      print('a[',ia,']',a[ia])
+#      print('b[0]', b[0])
       c['Z'][ic] = a['Z'][ia]
       c['rmJ'][ic] = a['rmJ'][ia]
       c['N_Cont'][ic] = a['N_Cont'][ia]
       c['E_Cont'][ic][:c['N_Cont'][ic]] = a['E_Cont'][ia][:a['N_Cont'][ia]]
-      c['Continuum'][ic][:c['N_Cont'][ic]] = a['Continuum'][ia][:a['N_Cont'][ia]]
+#      print('ic',ic)
+#      print(c['Continuum'][ic][:c['N_Cont'][ic]])
+#      print('ia',ia)
+#      print(a[ia]['Continuum'][:a['N_Cont'][ia]])
+#      print("NCONTa ", a['N_Cont'][ia], ", NCONTc", c['N_Cont'][ic])
+      c['Continuum'][ic][:c['N_Cont'][ic]] = a[ia]['Continuum'][:a['N_Cont'][ia]]
       c['N_Pseudo'][ic] = a['N_Pseudo'][ia]
       c['E_Pseudo'][ic][:c['N_Pseudo'][ic]] = a['E_Pseudo'][ia][:a['N_Pseudo'][ia]]
       c['Pseudo'][ic][:c['N_Pseudo'][ic]] = a['Pseudo'][ia][:a['N_Pseudo'][ia]]
@@ -1629,7 +1637,7 @@ def continuum_append_variable(a,b):
     ic +=1
 
   return c
-  
+
 def create_lhdu_cie(linedata):
 
   # sort the data
@@ -1777,8 +1785,8 @@ def create_cparamhdu_cie(cocodata):
   cols.append(pyfits.Column(name='EDensity', format='1E', unit="cm**-3", array=cocodata['EDensity']))
   cols.append(pyfits.Column(name='Time', format='1E', unit="s", array=cocodata['Time']))
   cols.append(pyfits.Column(name='NElement', format='1J', array=cocodata['NElement']))
-  cols.append(pyfits.Column(name='NCont', format='1J', array=max(cocodata['NCont'])))
-  cols.append(pyfits.Column(name='NPseudo', format='1J', array=max(cocodata['NPseudo'])))
+  cols.append(pyfits.Column(name='NCont', format='1J', array=cocodata['NCont']))
+  cols.append(pyfits.Column(name='NPseudo', format='1J', array=cocodata['NPseudo']))
 
   coldefs = pyfits.ColDefs(cols)
   tbhdu = pyfits.BinTableHDU.from_columns(coldefs)
@@ -3121,7 +3129,7 @@ def calc_satellite(Z, z1, T, datacache=False, settings=False):
 
     if not(lvdatrec):
       # no level data for recombined ion.
-      lomax = max(drdat[1].data['lowerlev'])
+      lomax = max(drdat[1].data['lower_lev'])
       lev_rates_in=numpy.zeros(lomax+1, dtype=float)
 
     else:
@@ -3145,7 +3153,12 @@ def calc_satellite(Z, z1, T, datacache=False, settings=False):
         q_exc = drdat[1].data['SatelInt'][iline]
         epsilon = q_exc*numpy.exp(-e_excite/kT)/(T**1.5)
       elif drdat[1].data['dr_type'][iline]==const.SAFRANOVA:
-        gl = lvdat[1].data['lev_deg'][0]
+        try:
+          gl = lvdat[1].data['lev_deg'][0]
+        except TypeError:
+          if lvdat==False:
+            gl = 1
+          else: raise
         q_exc = drdat[1].data['SatelInt'][iline]
         epsilon = const.SAF_COEFF* (const.RYDBERG/kT)**1.5 * \
                   (q_exc/gl) * numpy.exp(-e_excite/kT)
@@ -3162,11 +3175,11 @@ def calc_satellite(Z, z1, T, datacache=False, settings=False):
             ll = itmp[0]
 
 
-      if ll >= len(lev_rates_in):
-        print("warning: DR satellite line recombining into non existant level %i of ion Z=%i, z1=%i"%\
-              (ll, Z, z1))
-      else:
-        lev_rates_in[ll-1] += epsilon
+#      if ll >= len(lev_rates_in):
+#        print("warning: DR satellite line recombining into non existant level %i of ion Z=%i, z1=%i"%\
+#              (ll, Z, z1))
+#      else:
+#        lev_rates_in[ll-1] += epsilon
 
       linelist[iline]['lambda'] = lam
       linelist[iline]['lambda_err'] = lamerr
@@ -3396,7 +3409,7 @@ def calc_recomb_popn(levpop, Z, z1, z1_drv,T, dens, drlevrates, rrlevrates,\
     matrixA_in = {}
     matrixA_in['init'], matrixA_in['final'], matrixA_in['rate']=\
     gather_rates(Z, z1, T, dens, datacache=datacache, settings=settings,\
-                 do_la=True, do_ai=False, do_ec=False, do_pc=False,\
+                 do_la=True, do_ai=True, do_ec=False, do_pc=False,\
                  do_ir=False)
 
     datacache={}
@@ -3435,11 +3448,17 @@ def calc_cascade_population(matrixA, matrixB):
   mb =matrixB[1:]
   ma =matrixA[1:,1:]
   # solve
+#  print('ma', ma)
+#  print('mb', mb)
+#  print('ma.shape', ma.shape)
+#  print('mb.shape', mb.shape)
   try:
+#    print('TRY1')
     popn = numpy.linalg.solve(ma,mb)
   except numpy.linalg.linalg.LinAlgError:
+    print('TRY2')
     if ma[0,0]==0.0:
-#      print 'hacking ma[0,0]=1.0'
+      print('hacking ma[0,0]=1.0')
       ma[0,0]=-1.0
       try:
         popn = numpy.linalg.solve(ma,mb)
@@ -3458,6 +3477,23 @@ def calc_cascade_population(matrixA, matrixB):
           print(ma)
           print(mb)
           raise
+
+    else:
+      print("tie levels to ground")
+
+        # look for levels with no way to ground. Put in a -1rate
+      for i in range(ma.shape[0]):
+        if ma[i,i]>= 0.0:
+          ma[i,i]=-1.0
+          print("tieing level %i to ground"%(i+2))
+
+      try:
+        popn = numpy.linalg.solve(ma,mb)
+      except:
+        print('triple fail')
+        print(ma)
+        print(mb)
+        raise
 
   #check
   soln = numpy.allclose(numpy.dot(ma, popn), mb)
@@ -4187,7 +4223,7 @@ def wrap_ion_directly(fname, ind, Z, z1):
 
 
 
-def wrap_run_apec(fname, readpickle=False, writepickle=False):
+def wrap_run_apec(fname, readpickle=False, writepickle=False, override_iTe=False):
   """
   After running the APEC code ion by ion, use this to combine into
   FITS files.
@@ -4230,7 +4266,11 @@ def wrap_run_apec(fname, readpickle=False, writepickle=False):
                           dtype=generate_datatypes('cocoparams'))
 
 
-  for iTe in range(settings['NumTemp']):
+  listiTe = range(settings['NumTemp'])
+  if override_iTe != False:
+    listiTe = [override_iTe]
+#  for iTe in range(settings['NumTemp']):
+  for iTe in listiTe:
 
     te = make_vector(settings['LinearTemp'], \
                      settings['TempStart'], \
@@ -4258,7 +4298,7 @@ def wrap_run_apec(fname, readpickle=False, writepickle=False):
 
       for Z in Zlist:
         print("Calling run_apec_element for Z=%i Te=%e dens=%e at %s"%(Z, te, dens, time.asctime()))
-        dat = wrap_run_apec_element(settings, te, dens, Z,iTe,iDens, readpickle=readpickle)
+        dat = wrap_run_apec_element(settings, te, dens, Z,iTe,iDens, readpickle=readpickle, writepickle=writepickle)
         # append this data to the output
         #pickle.dump(dat, open('dump_%i.pkl'%(Z),'wb'))
         linedata = numpy.append(linedata, dat['lines'])
@@ -4362,6 +4402,9 @@ def wrap_run_apec(fname, readpickle=False, writepickle=False):
       chdulist.append(CHDUdat)
 
     # make secHDUdat into a fits table
+  pickle.dump(chdulist, open('chdulist.pkl','wb'))
+  pickle.dump(seccHDUdat, open('seccHDUdat.pkl','wb'))
+  
   seclHDU = create_lparamhdu_cie(seclHDUdat)
   seclHDU.header['EXTNAME']=('PARAMETERS','name of this binary table extension')
   seclHDU.header['HDUCLASS']=('Proposed OGIP','Proposed OGIP standard')
@@ -4404,7 +4447,7 @@ def wrap_run_apec(fname, readpickle=False, writepickle=False):
     tmpchdulist.writeto('%s_comp.fits'%(fileroot), overwrite=True, checksum=True)
 
 
-def wrap_update_one_ion(fname, linefile, cocofile, fnameout=None):
+def wrap_update_one_ion(fname, linefile, cocofile, fnameout=None, noWrite=False):
   """
   After running the APEC code ion by ion, use this to combine into
   FITS files.
@@ -4430,13 +4473,26 @@ def wrap_update_one_ion(fname, linefile, cocofile, fnameout=None):
   dat = pickle.load(open(fname, 'rb'))
   #settings = parse_par_file(fname)
 
-  ldat = pyfits.open(linefile)
-  cdat = pyfits.open(cocofile)
+  if type(linefile)==str:
+    ldat = pyfits.open(linefile)
+  else:
+    ldat = linefile
+
+  if type(cocofile)==str:
+    cdat = pyfits.open(cocofile)
+  else:
+    cdat = cocofile
 
   # now, get the ion
   lines = dat['data'][0]
-  Z = lines[0]['element']
-  z1_drv = lines[0]['ion_drv']
+  if len(lines) > 0:
+    Z = lines[0]['element']
+    z1_drv = lines[0]['ion_drv']
+  else:
+    xxx1 = fname.split('_')
+    xxx = xxx1.index('Z')
+    Z=int(xxx1[xxx+1])
+    z1_drv = int(xxx1[xxx+3])
   hduindex= dat['settings']['HDUIndex'] # the HDU in the ldat and cdat is this +2
 
 
@@ -4473,24 +4529,28 @@ def wrap_update_one_ion(fname, linefile, cocofile, fnameout=None):
       mineps = dat['settings']['NEIMinEpsilon'][i+1]
 
   linelist = dat['data'][0]
-  igood = numpy.ones(len(linelist), dtype=bool)
+  if len(dat['data'][0])> 0:
+    igood = numpy.ones(len(linelist), dtype=bool)
 
-  weaklines = linelist[(linelist['element']==Z) &\
-              (linelist['ion_drv']==z1_drv) &\
-              (linelist['epsilon']<mineps) &\
-              (linelist['lambda']>const.HC_IN_KEV_A /dat['settings']['GridMaximum']) &\
-              (linelist['lambda']<const.HC_IN_KEV_A /dat['settings']['GridMinimum'])]
-  print("identified %i weak lines"%(len(weaklines)))
+    weaklines = linelist[(linelist['element']==Z) &\
+                (linelist['ion_drv']==z1_drv) &\
+                (linelist['epsilon']<mineps) &\
+                (linelist['lambda']>const.HC_IN_KEV_A /dat['settings']['GridMaximum']) &\
+                (linelist['lambda']<const.HC_IN_KEV_A /dat['settings']['GridMinimum'])]
+    print("identified %i weak lines"%(len(weaklines)))
 
-  for line in weaklines:
-    e = const.HC_IN_KEV_A /line['lambda']
-    ibin = numpy.where(ebins>e)[0][0] - 1
-    pseudotmp[ibin]+=line['epsilon']
+    for line in weaklines:
+      e = const.HC_IN_KEV_A /line['lambda']
+      ibin = numpy.where(ebins>e)[0][0] - 1
+      pseudotmp[ibin]+=line['epsilon']
 
-  igood[(linelist['element']==Z) &\
-        (linelist['ion_drv']==z1_drv) &\
-        (linelist['epsilon']<mineps)] = False
-  print("Filtered by mineps %e: from %i to %i lines"%(mineps, len(igood), sum(igood)))
+    igood[(linelist['element']==Z) &\
+          (linelist['ion_drv']==z1_drv) &\
+          (linelist['epsilon']<mineps)] = False
+    print("Filtered by mineps %e: from %i to %i lines"%(mineps, len(igood), sum(igood)))
+
+    linelist = linelist[igood]
+
 
   conttmp =dat['data'][1]['rrc']+dat['data'][1]['twophot']+dat['data'][1]['brems']
 
@@ -4499,7 +4559,6 @@ def wrap_update_one_ion(fname, linefile, cocofile, fnameout=None):
 
   epseudo, pseudocont = compress_continuum(ebins, pseudotmp, const.TOLERANCE, minval=1e-38)
 
-  linelist = linelist[igood]
 
   # now let's update!
 
@@ -4538,7 +4597,7 @@ def wrap_update_one_ion(fname, linefile, cocofile, fnameout=None):
 
 
 
-  cdat_new = continuum_append(cdat_dat_new,cdat_new)
+  cdat_new = continuum_append_variable(cdat_dat_new,cdat_new)
 
   cdat_new = numpy.sort(cdat_new, order=['Z','rmJ'])
   CHDUdat = create_chdu_variable_cie(cdat_new)
@@ -4555,8 +4614,340 @@ def wrap_update_one_ion(fname, linefile, cocofile, fnameout=None):
   if fnameout is None:
     fnameout = linefile[:-8]
 
-  ldat.writeto(fnameout+'line.fits', overwrite=True)
-  cdat.writeto(fnameout+'comp.fits', overwrite=True)
+  if noWrite==False:
+    ldat.writeto(fnameout+'line.fits', overwrite=True)
+    cdat.writeto(fnameout+'comp.fits', overwrite=True)
+
+
+
+      # LHDUdat.header['EXTVER']=(iseclHDUdat+1,"Index for this EMISSIVITY extension")
+
+      # LHDUdat.header['HDUNAME'] = ("L%.2f_%.2f"%(numpy.log10(te), numpy.log10(dens)),\
+                             # 'Spectral emission data')
+      # LHDUdat.header['HDUCLASS'] = ("Proposed OGIP",\
+                             # 'Proposed OGIP standard')
+      # LHDUdat.header['HDUCLAS1']=("LINE MODEL",\
+                             # 'Line emission spectral model')
+      # LHDUdat.header['HDUCLAS2']=("LINE",\
+                             # 'Emission line data')
+      # if settings['Ionization']=='CIE':
+        # LHDUdat.header['HDUVERS1']=("1.0.0",\
+                               # 'version of format')
+      # elif settings['Ionization']=='NEI':
+        # LHDUdat.header['HDUVERS1']=("2.0.0",\
+                               # 'version of format')
+
+      # LHDUdat.header['TEMPERATURE']=(te,\
+                             # 'Electron temperature')
+      # LHDUdat.header['DENSITY']=(dens,\
+                             # 'Electron density')
+      # LHDUdat.header['TIME']=(0,\
+                             # 'IN EQUILIBRIUM')
+      # if settings['Ionization']=='CIE':
+        # tot_emiss = sum(linedata['epsilon']*const.HC_IN_ERG_A/linedata['lambda'])
+      # else:
+        # tot_emiss=0.0
+      # LHDUdat.header['TOT_LINE']=(tot_emiss,\
+                             # 'Total Line Emission (erg cm^3 s^-1)')
+      # LHDUdat.header['N_LINES']=(len(linedata),\
+                             # 'Number of emission lines')
+
+      # seclHDUdat['kT'][iseclHDUdat]=te*const.KBOLTZ
+      # seclHDUdat['EDensity'][iseclHDUdat]= dens
+      # seclHDUdat['Time'][iseclHDUdat]= 0.0
+      # seclHDUdat['Nelement'][iseclHDUdat]= len(Zlist)
+      # seclHDUdat['Nline'][iseclHDUdat]= len(linedata)
+
+      # lhdulist.append(LHDUdat)
+
+
+# # continuum data
+      # # now make an HDU for all of this
+      # CHDUdat = create_chdu_cie(cocodata)
+
+      # # now update the headers
+      # iseccHDUdat=iDens+iTe*settings['NumDens']
+
+      # CHDUdat.header['EXTNAME']=("EMISSIVITY","name of this binary table extension")
+      # CHDUdat.header['EXTVER']=(iseccHDUdat+1,"Index for this EMISSIVITY extension")
+
+      # CHDUdat.header['HDUNAME'] = ("C%.2f_%.2f"%(numpy.log10(te), numpy.log10(dens)),\
+                             # 'Spectral emission data')
+      # CHDUdat.header['HDUCLASS'] = ("Proposed OGIP",\
+                             # 'Proposed OGIP standard')
+      # CHDUdat.header['HDUCLAS1']=("COMP CONT MODEL",\
+                             # 'Compressed continua spectra')
+      # CHDUdat.header['HDUCLAS2']=("COCO",\
+                             # 'Compressed continuum data')
+      # CHDUdat.header['HDUVERS1']=("1.0.0",\
+                             # 'version of format')
+      # CHDUdat.header['TEMPERATURE']=(te,\
+                             # 'Electron temperature')
+      # CHDUdat.header['DENSITY']=(dens,\
+                             # 'Electron density')
+      # CHDUdat.header['TIME']=("%.2e"%(0),\
+                             # 'IN EQUILIBRIUM')
+      # tot_emiss = calc_total_coco(cocodata, settings)
+
+      # if  settings['Ionization']=='CIE':
+        # CHDUdat.header['TOT_COCO']=(tot_emiss,\
+                               # 'Total Emission (erg cm^3 s^-1)')
+      # else:
+        # CHDUdat.header['TOT_COCO']=(0.0,\
+                               # 'Total Emission (erg cm^3 s^-1)')
+
+      # seccHDUdat['kT'][iseccHDUdat]=te*const.KBOLTZ
+      # seccHDUdat['EDensity'][iseccHDUdat]= dens
+      # seccHDUdat['Time'][iseccHDUdat]= 0.0
+      # seccHDUdat['NElement'][iseccHDUdat]= len(cocodata)
+      # seccHDUdat['NCont'][iseccHDUdat]= max(cocodata['N_Cont'])
+      # seccHDUdat['NPseudo'][iseccHDUdat]= max(cocodata['N_Pseudo'])
+
+      # chdulist.append(CHDUdat)
+
+    # # make secHDUdat into a fits table
+  # seclHDU = create_lparamhdu_cie(seclHDUdat)
+  # seclHDU.header['EXTNAME']=('PARAMETERS','name of this binary table extension')
+  # seclHDU.header['HDUCLASS']=('Proposed OGIP','Proposed OGIP standard')
+  # seclHDU.header['HDUCLAS1']=('LINE MODEL','line emission spectra model')
+  # seclHDU.header['HDUCLAS2']=('Parameters','extension containing parameter info')
+  # seclHDU.header['HDUVERS1']=('1.0.0','version of format')
+
+
+  # seccHDU = create_cparamhdu_cie(seccHDUdat)
+  # seccHDU.header['EXTNAME']=('PARAMETERS','name of this binary table extension')
+  # seccHDU.header['HDUCLASS']=('Proposed OGIP','Proposed OGIP standard')
+  # seccHDU.header['HDUCLAS1']=('COMP CONT MODEL','compressed continua spectra')
+  # seccHDU.header['HDUCLAS2']=('Parameters','extension containing parameter info')
+  # seccHDU.header['HDUVERS1']=('1.0.0','version of format')
+
+
+  # fileroot = settings['OutputFileStem']
+  # if settings['Ionization']=='NEI':
+    # fileroot+='_nei'
+  # # create the Primary HDU
+  # PrilHDU = pyfits.PrimaryHDU()
+  # lhdulist.insert(0,PrilHDU)
+  # lhdulist.insert(1,seclHDU)
+  # tmplhdulist = pyfits.HDUList(lhdulist)
+
+  # PricHDU = pyfits.PrimaryHDU()
+  # chdulist.insert(0,PricHDU)
+  # chdulist.insert(1,seccHDU)
+  # tmpchdulist = pyfits.HDUList(chdulist)
+
+  # # now add header blurb
+  # generate_apec_headerblurb(settings, tmplhdulist, tmpchdulist)
+
+  # write out results
+  #tmplhdulist.writeto('%s_line.fits'%(fileroot), overwrite=True, checksum=True)
+
+  #if settings['Ionization']=='CIE':
+  #  tmpchdulist.writeto('%s_coco.fits'%(fileroot), overwrite=True, checksum=True)
+  #elif settings['Ionization']=='NEI':
+  # tmpchdulist.writeto('%s_comp.fits'%(fileroot), overwrite=True, checksum=True)
+
+
+def wrap_update_multi_ion(fnamelist, linefile, cocofile, fnameout=None, noWrite=False):
+  """
+  After running the APEC code ion by ion, use this to combine into
+  FITS files.
+
+  Parameters
+  ----------
+  fname : string
+    file name of pickle file
+  linefile : string
+    file name of line file to update
+  cocofile : string
+    file name of cont file to update
+
+
+  Returns
+  -------
+  None
+
+  """
+
+  # get the input settings
+
+  datacache={}
+  if type(linefile)==str:
+    ldat = pyfits.open(linefile)
+  else:
+    ldat = linefile
+
+  if type(cocofile)==str:
+    cdat = pyfits.open(cocofile)
+  else:
+    cdat = cocofile
+
+  for ifname, fname in enumerate(fnamelist):
+    print(fname)
+    dat = pickle.load(open(fname, 'rb'))
+    print('file read in')
+  #settings = parse_par_file(fname)
+    if ifname == 0:
+      hduindex= dat['settings']['HDUIndex'] # the HDU in the ldat and cdat is this +2
+      ldat_tmp = ldat[hduindex+2].data
+      ldat_dat_new = numpy.zeros(len(ldat_tmp), dtype= generate_datatypes("linetype"))
+      for i in range(len(ldat_dat_new)):
+        for key in ldat_dat_new.dtype.names:
+          ldat_dat_new[key][i] = ldat_tmp[key][i]
+
+      cdat_dat_new = cdat[hduindex+2].data
+
+  # now, get the ion
+    lines = dat['data'][0]
+    if len(lines) > 0:
+      Z = lines[0]['element']
+      z1_drv = lines[0]['ion_drv']
+    else:
+      xxx1 = fname.split('_')
+      xxx = xxx1.index('Z')
+      Z=int(xxx1[xxx+1])
+      z1_drv = int(xxx1[xxx+3])
+
+
+  # lines are the easy part:
+    print("Removing Lines")
+  # remove the lines for this ion
+    i = (ldat_dat_new['element'] ==Z) & (ldat_dat_new['ion_drv']==z1_drv)
+    ldat_dat_new =ldat_dat_new[~i]
+    print("Calc ion frac")
+  # get the ion fraction
+    ionftmp= calc_full_ionbal(dat['settings']['Te_used'], 1e14, cie=True, Zlist=[Z], extrap=True, datacache=datacache)
+    ionfrac_nei = ionftmp[Z]
+    ionfrac = ionfrac_nei[z1_drv-1]
+    print("Ionfrac is ", ionfrac)
+
+  # make a pseudocontinuum
+
+
+    ebins =  make_vector_nbins(dat['settings']['LinearGrid'], \
+                               dat['settings']['GridMinimum'], \
+                               dat['settings']['GridMaximum'], \
+                               dat['settings']['NumGrid'])
+
+    pseudo = {}
+    cont = {}
+  # now do some weak line filtering
+    mineps = dat['settings']['NEIMinEpsilon'][0]
+    pseudotmp = dat['data'][2]
+
+    for i in range(len(dat['settings']['NEIMinFrac'])):
+      if ionfrac < dat['settings']['NEIMinFrac'][i]:
+        mineps = dat['settings']['NEIMinEpsilon'][i+1]
+
+    linelist = dat['data'][0]
+    if len(dat['data'][0])> 0:
+      igood = numpy.ones(len(linelist), dtype=bool)
+
+      weaklines = linelist[(linelist['element']==Z) &\
+                  (linelist['ion_drv']==z1_drv) &\
+                  (linelist['epsilon']<mineps) &\
+                  (linelist['lambda']>const.HC_IN_KEV_A /dat['settings']['GridMaximum']) &\
+                  (linelist['lambda']<const.HC_IN_KEV_A /dat['settings']['GridMinimum'])]
+      print("identified %i weak lines"%(len(weaklines)))
+
+      for line in weaklines:
+        e = const.HC_IN_KEV_A /line['lambda']
+        ibin = numpy.where(ebins>e)[0][0] - 1
+        pseudotmp[ibin]+=line['epsilon']
+
+      igood[(linelist['element']==Z) &\
+            (linelist['ion_drv']==z1_drv) &\
+            (linelist['epsilon']<mineps)] = False
+      print("Filtered by mineps %e: from %i to %i lines"%(mineps, len(igood), sum(igood)))
+
+      linelist = linelist[igood]
+
+
+    conttmp =dat['data'][1]['rrc']+dat['data'][1]['twophot']+dat['data'][1]['brems']
+
+
+    econt, contin = compress_continuum(ebins, conttmp, const.TOLERANCE, minval=1e-38)
+
+    epseudo, pseudocont = compress_continuum(ebins, pseudotmp, const.TOLERANCE, minval=1e-38)
+
+
+  # now let's update!
+#    print(type(linelist))
+#    print(type(numpy.array(ldat_dat_new)))
+
+#    print("Mergingin lines")
+#    ldat_new = numpy.zeros(len(linelist)+len(ldat_dat_new), dtype= generate_datatypes("linetype"))
+
+#    for i in range(len(ldat_dat_new)):
+#      for key in ldat_new.dtype.names:
+#        ldat_new[key][i] = ldat_dat_new[key][i]
+
+#    for i in range(len(linelist)):
+#      for key in ldat_new.dtype.names:
+#        ldat_new[key][i+len(ldat_dat_new)] = linelist[key][i]
+    ldat_dat_new =numpy.append(ldat_dat_new, linelist)
+    print("Lines merged")
+#    for i in range(len(ldat_dat_new)):
+#      for key in ldat_new.dtype.names:
+#        ldat_new[key][i] = ldat_dat_new[key][i]
+#
+#    for i in range(len(linelist)):
+#      for key in ldat_new.dtype.names:
+#        ldat_new[key][i+len(ldat_dat_new)] = linelist[key][i]
+    print("now doing the comp")
+    i = (cdat_dat_new['Z'] ==Z) & (cdat_dat_new['rmJ']==z1_drv)
+    print('cdat_dat_new[0] before:', cdat_dat_new[0])
+    
+    cdat_dat_new =cdat_dat_new[~i]
+
+    # gather the continuum data
+    cdat_new = numpy.zeros(1, dtype = generate_datatypes('continuum',
+                                                       npseudo = len(pseudocont),
+                                                       ncontinuum= len(contin)))
+
+    print("Generated new CDAT!")
+    cdat_new['Z'][0] = Z
+    cdat_new['rmJ'][0] = z1_drv
+    cdat_new['N_Cont'][0] = len(econt)
+    cdat_new['E_Cont'][0][:len(econt)] = econt
+    cdat_new['Continuum'][0][:len(econt)] = contin
+    cdat_new['N_Pseudo'][0] = len(epseudo)
+    cdat_new['E_Pseudo'][0][:len(epseudo)] = epseudo
+    cdat_new['Pseudo'][0][:len(epseudo)] = pseudocont
+    print('cdat_new', cdat_new)
+    print('cdat_dat_new[0] at call:', cdat_dat_new[0])
+    
+    cdat_dat_new = continuum_append_variable(cdat_dat_new,cdat_new)
+  
+    print("Continuum Appended")
+  cdat_dat_new = numpy.sort(cdat_dat_new, order=['Z','rmJ'])
+#  dat_dat_new = numpy.sort(cdat_new, order=['Z','rmJ'])
+
+  LHDUdat = create_lhdu_nei(ldat_dat_new)
+
+
+  # trim out the continuum data
+
+
+
+
+
+
+  CHDUdat = create_chdu_variable_cie(cdat_dat_new)
+
+
+  ldat[hduindex+2].data=LHDUdat.data
+  ldat[1].data['Nline'][hduindex]=len(ldat[hduindex+2].data)
+  cdat[hduindex+2].data=CHDUdat.data
+  cdat[1].data['NCont'][hduindex]=max(cdat[hduindex+2].data['N_Cont'])
+  cdat[1].data['NPseudo'][hduindex]=max(cdat[hduindex+2].data['N_Pseudo'])
+
+  if fnameout is None:
+    fnameout = linefile[:-8]
+
+  if noWrite==False:
+    ldat.writeto(fnameout+'line.fits', overwrite=True)
+    cdat.writeto(fnameout+'comp.fits', overwrite=True)
 
 
 
@@ -4947,10 +5338,10 @@ def generate_apec_headerblurb(settings, linehdulist, cocohdulist):
       if len(i)==0: continue
       i = i[0]
       for ftype in ['ir','lv','la','ec','pc','dr','ci','ai','em','pi']:
-        if fmap[ftype][i]=='': continue
-        if not os.path.exists(fmap[ftype][i]):
+        if fmap[ftype][i]==b'': continue
+        if not os.path.exists(fmap[ftype][i].decode()):
           a=atomdb.get_data(Z,z1,ftype)
-        datsum=pyfits.getval(fmap[ftype][i], 'DATASUM', 1)
+        datsum=pyfits.getval(fmap[ftype][i].decode(), 'DATASUM', 1)
         s='CS%s%02i%02i'%(ftype.upper(), Z,z1)
         c='Checksum for %s: %s'%(atomic.spectroscopic_name(Z,z1),\
                                  ftype_comments[ftype])
