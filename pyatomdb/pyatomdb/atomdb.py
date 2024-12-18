@@ -62,7 +62,7 @@ def write_filemap(d, filemap, atomdbroot=''):
     # If that's not set, do nothing.
 
     if len(atomdbroot) > 0:
-      d['misc'][i] = re.sub(atomdbroot,'$ATOMDB',d['misc'][i])
+      d['misc'][i] = re.sub(atomdbroot,'$ATOMDB',d['misc'][i].decode())
     else:
       # see if the ATOMDB environment variable is set
       if 'ATOMDB' in list(os.environ.keys()):
@@ -89,7 +89,7 @@ def write_filemap(d, filemap, atomdbroot=''):
         # If that's not set, do nothing.
 
         if len(atomdbroot) > 0:
-          d[tt][i] = re.sub(atomdbroot,'$ATOMDB',d[tt][i])
+          d[tt][i] = re.sub(atomdbroot,'$ATOMDB',d[tt][i].decode())
         else:
           # see if the ATOMDB environment variable is set
           if 'ATOMDB' in list(os.environ.keys()):
@@ -1430,6 +1430,7 @@ def _calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
 
   from scipy.special import expn
   from scipy import interpolate
+  from scipy.interpolate import CubicSpline as CS
   xs = numpy.array([0.00, 0.25, 0.50, 0.75, 1.00])
   xs9 = numpy.array([0.00, 0.125, 0.25, 0.375, 0.50, 0.675, 0.80, 0.925, 1.00])
 #  print Tarr, om, coll_type
@@ -1617,29 +1618,34 @@ def _calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
     N_interp = coll_type - const.INTERP_E_UPSILON
     it = numpy.where((T>=min(Tarr[:N_interp])) &\
                      (T<=max(Tarr[:N_interp])))[0]
-
     upsilon = numpy.zeros(len(T),dtype=float)
     upsilon[:]=numpy.nan
 
     if len(it) > 0:
       if sum(om<0)>0:
         om[om<0]=0.0
-      tmp = interpolate.interp1d(numpy.log(Tarr[:N_interp]), \
-                                 numpy.log(om[:N_interp]+1e-30), \
-                                 bounds_error=False, \
-                                 fill_value=fill_value)(numpy.log(T[it]))
-
-      upsilon[it] = numpy.exp(tmp)-1e-30
-      # fix the nans
-    inan = numpy.isnan(upsilon)
-    if sum(inan)>0:
-      if force_extrap:
-        upsilon[inan]=_get_bt_approx(om[:N_interp], Tarr[:N_interp], T[inan], uplev, lolev, levdat,ladat)
-        did_extrap=True
-      else:
-        upsilon[inan]= 0.0
 
 
+      c = CS(numpy.log(Tarr[:N_interp]), numpy.log(om[:N_interp]+1e-30), bc_type='natural')
+
+      upsilon = numpy.exp(c(numpy.log(T)))
+
+#--      tmp = interpolate.interp1d(numpy.log(Tarr[:N_interp]), \
+#--                                 numpy.log(om[:N_interp]+1e-30), \
+#--                                 bounds_error=False, \
+#--                                 fill_value=fill_value)(numpy.log(T[it]))
+#--
+#--      upsilon[it] = numpy.exp(tmp)-1e-30
+#--      # fix the nans
+#--    inan = numpy.isnan(upsilon)
+#--    if sum(inan)>0:
+#--      if force_extrap:
+#--        upsilon[inan]=_get_bt_approx(om[:N_interp], Tarr[:N_interp], T[inan], uplev, lolev, levdat,ladat)
+#--        did_extrap=True
+#--      else:
+#--        upsilon[inan]= 0.0
+#--
+#--
     calc_type = const.E_UPSILON
 
   elif ((coll_type >= const.INTERP_I_UPSILON) & \
@@ -1976,7 +1982,6 @@ def _calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
                    numpy.exp(-chi[i]) / (numpy.sqrt(T[i])*degl)
         dex_rate[i] = const.UPSILON_COLL_COEFF * upsilon[i] / (numpy.sqrt(T[i])*degu)
 
-
   if (calc_type == const.EI_UPSILON):
 
     #negative upsilon is unphysical
@@ -2280,7 +2285,29 @@ def _interpolate_ionrec_rate(cidat,Te, force_extrap=False):
 #-------------------------------------------------------------------------------
 
 def _calc_ionrec_ci(cidat, Te, extrap=False, ionpot=False):
+  """
+  Calculate collisional ionization from input coefficients/rates
+
+  PARAMETERS
+  ----------
+  cidat : numpy.record
+    Row from an IR file, with data for type CI in it
+  Te : float or array of floats
+    Temperature (K) for the output of rate coefficients
+  extrap : bool
+    If true, extrappolate the data beyond the min and max temp provided.
+  ionpot : float
+    Ionization potential (eV)
+
+  RETURNS
+  -------
+  ci : float or array of floats
+    The ionization rate coefficient (cm^3 s^-1)
+  """
+
   from scipy import interpolate
+  from scipy.special import exp1
+
   ci = numpy.zeros(len(Te), dtype=float)
   ci[(Te< cidat['min_temp']) | \
      (Te> cidat['max_temp'])]= numpy.nan
@@ -2329,6 +2356,24 @@ def _calc_ionrec_ci(cidat, Te, extrap=False, ionpot=False):
       ci[ici] = _calc_ci_dere(Te[ici], ionpot, cidat['Temperature'][:npts], \
                              cidat['ionrec_par'][:npts])
 
+
+    elif (cidat['par_type'] == const.CI_URDAMPILLETA):
+      ci[ici] = _calc_ci_urdam(Te[ici], ionpot, cidat['ionrec_par'])
+
+    elif (cidat['par_type']==const.CI_HAHNMULLERSAVIN):
+      # lots to set up here:
+      kT = Te[ici] * const.KBOLTZ # in keV
+      index = cidat['ionrec_par'][0]
+      Eth = cidat['ionrec_par'][1]/1000 # in keV
+      t = kT/Eth
+      x = 1- ( numpy.log(2)/numpy.log(t+2))
+      rho = 0.0
+
+      for i in range(8):
+        rho += cidat['ionrec_par'][2+i] * x**i
+      rho *= 1e-6
+
+      ci[ici] = t**-0.5 * (1000*Eth)**(-1.5)*exp1(1/t)*rho
 
     else:
       print("Unknown CI type: %i"%(cidat['par_type']))
@@ -2442,6 +2487,190 @@ def _calc_ci_dere(Te, ionpot, Tscal, Upsscal):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 
+def _calc_ci_urdam(T, ionpot, param):
+  """
+  Calculate the collisional electron impact ionization rates using the
+  Urdampilletta formulae, for 1 shell
+
+  Parameters
+  ----------
+  Te : float or array(float)
+    Electron temperature (K)
+  ionpot : float
+    Ionization potential (eV)
+  param : array(float)
+    The parameters of the equation
+    shell no, Ionization potential (keV), 8 parameters
+
+  Returns
+  -------
+  float or array(float)
+    Ionization rate in cm^3 s^-1
+
+  References
+  ----------
+  Urdampilletta
+  """
+  import scipy.special
+  g7a1 = 3.480230906913262     # sqrt(pi)*(gamma + ln(4))
+  g7a2 = 1.772453850905516     # sqrt(pi)
+  g7a3 = 1.360544217687075E-02 # 2/147
+  g7a4 = 0.4444444444444444    # 4/9
+  g7c1 = -4881/8.
+  g7c2 =  1689/16.
+  p7 = numpy.array([1.000224,-0.113011,1.851039,0.0197311,0.921832,2.651957])
+  gamma = 0.577215664901532860606512    #Euler's constant
+  a = numpy.array([0.999610841,3.50020361,-0.247885719,0.0100539168,1.39075390e-3,1.84193516,4.64044905])
+  r0 = 4.783995473666830e-10   #=2*sqrt(2/pi)*c*1e-18
+
+  ishell = int(param[0])
+  eion = param[1] # in keV
+  kT = T * const.KBOLTZ
+#  print('eion', eion)
+  y = eion/kT
+  lam = eion/const.ME_KEV
+
+  # filter out when y > 200
+  yhi = y>200.
+  ylo = y<=200.
+  en1 = numpy.zeros(len(y), dtype=float)
+
+  en1[ylo] = numpy.exp(y[ylo]) * scipy.special.exp1(y[ylo])
+  en1[yhi] = 0.001
+
+
+
+  g=numpy.zeros((8, len(kT)))
+  #print(y, numpy.exp(y))
+  g[0,:] = 1/y
+  g[1,:] = en1
+  g[2,ylo] = scipy.special.expn(2, y[ylo])*numpy.exp(y[ylo])
+  g[2,yhi] = 0.001
+
+  g[3,:] = en1/y
+  g[4,:] = (1+en1)/y**2
+  g[5,:] = (3+y+2*en1)/y**3
+
+  k = numpy.where(y<0.6)[0]
+  if len(k) > 0:
+    yy = y[k]
+    g[6,k] = numpy.exp(yy) * \
+          ((((yy / 486.0 - g7a3) * yy + 0.08) * yy - g7a4) * yy + 4 \
+          - (g7a2 * numpy.log(yy) + g7a1) / numpy.sqrt(yy))
+
+  k = numpy.where((y>=0.6) & (y<=20.0))[0]
+  if len(k) > 0:
+    yy=y[k]
+    g[6,k] = (p7[0] + (p7[1] + p7[3] * numpy.log(yy)) /\
+              numpy.sqrt(yy) + p7[2] / yy) / (yy + p7[4]) / (yy + p7[5])
+
+  k = numpy.where(y>20.0)[0]
+  if len(k) > 0:
+    yy=y[k]
+    g[6,k] = (((((g7c1 / yy + g7c2) / yy - 22.0) /\
+                 yy + 5.75) / yy - 2) / yy + 1)/yy**2
+
+
+  k = numpy.where(y<0.5)[0]
+  if len(k) > 0:
+    yy = y[k]
+    g[7,k] = (((((-yy / 3000.0 - (1.0 / 384.0)) * yy - (1.0 / 54.0)) * yy +\
+             0.125) * yy - 1.) * yy + 0.989056 + \
+              (numpy.log(yy) / 2.0 + gamma) * numpy.log(yy)) * numpy.exp(yy)
+
+
+  k = numpy.where(((y>=0.5) & (y<=20.0)))[0]
+  if len(k) > 0:
+    yy = y[k]
+#    print(yy)
+    g[7,k] = ((((a[4] / yy + a[3]) / yy + a[2]) / yy + a[1]) / yy + a[0]) /\
+               (yy + a[5]) / (yy + a[6])
+  k = numpy.where(y>20.0)[0]
+  if len(k) > 0:
+    yy = y[k]
+    g[7,k] = ((((((13068 / yy - 1764) / yy + 274) / yy - 50) / yy +\
+               11) / yy - 3) / yy + 1) / yy**2
+
+  ciout = param[2] * 1e24*(g[0,:] - g[1,:]) + \
+          param[3] * 1e24* (g[0,:] - 2 * g[1,:] + g[2,:]) + \
+          param[4] * 1e24* (g[3,:] + 1.5 * lam * g[4,:] + 0.25 * lam**2 * g[5,:]) + \
+          param[5] * 1e24* g[6,:] +\
+          param[6] * 1e24* g[7,:]
+  ciout *= r0 * numpy.exp(-y) / eion**2 * y**1.5 * numpy.sqrt(lam)
+  ciout[yhi]=0.0
+  return(ciout)
+
+
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+
+def _calc_ea_urdam(T, param):
+  """
+  Calculate the collisional excitation-autoionization rates using the
+  Urdampilletta formulae, for 1 shell
+
+  Parameters
+  ----------
+  Te : float or array(float)
+    Electron temperature (K)
+  param : array(float)
+    The parameters of the equation
+    shell no, Ionization potential (keV), 8 parameters
+
+  Returns
+  -------
+  float or array(float)
+    Ionization rate in cm^3 s^-1
+
+  References
+  ----------
+  Urdampilletta
+  """
+  import scipy.special
+  r0 = 4.783995473666830e-10   #=2*sqrt(2/pi)*c*1e-18
+
+  ishell = int(param[0])
+  eion = param[1] # in keV
+  kT = T * const.KBOLTZ
+  y = eion/kT
+  lam = eion/const.ME_KEV
+  exp1=scipy.special.exp1(y)
+  # filter out when y > 200
+  yhi = y>200.
+  ylo = y<=200.
+  #en1 = numpy.zeros(len(y), dtype=float)
+
+  #en1[ylo] = numpy.exp(y[ylo]) * exp1[ylo]
+  #en1[yhi] = 0.001
+
+  #eminusy = numpy.exp(-y)
+
+  #m1 = (1/y)* eminusy
+  #m2 = exp1
+  #m3 = eminusy- y*exp1
+  #m4 = (1-y)*eminusy/2 + y**2*exp1/2
+  #m5 = exp1/y
+
+  em1 = numpy.zeros(len(y))
+  em2 = numpy.zeros(len(y))
+  em3 = numpy.zeros(len(y))
+
+  em1[ylo] = scipy.special.expn(1, y[ylo])*numpy.exp(y[ylo])
+  em2[ylo] = scipy.special.expn(2, y[ylo])*numpy.exp(y[ylo])
+  em3[ylo] = scipy.special.expn(3, y[ylo])*numpy.exp(y[ylo])
+
+  c_ea = param[2]*1e24 + \
+         y * (param[3]*1e24*em1 + param[4]*1e24 * em2 + 2*param[5]*1e24 * em3) + param[6]*1e24*em1
+
+  c_ea *=  r0*numpy.exp(-y)/eion**2 * y**1.5 * lam**0.5
+  c_ea[yhi]=0.0
+
+
+  return(c_ea)
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 def _calc_ionrec_rr(cidat, Te, extrap=False):
   from scipy import interpolate
@@ -2746,7 +2975,8 @@ def _calc_ionrec_ea(cidat, Te, extrap=False):
     ea[iea] = _interpolate_ionrec_rate(cidat, Te[iea])
 
 
-
+  elif (cidat['par_type'] == const.EA_URDAMPILLETA):
+    ea[iea]+=_calc_ea_urdam(Te, cidat['ionrec_par'])
   else:
     print("calc_ionrec_rate: EA type %i not recognized" %(cidat['par_type']))
   # now extrappolate if required
@@ -2806,7 +3036,7 @@ def _calc_ionrec_ea(cidat, Te, extrap=False):
 def get_ionrec_rate(Te_in, irdat_in=False, lvdat_in=False, Te_unit='K', \
                      lvdatp1_in=False, ionpot=False, separate=False,\
                      Z=-1, z1=-1, settings=False, datacache=False,\
-                     extrap=True):
+                     extrap=True, multiion=False):
   """
   Get the ionization and recombination rates at temperture(s) Te from
   ionization and recombination rate data file irdat.
@@ -2842,7 +3072,8 @@ def get_ionrec_rate(Te_in, irdat_in=False, lvdat_in=False, Te_unit='K', \
   extrap : bool
     Extrappolate rates to Te ranges which are off the provided
     scale
-
+  multiion : bool
+    If true, return the double ionization rates
   Returns
   -------
   float, float:
@@ -2850,6 +3081,14 @@ def get_ionrec_rate(Te_in, irdat_in=False, lvdat_in=False, Te_unit='K', \
     *unless* separate is set, in which case:
   float, float, float, float:
     (CI, EA, RR, DR rate coeffs) in cm^3 s^-1
+    Note that these assume low density & to get the real rates you need to
+    multiply by N_e N_ion.
+  float, float, float:
+    (ionization rate coeff., recombination rate coeff., double ionization
+    rate coeff) in cm^3 s^-1 if doubleion is set
+  float, float, float, float, float:
+    (CI, EA, RR, DR, DblCI rate coeffs) in cm^3 s^-1 if doubleion and
+    separate set
     Note that these assume low density & to get the real rates you need to
     multiply by N_e N_ion.
   """
@@ -2910,19 +3149,35 @@ def get_ionrec_rate(Te_in, irdat_in=False, lvdat_in=False, Te_unit='K', \
   else:
     lvdatp1 = False
 
+  if Z < 0:
+    Z = irdat[1].header['ELEMENT']
+  if z1 < 0:
+    z1 = irdat[1].header['ION_STAT']+1
+
+
   # -- OK, so now inputs should be *largely* settled -- *
 
   ciret = numpy.zeros(len(T), dtype=float)
   earet = numpy.zeros(len(T), dtype=float)
   rrret = numpy.zeros(len(T), dtype=float)
   drret = numpy.zeros(len(T), dtype=float)
+  multiciret = {}
+#  dciret = numpy.zeros(len(T), dtype=float)
 
   try:
     ionpot = irdat[1].header['IONPOT']
   except KeyError:
     ionpot = False
   # Start with the CI data
-  ici = numpy.where(irdat[1].data['TR_TYPE']=='CI')[0]
+  tmp = irdat[1].data[irdat[1].data['TR_TYPE']=='CI']
+
+
+  imci = numpy.where((irdat[1].data['TR_TYPE']=='CI') & \
+                       (irdat[1].data['ION_FINAL']>=z1+2))[0]
+
+  ici = numpy.where((irdat[1].data['TR_TYPE']=='CI') & \
+                    (irdat[1].data['ION_FINAL']==z1+1))[0]
+
 
   for i in ici:
     tmp=get_maxwell_rate(T, irdat, i, lvdat, Te_unit='K', \
@@ -2930,7 +3185,19 @@ def get_ionrec_rate(Te_in, irdat_in=False, lvdat_in=False, Te_unit='K', \
                          force_extrap=extrap)
     ciret += tmp
 
-  iea = numpy.where(irdat[1].data['TR_TYPE']=='EA')[0]
+  for i in imci:
+    tmp=get_maxwell_rate(T, irdat, i, lvdat, Te_unit='K', \
+                         lvdatap1=lvdatp1, ionpot = False,\
+                         force_extrap=extrap)
+    delta = irdat[1].data['ION_FINAL'][i]-irdat[1].data['ION_INIT'][i]
+    if not delta in multiciret.keys():
+      multiciret[delta] = numpy.zeros(len(T), dtype=float)
+    multiciret[delta] += tmp
+
+
+  iea = numpy.where((irdat[1].data['TR_TYPE']=='EA') & \
+                    (irdat[1].data['ION_FINAL']==z1+1))[0]
+
   for i in iea:
     tmp=get_maxwell_rate(T, irdat, i, lvdat, Te_unit='K', \
                          lvdatap1=lvdatp1, ionpot = False,\
@@ -2959,12 +3226,21 @@ def get_ionrec_rate(Te_in, irdat_in=False, lvdat_in=False, Te_unit='K', \
     earet = earet[0]
     rrret = rrret[0]
     drret = drret[0]
+    for m in multiciret.keys():
+      multiciret[m] = multiciret[m][0]
+
 
   # return the requested data
   if separate:
-    return ciret, earet, rrret, drret
+    if multiion:
+      return ciret, earet, rrret, drret, multiciret
+    else:
+      return ciret, earet, rrret, drret
   else:
-    return ciret+ earet, rrret+ drret
+    if multiion:
+      return ciret+ earet, rrret+ drret, multiciret
+    else:
+      return ciret+ earet, rrret+ drret
 
 
 #-------------------------------------------------------------------------------
@@ -3254,7 +3530,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
       degl =uplev['lev_deg']
       degu = lolev['lev_deg']
 
-    print("Force_extrap:", force_extrap)
+#    print("Force_extrap:", force_extrap)
     zzz = _calc_maxwell_rates(ecdat['coeff_type'],\
                                  ecdat['min_temp'],\
                                  ecdat['max_temp'],\
@@ -3286,8 +3562,6 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
     if ((cidat['par_type']>const.INTERP_I_UPSILON) & \
         (cidat['par_type']<=const.INTERP_I_UPSILON+20)):
 
-
-
       upind = cidat['upper_lev']
       loind = cidat['lower_lev']
       if not(lvdata):
@@ -3300,10 +3574,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
 
       # get the ionization potential
       if not(ionpot):
-#        print "fixing ionpot"
         ionpot = colldata[1].header['IONPOT']
-#      else:
-#        print "I don't need to fix ionpot, it is ", ionpot
 
       delta_E = ionpot + uplev['energy']-lolev['energy']
       Ztmp = lvdata[1].header['ELEMENT']
@@ -3322,6 +3593,11 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
           (cidat['par_type']<=const.CI_DERE+20)):
       ionpot = float(colldata[1].header['IP_DERE'])
       ci = _calc_ionrec_ci(cidat, T, extrap=force_extrap, ionpot=ionpot)
+
+    elif (cidat['par_type']==const.CI_HAHNMULLERSAVIN):
+      # Double ionization
+      ci = _calc_ionrec_ci(cidat, T, extrap=force_extrap)
+
     else:
       ci = _calc_ionrec_ci(cidat,T, extrap=force_extrap)
       if sum(numpy.isnan(ci))>0:
