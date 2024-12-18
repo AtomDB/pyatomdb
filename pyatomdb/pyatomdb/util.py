@@ -9,7 +9,7 @@ Adam Foster July 17th 2015
 import numpy, os, errno, hashlib
 import requests, urllib.request, urllib.parse, urllib.error, time, subprocess, shutil, wget, glob
 import datetime
-from . import const, atomic, atomdb
+from . import const, atomic, atomdb, apec
 from io import StringIO
 import ftplib
 try:
@@ -1680,13 +1680,15 @@ def write_ir_file(fname, dat, overwrite=False):
   hdu0 = pyfits.PrimaryHDU()
   now = datetime.datetime.utcnow()
 
-  hdu0.header.update('DATE', now.strftime('%d/%m/%y'))
-  hdu0.header.update('COLL_STR', "Collision Strengths")
-  hdu0.header.update('FILENAME', "Python routine")
-  hdu0.header.update('ORIGIN', "ATOMDB",comment=os.environ['USER']+", AtomDB project")
-  hdu0.header.update('HDUCLASS', "ATOMIC",comment="Atomic Data")
-  hdu0.header.update('HDUCLAS1', "IONREC",comment="Ionization/Recombination rates")
-  hdu0.header.update('HDUVERS', "1.1.0",comment="Version of datafile")
+
+
+  hdu0.header['DATE'] = (now.strftime('%d/%m/%y'))
+  hdu0.header['COLL_STR'] = ("Collision Strengths")
+  hdu0.header['FILENAME']=("Python routine")
+  hdu0.header['ORIGIN'] = ("ATOMDB",os.environ['USER']+", AtomDB project")
+  hdu0.header['HDUCLASS'] =("ATOMIC", "Atomic Data")
+  hdu0.header['HDUCLAS1'] = ("IONREC", "Ionization/Recombination rates")
+  hdu0.header['HDUVERS']= ("1.1.0", "Version of datafile")
 
   keys={}
   keylist = ['element','ion_init','ion_final','level_init','level_final','tr_index','tr_type','par_type',\
@@ -1701,8 +1703,11 @@ def write_ir_file(fname, dat, overwrite=False):
       print("Error: didn't find key %s" %(i.lower()))
   #secondary HDU, hdu1:
 
+
+
+
   print(keys)
-  hdu1 = pyfits.new_table(pyfits.ColDefs(
+  hdu1 = pyfits.BinTableHDU.from_columns(pyfits.ColDefs(
         [pyfits.Column(name='ELEMENT',
            format='1J',
            array=dat['data'][keys['element']]),
@@ -1774,33 +1779,32 @@ def write_ir_file(fname, dat, overwrite=False):
            array=dat['data'][keys['br_rat_ref']])]
          ))
 
-  hdu1.header.update('XTENSION', hdu1.header['XTENSION'],
-          comment='Written by '+os.environ['USER']+now.strftime('%a %Y-%m-%d %H:%M:%S')+ 'UTC')
-  hdu1.header.update('EXTNAME', 'IONREC',
-          comment='Ionization/Recombination rates', before="TTYPE1")
-  hdu1.header.update('HDUCLASS', 'ATOMIC',
-          comment='Atomic Data', before="TTYPE1")
-  hdu1.header.update('HDUCLAS1', 'IONREC',
-          comment='Ionization/Recombinatoin rates', before="TTYPE1")
-  hdu1.header.update('ELEMENT', dat['Z'],
-          comment='Numer of protons in element', before="TTYPE1")
-  hdu1.header.update('ION_STAT', dat['z1']-1,
-          comment='ion state (0 = neutral)', before="TTYPE1")
-  hdu1.header.update('ION_NAME', atomic.spectroscopic_name(dat['Z'],dat['z1']),
-          comment='Ion Name', before="TTYPE1")
-  hdu1.header.update('N_ION',len(dat['data'][keys['level_init']]) ,
-           comment='Number of rates', before="TTYPE1")
-  hdu1.header.update('HDUVERS1', '1.0.0',
-           comment='Version of datafile', before="TTYPE1")
+  hdu1.header['XTENSION']= (hdu1.header['XTENSION'],
+          'Written by '+os.environ['USER']+now.strftime('%a %Y-%m-%d %H:%M:%S')+ 'UTC')
+  hdu1.header['EXTNAME']= ('IONREC',
+          'Ionization/Recombination rates')
+  hdu1.header['HDUCLASS']= ('ATOMIC',
+          'Atomic Data')
+  hdu1.header['HDUCLAS1']= ('IONREC',
+          'Ionization/Recombination rates')
+  hdu1.header['ELEMENT']= (dat['Z'],
+          'Numer of protons in element')
+  hdu1.header['ION_STAT']= (dat['z1']-1,
+          'ion state (0 = neutral)')
+  hdu1.header['ION_NAME']= (atomic.spectroscopic_name(dat['Z'],dat['z1']),
+          'Ion Name')
+  hdu1.header['N_ION']=(len(dat['data'][keys['level_init']]) ,
+           'Number of rates')
+  hdu1.header['HDUVERS1']= ('1.0.0',
+           'Version of datafile')
   if 'ionpot' in list(dat.keys()):
-    hdu1.header.update('IONPOT', dat['ionpot'],
-             comment='Ionization Potential (eV)', before="TTYPE1")
+    hdu1.header['IONPOT']= (dat['ionpot'],
+             'Ionization Potential (eV)')
   else:
     print("WARNING: ionpot keyword not found in list")
   if 'ip_dere' in list(dat.keys()):
-    hdu1.header.update('IP_DERE', dat['ip_dere'],
-             comment='Ionization Potential for Dere Ionization Rates', \
-             before="TTYPE1")
+    hdu1.header['IP_DERE']= (dat['ip_dere'],
+             'Ionization Potential for Dere Ionization Rates')
 
   if 'comments' in list(dat.keys()):
     print('adding comments')
@@ -2001,11 +2005,21 @@ def write_dr_file(fname, dat, lvdat = None,overwrite=False):
       hdu1.header.add_comment(icmt)
 
 
-  if lvdat != None:
+  if lvdat is not None:
+    # check for energies
+    try:
+      E = lvdat['ENERGY']
+    except:
+      E = numpy.zeros(len(lvdat), dtype=float)
+      E[:] = numpy.nan
     hdu2 = pyfits.BinTableHDU.from_columns(pyfits.ColDefs(
           [pyfits.Column(name='ELEC_CONFIG',
              format='40A',
              array=lvdat['ELEC_CONFIG']),
+           pyfits.Column(name='ENERGY',
+             format='1E',
+             unit='eV',
+             array=E),
            pyfits.Column(name='L_QUAN',
              format='1J',
              array=lvdat['L_QUAN']),
@@ -2140,7 +2154,7 @@ def write_develop_data(data, filemapfile, Z, z1, ftype, folder, froot):
 
 #-------------------------------------------------------------------------------
 
-def generate_xspec_ionbal_files(Z, filesuffix, settings = False):
+def generate_xspec_ionbal_files(Z, filesuffix, settings = False, domulti=True):
   """
   Generate the eigen files that XSPEC uses to calculate the ionizatoin
   balances
@@ -2172,6 +2186,7 @@ def generate_xspec_ionbal_files(Z, filesuffix, settings = False):
 
   ionlist = numpy.zeros([len(Telist), Z])
   reclist = numpy.zeros([len(Telist), Z])
+  multireclist = {}
 
   # outputs:
   feqb = numpy.zeros([len(Telist),Z+1])
@@ -2181,94 +2196,112 @@ def generate_xspec_ionbal_files(Z, filesuffix, settings = False):
 
 
   for z1 in range(1,Z+1):
-    iontmp, rectmp = atomdb.get_ionrec_rate(Telist, False, Z=Z, z1=z1, extrap=True,
-                                            settings=settings)
+    iontmp, rectmp, multmp = atomdb.get_ionrec_rate(Telist, False, Z=Z, z1=z1, extrap=True,
+                                            settings=settings, multiion=True)
     ionlist[:,z1-1] = iontmp
     reclist[:,z1-1] = rectmp
-
+    multireclist[z1-1] = multmp
 
   for ite in range(len(Telist)):
     Te = Telist[ite]
     ion = ionlist[ite,:]
     rec = reclist[ite,:]
+    if domulti:
+      mul = []
+      for i in range(len(multireclist)):
+        mul.append({})
+        for k in multireclist[i].keys():
+          mul[-1][k]=multireclist[i][k][ite]
+    else:
+      mul=None
 
 
-    b = numpy.zeros(Z+1, dtype=float)
-    a = numpy.zeros([Z+1,Z+1], dtype=float)
 
 
-    for iZ in range(0,Z):
-      a[iZ,iZ] -= (ion[iZ])
-      a[iZ+1,iZ] += (ion[iZ])
-
-      a[iZ,iZ+1] += (rec[iZ])
-      a[iZ+1,iZ+1] -= (rec[iZ])
-
-    # conservation of population
-    for iZ in range(0,Z+1):
-      a[0,iZ]=1.0
-    b[0]=1.0
-
-    c = numpy.linalg.solve(a,b)
-    c[0] = 1-sum(c[1:])
-    c[c<1e-10]=0.0
-    feqb[ite] = c
-
-    ZZ=len(ion)+1
-    ndim=ZZ
-    AA = numpy.zeros((ndim-1,ndim-1), dtype=float)
-    # populate with stuff
-
-    for iCol in range(ndim-1):
-      for iRow in range(ndim-1):
-
-        if (iRow==0):
-          if (iCol==0):
-            if (Z>=2):
-              AA[0,iCol] = -(ion[0] + ion[1] + rec[0])
-            else:
-              AA[0,iCol] = -(ion[0] + rec[0])
 
 
-          if (iCol==1): AA[0,iCol] = rec[1] - ion[0]
-          if (iCol>1):
-            AA[0,iCol] = -ion[0]
-        else:
-          if (iRow==iCol+1):  AA[iRow,iCol]= ion[iRow]
-          if (iRow==iCol):
-            if (iRow+2<ndim):
-
-              AA[iRow,iCol]=-(ion[iRow+1]+rec[iRow])
-            else:
-              AA[iRow,iCol]=-rec[iRow]
+    # b = numpy.zeros(Z+1, dtype=float)
+    # a = numpy.zeros([Z+1,Z+1], dtype=float)
 
 
-          if (iRow==iCol-1):
-             AA[iRow,iCol]= rec[iRow+1]
+    # for iZ in range(0,Z):
+      # a[iZ,iZ] -= (ion[iZ])
+      # a[iZ+1,iZ] += (ion[iZ])
+
+      # a[iZ,iZ+1] += (rec[iZ])
+      # a[iZ+1,iZ+1] -= (rec[iZ])
+
+    # # conservation of population
+    # for iZ in range(0,Z+1):
+      # a[0,iZ]=1.0
+    # b[0]=1.0
+
+    # c = numpy.linalg.solve(a,b)
+    # c[0] = 1-sum(c[1:])
+    # c[c<1e-10]=0.0
+    # feqb[ite] = c
+
+    # ZZ=len(ion)+1
+    # ndim=ZZ
+    # AA = numpy.zeros((ndim-1,ndim-1), dtype=float)
+    # # populate with stuff
+
+    # for iCol in range(ndim-1):
+      # for iRow in range(ndim-1):
+
+        # if (iRow==0):
+          # if (iCol==0):
+            # if (Z>=2):
+              # AA[0,iCol] = -(ion[0] + ion[1] + rec[0])
+            # else:
+              # AA[0,iCol] = -(ion[0] + rec[0])
 
 
-    w,vr=numpy.linalg.eig(AA)
-    if (w.dtype!='float64'):
-      print("nooooooooooO", w.dtype)
+          # if (iCol==1): AA[0,iCol] = rec[1] - ion[0]
+          # if (iCol>1):
+            # AA[0,iCol] = -ion[0]
+        # else:
+          # if (iRow==iCol+1):  AA[iRow,iCol]= ion[iRow]
+          # if (iRow==iCol):
+            # if (iRow+2<ndim):
+
+              # AA[iRow,iCol]=-(ion[iRow+1]+rec[iRow])
+            # else:
+              # AA[iRow,iCol]=-rec[iRow]
+
+
+          # if (iRow==iCol-1):
+             # AA[iRow,iCol]= rec[iRow+1]
+
+
+    # w,vr=numpy.linalg.eig(AA)
+    # if (w.dtype!='float64'):
+      # print("nooooooooooO", w.dtype)
+
+  # # The value VL in which is stored is not actually the left eigenvecotr,
+  # # but is instead the inverse of vr.
+
+    # vl = numpy.matrix(vr)**-1
     leftevec = numpy.zeros(Z**2)
     rightevec = numpy.zeros(Z**2)
-
-  # The value VL in which is stored is not actually the left eigenvecotr,
-  # but is instead the inverse of vr.
-
-    vl = numpy.matrix(vr)**-1
-
+    initpop = numpy.zeros(Z+1)
+    initpop[0] = 1.0
+    ionbaldat = apec.solve_ionbal(ion, rec, init_pop=initpop, multiionrate=mul, return_details=True)
 
     for i in range(Z):
       for j in range(Z):
-        leftevec[i*Z+j] = vl[i,j]
-        rightevec[i*Z+j] = vr[j,i]
-
+        leftevec[i*Z+j] = ionbaldat['vl'][i,j]
+        rightevec[i*Z+j] = ionbaldat['vr'][j,i]
+    feqb[ite] = ionbaldat['eqpop']
     vr_out[ite] = rightevec
     vl_out[ite] = leftevec
-    eig_out[ite] = w
+    #print('ionbaldat', ionbaldat)
+    eig_out[ite] = ionbaldat['eig']
 
-
+  vr_out[numpy.abs(vr_out) < 1e-20] = 0.0
+  vl_out[numpy.abs(vl_out) < 1e-20] = 0.0
+  eig_out[numpy.abs(eig_out) < 1e-20] = 0.0
+  feqb[numpy.abs(feqb) < 1e-15] = 0.0
   hdu0 = pyfits.PrimaryHDU()
   now = datetime.datetime.utcnow()
 
