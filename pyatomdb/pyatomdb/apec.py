@@ -15,7 +15,7 @@ import astropy.io.fits as pyfits
 #from joblib import Parallel, delayed
 
 def calc_full_ionbal(Te, tau=False, init_pop='ionizing', Te_init=False, Zlist=False, teunit='K',\
-                    extrap=True, cie=True, settings=False, datacache=False):
+                    extrap=True, cie=True, settings=False, datacache=False, allowmulti=True):
   """
   Calculate the ionization balance for all the elements in Zlist.
 
@@ -43,6 +43,12 @@ def calc_full_ionbal(Te, tau=False, init_pop='ionizing', Te_init=False, Zlist=Fa
   cie : bool
     If true, collisional ionization equilbrium calculation
     (tau, init_pop, Te_init all ignored)
+  settings : dict
+    See description in atomdb.get_data
+  datacache : dict
+    Used for caching the data. See description in atomdb.get_data
+  allowmulti : bool (default True)
+    If set, include multiple stage ionization and recombination rates
 
   Returns
   -------
@@ -106,19 +112,25 @@ def calc_full_ionbal(Te, tau=False, init_pop='ionizing', Te_init=False, Zlist=Fa
     for Z in Zlist:
       ionrate = numpy.zeros(Z, dtype=float)
       recrate = numpy.zeros(Z, dtype=float)
+      multiionrate = []
+
       if cie:
         kT_init=kT
       for z1 in range(1,Z+1):
         tmp = \
           atomdb.get_ionrec_rate(kT_init, False,  Te_unit='keV', \
                      Z=Z, z1=z1, datacache=datacache, extrap=extrap,\
-                     settings=settings)
+                     settings=settings, multiion=allowmulti)
 
-
-        ionrate[z1-1], recrate[z1-1]=tmp
+        if allowmulti:
+          ionrate[z1-1]=tmp[0]
+          recrate[z1-1]=tmp[1]
+          multionrate.append(tmp[2])
+        else:
+          ionrate[z1-1], recrate[z1-1] =tmp
       # now solve
 
-      init_pop[Z] = solve_ionbal(ionrate, recrate)
+      init_pop[Z] = solve_ionbal(ionrate, recrate, multiionrate=multiionrate)
   if cie:
     # Exit here if the inital
 
@@ -130,15 +142,20 @@ def calc_full_ionbal(Te, tau=False, init_pop='ionizing', Te_init=False, Zlist=Fa
   # now solve the actual ionization balance we want.
   pop = {}
   for Z in Zlist:
-    ionrate = numpy.zeros(Z, dtype=float)
-    recrate = numpy.zeros(Z, dtype=float)
-    for z1 in range(1,Z+1):
-      ionrate[z1-1], recrate[z1-1] = \
-        atomdb.get_ionrec_rate(kT, False,  Te_unit='keV', \
-                   Z=Z, z1=z1, datacache=datacache, extrap=extrap)
+#    ionrate = numpy.zeros(Z, dtype=float)
+#    recrate = numpy.zeros(Z, dtype=float)
+#    dblionrate = numpy.zeros(Z, dtype=float)
+#    for z1 in range(1,Z+1):
+#      ionrate[z1-1], recrate[z1-1], dblionrate[z1-1]= \
+#        atomdb.get_ionrec_rate(kT, False,  Te_unit='keV', \
+#                   Z=Z, z1=z1, datacache=datacache, extrap=extrap, \
+#                   doubleion=allowdouble)
 
     # now solve
-    pop[Z] = solve_ionbal(ionrate, recrate, init_pop=init_pop[Z], tau=tau)
+#    pop[Z] = solve_ionbal(ionrate, recrate, doubleionrate = dblionrate, init_pop=init_pop[Z], tau=tau)
+    pop[Z] = _calc_elem_ionbal(Z, kT, tau=tau, init_pop=init_pop,\
+               teunit='keV', extrap=extrap, settings=settings,\
+               datacache=datacache, multiion=allowmulti)
 
   return pop
 
@@ -147,7 +164,8 @@ def calc_full_ionbal(Te, tau=False, init_pop='ionizing', Te_init=False, Zlist=Fa
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
 def _calc_elem_ionbal(Z, Te, tau=False, init_pop='ionizing', teunit='K',\
-                    extrap=True, settings=False, datacache=False):
+                    extrap=True, settings=False, datacache=False, \
+                    allowmulti=True):
   """
   Calculate the ionization balance for all the elements in Zlist.
 
@@ -173,6 +191,12 @@ def _calc_elem_ionbal(Z, Te, tau=False, init_pop='ionizing', teunit='K',\
     units of temperatures (default K)
   extrap : bool
     Extrappolate rates to values outside their given range. (default False)
+  settings : dict
+    See description in atomdb.get_data
+  datacache : dict
+    Used for caching the data. See description in atomdb.get_data
+  allowmulti : bool (default True)
+    If set, include multiple stage ionization and recombination rates
 
   Returns
   -------
@@ -204,10 +228,11 @@ def _calc_elem_ionbal(Z, Te, tau=False, init_pop='ionizing', teunit='K',\
       kT_init = util.convert_temp(init_pop, teunit, 'keV')
 
       # rerun this routine in equilibrium mode to find the initial ion pop
-      init_pop_calc = return_ionbal(Z, kT_init, \
+      init_pop_calc = _calc_elem_ionbal(Z, kT_init, \
                                     teunit='keV', \
                                     datacache=datacache,fast=False,
-                                    settings = settings, extrap=extrap)
+                                    settings = settings, extrap=extrap,\
+                                    allowmulti=allowmulti)
 
 
     elif isinstance(init_pop, numpy.ndarray) or isinstance(init_pop, list):
@@ -222,15 +247,31 @@ def _calc_elem_ionbal(Z, Te, tau=False, init_pop='ionizing', teunit='K',\
 
   ionrate = numpy.zeros(Z, dtype=float)
   recrate = numpy.zeros(Z, dtype=float)
+  multiionrate = []
   for z1 in range(1,Z+1):
-    ionrate[z1-1], recrate[z1-1] = atomdb.get_ionrec_rate(kT, False, Te_unit='keV', \
-                     Z=Z, z1=z1, datacache=datacache, extrap=extrap,\
-                     settings=settings)
+    tmp= atomdb.get_ionrec_rate(kT, False, Te_unit='keV', \
+                       Z=Z, z1=z1, datacache=datacache, extrap=extrap,\
+                       settings=settings, multiion=allowmulti)
+
+    ionrate[z1-1]=tmp[0]
+    recrate[z1-1]=tmp[1]
+    if allowmulti:
+       multiionrate.append(tmp[2])
+
+  # now Rearrange multiionrate, since we know all of these now
+  maxionsteps = 0
+  if allowmulti:
+    for i in multiionrate:
+      maxionsteps = max([maxionsteps, max(i.keys())])
+    mcirate = numpy.zeros((maxionsteps-2, Z), dtype=float)
+    for ii, i in enumerate(multiionrate):
+      for j in i.keys():
+        mcirate[j-2, ii] = i[j]
 
   if cie:
-    final_pop = solve_ionbal(ionrate, recrate)
+    final_pop = solve_ionbal(ionrate, recrate, multiionrate=mcirate)
   else:
-    final_pop = solve_ionbal(ionrate, recrate, init_pop=init_pop_calc, tau=tau)
+    final_pop = solve_ionbal(ionrate, recrate, init_pop=init_pop_calc, tau=tau, multiionrate=mcirate)
 
   return final_pop
 
@@ -238,7 +279,7 @@ def _calc_elem_ionbal(Z, Te, tau=False, init_pop='ionizing', teunit='K',\
 #------------------------------------------
 #------------------------------------------
 
-def solve_ionbal(ionrate, recrate, init_pop=False, tau=False):
+def solve_ionbal(ionrate, recrate, init_pop=False, tau=False, multiionrate=None, return_details=False):
   """
   solve_ionbal: given a set of ionization and recombination rates, find
   the equilibrium ionization balance. If init_pop and tau are set, do an
@@ -255,11 +296,22 @@ def solve_ionbal(ionrate, recrate, init_pop=False, tau=False):
     initial population of ions for non-equlibrium calculations. Will be renormalised to 1.
   tau : float
     N_e * t for the non-equilibrium ioniziation
-
+  multiionrate : list of dicts
+    The ionization rates for multiple stages, from each ion.
+    e.g. [ {2:1e-9,3:1e-10}, {2:2e-9}, {2:1.5e-9, 3:1.5e-10, 4:2.02e-11}]
+    would be double & triple ionization rates from neutral, double from 1+,
+    and double, triple and quadruple from the 2+ stage.
   Returns
   -------
   final_pop : float array
     final populations.
+  full_details : dict
+    If return_details is set, return parts of the calculation:
+    'eqpop' : equilibrium popn
+    'vl_out' : left eigenvector
+    'vr_out' : right eigenvector
+    'eig_out' : eigenvalues
+
 
   Notes
   -----
@@ -285,9 +337,35 @@ def solve_ionbal(ionrate, recrate, init_pop=False, tau=False):
   a = numpy.zeros((Z+1,Z+1), dtype=float)
 
 
+  if multiionrate is None:
+    # set up dummy array of zeros
+    mcirate = numpy.zeros((1,len(ionrate)))
+  else:
+    # find the maximum index
+    maxjump = 0
+    for i in multiionrate:
+      if len(i.keys()) > 0:
+
+        maxjump = max([maxjump, max(i.keys())])
+
+    # create array of double, triple, quadruple etc ionization rates
+    if Z >=2:
+      mcirate = numpy.zeros((maxjump-1, Z), dtype=float)
+      for i in range(len(multiionrate)):
+        for j in multiionrate[i].keys():
+          mcirate[j-2,i] = multiionrate[i][j]
+    else:
+      mcirate = numpy.zeros((0,Z), dtype=float)
+  # Add the multi-ionization terms
+  for im in range(0, mcirate.shape[0]):
+    for iZ in range(0, Z-(1+im)):
+      a[iZ+im+2, iZ] += mcirate[im,iZ]
+      a[iZ,iZ] -= mcirate[im,iZ]
+
+  # Add the single ion & recomb terms
   for iZ in range(0,Z):
-    a[iZ,iZ] -= (ionrate[iZ])
-    a[iZ+1,iZ] += (ionrate[iZ])
+    a[iZ,iZ] -= ionrate[iZ]
+    a[iZ+1,iZ] += ionrate[iZ]
 
     a[iZ,iZ+1] += (recrate[iZ])
     a[iZ+1,iZ+1] -= (recrate[iZ])
@@ -299,50 +377,61 @@ def solve_ionbal(ionrate, recrate, init_pop=False, tau=False):
 
   eqpop=numpy.linalg.solve(a,b)
 
+  # remove any rounding error negatives
   eqpop[eqpop<0] = 0.0
 
+  # set neutral popn = 1-sum(other pops)
   eqpop[0] = max([1.0-sum(eqpop[1:]), 0])
 
   if do_equilib == True:
     return eqpop
 
   # now the NEI part
+
   #remake matrix a
   Z=len(ionrate)+1
   ndim=Z
   AA = numpy.zeros((ndim-1,ndim-1), dtype=float)
-  # populate with stuff
+  # populate with stuff:
 
-  for iCol in range(ndim-1):
-    for iRow in range(ndim-1):
+  # Diagonal terms:
+  i = numpy.arange(ndim-1, dtype=int)
 
-      if (iRow==0):
-        if (iCol==0):
-          if (Z>2):
-            AA[0,iCol] = -(ionrate[0] + ionrate[1] + recrate[0])
-          else:
-            AA[0,iCol] = -(ionrate[0] + recrate[0])
+  # add ionization rates
+  # These stop 1 early as you cannot ionize from final state
+  AA[i[:-1],i[:-1]] -= ionrate[1:]
+
+  # add multi ionization rates
+  # These stop, e.g. 2 early as you cannot double ionize from final 2 states
+
+  for im in range(0, mcirate.shape[0]):
+    AA[i[:-(im+2)],i[:-(im+2)]] -= mcirate[im, 1:-(im+1)]
+
+  # add recombination rates
+  # These cover the whole range as recrate[0] is recombination *from* the 2nd state
+  AA[i,i] -= recrate
+
+  # all other off diagonals
+  #[to,from] is the indexing
+  AA[i[1:],i[:-1]]+=ionrate[1:]
+
+  for im in range(0, mcirate.shape[0]):
+    AA[i[im+2:],i[:-(im+2)]] += mcirate[im, 1:-(im+1)]
+  AA[i[:-1],i[1:]]+=recrate[1:]
 
 
-        if (iCol==1): AA[0,iCol] = recrate[1] - ionrate[0]
-        if (iCol>1):
-          AA[0,iCol] = -ionrate[0]
-      else:
-        if (iRow==iCol+1):  AA[iRow,iCol]= ionrate[iRow]
-        if (iRow==iCol):
-          if (iRow+2<ndim):
-
-            AA[iRow,iCol]=-(ionrate[iRow+1]+recrate[iRow])
-          else:
-            AA[iRow,iCol]=-recrate[iRow]
-
-
-        if (iRow==iCol-1):
-           AA[iRow,iCol]= recrate[iRow+1]
+  # specific to the 1 & 2 stages diagonal
+  # see Helfand and Hughes; removing the dF0/dt row leads to these extra terms.
+  # (double ionization is new but algebra isn't hard).
+  AA[0,:] -=ionrate[0]
+#  print('mcirate', mcirate.shape, mcirate)
+#  print('AA',AA.shape, AA)
+  if AA.shape[0] > 1:
+    for im in range(0, mcirate.shape[0]):
+      AA[im+1,:] -=mcirate[im,0]
 
 
   w,v = numpy.linalg.eig(AA)
-
 
   # now copy VR to AA
   AA=v
@@ -369,6 +458,14 @@ def solve_ionbal(ionrate, recrate, init_pop=False, tau=False):
   # set neutral to be the residual (or zero)
   Ion_pop[0]=max([1-sum(Ion_pop[1:]), 0.0])
 
+  if return_details:
+    vl = numpy.matrix(v)**-1
+    full_details={}
+    full_details['eqpop'] = eqpop
+    full_details['vr'] = v
+    full_details['vl'] = vl
+    full_details['eig'] = w
+    return full_details
   # return the data
   return Ion_pop
 
@@ -1629,7 +1726,7 @@ def continuum_append_variable(a,b):
     ic +=1
 
   return c
-  
+
 def create_lhdu_cie(linedata):
 
   # sort the data
@@ -5053,7 +5150,8 @@ def generate_apec_headerblurb(settings, linehdulist, cocohdulist):
 def return_ionbal(Z, Te, init_pop=False, tau=False,\
                        teunit='K', \
                        filename=False, datacache=False, fast=True,
-                       settings= False, debug=False, extrap=True):
+                       settings= False, debug=False, extrap=True,\
+                       allowdouble=True):
 
   """
   Solve the ionization balance for a element Z.
@@ -5096,7 +5194,8 @@ def return_ionbal(Z, Te, init_pop=False, tau=False,\
 
   else:
     ionbal = _calc_elem_ionbal(Z, Te, tau=tau, init_pop=init_pop, teunit=teunit,\
-                               extrap=extrap, settings=settings, datacache=datacache)
+                               extrap=extrap, settings=settings, datacache=datacache,\
+                               allowdouble=allowdouble)
     return ionbal
 
 
