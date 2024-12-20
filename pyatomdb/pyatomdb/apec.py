@@ -125,7 +125,7 @@ def calc_full_ionbal(Te, tau=False, init_pop='ionizing', Te_init=False, Zlist=Fa
         if allowmulti:
           ionrate[z1-1]=tmp[0]
           recrate[z1-1]=tmp[1]
-          multionrate.append(tmp[2])
+          multiionrate.append(tmp[2])
         else:
           ionrate[z1-1], recrate[z1-1] =tmp
       # now solve
@@ -704,9 +704,7 @@ def calc_brems_gaunt(E, T, z1, brems_type, datacache=False, \
     gaunt_g2 = rdat['GAUNT_FF'].data['LOG10_GAMMA2']
     gaunt_gf = rdat['GAUNT_FF'].data['GAUNT_FF']
 
-
     gamma2 = numpy.log10(z0*z0*const.RYDBERG/(const.KBOLTZ*T))
-
     # extract the gaunt factors
     if z0 in gaunt_Z:
       # exact element is in file
