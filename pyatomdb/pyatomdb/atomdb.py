@@ -1306,7 +1306,7 @@ def __get_burgess_tully_transition_type(lolev, uplev, Aval):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
-def _get_burgess_tully_extrap(bttype, lolev, uplev, Aval, Tarr, om, TTarg):
+def _get_burgess_tully_extrap(bttype, lolev, uplev, Aval, Tarr, om, TTarg, inf_limit=None):
   from scipy import interpolate
   dE = (uplev['energy']-lolev['energy'])/13.6058
   Tarr_ryd = (Tarr*const.KBOLTZ*1000)/13.6058
@@ -1321,8 +1321,10 @@ def _get_burgess_tully_extrap(bttype, lolev, uplev, Aval, Tarr, om, TTarg):
     x = numpy.append(x,1)
     y = om/(numpy.log((Tarr_ryd/dE)+1))
     y = numpy.append(0,y)
+    
     S = 3.73491e-10*uplev['lev_deg']*Aval/(dE**3)
     FIN = dE*S/(3.0*lolev['lev_deg'])
+#    if inf_limit is not none:
     y = numpy.append(y, 4*lolev['lev_deg']*FIN/dE)
 
     xtarg = 1 - numpy.log(C)/(numpy.log((TTarg_ryd/dE) +C))
@@ -1388,7 +1390,7 @@ def _get_burgess_tully_extrap(bttype, lolev, uplev, Aval, Tarr, om, TTarg):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 
-def _get_bt_approx(om, Tin, Tout, uplev, lolev, levdat,ladat):
+def _get_bt_approx(om, Tin, Tout, uplev, lolev, levdat,ladat, inf_limit=None):
   # Tin, Tout in K
   # om is effective collision strength
 #  print " In BT"
@@ -1412,7 +1414,8 @@ def _get_bt_approx(om, Tin, Tout, uplev, lolev, levdat,ladat):
                                    Aval, \
                                    Tin, \
                                    om, \
-                                   Tout)
+                                    Tout, \
+                                    inf_limit=inf_limit)
 
 #  print bttype, btval
 #  print Tin, om
@@ -1426,7 +1429,8 @@ def _calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
                        levdat=False, ladat=False, \
                        lolev=False, uplev=False, \
                        force_extrap=False, did_extrap=False, \
-                       datacache=False, return_upsilon=False):
+                       datacache=False, return_upsilon=False, \
+                       inf_limit=None):
 
   from scipy.special import expn
   from scipy import interpolate
@@ -1621,14 +1625,24 @@ def _calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
     upsilon = numpy.zeros(len(T),dtype=float)
     upsilon[:]=numpy.nan
 
+#    print("len(it)", len(it))
+#    print('T', T)
+#    print('Tarr', Tarr)
     if len(it) > 0:
       if sum(om<0)>0:
         om[om<0]=0.0
 
-
-      c = CS(numpy.log(Tarr[:N_interp]), numpy.log(om[:N_interp]+1e-30), bc_type='natural')
-
-      upsilon = numpy.exp(c(numpy.log(T)))
+      try:
+        c = CS(numpy.log(Tarr[:N_interp]), numpy.log(om[:N_interp]+1e-30), bc_type='natural')
+      except:
+        print("Tarr", Tarr)
+        print("Tarr[:N_interp]", Tarr[:N_interp])
+        print("om", om)
+        raise
+#    print("c", c)
+#    print(numpy.log(Tarr[:N_interp]))
+#    print(numpy.log(om[:N_interp]+1e-30))
+      upsilon[it] = numpy.exp(c(numpy.log(T)))
 
 #--      tmp = interpolate.interp1d(numpy.log(Tarr[:N_interp]), \
 #--                                 numpy.log(om[:N_interp]+1e-30), \
@@ -1637,13 +1651,13 @@ def _calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
 #--
 #--      upsilon[it] = numpy.exp(tmp)-1e-30
 #--      # fix the nans
-#--    inan = numpy.isnan(upsilon)
-#--    if sum(inan)>0:
-#--      if force_extrap:
-#--        upsilon[inan]=_get_bt_approx(om[:N_interp], Tarr[:N_interp], T[inan], uplev, lolev, levdat,ladat)
-#--        did_extrap=True
-#--      else:
-#--        upsilon[inan]= 0.0
+    inan = numpy.isnan(upsilon)
+    if sum(inan)>0:
+      if force_extrap:
+        upsilon[inan]=_get_bt_approx(om[:N_interp], Tarr[:N_interp], T[inan], uplev, lolev, levdat,ladat, inf_limit=inf_limit)
+        did_extrap=True
+      else:
+        upsilon[inan]= 0.0
 #--
 #--
     calc_type = const.E_UPSILON
@@ -1958,7 +1972,7 @@ def _calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
     print("ERROR: undefined collision type %i" %(coll_type))
     return False
 
-  #print "upsilon:", upsilon
+#  print("upsilon:", upsilon)
 #------------------------------------
 
 
@@ -2018,10 +2032,11 @@ def _calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
   if sum(numpy.isnan(numpy.asarray(exc_rate)))>0:
     print("ERROR: calculated excitation rate an NaN")
     print(coll_type, min_T, max_T, Tarr, om, dE, T, Z, degl, degu)
+    print(exc_rate)
   if sum(numpy.isnan(numpy.asarray(dex_rate)))>0:
     print("ERROR: calculated excitation rate an NaN")
     print(coll_type, min_T, max_T, Tarr, om, dE, T, Z, degl, degu)
-
+    print(dex_rate)
   if force_extrap:
 
     return exc_rate, dex_rate, did_extrap
@@ -4772,8 +4787,10 @@ def get_data(Z, z1, ftype, datacache=False, \
 
   else:
     if settings:
-      if settings['filemap']:
+      if 'filemap' in settings.keys():
         fmapfile = settings['filemap']
+      elif 'FileMap' in settings.keys():  
+        fmapfile = settings['FileMap']
       if 'atomdbroot' in list(settings.keys()):
         if settings['atomdbroot']:
           atomdbroot = settings['atomdbroot']
