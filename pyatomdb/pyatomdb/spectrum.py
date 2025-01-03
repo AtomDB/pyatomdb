@@ -497,33 +497,33 @@ def __add_lines(Z, abund, lldat, ebins, z1=False, z1_drv=False, \
       lammax += lammax**2 * broadening/const.HC_IN_KEV_A
       lammin -= lammin**2 * broadening/const.HC_IN_KEV_A
 
-  l = lldat[(lldat['element']==Z) &\
-            (lldat['lambda'] <= lammax) &\
-            (lldat['lambda'] >= lammin)]
+  l = lldat[(lldat['Element']==Z) &\
+            (lldat['Lambda'] <= lammax) &\
+            (lldat['Lambda'] >= lammin)]
 
   if z1:
-    l = l[l['ion'] ==z1]
+    l = l[l['Ion'] ==z1]
   if z1_drv:
-    l = l[l['ion_drv'] ==z1_drv]
+    l = l[l['Ion_drv'] ==z1_drv]
 
   spectrum = numpy.zeros(len(ebins)-1, dtype=float)
 
   if broadening:
     if  bunits == 'a':
       for ll in l:
-        spectrum+=atomdb._addline2(ebins, const.HC_IN_KEV_A/ll['lambda'], \
-                 ll['epsilon']* abund,\
+        spectrum+=atomdb._addline2(ebins, const.HC_IN_KEV_A/ll['Lambda'], \
+                 ll['Epsilon']* abund,\
                  broadening*const.HC_IN_KEV_A/(ll['lambda']**2))
     else:
       for ll in l:
-        spectrum+=atomdb._addline2(ebins, const.HC_IN_KEV_A/ll['lambda'], \
-                 ll['epsilon']* abund,\
+        spectrum+=atomdb._addline2(ebins, const.HC_IN_KEV_A/ll['Lambda'], \
+                 ll['Epsilon']* abund,\
                  broadening)
   else:
     for ll in l:
       spectrum[numpy.argmax(\
-               numpy.where(ebins <= const.HC_IN_KEV_A/ll['lambda'])[0])]+=\
-               ll['epsilon']* abund
+               numpy.where(ebins <= const.HC_IN_KEV_A/ll['Lambda'])[0])]+=\
+               ll['Epsilon']* abund
 
   return spectrum
 #-------------------------------------------------------------------------------
@@ -3921,23 +3921,41 @@ class _CIESpectrum():
         self.spectra[ihdu]={}
         self.spectra[ihdu]['kT'] = self.kTlist[ihdu]
         ldat = numpy.array(linedata[ihdu+2].data.data)
-        cdat = numpy.array(cocodata[ihdu+2].data.data)
 
-        Zarr = numpy.zeros([len(ldat), const.MAXZ_CIE+1], dtype=bool)
+        # revision to do with variable length continuum arrays
+        cdat = cocodata[ihdu+2].data
+        Zarr = numpy.zeros([len(ldat), const.MAXZ_NEI+1], dtype=bool)
         Zarr[numpy.arange(len(ldat), dtype=int), ldat['Element']]=True
 
+        for Z in range(1,const.MAXZ_NEI+1):
 
-        for Z in range(1,const.MAXZ_CIE+1):
-          ccdat = cdat[(cdat['Z']==Z) & (cdat['rmJ']==0)]
+          if not Z in self.spectra[ihdu].keys():
+            self.spectra[ihdu][Z] = {}
 
-          if len(ccdat)==1:
-            c = ccdat[0]
+          icdat = numpy.where((cdat['Z']==Z) & (cdat['rmJ']==0))[0]
+
+          if len(icdat)==0:
+            ccdat = [False]
           else:
-            c = False
+            ccdat=[cdat[icdat[0]]]
+            # this format is very tempremental and space inefficient. Make into a numpy array
+            ccdat = numpy.zeros(1, dtype = apec.generate_datatypes('continuum', \
+                                npseudo=cdat[icdat[0]]['N_Pseudo'], \
+                                ncontinuum=cdat[icdat[0]]['N_Cont']))
+            ccdat['Z'] = cdat[icdat[0]]['Z']
+            ccdat['rmJ'] = cdat[icdat[0]]['rmJ']
+            ccdat['N_Cont'] = cdat[icdat[0]]['N_Cont']
+            ccdat['N_Pseudo'] = cdat[icdat[0]]['N_Pseudo']
+
+            ccdat['E_Pseudo'] = cdat[icdat[0]]['E_Pseudo'][:ccdat['N_Pseudo'][0]]
+            ccdat['Pseudo'] = cdat[icdat[0]]['Pseudo'][:ccdat['N_Pseudo'][0]]
+            ccdat['E_Cont'] = cdat[icdat[0]]['E_Cont'][:ccdat['N_Cont'][0]]
+            ccdat['Continuum'] = cdat[icdat[0]]['Continuum'][:ccdat['N_Cont'][0]]
+
 
           self.spectra[ihdu][Z]=_ElementSpectrum(ldat[Zarr[:,Z]],\
-                                              c, \
-                                              Z)
+                                                ccdat[0], Z)
+
       pickle.dump(self.spectra, open(picklefname,'wb'))
 
 
