@@ -251,3 +251,7 @@ Should now work with scipy v1.14 and greater.
 0.12.0
 October 1st 2024
 Updated to allow access to AtomDB v3.1.0 files. These differ due to variable length continuum arrays, and required a re-write to the spectrum module and apec modules for reading/writing the files.
+
+1.0.0
+January 3rd 2025
+Updated to allow access to all AtomDB v3.1.0 files (couldn't do equilibrium previously). This version was used to compile AtomDB v3.1.0.
