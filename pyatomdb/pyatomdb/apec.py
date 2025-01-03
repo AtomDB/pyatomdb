@@ -877,7 +877,11 @@ def do_brems(Z, z1, T, abund, brems_type, eedges):
 
   gaunt_ff = calc_brems_gaunt(E, T, z1, brems_type)
 
-  emission = const.BREMS_COEFF*abund*\
+  if z1 ==1:
+    # no brems
+    emission = numpy.zeros(len(dE))
+  else;
+    emission = const.BREMS_COEFF*abund*\
       (z1-1)*(z1-1)*numpy.exp(-EkT)*(dE/numpy.sqrt(T))*gaunt_ff/(E*const.ERG_KEV)
 
   return emission
@@ -1731,9 +1735,9 @@ def create_lhdu_cie(linedata):
 
   tmp = numpy.zeros(len(linedata), dtype=numpy.dtype({'names':['negLambda','Element','Ion'],\
                                                        'formats':[float, float, float]}))
-  tmp['Element']= linedata['element']
-  tmp['Ion']= linedata['ion']
-  tmp['negLambda']= linedata['lambda']*-1
+  tmp['Element']= linedata['Element']
+  tmp['Ion']= linedata['Ion']
+  tmp['negLambda']= linedata['Lambda']*-1
 
   srt = numpy.argsort(tmp, order=['Element','Ion','negLambda'])
   linedata = linedata[srt]
