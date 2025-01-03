@@ -1731,9 +1731,9 @@ def create_lhdu_cie(linedata):
 
   tmp = numpy.zeros(len(linedata), dtype=numpy.dtype({'names':['negLambda','Element','Ion'],\
                                                        'formats':[float, float, float]}))
-  tmp['Element']= linedata['Element']
-  tmp['Ion']= linedata['Ion']
-  tmp['negLambda']= linedata['Lambda']*-1
+  tmp['Element']= linedata['element']
+  tmp['Ion']= linedata['ion']
+  tmp['negLambda']= linedata['lambda']*-1
 
   srt = numpy.argsort(tmp, order=['Element','Ion','negLambda'])
   linedata = linedata[srt]
