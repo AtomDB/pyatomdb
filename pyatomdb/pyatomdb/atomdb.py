@@ -1321,7 +1321,7 @@ def _get_burgess_tully_extrap(bttype, lolev, uplev, Aval, Tarr, om, TTarg, inf_l
     x = numpy.append(x,1)
     y = om/(numpy.log((Tarr_ryd/dE)+1))
     y = numpy.append(0,y)
-    
+
     S = 3.73491e-10*uplev['lev_deg']*Aval/(dE**3)
     FIN = dE*S/(3.0*lolev['lev_deg'])
 #    if inf_limit is not none:
@@ -4680,8 +4680,10 @@ def get_data(Z, z1, ftype, datacache=False, \
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v2.0.2_ionbal.fits'
             elif curversion in ['3.0.4','3.0.5','3.0.6']:
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.4_ionbal.fits'
-            else:
+            elif curversion in ['3.0.7','3.0.8','3.0.9']:
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.7_ionbal.fits'
+            elif curversion in ['3.1.0']:
+              fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.1.0_ionbal.fits'
           elif ftype.lower()=='eigen':
             # conversion here:
             curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
@@ -4690,8 +4692,11 @@ def get_data(Z, z1, ftype, datacache=False, \
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.fits'%(atomic.Ztoelsymb(Z).lower())
             elif curversion in ['3.0.4','3.0.5','3.0.6']:
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.4.fits'%(atomic.Ztoelsymb(Z).lower())
-            else:
+            elif curversion in ['3.0.7','3.0.8','3.0.9']:
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.7.fits'%(atomic.Ztoelsymb(Z).lower())
+            elif curversion in ['3.1.0']:
+              fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.1.0.fits'%(atomic.Ztoelsymb(Z).lower())
+
             if not 'EIGEN' in list(datacache['data']['misc'].keys()):
               datacache['data']['misc'][ftype.upper()]={}
               datacache['datasums']['misc'][ftype.upper()]={}
@@ -4789,7 +4794,7 @@ def get_data(Z, z1, ftype, datacache=False, \
     if settings:
       if 'filemap' in settings.keys():
         fmapfile = settings['filemap']
-      elif 'FileMap' in settings.keys():  
+      elif 'FileMap' in settings.keys():
         fmapfile = settings['FileMap']
       if 'atomdbroot' in list(settings.keys()):
         if settings['atomdbroot']:
@@ -4822,8 +4827,10 @@ def get_data(Z, z1, ftype, datacache=False, \
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v2.0.2_ionbal.fits'
       elif curversion in ['3.0.4','3.0.5','3.0.6']:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.4_ionbal.fits'
-      else:
+      elif curversion in ['3.0.7','3.0.8','3.0.9']:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.7_ionbal.fits'
+      elif curversion in ['3.1.0']:
+        fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.1.0_ionbal.fits'
 
     elif ftype.lower()=='eigen':
       # conversion here:
@@ -4833,8 +4840,10 @@ def get_data(Z, z1, ftype, datacache=False, \
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.fits'%(atomic.Ztoelsymb(Z).lower())
       elif curversion in ['3.0.4','3.0.5','3.0.6']:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.4.fits'%(atomic.Ztoelsymb(Z).lower())
-      else:
+      elif curversion in ['3.0.7','3.0.8','3.0.9']:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.7.fits'%(atomic.Ztoelsymb(Z).lower())
+      elif curversion in ['3.1.0']:
+        fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.1.0.fits'%(atomic.Ztoelsymb(Z).lower())
 
     if 'bytes' in str(type(fname)):
       try:
