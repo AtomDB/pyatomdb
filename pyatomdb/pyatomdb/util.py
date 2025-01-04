@@ -2154,7 +2154,7 @@ def write_develop_data(data, filemapfile, Z, z1, ftype, folder, froot):
 
 #-------------------------------------------------------------------------------
 
-def generate_xspec_ionbal_files(Z, filesuffix, settings = False, domulti=True):
+def generate_xspec_ionbal_files(Z, filesuffix, settings = False, domulti=True, nTe=1251):
   """
   Generate the eigen files that XSPEC uses to calculate the ionizatoin
   balances
@@ -2173,7 +2173,10 @@ def generate_xspec_ionbal_files(Z, filesuffix, settings = False, domulti=True):
 
     * settings['atomdbroot']: If you have files in non-standard locations
       you can replace $ATOMDB with this value
-
+  domulit : bool
+    If True, include multiple ionization data
+  nTe : int
+    The number of temperatures to calculate the ionization balance at.
   Returns
   -------
    none
@@ -2182,7 +2185,7 @@ def generate_xspec_ionbal_files(Z, filesuffix, settings = False, domulti=True):
   import scipy.linalg
   # get the ion & rec rates
 
-  Telist = numpy.logspace(4,9,1251)
+  Telist = numpy.logspace(4,9,nTe)
 
   ionlist = numpy.zeros([len(Telist), Z])
   reclist = numpy.zeros([len(Telist), Z])
@@ -2215,73 +2218,6 @@ def generate_xspec_ionbal_files(Z, filesuffix, settings = False, domulti=True):
     else:
       mul=None
 
-
-
-
-
-
-    # b = numpy.zeros(Z+1, dtype=float)
-    # a = numpy.zeros([Z+1,Z+1], dtype=float)
-
-
-    # for iZ in range(0,Z):
-      # a[iZ,iZ] -= (ion[iZ])
-      # a[iZ+1,iZ] += (ion[iZ])
-
-      # a[iZ,iZ+1] += (rec[iZ])
-      # a[iZ+1,iZ+1] -= (rec[iZ])
-
-    # # conservation of population
-    # for iZ in range(0,Z+1):
-      # a[0,iZ]=1.0
-    # b[0]=1.0
-
-    # c = numpy.linalg.solve(a,b)
-    # c[0] = 1-sum(c[1:])
-    # c[c<1e-10]=0.0
-    # feqb[ite] = c
-
-    # ZZ=len(ion)+1
-    # ndim=ZZ
-    # AA = numpy.zeros((ndim-1,ndim-1), dtype=float)
-    # # populate with stuff
-
-    # for iCol in range(ndim-1):
-      # for iRow in range(ndim-1):
-
-        # if (iRow==0):
-          # if (iCol==0):
-            # if (Z>=2):
-              # AA[0,iCol] = -(ion[0] + ion[1] + rec[0])
-            # else:
-              # AA[0,iCol] = -(ion[0] + rec[0])
-
-
-          # if (iCol==1): AA[0,iCol] = rec[1] - ion[0]
-          # if (iCol>1):
-            # AA[0,iCol] = -ion[0]
-        # else:
-          # if (iRow==iCol+1):  AA[iRow,iCol]= ion[iRow]
-          # if (iRow==iCol):
-            # if (iRow+2<ndim):
-
-              # AA[iRow,iCol]=-(ion[iRow+1]+rec[iRow])
-            # else:
-              # AA[iRow,iCol]=-rec[iRow]
-
-
-          # if (iRow==iCol-1):
-             # AA[iRow,iCol]= rec[iRow+1]
-
-
-    # w,vr=numpy.linalg.eig(AA)
-    # if (w.dtype!='float64'):
-      # print("nooooooooooO", w.dtype)
-
-  # # The value VL in which is stored is not actually the left eigenvecotr,
-  # # but is instead the inverse of vr.
-
-    # vl = numpy.matrix(vr)**-1
     leftevec = numpy.zeros(Z**2)
     rightevec = numpy.zeros(Z**2)
     initpop = numpy.zeros(Z+1)
@@ -2942,6 +2878,8 @@ def make_release_tarballs(ciefileroot, neifileroot, filemap, versionname, \
   # make the linelist
   if makelinelist:
     make_linelist(outdir+'/apec_v%s_line.fits'%(versionname), outdir+'/apec_v%s_linelist.fits'%(versionname))
+  else:
+    shutil.copy2(ciefileroot+'_linelist.fits',outdir+'/apec_v%s_linelist.fits'%(versionname))
 
   mycwd = os.getcwd()
   os.chdir(outdir)
@@ -2993,7 +2931,7 @@ def make_release_tarballs(ciefileroot, neifileroot, filemap, versionname, \
 
 
 
-def generate_equilibrium_ionbal_files(filename, settings = False):
+def generate_equilibrium_ionbal_files(filename, settings = False, domulti=True):
   """
   Generate the eigen files that XSPEC uses to calculate the ionizatoin
   balances
@@ -3025,44 +2963,46 @@ def generate_equilibrium_ionbal_files(filename, settings = False):
   for Z in range(1,31):
     ionlist = numpy.zeros([len(Telist), Z])
     reclist = numpy.zeros([len(Telist), Z])
+    multireclist = {}
 
   # outputs:
     feqb = numpy.zeros([len(Telist),Z+1])
 
 
     for z1 in range(1,Z+1):
-      iontmp, rectmp = atomdb.get_ionrec_rate(Telist, False, Z=Z, z1=z1, extrap=True,
-                                              settings=settings)
+
+      iontmp, rectmp, multmp = atomdb.get_ionrec_rate(Telist, False, Z=Z, z1=z1, extrap=True,
+                                            settings=settings, multiion=True)
       ionlist[:,z1-1] = iontmp
       reclist[:,z1-1] = rectmp
+      multireclist[z1-1] = multmp
+
+
+
 
 
     for ite in range(len(Telist)):
       Te = Telist[ite]
       ion = ionlist[ite,:]
       rec = reclist[ite,:]
+      if domulti:
+        mul = []
+        for i in range(len(multireclist)):
+          mul.append({})
+          for k in multireclist[i].keys():
+            mul[-1][k]=multireclist[i][k][ite]
+      else:
+        mul=None
 
 
-      b = numpy.zeros(Z+1, dtype=numpy.float32)
-      a = numpy.zeros((Z+1,Z+1), dtype=numpy.float32)
 
+      initpop = numpy.zeros(Z+1)
+      initpop[0] = 1.0
+      ionbaldat = apec.solve_ionbal(ion, rec, init_pop=initpop, multiionrate=mul, return_details=True)
 
-      for iZ in range(0,Z):
-        a[iZ,iZ] -= (ion[iZ])
-        a[iZ+1,iZ] += (ion[iZ])
+      feqb[ite] = ionbaldat['eqpop']
 
-        a[iZ,iZ+1] += (rec[iZ])
-        a[iZ+1,iZ+1] -= (rec[iZ])
-
-    # conservation of population
-      for iZ in range(0,Z+1):
-        a[0,iZ]=1.0
-      b[0]=1.0
-
-      c = numpy.linalg.solve(a,b)
-      c[0] = 1-sum(c[1:])
-      c[c<1e-10]=0.0
-      feqb[ite] = c
+    feqb[numpy.abs(feqb) < 1e-15] = 0.0
     ionbal[Z] = feqb
 
   write_ionbal_file(Telist, Nelist, ionbal, filename, Te_linear = False, dens_linear=True)
@@ -3269,7 +3209,7 @@ def generate_web_fitsfiles(version='', outdir=''):
 
   linesperfile = 1000
 
-  nfiles = nlines/linesperfile + 1
+  nfiles = nlines//linesperfile + 1
 
   rangedatatype = numpy.dtype({'names':['Lambda_lo','Lambda_hi','filename'],\
                                'formats':[float, float, '|S40']})
