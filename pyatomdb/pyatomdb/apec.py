@@ -880,7 +880,7 @@ def do_brems(Z, z1, T, abund, brems_type, eedges):
   if z1 ==1:
     # no brems
     emission = numpy.zeros(len(dE))
-  else;
+  else:
     emission = const.BREMS_COEFF*abund*\
       (z1-1)*(z1-1)*numpy.exp(-EkT)*(dE/numpy.sqrt(T))*gaunt_ff/(E*const.ERG_KEV)
 
@@ -4985,7 +4985,7 @@ def wrap_update_multi_ion(fnamelist, linefile, cocofile, fnameout=None, noWrite=
     print("now doing the comp")
     i = (cdat_dat_new['Z'] ==Z) & (cdat_dat_new['rmJ']==z1_drv)
     print('cdat_dat_new[0] before:', cdat_dat_new[0])
-    
+
     cdat_dat_new =cdat_dat_new[~i]
 
     # gather the continuum data
@@ -5004,9 +5004,9 @@ def wrap_update_multi_ion(fnamelist, linefile, cocofile, fnameout=None, noWrite=
     cdat_new['Pseudo'][0][:len(epseudo)] = pseudocont
     print('cdat_new', cdat_new)
     print('cdat_dat_new[0] at call:', cdat_dat_new[0])
-    
+
     cdat_dat_new = continuum_append_variable(cdat_dat_new,cdat_new)
-  
+
     print("Continuum Appended")
   cdat_dat_new = numpy.sort(cdat_dat_new, order=['Z','rmJ'])
 #  dat_dat_new = numpy.sort(cdat_new, order=['Z','rmJ'])
