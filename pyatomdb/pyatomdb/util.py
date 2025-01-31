@@ -2957,7 +2957,7 @@ def generate_equilibrium_ionbal_files(filename, settings = False, domulti=True):
 
   # get the ion & rec rates
 
-  Telist = numpy.logspace(4,9,501)
+  Telist = numpy.logspace(4,9,201)
   Nelist = numpy.array([1.0])
   ionbal = {}
   for Z in range(1,31):
