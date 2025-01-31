@@ -255,3 +255,7 @@ Updated to allow access to AtomDB v3.1.0 files. These differ due to variable len
 1.0.0
 January 3rd 2025
 Updated to allow access to all AtomDB v3.1.0 files (couldn't do equilibrium previously). This version was used to compile AtomDB v3.1.0.
+
+1.0.1
+January 31st 2025
+Updated to allow access to all AtomDB v3.1.x eigenvector files (path was hardcoded so v3.1.1 couldn't read them).
