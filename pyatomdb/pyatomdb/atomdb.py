@@ -4682,7 +4682,7 @@ def get_data(Z, z1, ftype, datacache=False, \
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.4_ionbal.fits'
             elif curversion in ['3.0.7','3.0.8','3.0.9']:
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.7_ionbal.fits'
-            elif curversion in ['3.1.0']:
+            elif curversion[:3] == '3.1':
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.1.0_ionbal.fits'
           elif ftype.lower()=='eigen':
             # conversion here:
@@ -4694,7 +4694,7 @@ def get_data(Z, z1, ftype, datacache=False, \
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.4.fits'%(atomic.Ztoelsymb(Z).lower())
             elif curversion in ['3.0.7','3.0.8','3.0.9']:
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.7.fits'%(atomic.Ztoelsymb(Z).lower())
-            elif curversion in ['3.1.0']:
+            elif curversion[:3] == '3.1':
               fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.1.0.fits'%(atomic.Ztoelsymb(Z).lower())
 
             if not 'EIGEN' in list(datacache['data']['misc'].keys()):
@@ -4829,7 +4829,7 @@ def get_data(Z, z1, ftype, datacache=False, \
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.4_ionbal.fits'
       elif curversion in ['3.0.7','3.0.8','3.0.9']:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.0.7_ionbal.fits'
-      elif curversion in ['3.1.0']:
+      elif curversion[:3] == '3.1':
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/v3.1.0_ionbal.fits'
 
     elif ftype.lower()=='eigen':
@@ -4842,7 +4842,7 @@ def get_data(Z, z1, ftype, datacache=False, \
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.4.fits'%(atomic.Ztoelsymb(Z).lower())
       elif curversion in ['3.0.7','3.0.8','3.0.9']:
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.0.7.fits'%(atomic.Ztoelsymb(Z).lower())
-      elif curversion in ['3.1.0']:
+      elif curversion[:3] == '3.1':
         fname = os.path.expandvars(atomdbroot)+'/APED/ionbal/eigen/eigen%s_v3.1.0.fits'%(atomic.Ztoelsymb(Z).lower())
 
     if 'bytes' in str(type(fname)):
