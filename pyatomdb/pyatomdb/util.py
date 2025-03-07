@@ -637,7 +637,7 @@ def check_version():
   """
   import curl
   try:
-    adbroot_init = os.environ['ATOMDB']
+    adbroot = os.environ['ATOMDB']
   except KeyError:
     print("You must set the ATOMDB environment variable for this to work!")
     raise
@@ -646,6 +646,9 @@ def check_version():
   newversion=a.get('%s/releases/LATEST'%(const.FTPPATH))[:-1].decode(encoding='ascii')
 
   a.close()
+
+  userprefs = load_user_prefs()
+  userid = userprefs['USERID']
 
   curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
   if (curversion != newversion):
@@ -656,20 +659,21 @@ def check_version():
         "Do you wish to download the emissivity data for these files (recommended)?",\
         "y",multichoice=["y","n"])
 
+
+
       if get_new_files=='y':
-        download_atomdb_emissivity_files(adbroot, userid, version)
+        download_atomdb_emissivity_files(adbroot, userid, newversion)
 
       get_new_nei_files=question(\
         "Do you wish to download the non-equilibrium emissivity data for these files (recommended)?",\
         "y",multichoice=["y","n"])
 
       if get_new_nei_files=='y':
-        download_atomdb_nei_emissivity_files(adbroot, userid, version)
+        download_atomdb_nei_emissivity_files(adbroot, userid, newversion)
   else:
     print("Current version %s is up to date" %(curversion))
 
   # now update the time the last version check happened.
-  userprefs = load_user_prefs()
   userprefs['LASTVERSIONCHECK'] = time.time()
   write_user_prefs(userprefs)
 
@@ -711,7 +715,7 @@ def switch_version(version, force=False):
 
   # check the AtomDB version string is a suitable string
 
-  if not re.match('^\d\.\d\.\d$',version):
+  if not re.match(r"^\d*\.\d*\.\d*$",version):
     print("Error: version number must be of format %i.%i.%i, e.g. 3.0.2")
     return
 
@@ -830,7 +834,6 @@ def switch_version(version, force=False):
         # these files are the same, don't bother copying or
         # asking about copying them.
             continue
-
         except IOError:
           print("outfile = %s, ifile = %s"%(outfile, ifile))
           raise
@@ -2310,7 +2313,7 @@ def make_release_filetree(filemapfile_in, filemapfile_out, \
     for key in ['em','ci','pi','la','ai','ir','ec','lv','pc','dr']:
       if fmap[key][i] =='': continue
 
-      if  re.search("_\d.fits",fmap[key][i]):
+      if  re.search(r"_\d.fits",fmap[key][i]):
 
         fin = fmap[key][i]
         fmapf = re.sub(replace_source, 'XXX', fin)
@@ -2549,7 +2552,6 @@ def make_linelist(linefile, outfile):
   hdu0.header['HDUCLASS']= ("EMISSIVITY","Line Emission Output")
   hdu0.header['HDUCLAS1']= ("SHORT_LINE","Line Emission Output")
   hdu0.header['HDUVERS']= ("1.0.0","Version of datafile")
-
   hdu0.header['SIONBAL']= d[0].header.cards['SIONBAL']
   hdu0.header['SEIGEN']= d[0].header.cards['SEIGEN']
 

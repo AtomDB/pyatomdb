@@ -2849,7 +2849,7 @@ class CIESession():
     Returns
     -------
     emiss_aeff : array(float)
-      Emissivity \* Aeff
+      Emissivity * Aeff
     """
 
 
