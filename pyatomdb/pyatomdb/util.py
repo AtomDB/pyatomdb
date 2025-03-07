@@ -830,6 +830,7 @@ def switch_version(version, force=False):
         # these files are the same, don't bother copying or
         # asking about copying them.
             continue
+
         except IOError:
           print("outfile = %s, ifile = %s"%(outfile, ifile))
           raise
@@ -2548,6 +2549,9 @@ def make_linelist(linefile, outfile):
   hdu0.header['HDUCLASS']= ("EMISSIVITY","Line Emission Output")
   hdu0.header['HDUCLAS1']= ("SHORT_LINE","Line Emission Output")
   hdu0.header['HDUVERS']= ("1.0.0","Version of datafile")
+
+  hdu0.header['SIONBAL']= d[0].header.cards['SIONBAL']
+  hdu0.header['SEIGEN']= d[0].header.cards['SEIGEN']
 
 
   #secondary HDU, hdu1:

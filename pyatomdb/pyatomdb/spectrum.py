@@ -6327,6 +6327,10 @@ class NEISession(CIESession):
 
 
     self.spectra.ebins = self.specbins
+    self.spectra.dopseudo = self.dopseudo
+    self.spectra.dolines = self.dolines
+    self.spectra.docont = self.docont
+
     self.spectra.ebins_checksum=hashlib.md5(self.spectra.ebins).hexdigest()
     s= self.spectra.return_spectrum(Te, tau, init_pop=init_pop, \
                                     teunit=teunit, \
@@ -6653,7 +6657,10 @@ class _NEISpectrum(_CIESpectrum):
                                   thermal_broadening = self.thermal_broadening,\
                                   broaden_limit = epslimit,\
                                   velocity_broadening = self.velocity_broadening,\
-                                  broaden_object=broaden_object) *\
+                                  broaden_object=broaden_object,\
+                                  dopseudo=self.dopseudo,\
+                                  docont=self.docont,\
+                                  dolines=self.dolines) *\
                                   ionfrac[z1-1]
 
 

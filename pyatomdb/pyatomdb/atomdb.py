@@ -5776,22 +5776,31 @@ def _lorentz_power(version):
 
   f.write("%s\n"%(s))
 
-  ses = spectrum.Session(elements=Zlist)
-  ses.set_specbins(ebins, specunits='keV')
+  ses = spectrum.CIESession(elements=Zlist)
+  ses.set_response(ebins, raw=True)
   for iT in range(51):
     kT = 4.0+(iT*0.1)
     kT = 10**kT
     if iT == 0:
       kT+=1
-    ses.return_spectra(kT, teunit='K', nearest=True)
+    ses.return_spectrum(kT, teunit='K', nearest=True)
     print(iT)
 
+  ses.set_eebrems(False)
   for Z in Zlist:
     tot_e = numpy.zeros(51)
     s = "%2i"%(Z)
     print(Z)
     for iT in range(2,53):
-      spec = ses.spectra[iT].spectrum_by_Z[Z]
+      kT = 4.0+((iT-2)*0.1)
+      kT = 10**kT
+      if iT == 0:
+        kT+=1
+
+      ses.set_abund(Zlist, 0.0)
+      ses.set_abund(Z, 1.0)
+
+      spec = ses.return_spectrum(kT, teunit='K',nearest=True)
       e = spec*energy
       # add corrections for NH != 1, to 1m3 volume, and abundance set
       # from AG89 to Lodders 2009
@@ -5926,7 +5935,7 @@ def _lorentz_neicsd(version):
   f.write('Z Ion Pop\n')
   for Z in [1,2,6,7,8,10,12,14,16,18,20,26,28]:
     print(Z)
-    ionbal = apec.solve_ionbal_eigen(Z, Te_final,  tau=tau, Te_init=Te_init, \
+    ionbal = apec._solve_ionbal_eigen(Z, Te_final,  tau=tau, init_pop=Te_init, \
                          teunit='K')
 
     for i in range(len(ionbal)):
@@ -6014,7 +6023,7 @@ def _lorentz_neilines(version):
 
     for Z in [1,2,6,7,8,10,12,14,16,18,20,26,28]:
 
-      ionbal[Z] = apec.solve_ionbal_eigen(Z, Te_final,  tau=tau, Te_init=Te_init, \
+      ionbal[Z] = apec._solve_ionbal_eigen(Z, Te_final,  tau=tau, init_pop=Te_init, \
                            teunit='K')
 
     ionbal_square = numpy.zeros([31,31])
@@ -6178,45 +6187,56 @@ def _lorentz_neicont(version):
   now = datetime.datetime.now()
   util.switch_version(version)
 
+
+
   # make the spectrum.
-  speclo = numpy.zeros(len(ebins)-1)
-  specup = numpy.zeros(len(ebins)-1)
-  ag89 = get_abundance(abundset='AG89')
-  lodd = get_abundance(abundset='Lodd09')
-  ldat = pyfits.open(os.path.expandvars("$ATOMDB/apec_nei_line.fits"))
-  cdat = pyfits.open(os.path.expandvars("$ATOMDB/apec_nei_comp.fits"))
+  neispec = spectrum.NEISession()
+  neispec.set_abundset('Lodd09')
+  #neispec.set_abund('Lodd09')
+
+  neispec.set_response(ebins, raw=True)
+  spec=neispec.return_spectrum(Te_init, tau, init_pop=Te_init, teunit='K')
+
+  # speclo = numpy.zeros(len(ebins)-1)
+  # specup = numpy.zeros(len(ebins)-1)
+  # ag89 = get_abundance(abundset='AG89')
+  # lodd = get_abundance(abundset='Lodd09')
+  # ldat = pyfits.open(os.path.expandvars("$ATOMDB/apec_nei_line.fits"))
+  # cdat = pyfits.open(os.path.expandvars("$ATOMDB/apec_nei_comp.fits"))
 
 
-  upind = numpy.where(ldat[1].data['kT']>Te_final*const.KBOLTZ)[0][0]+2
-  loind = upind-1
+  # upind = numpy.where(ldat[1].data['kT']>Te_final*const.KBOLTZ)[0][0]+2
+  # loind = upind-1
 
-  for Z in range(1,31):
-    print("starting element %s"%(atomic.Ztoelname(Z)))
-    ionbal = apec.solve_ionbal_eigen(Z, Te_final,  tau=tau, Te_init=Te_init, \
-                           teunit='K')
 
-    abund = lodd[Z]/ag89[Z]
-    for z in range(len(ionbal)):
-      z1 = z+1
-      if ionbal[z] > 1e-10:
-        tmp = spectrum.make_ion_spectrum(ebins, loind, Z, z1, linefile=ldat,\
-                                         cocofile=cdat)
-        speclo+=tmp*ionbal[z]*abund
 
-        tmp = spectrum.make_ion_spectrum(ebins, upind, Z, z1, linefile=ldat,\
-                                         cocofile=cdat)
-        specup+=tmp*ionbal[z]*abund
+  # for Z in range(1,31):
+    # print("starting element %s"%(atomic.Ztoelname(Z)))
+    # ionbal = apec._solve_ionbal_eigen(Z, Te_final,  tau=tau, init_pop=Te_init, \
+                           # teunit='K')
 
-  # now interpolate
-  t1 = numpy.log(ldat[1].data['kT'][loind-2])
-  t2 = numpy.log(ldat[1].data['kT'][upind-2])
-  print("t1 = ", t1)
-  print("t2 = ", t2)
-  print("log(tefinal)", numpy.log(Te_final*const.KBOLTZ))
-  r1 = 1- (numpy.log(Te_final*const.KBOLTZ)-t1)/(t2-t1)
-  r2 = 1- r1
-  print("r1= ",r1, "r2  ", r2)
-  spec = speclo*r1+specup*r2
+    # abund = lodd[Z]/ag89[Z]
+    # for z in range(len(ionbal)):
+      # z1 = z+1
+      # if ionbal[z] > 1e-10:
+        # tmp = spectrum.make_ion_spectrum(ebins, loind, Z, z1, linefile=ldat,\
+                                         # cocofile=cdat)
+        # speclo+=tmp*ionbal[z]*abund
+
+        # tmp = spectrum.make_ion_spectrum(ebins, upind, Z, z1, linefile=ldat,\
+                                         # cocofile=cdat)
+        # specup+=tmp*ionbal[z]*abund
+
+  # # now interpolate
+  # t1 = numpy.log(ldat[1].data['kT'][loind-2])
+  # t2 = numpy.log(ldat[1].data['kT'][upind-2])
+  # print("t1 = ", t1)
+  # print("t2 = ", t2)
+  # print("log(tefinal)", numpy.log(Te_final*const.KBOLTZ))
+  # r1 = 1- (numpy.log(Te_final*const.KBOLTZ)-t1)/(t2-t1)
+  # r2 = 1- r1
+  # print("r1= ",r1, "r2  ", r2)
+  # spec = speclo*r1+specup*r2
 
   # now scale spectrum by NH to get correct norm, and 1e6 to get to 1m^3
   spec *= 0.8365*1e6
@@ -6244,7 +6264,7 @@ def __get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
   # first, get the ionization balance
   datacache={}
   lvdat = get_data(Z,z1,'LV', datacache=datacache)
-  ionbal = apec.solve_ionbal_eigen(Z,Te, datacache=datacache)
+  ionbal = apec._solve_ionbal_eigen(Z,Te, datacache=datacache)
   settings = apec.parse_par_file(os.path.expandvars('$ATOMDB/apec_v%s.par'%\
                                 (version)))
 

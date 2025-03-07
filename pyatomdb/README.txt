@@ -259,3 +259,7 @@ Updated to allow access to all AtomDB v3.1.0 files (couldn't do equilibrium prev
 1.0.1
 January 31st 2025
 Updated to allow access to all AtomDB v3.1.x eigenvector files (path was hardcoded so v3.1.1 couldn't read them).
+
+1.0.2
+January 31st 2025
+Removed debug output erroneously added to spectrum.py calls.

@@ -5681,6 +5681,12 @@ def _solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, \
   telist = numpy.logspace(4,9,1251)
   kTlist=telist*const.KBOLTZ
 
+  try:
+    dd = d['EIGEN']
+  except KeyError:
+    elsymb = atomic.Ztoelsymb(Z).lower()
+    dd=d[elsymb]
+
   # if we are looking for equilibrium, return the nearest data
   if cie:
 
@@ -5690,10 +5696,10 @@ def _solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, \
     if Tdiff > 0.0:
       factorlow = (kTlist[ite[1]]-kT)/Tdiff
       factorhigh = (kT-kTlist[ite[0]])/Tdiff
-      equilib = factorlow * d['EIGEN'].data['FEQB'][ite[0]]+\
-                factorhigh * d['EIGEN'].data['FEQB'][ite[1]]
+      equilib = factorlow * dd.data['FEQB'][ite[0]]+\
+                factorhigh * dd.data['FEQB'][ite[1]]
     else:
-      equilib = d['EIGEN'].data['FEQB'][ite[0]]
+      equilib = dd.data['FEQB'][ite[0]]
 
     #renormalize
     equilib /= sum(equilib)
@@ -5715,16 +5721,16 @@ def _solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, \
     if Z==1:
       for i in range(Z):
         for j in range(Z):
-          lefteigenvec[i,j] = d['EIGEN'].data['VL'][kTindex]
-          righteigenvec[i,j] = d['EIGEN'].data['VR'][kTindex]
+          lefteigenvec[i,j] = dd.data['VL'][kTindex]
+          righteigenvec[i,j] = dd.data['VR'][kTindex]
     else:
       for i in range(Z):
         for j in range(Z):
-          lefteigenvec[i,j] = d['EIGEN'].data['VL'][kTindex][i*Z+j]
-          righteigenvec[i,j] = d['EIGEN'].data['VR'][kTindex][i*Z+j]
+          lefteigenvec[i,j] = dd.data['VL'][kTindex][i*Z+j]
+          righteigenvec[i,j] = dd.data['VR'][kTindex][i*Z+j]
 
 
-    work = numpy.array(init_pop_calc[1:] - d['EIGEN'].data['FEQB'][kTindex][1:], dtype=float)
+    work = numpy.array(init_pop_calc[1:] - dd.data['FEQB'][kTindex][1:], dtype=float)
 
     fspectmp = numpy.matrix(lefteigenvec) * numpy.matrix(work).transpose()
 
@@ -5735,16 +5741,16 @@ def _solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, \
     for itau, ttau in enumerate(tau_vec):
       if Z >1:
         for i in range(Z):
-          worktmp[i] = fspectmp[i]*numpy.exp(d['EIGEN'].data['EIG'][kTindex,i]*delt*ttau)
+          worktmp[i] = fspectmp[i]*numpy.exp(dd.data['EIG'][kTindex,i]*delt*ttau)
 
       else:
-        worktmp[0] = fspectmp[0]*numpy.exp(d['EIGEN'].data['EIG'][kTindex]*delt*ttau)
+        worktmp[0] = fspectmp[0]*numpy.exp(dd.data['EIG'][kTindex]*delt*ttau)
 
       frac = numpy.zeros(Z+1)
       for i in range(Z):
         for j in range(Z):
           frac[i+1] += worktmp[j]*righteigenvec[j][i]
-        frac[i+1] += d['EIGEN'].data['FEQB'][kTindex][i+1]
+        frac[i+1] += dd.data['FEQB'][kTindex][i+1]
 
       if debug:
         frac_out[ikT, itau,:] = frac
