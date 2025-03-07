@@ -263,3 +263,7 @@ Updated to allow access to all AtomDB v3.1.x eigenvector files (path was hardcod
 1.0.2
 January 31st 2025
 Removed debug output erroneously added to spectrum.py calls.
+
+1.0.3
+March 7th 2025
+Repaired util.py check_version command, along with other bug fixes.
