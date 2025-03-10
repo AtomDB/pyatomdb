@@ -49,36 +49,37 @@ if on_rtd:
 
 else:
   extmos= [linapprox]
-
+#setup()
 setup(name='pyatomdb',
-      version=get_version('pyatomdb/__init__.py'),
-      description='AtomDB python library.',
-      url='http://www.atomdb.org',
-      author='Adam Foster',
-      author_email='afoster@cfa.harvard.edu',
-      license='Smithsonian',
+#      version=get_version('pyatomdb/__init__.py'),
+#      description='AtomDB python library.',
+#      url='http://www.atomdb.org',
+#      author='Adam Foster',
+#      author_email='afoster@cfa.harvard.edu',
+#      license='Smithsonian',
       packages=['pyatomdb','tests'],
-      classifiers=['Development Status :: 4 - Beta',\
-                   'Environment :: Console',\
-                   'Intended Audience :: Developers',\
-                   'Intended Audience :: Education',\
-                   'Intended Audience :: End Users/Desktop',\
-                   'Intended Audience :: Science/Research',\
-                   'Topic :: Scientific/Engineering :: Astronomy',\
-                   'Topic :: Scientific/Engineering :: Physics',\
-                   'Programming Language :: Python :: 3',\
-                   'Operating System :: POSIX'],
-      zip_safe=False,
-      long_description = README_TEXT,\
-      install_requires=[
-      "numpydoc",\
-      "requests",\
-      "wget",\
-      "numpy>=1.9.0",\
-      "scipy>=1.9.0",\
-      "joblib",\
-      "mock",\
-      "astropy",\
-      "pycurl"],
+#      classifiers=['Development Status :: 4 - Beta',\
+#                   'Environment :: Console',\
+#                   'Intended Audience :: Developers',\
+#                   'Intended Audience :: Education',\
+#                   'Intended Audience :: End Users/Desktop',\
+#                   'Intended Audience :: Science/Research',\
+#                   'Topic :: Scientific/Engineering :: Astronomy',\
+#                   'Topic :: Scientific/Engineering :: Physics',\
+#                   'Programming Language :: Python :: 3',\
+#                   'Operating System :: POSIX'],
+#      zip_safe=False,
+#      long_description = README_TEXT,\
+#      install_requires=[
+#      "numpydoc",\
+#      "requests",\
+#      "wget",\
+#      "numpy>=1.9.0",\
+#      "scipy>=1.9.0",\
+#      "joblib",\
+#      "mock",\
+#      "astropy",\
+#      "pycurl"],
       ext_modules = extmos)
-
+#
+#

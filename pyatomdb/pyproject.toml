@@ -28,7 +28,7 @@ classifiers=["Development Status :: 4 - Beta",
 	     "Operating System :: POSIX"]
  
 readme = "README.rst"
-license = {file = "LICENSE"}
+license = {file = "COPYING.txt"}
 [project.urls]
 Homepage = "http://www.atomdb.org"
 Documentation = "https://atomdb.readthedocs.io/en/master/"
