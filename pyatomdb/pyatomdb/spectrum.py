@@ -1840,6 +1840,18 @@ class CIESession():
 
   spec is in photons cm^5 s^-1 bin^-1; ebins are the bin edges (so spec is
   1 element shorter than ebins)
+
+  Turn off continuum and pseudocontinuum (by default these are on)
+
+  >>> s.dopseudo = False
+  >>> s.docont = False
+  >>> s.doeebrems = False
+  >>> # s.dolines = False would turn off lines
+  >>> spec = s.return_spectrum(1.0)
+
+  spec is in photons cm^5 s^-1 bin^-1; ebins are the bin edges (so spec is
+  1 element shorter than ebins)
+
   """
 
   def __init__(self, linefile="$ATOMDB/apec_line.fits",\
@@ -2349,8 +2361,7 @@ class CIESession():
 
 
   def return_spectrum(self, te, teunit='keV', nearest=False,\
-                      get_nearest_t=False, log_interp=True,\
-                      dolines=True, docont=True, dopseudo=True):
+                      get_nearest_t=False, log_interp=True):
     """
     Get the spectrum at an exact temperature.
     Interpolates between 2 neighbouring spectra
@@ -2374,12 +2385,6 @@ class CIESession():
       as well as the spectrum.
     log_interp : bool
       Perform linear interpolation on a logT/logEpsilon grid, instead of linear.
-    dolines : bool
-      Calculate line emission (default True)
-    docont : bool
-      Calculate Continuum emission (default True)
-    dopseudo : bool
-      Calculate PseudoContinuum (weak line) emission (default True)
 
     Returns
     -------
@@ -2407,8 +2412,8 @@ class CIESession():
     s= self.spectra.return_spectrum(te, teunit=teunit, nearest=nearest,\
                                     elements = el_list, abundance=ab, \
                                     broaden_object = self.cdf, \
-                                    log_interp=log_interp, dolines=dolines,\
-                                    dopseudo=dopseudo, docont=docont, \
+                                    log_interp=log_interp, dolines=self.dolines,\
+                                    dopseudo=self.dopseudo, docont=self.docont, \
                                     do_eebrems = self.do_eebrems)
     ss = self._apply_response(s)
 
@@ -3305,8 +3310,7 @@ class CIESession_RS(CIESession):
 
 
   def return_spectrum(self, te, N_e, Ab, teunit='keV', nearest=False,\
-                      get_nearest_t=False, log_interp=True,\
-                      dolines=True, docont=True, dopseudo=True):
+                      get_nearest_t=False, log_interp=True):
     """
     Get the spectrum at an exact temperature.
     Interpolates between 2 neighbouring spectra
@@ -3363,8 +3367,8 @@ class CIESession_RS(CIESession):
     s= self.spectra.return_spectrum(te, N_e, Ab, teunit=teunit, nearest=nearest,\
                                     elements = el_list, abundance=ab, \
                                     broaden_object = self.cdf, \
-                                    log_interp=log_interp, dolines=dolines,\
-                                    dopseudo=dopseudo, docont=docont, \
+                                    log_interp=log_interp, dolines=self.dolines,\
+                                    dopseudo=self.dopseudo, docont=self.docont, \
                                     do_eebrems = self.do_eebrems)
     ss = self._apply_response(s)
 
@@ -4036,7 +4040,7 @@ class _CIESpectrum():
                              elements=False, abundance=False, log_interp=True,\
                              broaden_object=False,\
                              dolines=True, docont=True, dopseudo=True, \
-                             do_eebrems = False):
+                             do_eebrems = True):
 
     """
     Return the spectrum of the element on the energy bins in
@@ -4068,7 +4072,7 @@ class _CIESpectrum():
     dopseudo : bool
       Calculate PseudoContinuum (weak line) emission (default True)
     do_eebrems : bool
-      Calculate electron-electron bremsstrahlung emission (default False)
+      Calculate electron-electron bremsstrahlung emission (default True)
 
     Returns
     -------
@@ -6305,6 +6309,12 @@ class NEISession(CIESession):
       Perform linear interpolation on a logT/logEpsilon grid (default), or linear.
     freeze_ion_pop : bool
       If True, skip the ion population calculation, use init_pop as the final pop instead.
+    dolines : bool
+      Calculate line emission (default True)
+    docont : bool
+      Calculate Continuum emission (default True)
+    dopseudo : bool
+      Calculate PseudoContinuum (weak line) emission (default True)
 
     Returns
     -------
@@ -6327,9 +6337,9 @@ class NEISession(CIESession):
 
 
     self.spectra.ebins = self.specbins
-    self.spectra.dopseudo = self.dopseudo
-    self.spectra.dolines = self.dolines
-    self.spectra.docont = self.docont
+#    self.spectra.dopseudo = self.dopseudo
+#    self.spectra.dolines = self.dolines
+#    self.spectra.docont = self.docont
 
     self.spectra.ebins_checksum=hashlib.md5(self.spectra.ebins).hexdigest()
     s= self.spectra.return_spectrum(Te, tau, init_pop=init_pop, \
@@ -6338,7 +6348,8 @@ class NEISession(CIESession):
                                     abundance=ab, log_interp=True,\
                                     broaden_object=self.cdf, \
                                     freeze_ion_pop = freeze_ion_pop,\
-                                    do_eebrems=self.do_eebrems)
+                                    do_eebrems=self.do_eebrems, dolines=self.dolines,\
+                                    dopseudo=self.dopseudo, docont=self.docont)
 
     ss = self._apply_response(s)
     self.ionfrac = self.spectra.ionfrac
@@ -6549,7 +6560,8 @@ class _NEISpectrum(_CIESpectrum):
 
   def return_spectrum(self, Te, tau, init_pop='ionizing', teunit='keV', nearest = False,
                              elements=False, abundance=False, log_interp=True, broaden_object=False,\
-                             freeze_ion_pop = False, do_eebrems = False):
+                             freeze_ion_pop = False, dolines=True, docont=True, dopseudo=True, \
+                             do_eebrems = True):
 
     """
     Return the spectrum of the element on the energy bins in
@@ -6583,8 +6595,14 @@ class _NEISpectrum(_CIESpectrum):
       Object with routine "broaden" which applies line broadening. Usually a Gaussian.
     freeze_ion_pop : bool
       If True, skip the ion population calculation, use init_pop as the final pop instead.
+    dolines : bool
+      Calculate line emission (default True)
+    docont : bool
+      Calculate Continuum emission (default True)
+    dopseudo : bool
+      Calculate PseudoContinuum (weak line) emission (default True)
     do_eebrems : bool
-      Calculate electron-electron bremsstrahlung emission (default False)
+      Calculate electron-electron bremsstrahlung emission (default True)
 
     Returns
     -------
@@ -6658,9 +6676,9 @@ class _NEISpectrum(_CIESpectrum):
                                   broaden_limit = epslimit,\
                                   velocity_broadening = self.velocity_broadening,\
                                   broaden_object=broaden_object,\
-                                  dopseudo=self.dopseudo,\
-                                  docont=self.docont,\
-                                  dolines=self.dolines) *\
+                                  dopseudo=dopseudo,\
+                                  docont=docont,\
+                                  dolines=dolines) *\
                                   ionfrac[z1-1]
 
 
@@ -7568,7 +7586,8 @@ class _PShockSpectrum(_NEISpectrum):
 
   def return_spectrum(self, Te, tau_u, tau_l=0.0, init_pop='ionizing', teunit='keV', nearest = False,
                              elements=False, abundance=False, log_interp=True, broaden_object=False,\
-                             freeze_ion_pop=False, do_eebrems = False):
+                             freeze_ion_pop=False, dolines=True, docont=True, dopseudo=True, \
+                             do_eebrems = True):
 
     """
     Return the spectrum of the element on the energy bins in
@@ -7604,8 +7623,14 @@ class _PShockSpectrum(_NEISpectrum):
       Object with routine "broaden" which applies line broadening. Usually a Gaussian.
     freeze_ion_pop : bool
       If True, skip the ion population calculation, use init_pop as the final pop instead.
+    dolines : bool
+      Calculate line emission (default True)
+    docont : bool
+      Calculate Continuum emission (default True)
+    dopseudo : bool
+      Calculate PseudoContinuum (weak line) emission (default True)
     do_eebrems : bool
-      Calculate electron-electron bremsstrahlung emission (default False)
+      Calculate electron-electron bremsstrahlung emission (default True)
 
     Returns
     -------
@@ -7663,7 +7688,10 @@ class _PShockSpectrum(_NEISpectrum):
                                   thermal_broadening = self.thermal_broadening,\
                                   broaden_limit = epslimit,\
                                   velocity_broadening = self.velocity_broadening,\
-                                  broaden_object=broaden_object) *\
+                                  broaden_object=broaden_object,\
+                                  dopseudo=dopseudo,\
+                                  docont=docont,\
+                                  dolines=dolines) *\
                                   ionfrac[z1-1]
 
 
