@@ -620,6 +620,30 @@ def initialize():
     if get_new_nei_files=='y':
       download_atomdb_nei_emissivity_files(adbroot, userid, version)
 
+##-------------------------------------------------------------------------------
+def clean_pickle_cache():
+  flist = glob.glob(os.path.expandvars('$ATOMDB/spec*pkl'))
+  if len(flist) == 0:
+    print('No cached pickle files to remove')
+  else:
+    print('Found the following cached auto-generated pickle files:')
+    for f in flist:
+      print(f)
+
+    clean = question("Remove these pickle files?","y",["y","n"])
+    if clean == 'y':
+      try:
+        for f in flist:
+          os.remove(f)
+        print("Files removed. These pickle files will be recreated automatically as required.")
+      except:
+        raise()
+
+
+#-------------------------------------------------------------------------------
+def get_current_database_version():
+  curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
+  return curversion
 #-------------------------------------------------------------------------------
 
 def check_version():
@@ -650,28 +674,31 @@ def check_version():
   userprefs = load_user_prefs()
   userid = userprefs['USERID']
 
-  curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
+  curversion = get_current_database_version()
+  print("Currently using version %s of the AtomDB database"%(curversion))
   if (curversion != newversion):
     ans = question("New version %s is available. Upgrade?"%(newversion),"y",["y","n"])
 
     if ans=="y":
-      get_new_files=question(\
-        "Do you wish to download the emissivity data for these files (recommended)?",\
-        "y",multichoice=["y","n"])
+      switch_version(newversion)
+#      get_new_files=question(\
+#        "Do you wish to download the emissivity data for these files (recommended)?",\
+#        "y",multichoice=["y","n"])
 
 
 
-      if get_new_files=='y':
-        download_atomdb_emissivity_files(adbroot, userid, newversion)
+#      if get_new_files=='y':
+#        download_atomdb_emissivity_files(adbroot, userid, newversion)
 
-      get_new_nei_files=question(\
-        "Do you wish to download the non-equilibrium emissivity data for these files (recommended)?",\
-        "y",multichoice=["y","n"])
+#      get_new_nei_files=question(\
+#        "Do you wish to download the non-equilibrium emissivity data for these files (recommended)?",\
+#        "y",multichoice=["y","n"])
 
-      if get_new_nei_files=='y':
-        download_atomdb_nei_emissivity_files(adbroot, userid, newversion)
+#      if get_new_nei_files=='y':
+#        download_atomdb_nei_emissivity_files(adbroot, userid, newversion)
   else:
-    print("Current version %s is up to date" %(curversion))
+    print("Current version %s is up to date." %(curversion))
+    print("If you wish to force a re-download of the AtomDB files, use switch_version('%s', force=True)." %(curversion))
 
   # now update the time the last version check happened.
   userprefs['LASTVERSIONCHECK'] = time.time()
@@ -720,7 +747,7 @@ def switch_version(version, force=False):
     return
 
   # check current version
-  curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
+  curversion = get_current_database_version()
 
   if curversion == version:
     if not(force):
@@ -3033,7 +3060,7 @@ def generate_isis_files(version='', outfile='atomdb_VERSION_lineid.tar.bz2'):
   import re, tarfile
   # get the version number
 
-  curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
+  curversion = get_current_database_version()
 
   if version == '':
     version = curversion
