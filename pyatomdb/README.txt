@@ -267,3 +267,10 @@ Removed debug output erroneously added to spectrum.py calls.
 1.0.3
 March 7th 2025
 Repaired util.py check_version command, along with other bug fixes.
+
+1.0.4
+March 13th 2025
+Improved check_version to print currently used database version.
+Added clean_pickle_cache routine to clean out cache of pickle files
+Changed spectrum Session objects to handle .dopseudo, .docont and .dopickle
+attributes correctly and consistently.
