@@ -830,7 +830,7 @@ def occup_to_config(occup):
   nnext = 1
   for i,j in enumerate(occup):
     if j > 0:
-      s = s+ repr(nnext)+llist[lnext]+repr(j)+' '
+      s = s+ "%i%s%i "%(nnext,llist[lnext],j)
 
     if nnext-lnext==1:
       lnext = 0
