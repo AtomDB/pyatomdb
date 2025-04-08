@@ -274,3 +274,8 @@ Improved check_version to print currently used database version.
 Added clean_pickle_cache routine to clean out cache of pickle files
 Changed spectrum Session objects to handle .dopseudo, .docont and .dopickle
 attributes correctly and consistently.
+
+1.0.5
+April 8th 2025
+Remade and updated examples to work with AtomDB 3.1.X
+Fixed bug with return_spectrum when initial population was specified in K.
