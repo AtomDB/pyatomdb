@@ -204,18 +204,18 @@ def __make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
   if dolines:
     for iZ, Z in enumerate(Zlist):
       # ADD  LINES
-      lspectrum += add_lines(Z, abund[iZ], lldat, ebins, broadening=broadening, broadenunits=broadenunits)
+      lspectrum += __add_lines(Z, abund[iZ], lldat, ebins, broadening=broadening, broadenunits=broadenunits)
 
   if docont | dopseudo:
     for iZ, Z in enumerate(Zlist):
     # ADD  CONTINUUM
-      cspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
+      cspectrum += __make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
                                            binunits='keV', no_coco=not(docont),\
                                            no_pseudo=not(dopseudo))*abund[iZ]
 
   # broaden the continuum if required:
   if broadening:
-    cspectrum = broaden_continuum(ebins, cspectrum, binunits = 'keV', \
+    cspectrum = __broaden_continuum(ebins, cspectrum, binunits = 'keV', \
                       broadening=broadening,\
                       broadenunits=broadenunits)
 
@@ -383,19 +383,19 @@ def __make_ion_spectrum(bins, index, Z,z1, linefile="$ATOMDB/apec_nei_line.fits"
   if dolines:
     # ADD  LINES
     if nei:
-      lspectrum += add_lines(Z, abund, lldat, ebins, broadening=broadening,\
+      lspectrum += __add_lines(Z, abund, lldat, ebins, broadening=broadening,\
                              broadenunits=broadenunits,z1_drv=z1)
     else:
-      lspectrum += add_lines(Z, abund, lldat, ebins,broadening, broadenunits,z1=z1)
+      lspectrum += __add_lines(Z, abund, lldat, ebins,broadening, broadenunits,z1=z1)
 
   if docont:
     # ADD  LINES
     if nei:
-      cspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
+      cspectrum += __make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
                                          ion = z1, binunits=binunits,\
                                          no_pseudo=True)*abund
     else:
-      cspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
+      cspectrum += __make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
                                          ion = 0, binunits=binunits,\
                                          no_pseudo=True)*abund
 
@@ -403,11 +403,11 @@ def __make_ion_spectrum(bins, index, Z,z1, linefile="$ATOMDB/apec_nei_line.fits"
   if dopseudo:
     # ADD  LINES
     if nei:
-      pspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
+      pspectrum += __make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
                                          ion = z1, binunits=binunits, \
                                          no_coco=True)*abund
     else:
-      pspectrum += make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
+      pspectrum += __make_ion_index_continuum(ebins, Z, cocofile=ccdat,\
                                          ion = 0, binunits=binunits, \
                                          no_coco=True)*abund
 
@@ -416,10 +416,10 @@ def __make_ion_spectrum(bins, index, Z,z1, linefile="$ATOMDB/apec_nei_line.fits"
   # broaden the continuum if required:
   if broadening:
 
-    cspectrum = broaden_continuum(ebins, cspectrum, binunits = binunits, \
+    cspectrum = __broaden_continuum(ebins, cspectrum, binunits = binunits, \
                       broadening=broadening,\
                       broadenunits=broadenunits)
-    pspectrum = broaden_continuum(ebins, pspectrum, binunits = binunits, \
+    pspectrum = __broaden_continuum(ebins, pspectrum, binunits = binunits, \
                       broadening=broadening,\
                       broadenunits=broadenunits)
   if dummyfirst:
@@ -733,7 +733,7 @@ def __list_lines(specrange, lldat=False, index=False, linefile=False,\
   else:
     if Te != False:
       # open the file and get the index of nearest block
-      index =  get_index(kT, filename=lldat, \
+      index =  __get_index(kT, filename=lldat, \
               teunits='keV', logscale=True)
     else:
       if not type(lldat) in [pyfits.fitsrec.FITS_rec, numpy.ndarray]:
@@ -948,7 +948,7 @@ def __list_nei_lines(specrange, Te, tau, Te_init=False,  lldat=False, linefile=F
 
     if type(lldat) == pyfits.hdu.hdulist.HDUList:
       # go get the index
-      te_index = get_index(kT, filename=lldat, \
+      te_index = __get_index(kT, filename=lldat, \
               teunits='keV', logscale=True)
       llist = numpy.array(lldat[te_index].data)
     elif type(lldat) == pyfits.hdu.table.BinTableHDU:
@@ -965,7 +965,7 @@ def __list_nei_lines(specrange, Te, tau, Te_init=False,  lldat=False, linefile=F
       print(" not a file. Exiting")
     else:
       lldat = pyfits.open(os.path.expandvars(linefile))
-      te_index = get_index(kT, filename=lldat, \
+      te_index = __get_index(kT, filename=lldat, \
               teunits='keV', logscale=True)
       llist= numpy.array(lldat[te_index].data)
 
@@ -1120,7 +1120,7 @@ def __print_lines(llist, specunits = 'A', do_cfg=False):
           il['UpperLev'],\
           il['LowerLev'])
       if do_cfg:
-        lvdat = pyatomdb.atomdb.get_data(il['Element'],il['Ion'],'LV',\
+        lvdat = atomdb.get_data(il['Element'],il['Ion'],'LV',\
                                          datacache=d)
 
         s+= " %40s %3f %2i %2i"%(lvdat[1].data['ELEC_CONFIG'][il['UpperLev']-1],\
@@ -1216,7 +1216,7 @@ def __make_ion_index_continuum(bins,  element, \
   if fluxunits.lower() in ['ph', 'photon','photons', 'p']:
     ergs = False
   elif fluxunits.lower() in ['erg','ergs']:
-    ergs = true
+    ergs = True
   else:
     print("*** ERROR: unknown units %s for continuum flux. Exiting" %\
           (fluxunits))
@@ -1266,7 +1266,7 @@ def __make_ion_index_continuum(bins,  element, \
 
 
   if (ergs):
-    spectrum[iBin] *= const.ERGperKEV*0.5*(bins[:-1]+bins[1:])
+    spectrum *= const.ERGperKEV*0.5*(bins[:-1]+bins[1:])
 
 
   if (angstrom):
@@ -1403,7 +1403,7 @@ def __broaden_continuum(bins, spectrum, binunits = 'keV', \
     emid = (bins[1:]+bins[:-1])/2
     if broadenunits == 'a':
       # convert to keV
-      broadenvec = emin**2 *broadening/const.HC_IN_KEV_A
+      broadenvec = emid**2 *broadening/const.HC_IN_KEV_A
     else:
       broadenvec = numpy.zeros(len(emid))
       broadenvec[:] = broadening
@@ -1517,7 +1517,7 @@ def __get_effective_area(rmf, arf=False):
     print("ERROR: unknown rmf type, %s"%(repr(type(rmf))))
     return
 
-  ebins_in, ebins_out = get_response_ebins(rmf)
+  ebins_in, ebins_out = _get_response_ebins(rmf)
 
   area = numpy.zeros(len(ebins_in)-1, dtype=float)
 
@@ -2489,7 +2489,7 @@ class CIESession():
       return spectrum
 
     elif self.response_type=='standard':
-      arfdat = self.arf
+#      arfdat = self.arf
 
       ret = spectrum*self.arf
 
@@ -2503,7 +2503,7 @@ class CIESession():
             ret = numpy.zeros(len(self.ebins_out)-1)
       return ret
     elif self.response_type=='sparse':
-      arfdat = self.arf
+      #arfdat = self.arf
       ret = spectrum*self.arf
       ret = (self.rmfmatrix*ret).sum(1)
 
@@ -2860,7 +2860,7 @@ class CIESession():
 
     if specunit.lower()=='kev':
       binwidth = self.ebins_out[1:]-self.ebins_out[:-1]
-      factor = numpy.zeros(len(s), dtype=float)
+      factor = numpy.zeros(len(linelist), dtype=float)
       for i, ss in enumerate(linelist):
         e = const.HC_IN_KEV_A/ss['Lambda']
         if e>self.specbins[-1]:
@@ -3601,7 +3601,7 @@ class CIESession_RS(CIESession):
 
     if specunit.lower()=='kev':
       binwidth = self.ebins_out[1:]-self.ebins_out[:-1]
-      factor = numpy.zeros(len(s), dtype=float)
+      factor = numpy.zeros(len(linelist), dtype=float)
       for i, ss in enumerate(linelist):
         e = const.HC_IN_KEV_A/ss['Lambda']
         if e>self.specbins[-1]:
@@ -4114,7 +4114,7 @@ class _CIESpectrum():
         epslimit =  self.broaden_limit/abund
 
            # go caclulate the spectrum, with broadening as assigned.
-        sss=0.0
+        ss=0.0
 
         if len(ikT) == 1:
           ss = self.spectra[ikT[0]][Z].return_spectrum(self.ebins,\
@@ -4667,7 +4667,7 @@ class _CIESpectrum_RS(_CIESpectrum):
         epslimit =  self.broaden_limit/abund
 
            # go caclulate the spectrum, with broadening as assigned.
-        sss=0.0
+        ss=0.0
 
         if len(ikT) == 1:
           ss = self.spectra[ikT[0]][Z].return_spectrum(self.ebins,\
@@ -5336,7 +5336,7 @@ class _LineData():
           Tb = util.convert_temp(T, 'K','keV')*const.ERG_KEV/(masslist[llist['Element']]*1e3*const.AMUKG)
 
         if velocity_broadening <0:
-          velocitybroadeining = 0.0
+          velocity_broadening = 0.0
           vb=0.0
         else:
           vb = (velocity_broadening * 1e5)**2
@@ -5357,13 +5357,13 @@ class _LineData():
         igood = numpy.where(((elines >= emin) & (eneg < emax))  |\
                   ((elines < emin) & (eplu < emin)))[0]
         spec = numpy.zeros(len(eedges))
-        t0 = time.time()
+#        t0 = time.time()
         for iline in igood:
 
           spec += broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
                            width[iline],eedges)*llist['Epsilon'][iline]
 
-        t1 = time.time()
+#        t1 = time.time()
 #        print("Broadeninging %i lines, in %f seconds"%(len(igood), t1-t0))
         spec = spec[1:]-spec[:-1]
 
@@ -5651,7 +5651,7 @@ class _LineData_RS():
           Tb = util.convert_temp(T, 'K','keV')*const.ERG_KEV/(masslist[llist['Element']]*1e3*const.AMUKG)
 
         if velocity_broadening <0:
-          velocitybroadeining = 0.0
+          velocity_broadening = 0.0
           vb=0.0
         else:
           vb = (velocity_broadening * 1e5)**2
@@ -5677,7 +5677,7 @@ class _LineData_RS():
                   ((elines < emin) & (eplu < emin)))[0]
         spec = numpy.zeros(len(eedges))
 
-        t0 = time.time()
+#        t0 = time.time()
         #print(igood)
 
 
@@ -5836,7 +5836,7 @@ class _LineData_RS():
 
 
 
-        t1 = time.time()
+#        t1 = time.time()
 #        print("Broadeninging %i lines, in %f seconds"%(len(igood), t1-t0))
         spec = spec[1:]-spec[:-1]
         #print(spec)
@@ -5927,7 +5927,7 @@ class _ContinuumData():
 
 
   def return_spec(self, eedges, ebins_checksum = False, docont=True, dopseudo=True):
-    import scipy.integrate
+#    import scipy.integrate
 
 
     # get the checksum for the ebins, if not provided
@@ -6636,7 +6636,7 @@ class _NEISpectrum(_CIESpectrum):
       if abundance[Z]>0.0:
         el.append(Z)
 
-    ionfrac_all = self._calc_ionfrac(kT, tau, init_pop=init_pop, teunit='keV', \
+    ionfrac_all = self._calc_ionfrac(Te, tau, init_pop=init_pop, teunit=teunit, \
                                     freeze_ion_pop = freeze_ion_pop,\
                                     elements = el)
     self.ionfrac = ionfrac_all
@@ -6649,7 +6649,7 @@ class _NEISpectrum(_CIESpectrum):
 
     for i in range(len(ikT)):
 
-      ikTspec = 0.0
+#      ikTspec = 0.0
 
       for Z in elements:
 
@@ -6657,7 +6657,7 @@ class _NEISpectrum(_CIESpectrum):
         if abund > 0:
           ionfrac=ionfrac_all[Z]
 
-          elspec = 0.0
+#          elspec = 0.0
 
           for z1 in range(1, Z+2):
             ionspec = 0.0
@@ -6758,7 +6758,7 @@ class _NEISpectrum(_CIESpectrum):
       Wavelength or Energy of line, depending on specunit
     """
 
-    import collections
+#    import collections
 
     kT = util.convert_temp(Te, teunit, 'keV')
 
@@ -6769,11 +6769,11 @@ class _NEISpectrum(_CIESpectrum):
     #ikT has the 2 nearest temperature indexes
     # f has the fraction for each
 
-    ionfrac_all = self._calc_ionfrac(kT, tau, init_pop=init_pop, teunit='keV', \
+    ionfrac_all = self._calc_ionfrac(Te, tau, init_pop=init_pop, teunit=teunit, \
                                     freeze_ion_pop = freeze_ion_pop,\
                                     elements = [Z])
 
-
+    self.ionfrac = ionfrac_all
     ionfrac = ionfrac_all[Z]
 
     eps = 0.0
@@ -6871,7 +6871,7 @@ class _NEISpectrum(_CIESpectrum):
       for Z in elements:
         abundance[Z] = 1.0
 
-    totspec = 0.0
+#    totspec = 0.0
 
     # only do the elements where abundance > 0
     el = []
@@ -6879,10 +6879,10 @@ class _NEISpectrum(_CIESpectrum):
       if abundance[Z]>0.0:
         el.append(Z)
 
-    ionfrac_all = self._calc_ionfrac(kT, tau, init_pop=init_pop, teunit='keV', \
+    ionfrac_all = self._calc_ionfrac(Te, tau, init_pop=init_pop, teunit=teunit, \
                                     freeze_ion_pop = freeze_ion_pop,\
                                     elements = el)
-
+    self.ionfrac = ionfrac_all
     if by_ion_drv:
       linelist = numpy.zeros(0, dtype=apec.generate_datatypes('linelist_nei_spectrum'))
 
@@ -7579,7 +7579,7 @@ class _PShockSpectrum(_NEISpectrum):
           ionfractmp[i,:]*=weight[i]
 
         ionfrac[Z] = numpy.sum(ionfractmp,0)
-        elspec = 0.0
+#        elspec = 0.0
 
     return ionfrac
 
@@ -7655,7 +7655,10 @@ class _PShockSpectrum(_NEISpectrum):
 
     totspec = 0.0
 
-    ionfrac_all = self._calc_ionfrac(kT, tau_u, tau_l=tau_l, init_pop=init_pop, teunit=teunit, freeze_ion_pop=freeze_ion_pop, elements=elements)
+
+    ionfrac_all = self._calc_ionfrac(Te, tau_u, tau_l=tau_l, init_pop=init_pop, 
+                                     teunit=teunit, freeze_ion_pop=freeze_ion_pop,
+                                     elements=elements)
 
     for Z in elements:
 
@@ -7779,7 +7782,7 @@ class _PShockSpectrum(_NEISpectrum):
       Wavelength or Energy of line, depending on specunit
     """
 
-    import collections
+#    import collections
 
     kT = util.convert_temp(Te, teunit, 'keV')
 
@@ -7790,7 +7793,7 @@ class _PShockSpectrum(_NEISpectrum):
     #ikT has the 2 nearest temperature indexes
     # f has the fraction for each
 
-    ionfrac_all = self._calc_ionfrac(kT, tau_u, tau_l=tau_l, init_pop=init_pop, teunit='keV', \
+    ionfrac_all = self._calc_ionfrac(Te, tau_u, tau_l=tau_l, init_pop=init_pop, teunit=teunit, \
                                     freeze_ion_pop = freeze_ion_pop,\
                                     elements = [Z])
 
@@ -7897,14 +7900,14 @@ class _PShockSpectrum(_NEISpectrum):
       for Z in elements:
         abundance[Z] = 1.0
 
-    totspec = 0.0
+#    totspec = 0.0
 
     # only do the elements where abundance > 0
     el = []
     for Z in elements:
       if abundance[Z]>0.0:
         el.append(Z)
-    ionfrac_all = self._calc_ionfrac(kT, tau_u, tau_l=tau_l, init_pop=init_pop, teunit='keV', \
+    ionfrac_all = self._calc_ionfrac(Te, tau_u, tau_l=tau_l, init_pop=init_pop, teunit=teunit, \
                                     freeze_ion_pop = freeze_ion_pop,\
                                     elements = el)
 
@@ -7957,7 +7960,7 @@ class _PShockSpectrum(_NEISpectrum):
             # only 1 temperature
 
             # get the linelist
-            llist = self.spectra[ikT[0]][Z][z1].return_linelist(specrange,\
+            llist = self.spectra[ikT[0]][Z][z1_drv].return_linelist(specrange,\
                                      teunit='keV', specunit=specunit)
 
             # correct for ion fraction
