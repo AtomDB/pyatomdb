@@ -279,3 +279,4 @@ attributes correctly and consistently.
 April 8th 2025
 Remade and updated examples to work with AtomDB 3.1.X
 Fixed bug with return_spectrum when initial population was specified in K.
+Finally purged all use of pycurl

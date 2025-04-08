@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 dynamic = ["version"]
 name = 'pyatomdb'
-dependencies = ["numpydoc", "requests", "wget", "numpy>=1.9.0", "scipy>=1.9.0", "joblib", "mock", "astropy", "pycurl"]
+dependencies = ["numpydoc", "requests", "wget", "numpy>=1.9.0", "scipy>=1.9.0", "joblib", "mock", "astropy"]
 authors = [
   {name = "Adam Foster", email = "afoster@cfa.harvard.edu"}
 ]
