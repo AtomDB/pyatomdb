@@ -95,6 +95,21 @@ By default, line broadening is off. The command ``session.set_broadening`` allow
 
     A kT=3.0keV spectrum unbroadened, thermally broadened and then additionally velocity broadend.
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Line Broadening of Weak Lines
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When line broadening is enabled, it by default only broadens lines with an emissivity :math:`>10^{-18}` :math:`ph ~ cm^3 s^{-1}`. This can sometimes lead to "spikes" in the spectrum. This can be changed by adjusting the ``broaden_limit`` parameter when calling ``session.set_broadening``, as shown below.
+
+.. literalinclude:: ../examples/spectrum_session_examples_2b.py
+
+.. figure:: ../examples/spectrum_session_examples_2b_1.svg
+    :align: center
+    :alt: Spectrum Example 2b
+    :figclass: align-center
+
+    A kT=10.0keV spectrum unbroadened, thermally and velocity broadend, and then with the limit lowered so weak features are also broadened.
+
 ~~~~~~~~~~~~~~~~~~~
 Changing Abundances
 ~~~~~~~~~~~~~~~~~~~
