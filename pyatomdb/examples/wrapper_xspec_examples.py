@@ -1,3 +1,8 @@
+# temporarily add the wrappers folder to the path
+import sys
+sys.path.append('../wrappers')
+
+
 from apec_xspec import *
 
 # declare a new model

@@ -58,9 +58,21 @@ def calc_power(Zlist, cie, Tlist):
 
         #set all abundances to 1 (I need a full census of electrons in the plasma for e-e brems)
         cie.set_abund(Zlist[1:], 1.0)
-        # turn on e-e bremsstrahlung
-        cie.set_eebrems(True)
-        spec = cie.return_spectrum(kT, dolines=False, docont=False, dopseudo=False)
+        # turn on e-e bremsstrahlung, turn off everything else:
+        cie.dolines    = False # Exclude lines in spectrum
+        cie.docont     = False # Exclude continuum in spectrum
+        cie.dopseudo   = False # Exclude pseudo continuum in spectrum
+        cie.do_eebrems = True # Do electron-electron bremsstrahlung
+
+        spec = cie.return_spectrum(kT)
+
+        # Turn them back on
+	# Turn off eebrems
+        cie.dolines    = True
+        cie.docont     = True
+        cie.dopseudo   = True
+        cie.do_eebrems = False
+
       else:
         # This is everything else, element by element.
 
@@ -68,8 +80,6 @@ def calc_power(Zlist, cie, Tlist):
         cie.set_abund(Zlist[1:], 0.0)
         # turn back on this element
         cie.set_abund(Z, 1.0)
-        # turn off e-e bremsstrahlung (avoid double counting)
-        cie.set_eebrems(False)
 
         spec = cie.return_spectrum(kT)
       # if Z = 1, do the eebrems (only want to calculate this once)

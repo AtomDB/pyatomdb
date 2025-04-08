@@ -171,6 +171,9 @@ def _calc_elem_ionbal(Z, Te, tau=False, init_pop='ionizing', teunit='K',\
 
   One of init_pop or Te_init should be set. If neither is set, assume
   all elements start from neutral.
+  
+  THIS FUNCTION IS PARTIALLY BROKEN WITH MULTI IONIZATION
+  USE calc_full_ionbal instead.
 
 
   Parameters
@@ -253,20 +256,29 @@ def _calc_elem_ionbal(Z, Te, tau=False, init_pop='ionizing', teunit='K',\
                        Z=Z, z1=z1, datacache=datacache, extrap=extrap,\
                        settings=settings, multiion=allowmulti)
 
+    print(Z, z1, tmp)
     ionrate[z1-1]=tmp[0]
     recrate[z1-1]=tmp[1]
     if allowmulti:
        multiionrate.append(tmp[2])
 
+  print(Z)
   # now Rearrange multiionrate, since we know all of these now
   maxionsteps = 0
   if allowmulti:
+    print('MIR', multiionrate)
     for i in multiionrate:
-      maxionsteps = max([maxionsteps, max(i.keys())])
-    mcirate = numpy.zeros((maxionsteps-2, Z), dtype=float)
+      print(i, len(i))
+      if len(i) > 0:
+        maxionsteps = max([maxionsteps, max(i.keys())])
+    print("MAXIONSTEPS", maxionsteps)
+    mcirate = numpy.zeros((maxionsteps-1, Z), dtype=float)
     for ii, i in enumerate(multiionrate):
-      for j in i.keys():
-        mcirate[j-2, ii] = i[j]
+      print('ii', ii, ', i', i)
+      if len(i) > 0:
+        for j in i.keys():
+          print(j, ii, i, mcirate.shape)
+          mcirate[j-2, ii] = i[j]
 
   if cie:
     final_pop = solve_ionbal(ionrate, recrate, multiionrate=mcirate)
@@ -1114,7 +1126,7 @@ def calc_ee_brems(E, T, N):
       def integrand(t):
         return numpy.exp(-1.0*t)/t
       [Ei0[k,],error] = scipy.integrate.quad(integrand,x[k,],\
-                                             numpy.Inf,args=())
+                                             numpy.inf,args=())
       AIIr[k,] = numpy.sum(aII*taoII**(aIIj/8.)*x[k,]**(aIIi))
       BIIr[k,] = numpy.sum(bII*taoII**(bIIj/8.)*x[k,]**(bIIi))
       FCCII[k,] = 1.+numpy.sum(cII*taoII**(cIIj/6.)*x[k,]**(cIIi/8.))
@@ -5580,9 +5592,17 @@ def return_ionbal(Z, Te, init_pop=False, tau=False,\
     return ionbal
 
   else:
-    ionbal = _calc_elem_ionbal(Z, Te, tau=tau, init_pop=init_pop, teunit=teunit,\
-                               extrap=extrap, settings=settings, datacache=datacache,\
-                               allowmulti=allowmulti)
+#    ionbal = _calc_elem_ionbal(Z, Te, tau=tau, init_pop=init_pop, teunit=teunit,\
+                               #extrap=extrap, settings=settings, datacache=datacache,\
+                               #allowmulti=allowmulti)
+    if tau!=False:
+        cie=False
+    else:
+        cie=True
+    ionbal = calc_full_ionbal(Te, tau=tau, init_pop=init_pop, Zlist=[Z], teunit=teunit,\
+                            extrap=extrap, cie=cie, settings=settings, datacache=datacache,\
+                            allowmulti=allowmulti)
+    ionbal=ionbal[Z]
     return ionbal
 
 

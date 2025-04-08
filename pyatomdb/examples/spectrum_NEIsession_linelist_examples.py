@@ -32,7 +32,7 @@ print(llist)
 kTlist = numpy.linspace(0.05,3.0,20)
 
 # get the emissivity as a function of temperature (returned in a dict)
-ldata = sess.return_line_emissivity(kTlist, 8, 7, 7, 1)
+ldata = sess.return_line_emissivity(kTlist, tau, 8, 7, 7, 1)
 
 # print out the data
 for i in range(len(kTlist)):
