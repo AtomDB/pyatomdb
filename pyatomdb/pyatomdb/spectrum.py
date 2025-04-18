@@ -1316,7 +1316,7 @@ def _expand_E_grid(eedges, n,Econt_in_full, cont_in_full):
   cont_tmp = numpy.interp(eedges, Econt_in, cont_in)
   C_all = numpy.append(cont_in, cont_tmp)
 
-  iord = numpy.argsort(E_all)
+  iord = numpy.argsort(E_all, kind="mergesort")
 
   # order the arrays
   E_all = E_all[iord]
