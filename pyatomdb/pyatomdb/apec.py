@@ -5759,6 +5759,8 @@ def _solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, \
       if sum(frac)> 1.0:
         frac = frac/sum(frac)
       frac[0] = 1-sum(frac[1:])
+      frac[frac<0.0] = 0.0
+
       if not(debug):
         frac_out[ikT,itau,:]=frac
 
