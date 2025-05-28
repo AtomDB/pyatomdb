@@ -20,7 +20,7 @@ sess.set_abundset()
 
 
 
-for iabset, abset in enumerate(['Allen', 'AG89', 'GA88', 'Feldman', 'GA10', 'Lodd09', 'AE82']):
+for iabset, abset in enumerate(['Allen', 'AG89', 'GA88', 'Feldman', 'GA10', 'Lodd09']):
 
   # set abundset
   sess.set_abundset(abset)

@@ -1,5 +1,11 @@
+# temporarily add the wrappers folder to the path
+import sys
+sys.path.append('../wrappers')
+
+
 # import relevant models
 # inital import creates rsapec, rsvapec, rsvvapec, analagous to apec, vapec, vvapec but resonance scattered
+
 
 from xspec import *
 import rsapec_xspec

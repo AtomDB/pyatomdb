@@ -17,7 +17,7 @@ Version 0.3 - added RRC generation routines
 Adam Foster August 28th 2015
 """
 
-import os, datetime, numpy, re, time, getpass
+import os, datetime, numpy, re, time
 import urllib.request, urllib.error, urllib.parse
 from . import util, apec, const, atomic, spectrum
 
@@ -243,7 +243,7 @@ def _extract_n(conf_str):
 #  ret['misc'] = numpy.array(misc, dtype='|S160')
 #  ret['misc_type'] = numpy.array(misc_type)
 #
-  return ret
+#  return ret
 
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -316,7 +316,7 @@ def _ea_mazzotta(Te, c, par_type):
     for iy in range(len(y)):
       if (y[iy] < 50.0):
         f1_val = _f1_fcn(y[iy])
-        ea[iy] = 6.69e7 * a * (I_ea/sqrt(T_eV[iy])) * exp(-y[iy]) * \
+        ea[iy] = 6.69e7 * a * (I_ea/numpy.sqrt(T_eV[iy])) * numpy.exp(-y[iy]) * \
              (1.0 + b*f1_val - c[3]*y[iy]*f1_val - \
              c[4]*0.5*(y[iy] - y[iy]*y[iy] + y[iy]*y[iy]*y[iy]*f1_val))
 
@@ -372,7 +372,7 @@ def _ea_mazzotta_iron(T_eV, c):
 #-------------------------------------------------------------------------------
 
 def _rr_shull(Te, c):
-  KBOLTZ = const.KBOLTZ  #keV/K
+#  KBOLTZ = const.KBOLTZ  #keV/K
 
   rr = c[0]* (Te/1e4)**(-c[1])
   return rr
@@ -395,7 +395,8 @@ def _f1_fcn(x):
      9.5733223454,25.6329561486,21.0996530827,3.9584969228])
 
   if sum(x < 0.0 )>0 :
-    errmess("_f1_fcn","Negative values of x not allowed")
+    print("_f1_fcn","Negative values of x not allowed")
+    raise(ValueError)
 
   i = numpy.where(x < 1.0)[0]
   if len(i) > 0:
@@ -629,10 +630,10 @@ def _get_precalc_ionfrac(ionbalfile, Z, te, z1=-1):
 #-------------------------------------------------------------------------------
 
 
-def __get_ionbal(ionbalfile, element, ion=-1):
+def __get_ionbal(ionbalfile, Z, ion=-1):
 
   # ionbalfile : string, location of ionization balance file
-  # element    : int, Z of element (e.g. 6 for carbon)
+  # Z    : int, Z of element (e.g. 6 for carbon)
   # ion        : if provided, z+1 of ion (e.g. 5 for O V, 3 for Ne III)
   #              if omitted, returns ionization balance for all ions of element
   #
@@ -648,7 +649,7 @@ def __get_ionbal(ionbalfile, element, ion=-1):
   if ion ==0:
     print('ion should be in range 1 to Z, in this case '+repr(Z))
     print('return whole element ionization balance in stead')
-  if ion > element + 1:
+  if ion > Z + 1:
     print('ion should be in range 1 to Z, in this case '+repr(Z))
     print('ERROR, returning -1')
     return -1
@@ -668,12 +669,12 @@ def __get_ionbal(ionbalfile, element, ion=-1):
     z_element = a[1].data.field('z_element')[0]
 
     # find the correct column index for the element
-    for j in range(1, element):
+    for j in range(1, Z):
       if j in z_element: i = i + j+1
 
     # if ion specified, find the column for the ion
     if ion <= 0:
-      i = i+numpy.arange(element+1)
+      i = i+numpy.arange(Z+1)
     else:
       i = i + ion-1
 
@@ -694,7 +695,7 @@ def __get_ionbal(ionbalfile, element, ion=-1):
     if a[1].data.field('NZ')[0]==1:
       j = a[1].data.field('indx')[0]
     else:
-      j = numpy.where(z_element==element)[0][0]
+      j = numpy.where(z_element==Z)[0][0]
       j = a[1].data.field('indx')[0][j]
 
 
@@ -702,7 +703,7 @@ def __get_ionbal(ionbalfile, element, ion=-1):
 #      if j in z_element: i = i + j+1
 
     if ion <= 0:
-      i = j+numpy.arange(element+1)
+      i = j+numpy.arange(Z+1)
     else:
       i = j + ion-1
 
@@ -1307,14 +1308,14 @@ def __get_burgess_tully_transition_type(lolev, uplev, Aval):
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 def _get_burgess_tully_extrap(bttype, lolev, uplev, Aval, Tarr, om, TTarg, inf_limit=None):
-  from scipy import interpolate
+  #from scipy import interpolate
   dE = (uplev['energy']-lolev['energy'])/13.6058
   Tarr_ryd = (Tarr*const.KBOLTZ*1000)/13.6058
   TTarg_ryd = (TTarg*const.KBOLTZ*1000)/13.6058
   if dE<1e-10: dE=1e-10
 
   C = 1.5
-  e = 1.0
+  #e = 1.0
   if bttype ==1:
     x = 1 - numpy.log(C)/(numpy.log((Tarr_ryd/dE) +C))
     x = numpy.append(0,x)
@@ -1472,7 +1473,7 @@ def _calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
               om[2]*chi*(1-chi*expint_2) +\
               om[3]*(chi/2.0)*(1-chi*(1-chi*expint_2)) +\
               om[4]*expint_2
-    calc_type = E_UPSILON
+    calc_type = const.E_UPSILON
 
   elif coll_type in [const.CHIANTI_1,\
                      const.CHIANTI_2,\
@@ -1877,7 +1878,7 @@ def _calc_maxwell_rates(coll_type, min_T, max_T, Tarr, \
                                  fill_value=fill_value)(numpy.log(T[it]))
 
       rate_coeff[it] = numpy.exp(tmp)
-    calc_type = E_RATE_COEFF
+    calc_type = const.E_RATE_COEFF
 
 
 
@@ -2230,7 +2231,7 @@ def __calc_kato(coll_type, par, Z, Te):
 #-------------------------------------------------------------------------------
 def _interpolate_ionrec_rate(cidat,Te, force_extrap=False):
   from scipy import interpolate
-  ret = numpy.zeros(len(Te), dtype=float)
+  #ret = numpy.zeros(len(Te), dtype=float)
 #  if ((Te > cidat['max_temp']) |\
 #      (Te < cidat['min_temp'])):
 #    print "Te outside of CI data range: Te = %e, Te_min=%e, Te_max=%e" %\
@@ -2320,7 +2321,7 @@ def _calc_ionrec_ci(cidat, Te, extrap=False, ionpot=False):
     The ionization rate coefficient (cm^3 s^-1)
   """
 
-  from scipy import interpolate
+  #from scipy import interpolate
   from scipy.special import exp1
 
   ci = numpy.zeros(len(Te), dtype=float)
@@ -2378,7 +2379,7 @@ def _calc_ionrec_ci(cidat, Te, extrap=False, ionpot=False):
     elif (cidat['par_type']==const.CI_HAHNMULLERSAVIN):
       # lots to set up here:
       kT = Te[ici] * const.KBOLTZ # in keV
-      index = cidat['ionrec_par'][0]
+#      index = cidat['ionrec_par'][0]
       Eth = cidat['ionrec_par'][1]/1000 # in keV
       t = kT/Eth
       x = 1- ( numpy.log(2)/numpy.log(t+2))
@@ -2538,7 +2539,7 @@ def _calc_ci_urdam(T, ionpot, param):
   a = numpy.array([0.999610841,3.50020361,-0.247885719,0.0100539168,1.39075390e-3,1.84193516,4.64044905])
   r0 = 4.783995473666830e-10   #=2*sqrt(2/pi)*c*1e-18
 
-  ishell = int(param[0])
+  #ishell = int(param[0])
   eion = param[1] # in keV
   kT = T * const.KBOLTZ
 #  print('eion', eion)
@@ -2645,20 +2646,15 @@ def _calc_ea_urdam(T, param):
   import scipy.special
   r0 = 4.783995473666830e-10   #=2*sqrt(2/pi)*c*1e-18
 
-  ishell = int(param[0])
+
   eion = param[1] # in keV
   kT = T * const.KBOLTZ
   y = eion/kT
   lam = eion/const.ME_KEV
-  exp1=scipy.special.exp1(y)
+  #exp1=scipy.special.exp1(y)
   # filter out when y > 200
   yhi = y>200.
   ylo = y<=200.
-  #en1 = numpy.zeros(len(y), dtype=float)
-
-  #en1[ylo] = numpy.exp(y[ylo]) * exp1[ylo]
-  #en1[yhi] = 0.001
-
   #eminusy = numpy.exp(-y)
 
   #m1 = (1/y)* eminusy
@@ -2688,7 +2684,7 @@ def _calc_ea_urdam(T, param):
 #-------------------------------------------------------------------------------
 
 def _calc_ionrec_rr(cidat, Te, extrap=False):
-  from scipy import interpolate
+#  from scipy import interpolate
 
 #  if ((Te < cidat['min_temp']) |(Te > cidat['max_temp'])):
 #    print " RR data is invalid at this temperature, Te=%e, Em_min = %e, Te_max=%e" %\
@@ -2812,7 +2808,7 @@ def _calc_ionrec_rr(cidat, Te, extrap=False):
 
 
 def _calc_ionrec_dr(cidat, Te, extrap=False):
-  from scipy import interpolate
+#  from scipy import interpolate
 
   """
   Calculate the DR rate at temperature Te for a transition cidat
@@ -2921,19 +2917,12 @@ def _calc_ionrec_dr(cidat, Te, extrap=False):
 #-------------------------------------------------------------------------------
 
 def _calc_ionrec_ea(cidat, Te, extrap=False):
-  from scipy import interpolate
+  #from scipy import interpolate
   ea = numpy.zeros(len(Te))
   # set values outside range to NAN
   iea = numpy.where((Te >= cidat['min_temp']) & (Te <= cidat['max_temp']))[0]
   ea[:] = numpy.nan
   ea[iea] = 0.0
-
-
-#  if ((Te < cidat['min_temp']) |(Te > cidat['max_temp'])):
-#    print " EA data is invalid at this temperature, Te=%e, Te_min = %e, Te_max=%e" %\
-#         (Te, cidat['min_temp'],cidat['max_temp'])
-#    ea = 0.0
-#    return ea
 
 
   T_eV = 1.e3*const.KBOLTZ*Te
@@ -3196,13 +3185,13 @@ def get_ionrec_rate(Te_in, irdat_in=False, lvdat_in=False, Te_unit='K', \
 
   for i in ici:
     tmp=get_maxwell_rate(T, irdat, i, lvdat, Te_unit='K', \
-                         lvdatap1=lvdatp1, ionpot = False,\
+                         lvdatap1=lvdatp1, ionpot = ionpot,\
                          force_extrap=extrap)
     ciret += tmp
 
   for i in imci:
     tmp=get_maxwell_rate(T, irdat, i, lvdat, Te_unit='K', \
-                         lvdatap1=lvdatp1, ionpot = False,\
+                         lvdatap1=lvdatp1, ionpot = ionpot,\
                          force_extrap=extrap)
     delta = irdat[1].data['ION_FINAL'][i]-irdat[1].data['ION_INIT'][i]
     if not delta in multiciret.keys():
@@ -3215,7 +3204,7 @@ def get_ionrec_rate(Te_in, irdat_in=False, lvdat_in=False, Te_unit='K', \
 
   for i in iea:
     tmp=get_maxwell_rate(T, irdat, i, lvdat, Te_unit='K', \
-                         lvdatap1=lvdatp1, ionpot = False,\
+                         lvdatap1=lvdatp1, ionpot = ionpot,\
                          force_extrap=extrap)
     earet += tmp
 
@@ -3580,9 +3569,9 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
       upind = cidat['upper_lev']
       loind = cidat['lower_lev']
       if not(lvdata):
-        lvdata = get_data(z,z1,'LV', settings=settings, datacache=datacache)
+        lvdata = get_data(Z,z1,'LV', settings=settings, datacache=datacache)
       if not(lvdatap1):
-        lvdatap1 = get_data(z,z1+1,'LV', settings=settings, datacache=datacache)
+        lvdatap1 = get_data(Z,z1+1,'LV', settings=settings, datacache=datacache)
 
       uplev = lvdatap1[1].data[upind-1]
       lolev = lvdata[1].data[loind-1]
@@ -3624,7 +3613,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                      T[numpy.isnan(ci)])
       if sum(ci[numpy.isfinite(ci)] < 0)>0:
         if not silent:
-          s= "calc_ionrec_rate: CI(%10s -> %10s): negative CI found: =%e->%e:"%\
+          s= "calc_ionrec_rate: CI(%10s -> %10s): negative CI found:"%\
                     (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                      atomic.spectroscopic_name(cidat['element'],cidat['ion_final']))
           for i in  numpy.where(ci[numpy.isfinite(ci)] < 0)[0]:
@@ -3646,7 +3635,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                  T[numpy.isnan(ea)])
     if sum(ea[numpy.isfinite(ea)] < 0)>0:
       if not silent:
-        s= "calc_ionrec_rate: EA(%10s -> %10s): negative EA found: =%e->%e:"%\
+        s= "calc_ionrec_rate: EA(%10s -> %10s): negative EA found:"%\
                 (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                  atomic.spectroscopic_name(cidat['element'],cidat['ion_final']))
         for i in  numpy.where(ea[numpy.isfinite(ea)] < 0)[0]:
@@ -3668,7 +3657,7 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
     if sum(dr[numpy.isfinite(dr)] < 0)>0:
       if not silent:
 
-        s= "calc_ionrec_rate: DR(%10s -> %10s): negative DR found: =%e->%e:"%\
+        s= "calc_ionrec_rate: DR(%10s -> %10s): negative DR found:"%\
                   (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                    atomic.spectroscopic_name(cidat['element'],cidat['ion_final']))
         for i in  numpy.where(dr[numpy.isfinite(dr)] < 0)[0]:
@@ -3686,10 +3675,10 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
                 (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                  atomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
                  cidat['min_temp'], cidat['max_temp']),\
-                 T[numpy.isnan(r)])
+                 T[numpy.isnan(rr)])
     if sum(rr[numpy.isfinite(rr)] < 0)>0:
       if not silent:
-        s= "calc_ionrec_rate: RR(%10s -> %10s): negative RR found: =%e->%e:"%\
+        s= "calc_ionrec_rate: RR(%10s -> %10s): negative RR found:"%\
                   (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
                    atomic.spectroscopic_name(cidat['element'],cidat['ion_final']))
         for i in  numpy.where(rr[numpy.isfinite(rr)] < 0)[0]:
@@ -3706,8 +3695,8 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
       if not silent:
 
         print("calc_ionrec_rate: xr(%10s -> %10s,T=%9.3e) = %8g"%\
-                  (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
-                   adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
+                  (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
+                   atomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
                    Te,xr))
 
     return xr
@@ -3719,8 +3708,8 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
       if not silent:
 
         print("calc_ionrec_rate: xd(%10s -> %10s,T=%9.3e) = %8g"%\
-                  (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
-                   adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
+                  (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
+                   atomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
                    Te,xr))
 
     return xr
@@ -3776,8 +3765,8 @@ def get_maxwell_rate(Te, colldata=False, index=-1, lvdata=False, Te_unit='K', \
       xi = _calc_ionrec_ci(cidat,T, extrap=force_extrap)
       if (xi < 0.0):
         print("calc_ionrec_rate: CI(%10s -> %10s,T=%9.3e) = %8g"%\
-                  (adbatomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
-                   adbatomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
+                  (atomic.spectroscopic_name(cidat['element'],cidat['ion_init']),\
+                   atomic.spectroscopic_name(cidat['element'],cidat['ion_final']),\
                    Te,xi))
         xi=0.0
     return xi
@@ -3814,7 +3803,7 @@ def _sigma_hydrogenic(Z, N,L,  Ein):
 
   n = N
   l = L
-  z = Z
+#  z = Z
   coeff=1.09768e-19
   RYDBERG = 0.013605804
   E = numpy.array(Ein)
@@ -4060,7 +4049,7 @@ def calc_rrc(Z, z1, eedges, Te, lev, xstardat=False, \
       return rrc
 
   rrc_ph_factor = (const.RRC_COEFF/const.ERG_KEV)*gratio/(Te**1.5)
-  rrc_erg_factor = const.RRC_COEFF*gratio/(Te**1.5)
+  #rrc_erg_factor = const.RRC_COEFF*gratio/(Te**1.5)
 
   # TOTAL INTEGRAL
   if returntotal:
@@ -4143,7 +4132,7 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
   tot_rec_rate = 0.0
   rrc = numpy.zeros(len(ebins)-1, dtype=float)
   LevelRecombRate = numpy.zeros(nlev, dtype=float)
-  LevelRecombRate2 = numpy.zeros(nlev, dtype=float)
+ #LevelRecombRate2 = numpy.zeros(nlev, dtype=float)
   binwidth = ebins[1:]-ebins[:-1]
 
   for iLev in range(nlev):
@@ -4233,7 +4222,7 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
 
       continue
     rr_lev_rate = 0.0
-    g_ratio = lev_deg/parent_lev_deg
+#   g_ratio = lev_deg/parent_lev_deg
 
     if ((finlev['phot_type'] != const.NO_PHOT) &\
         (finlev['phot_type'] != const.XSTAR)):
@@ -4241,7 +4230,7 @@ def calc_rad_rec_cont(Z, z1, z1_drv, T, ebins, abund=1.0, ion_pop=1.0, \
               settings=settings, datacache=datacache, returntotal=True)
       tmprrc *= abund*ion_pop*binwidth
 
-      rr_lev_rate = sum(tmprrc)
+#     rr_lev_rate = sum(tmprrc)
 #      print "Calculated RRC for Z %i  z1 %i  iLev %i"%\
 #            (Z, z1, iLev)
 #      for i in range(len(tmprrc)):
@@ -4393,7 +4382,7 @@ def read_filemap(filemap="$ATOMDB/filemap", atomdbroot="$ATOMDB"):
 
   # restore the ATOMDB variable
   os.environ['ATOMDB']=os.environ['OLDATOMDB']
-  x=os.environ.pop('OLDATOMDB')
+  #x=os.environ.pop('OLDATOMDB')
   f.close()
   return ret
 
@@ -6465,7 +6454,7 @@ def __get_lorentz_levpop(Z,z1,up,lo, Te, Ne, version, linelabel):
       drlevrates *=ionpop*abund
 
     else:
-      linelist_dr = numpy.zeros(0, dtype= generate_datatypes(linetype))
+      linelist_dr = numpy.zeros(0, dtype= apec.generate_datatypes('linetype'))
       drlevrates = 0.0
     print("drlevrates")
     print(drlevrates)

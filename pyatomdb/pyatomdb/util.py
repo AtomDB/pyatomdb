@@ -536,7 +536,6 @@ def initialize():
   None
 
   """
-  import curl
 
   if 'ATOMDB' in os.environ:
     adbroot_init = os.environ['ATOMDB']
@@ -592,10 +591,9 @@ def initialize():
     print("...done")
 
     print("finding current version of AtomDB. ", end=' ')
-    a=curl.Curl()
-    version=a.get('%s/releases/LATEST'%(const.FTPPATH))[:-1].decode(encoding='ascii')
+    
+    version=urllib.request.urlopen('%s/releases/LATEST'%(const.FTPPATH)).read().decode('ascii')[:-1]
 
-    a.close()
 
 #    ftp = ftplib.FTP('sao-ftp.harvard.edu')
 #    x = ftp.login()
@@ -659,17 +657,13 @@ def check_version():
   None
 
   """
-  import curl
   try:
     adbroot = os.environ['ATOMDB']
   except KeyError:
     print("You must set the ATOMDB environment variable for this to work!")
     raise
 
-  a=curl.Curl()
-  newversion=a.get('%s/releases/LATEST'%(const.FTPPATH))[:-1].decode(encoding='ascii')
-
-  a.close()
+  newversion=urllib.request.urlopen('%s/releases/LATEST'%(const.FTPPATH)).read().decode('ascii')[:-1]
 
   userprefs = load_user_prefs()
   userid = userprefs['USERID']
@@ -681,21 +675,6 @@ def check_version():
 
     if ans=="y":
       switch_version(newversion)
-#      get_new_files=question(\
-#        "Do you wish to download the emissivity data for these files (recommended)?",\
-#        "y",multichoice=["y","n"])
-
-
-
-#      if get_new_files=='y':
-#        download_atomdb_emissivity_files(adbroot, userid, newversion)
-
-#      get_new_nei_files=question(\
-#        "Do you wish to download the non-equilibrium emissivity data for these files (recommended)?",\
-#        "y",multichoice=["y","n"])
-
-#      if get_new_nei_files=='y':
-#        download_atomdb_nei_emissivity_files(adbroot, userid, newversion)
   else:
     print("Current version %s is up to date." %(curversion))
     print("If you wish to force a re-download of the AtomDB files, use switch_version('%s', force=True)." %(curversion))

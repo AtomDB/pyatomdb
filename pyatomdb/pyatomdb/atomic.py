@@ -82,10 +82,10 @@ def Ztoelsymb(Z) :
           'Pa', 'U')
 
   if Z < 1 :
-      print("Z must be between 1 and 92. You have given Z= " + repr(z0))
+      print("Z must be between 1 and 92. You have given Z= " + repr(Z))
       ret=-1
   elif Z > 92 :
-      print("Z must be between 1 and 92. You have given Z= " + repr(z0))
+      print("Z must be between 1 and 92. You have given Z= " + repr(Z))
       ret=-1
   else :
       ret=elsymb[Z-1]
@@ -160,7 +160,7 @@ def z0toelname(z0):
 #  Adam Foster
 #
 
-  ret = Ztoelname(Z)
+  ret = Ztoelname(z0)
   return ret
 
 def Ztoelname(Z):
