@@ -2271,37 +2271,6 @@ class CIESession():
 
         chanoffset = self.rmf['EBOUNDS'].data['CHANNEL'][0]
 
-        # ERROR CHECK FOR LEM RMF Files
-        #
-        # Somehow these files are indexed from both 1 and zero.
-        # Check will be to look at the minimum and maximum channels
-        # requested, if they are > channoffset, issue a warning, but continue
-        #
-        # Hopefully check can be removed someday...
-        # ARF 2024-04-15 <- date added for posterity to see when "someday" occurs...
-
-        min_bin = numpy.zeros(len(self.rmf[matrixname].data), dtype=int)
-        max_bin = numpy.zeros(len(self.rmf[matrixname].data), dtype=int)
-
-        for i in range(len(self.rmf[matrixname].data)):
-           min_bin[i] = numpy.min(self.rmf[matrixname].data['F_CHAN'][i])
-           max_bin[i] = numpy.max(self.rmf[matrixname].data['F_CHAN'][i]+self.rmf[matrixname].data['N_CHAN'][i])-1
-
-        min_bin = min_bin.min()
-        max_bin = max_bin.max()
-
-        if max_bin > max(self.rmf['EBOUNDS'].data['CHANNEL']):
-          if ((min_bin > 0) & (chanoffset==0)):
-            # RAISE A WARNING
-            warnings.warn("Using an rmf file with inconsistent E_BOUNDS and F_CHAN indexing. Continuing, but check your RMF file.", RuntimeWarning)
-
-            # hack is to set chanoffset back to zero
-            chanoffset = min_bin
-
-        # END LEM Error Check fix
-
-
-
         for ibin, i in enumerate(self.rmf[matrixname].data):
           lobound = 0
           for ngrp in range(i['N_GRP']):
@@ -3284,14 +3253,21 @@ class CIESession_RS(CIESession):
     f_osc = os.path.expandvars(oscfile)
 #    atomdb_path = os.path.expandvars("$ATOMDB")
 
+    import bz2
 
     if not os.path.exists(f_osc):
       curversion = open(os.path.expandvars('$ATOMDB/VERSION'),'r').read()[:-1]
       fname = f_osc.split('/')[-1]
       f = fname.split('_')
       fname = f[0]+'_v'+curversion+'_'+f[1]
-      url =  const.FTPPATH+'/releases/'+fname
+      url =  const.FTPPATH+'/releases/'+fname+'.bz2'
+
       wget.download(url, out=os.path.expandvars("$ATOMDB"))
+      with bz2.open(os.path.expandvars("$ATOMDB/"+fname+".bz2"), "rb") as f:
+        content = f.read()
+        o = open(os.path.expandvars("$ATOMDB/"+fname),'wb')
+        o.write(content)
+        o.close()
 
       os.symlink(os.path.expandvars("$ATOMDB/"+fname), os.path.expandvars("$ATOMDB/apec_osc.fits"))
 
@@ -4569,24 +4545,62 @@ class _CIESpectrum_RS(_CIESpectrum):
       self.spectra[ihdu]={}
       self.spectra[ihdu]['kT'] = self.kTlist[ihdu]
       ldat = numpy.array(linedata[ihdu+2].data.data)
-      cdat = numpy.array(cocodata[ihdu+2].data.data)
+      cdat = cocodata[ihdu+2].data
 
       Zarr = numpy.zeros([len(ldat), const.MAXZ_CIE+1], dtype=bool)
       Zarr[numpy.arange(len(ldat), dtype=int), ldat['Element']]=True
 
 
-      for Z in range(1,const.MAXZ_CIE+1):
-        ccdat = cdat[(cdat['Z']==Z) & (cdat['rmJ']==0)]
+#      for Z in range(1,const.MAXZ_CIE+1):
+#        ccdat = cdat[(cdat['Z']==Z) & (cdat['rmJ']==0)]
 
-        if len(ccdat)==1:
-          c = ccdat[0]
+#        if len(ccdat)==1:
+#          c = ccdat[0]
+#        else:
+#          c = False
+
+
+#        self.spectra[ihdu][Z]=_ElementSpectrum_RS(ldat[Zarr[:,Z]],\
+                                              #c, \
+                                              #Z)
+
+
+
+      for Z in range(1,const.MAXZ_NEI+1):
+
+        if not Z in self.spectra[ihdu].keys():
+          self.spectra[ihdu][Z] = {}
+
+        icdat = numpy.where((cdat['Z']==Z) & (cdat['rmJ']==0))[0]
+
+        if len(icdat)==0:
+          ccdat = [False]
         else:
-          c = False
+          ccdat=[cdat[icdat[0]]]
+            # this format is very tempremental and space inefficient. Make into a numpy array
+          ccdat = numpy.zeros(1, dtype = apec.generate_datatypes('continuum', \
+                              npseudo=cdat[icdat[0]]['N_Pseudo'], \
+                              ncontinuum=cdat[icdat[0]]['N_Cont']))
+          ccdat['Z'] = cdat[icdat[0]]['Z']
+          ccdat['rmJ'] = cdat[icdat[0]]['rmJ']
+          ccdat['N_Cont'] = cdat[icdat[0]]['N_Cont']
+          ccdat['N_Pseudo'] = cdat[icdat[0]]['N_Pseudo']
+          ccdat['E_Pseudo'] = cdat[icdat[0]]['E_Pseudo'][:ccdat['N_Pseudo'][0]]
+          ccdat['Pseudo'] = cdat[icdat[0]]['Pseudo'][:ccdat['N_Pseudo'][0]]
+          ccdat['E_Cont'] = cdat[icdat[0]]['E_Cont'][:ccdat['N_Cont'][0]]
+          ccdat['Continuum'] = cdat[icdat[0]]['Continuum'][:ccdat['N_Cont'][0]]
 
 
         self.spectra[ihdu][Z]=_ElementSpectrum_RS(ldat[Zarr[:,Z]],\
-                                              c, \
-                                              Z)
+                                                ccdat[0], Z)
+
+
+
+
+
+
+
+
 
     pickle.dump(self.spectra, open(picklefname,'wb'))
 
@@ -7447,7 +7461,6 @@ class _PShockSpectrum(_NEISpectrum):
 
 
         Zarr = numpy.zeros([len(ldat), const.MAXZ_NEI+1], dtype=bool)
-        print(util.unique(ldat['Element']))
         Zarr[numpy.arange(len(ldat), dtype=int), ldat['Element']]=True
 
 
@@ -7656,7 +7669,7 @@ class _PShockSpectrum(_NEISpectrum):
     totspec = 0.0
 
 
-    ionfrac_all = self._calc_ionfrac(Te, tau_u, tau_l=tau_l, init_pop=init_pop, 
+    ionfrac_all = self._calc_ionfrac(Te, tau_u, tau_l=tau_l, init_pop=init_pop,
                                      teunit=teunit, freeze_ion_pop=freeze_ion_pop,
                                      elements=elements)
 
