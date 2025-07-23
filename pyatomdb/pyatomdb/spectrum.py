@@ -7539,7 +7539,8 @@ class _PShockSpectrum(_NEISpectrum):
       for Z in elements:
         init_pop_calc[Z] = apec.return_ionbal(Z, kT_init, \
                                             teunit='keV', \
-                                            datacache=self.datacache)
+                                            datacache=self.datacache,\
+                                            filename=self.ionbalfile)
     elif isinstance(init_pop, dict):
       for Z in elements:
         init_pop_calc[Z] = init_pop[Z]
@@ -7587,7 +7588,7 @@ class _PShockSpectrum(_NEISpectrum):
 
         ionfractmp = apec.return_ionbal(Z,kT,init_pop = init_pop_calc[Z],\
                                              tau = taulist,teunit='keV', \
-                                            datacache=self.datacache)
+                                            datacache=self.datacache, filename=self.ionbalfile)
         for i in range(nzones):
           ionfractmp[i,:]*=weight[i]
 
@@ -7673,6 +7674,7 @@ class _PShockSpectrum(_NEISpectrum):
                                      teunit=teunit, freeze_ion_pop=freeze_ion_pop,
                                      elements=elements)
 
+    self.ionfrac=ionfrac_all
     for Z in elements:
 
       abund = abundance[Z]

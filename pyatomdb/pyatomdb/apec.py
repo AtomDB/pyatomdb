@@ -5655,7 +5655,7 @@ def _solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, \
       init_pop_calc=False
 
     else:
-      raise ValueError("Error: tau should be False, a float, or an array of floats. Received "+repr(Tau))
+      raise ValueError("Error: tau should be False, a float, or an array of floats. Received "+repr(tau))
   else:
     cie = False
 
@@ -5676,6 +5676,7 @@ def _solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, \
       kT_init = util.convert_temp(init_pop, teunit, 'keV')
       init_pop_calc = return_ionbal(Z, kT_init, \
                                             teunit='keV', \
+                                            filename=filename,\
                                             datacache=datacache,fast=True)
 
 
@@ -5691,11 +5692,15 @@ def _solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, \
 
   if util.keyword_check(filename):
     # we have a filename specified!
-    fname = os.path.expandvars(filename)
-    if not os.path.isfile(fname):
-      print("Specified file %s does not exist. Exiting"%(fname))
-      return
-    d = pyfits.open(fname)
+    if type(filename)==str:
+      fname = os.path.expandvars(filename)
+      if not os.path.isfile(fname):
+        print("Specified file %s does not exist. Exiting"%(fname))
+        return
+      d = pyfits.open(fname)
+    else:
+      d = filename
+    
   else:
     d = atomdb.get_data(Z, False, 'eigen', datacache=datacache)
   telist = numpy.logspace(4,9,1251)
