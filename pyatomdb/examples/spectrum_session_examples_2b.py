@@ -27,7 +27,10 @@ spec = sess.return_spectrum(kT)
 # need to add this to the end.
 spec = numpy.append(0, spec)
 
-# Returned spectrum has units of photons cm^5 s^-1 bin^-1
+# Returned spectrum has units of photons cm^3 s^-1 bin^-1
+# We assume an instrument with effective area=1cm^2 to allow
+# comparison with other instruments, so units become photons cm^5 s^-1 bin^-1
+
 fig = pylab.figure()
 fig.show()
 ax = fig.add_subplot(111)

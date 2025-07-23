@@ -25,7 +25,7 @@ ax= fig.add_subplot(111)
 ax.semilogy(ldata['Te'], ldata['epsilon'])
 
 ax.set_xlabel("Temperature (keV)")
-ax.set_ylabel("Epsilon ph cm$^3$ s$^{-1}$")
+ax.set_ylabel("Epsilon ph cm$^5$ s$^{-1}$")
 
 pylab.draw()
 zzz=input("Press enter to continue")

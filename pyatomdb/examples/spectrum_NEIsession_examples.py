@@ -24,8 +24,12 @@ kT_init=0.01 # initial temperature (for initial ion distribution)
 
 spec = sess.return_spectrum(kT, tau, init_pop=kT_init)
 
-# note returned spectrum has units of photons cm^5 s^-1 bin^-1, and  has 1 less
-# value than the energy bin grid. Prepend a 0 to it for plotting purposes
+# note returned spectrum has units of photons cm^3 s^-1 bin^-1.
+# Assume an area of 1cm^2 to make units photons cm^5 s^-1 bin^-1
+#
+# Spectrum has 1 less value than the energy bin grid. 
+# Prepend a 0 to it for plotting purposes
+
 fig = pylab.figure()
 fig.show()
 ax = fig.add_subplot(111)
@@ -33,7 +37,7 @@ ax.plot(sess.ebins_out, numpy.append(0, spec), drawstyle='steps', label='dummy r
 
 #label the figure
 ax.set_xlabel('Energy (keV)')
-ax.set_ylabel('Intensity (ph cm$^3$ s$^{-1}$ bin$^{-1}$)')
+ax.set_ylabel('Intensity (ph cm$^5$ s$^{-1}$ bin$^{-1}$)')
 
 # now do the same thing but with an instrument response
 sess.set_response('../tests/testdata/aciss_heg1_cy19.grmf', \

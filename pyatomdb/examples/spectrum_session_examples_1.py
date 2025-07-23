@@ -23,7 +23,10 @@ spec = sess.return_spectrum(kT)
 # need to add this to the end.
 spec = numpy.append(0, spec)
 
-# Returned spectrum has units of photons cm^5 s^-1 bin^-1
+# Returned spectrum has units of photons cm^3 s^-1 bin^-1
+# If you want to assume an instrument with effective area=1cm^2 then 
+# that becomes photons cm^5 s^-1 bin^-1
+
 fig = pylab.figure()
 fig.show()
 ax = fig.add_subplot(211)
@@ -31,7 +34,7 @@ ax.plot(sess.ebins_out, spec, drawstyle='steps', label='dummy response')
 
 # label the figure
 ax.set_xlabel('Energy (keV)')
-ax.set_ylabel('Intensity (ph cm$^5$ s$^{-1}$ bin$^{-1}$)')
+ax.set_ylabel('Intensity (ph cm$^3$ s$^{-1}$ bin$^{-1}$)')
 
 # zoom in a bit
 #ax.set_xlim([0.8,0.85])
@@ -39,6 +42,7 @@ ax.set_ylabel('Intensity (ph cm$^5$ s$^{-1}$ bin$^{-1}$)')
 # make plot appear
 
 # now repeat the process with a real response
+# as a response has been added, the indexes 
 # set response
 sess.set_response('aciss_meg1_cy22.grmf', arf = 'aciss_meg1_cy22.garf')
 
