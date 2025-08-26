@@ -1832,7 +1832,7 @@ class CIESession():
   Turn on thermal broadening
 
   >>> s.set_broadening(True)
-  Will thermally broaden lines with emissivity > 1.000000e-18 ph cm3 s-1
+  Will thermally broaden lines with emissivity > 1.000000e-20 ph cm3 s-1
 
   Return spectrum at 1.0keV
 
@@ -1972,7 +1972,7 @@ class CIESession():
     None
     """
 
-    self.set_broadening(False, broaden_limit=1e-18)
+    self.set_broadening(False, broaden_limit=1e-20)
     self.cdf = _Gaussian_CDF()
 
 
@@ -3204,7 +3204,7 @@ class CIESession_RS(CIESession):
   Turn on thermal broadening
 
   >>> cie_rs.set_broadening(True)
-  Will thermally broaden lines with emissivity > 1.000000e-18 ph cm3 s-1
+  Will thermally broaden lines with emissivity > 1.000000e-20 ph cm3 s-1
 
   Specify abundance
 
@@ -5245,7 +5245,7 @@ class _LineData():
   def return_spec(self, eedges, T, ebins_checksum = False,\
                   thermal_broadening = False, \
                   velocity_broadening = 0.0, \
-                  broaden_limit = 1e-18,\
+                  broaden_limit = 1e-20,\
                   broaden_object=False):
     """
     return the line emission spectrum at tempterature T
@@ -5477,7 +5477,7 @@ class _LineData_RS():
   def return_spec(self, eedges, T, N_e, Ab, ebins_checksum = False,\
                   thermal_broadening = True, \
                   velocity_broadening = 0.0, \
-                  broaden_limit = 1e-18,\
+                  broaden_limit = 1e-20,\
                   broaden_object=False):
     """
     return the line emission spectrum at tempterature T
@@ -6068,7 +6068,7 @@ class NEISession(CIESession):
   Turn on thermal broadening
 
   >>> s.set_broadening(True)
-  Will thermally broaden lines with emissivity > 1.000000e-18 ph cm3 s-1
+  Will thermally broaden lines with emissivity > 1.000000e-20 ph cm3 s-1
 
   Return spectrum at 1.0keV, Ne *t = 1e11 cm^-3 s
 
@@ -7049,7 +7049,7 @@ class PShockSession(NEISession):
   Turn on thermal broadening
 
   >>> s.set_broadening(True)
-  Will thermally broaden lines with emissivity > 1.000000e-18 ph cm3 s-1
+  Will thermally broaden lines with emissivity > 1.000000e-20 ph cm3 s-1
 
   Return spectrum at 1.0keV, Tau_u = 1e11, Tau_l = 0.0 (default)
 
@@ -7129,7 +7129,7 @@ class PShockSession(NEISession):
     # self.dolines=True # Include lines in spectrum
     # self.docont=True # Include continuum in spectrum
     # self.dopseudo=True # Include pseudo continuum in spectrum
-    # self.set_broadening(False, broaden_limit=1e-18)
+    # self.set_broadening(False, broaden_limit=1e-20)
     # self.cdf = _Gaussian_CDF()
 
 
