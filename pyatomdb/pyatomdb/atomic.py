@@ -470,7 +470,7 @@ def occup_to_cfg(occlist) :
     else:
       l += 1
     if (i > 0):
-      cfgstr = cfgstr+' '+repr(n)+llist[l]+repr(i)
+      cfgstr = cfgstr+' %i%s%i'%(n,llist[l],i)
 
 # return minus leading blank
 
@@ -675,7 +675,7 @@ def Z_to_mass(Z, raw = False):
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 
-def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
+def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1], nonly=False):
 
   if len(cfgstr)==0:
     cfgstr = '1s2'
@@ -812,6 +812,27 @@ def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1]):
 
         nel_tot = sum(occup[i])
 
+
+  if nonly:
+    # we only want this n-shell resolved, so do some summing!
+    nmax = 1
+    nshl = 1
+    while nshl < len(occup):
+      nmax+=1
+      nshl+=nmax
+    # now we know how many n shells there are, populate them
+    onew = numpy.zeros(nshl, dtype=int)
+    j = 0
+    n=1
+    itrack=0
+    for i in range(len(occup)):
+      onew[j] +=occup[i]
+      itrack+=1
+      if itrack==n:
+        j+=1
+        n+=1
+        itrack=0
+    occup = onew
 
   if ((nel > 0) & (sum(occup) != nel)):
     return occup,False
