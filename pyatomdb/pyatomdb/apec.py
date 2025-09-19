@@ -1490,7 +1490,7 @@ def run_apec(fname):
       LHDUdat.header['HDUCLAS2']=("LINE",\
                              'Emission line data')
       if settings['Ionization']=='CIE':
-        LHDUdat.header['HDUVERS1']=("1.0.0",\
+        LHDUdat.header['HDUVERS1']=("1.1.0",\
                                'version of format')
       elif settings['Ionization']=='NEI':
         LHDUdat.header['HDUVERS1']=("2.0.0",\
@@ -1538,7 +1538,7 @@ def run_apec(fname):
                              'Compressed continua spectra')
       CHDUdat.header['HDUCLAS2']=("COCO",\
                              'Compressed continuum data')
-      CHDUdat.header['HDUVERS1']=("1.0.0",\
+      CHDUdat.header['HDUVERS1']=("2.0.0",\
                              'version of format')
       CHDUdat.header['TEMPERATURE']=(te,\
                              'Electron temperature')
