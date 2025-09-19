@@ -519,7 +519,7 @@ def write_user_prefs(prefs, adbroot="$ATOMDB"):
 
 #-------------------------------------------------------------------------------
 
-def initialize():
+def initialize(default_answer=''):
   """
   Initialize your AtomDB Setup
 
@@ -541,10 +541,12 @@ def initialize():
     adbroot_init = os.environ['ATOMDB']
   else:
     adbroot_init = os.path.expandvars("$HOME/atomdb")
-  adbroot = question("Location to install AtomDB files",\
-                          adbroot_init)
-
-  anondat = ''
+  if default_answer !='yes':
+    adbroot = question("Location to install AtomDB files",\
+                            adbroot_init)
+  else:  
+    adbroot=adbroot_init
+  anondat = default_answer
   while not anondat in ['yes','no']:
     anondat = question("Allow reporting of anonymous usage statistics","yes",multichoice=["yes","no","info"])
     if anondat=='info':
@@ -559,13 +561,16 @@ def initialize():
   print("Transmit anonymous user data: %s"%(anondat))
   print("Randomly generated userid: %s"%(userid))
 
-  proceed = question("Is this ok?","y",\
-                          multichoice=["y","n"])
+  if default_answer!='yes':
+    proceed = question("Is this ok?","y",\
+                            multichoice=["y","n"])
+  else:
+    proceed='y'
 
   if proceed == 'n':
     print("Aborting")
     return
-
+      
   if proceed == 'y':
 
     print("Temporarily setting $ATOMDB environment variable to %s."%(adbroot), end=' ')
@@ -604,17 +609,23 @@ def initialize():
 #    x = ftp.quit()
     print("Latest version is %s"%(version))
 
-    get_new_files=question(\
-      "Do you wish to download the emissivity data for these files (recommended)?",\
-      "y",multichoice=["y","n"])
+    if default_answer!='yes':
+      get_new_files=question(\
+        "Do you wish to download the emissivity data for these files (recommended)?",\
+        "y",multichoice=["y","n"])
+    else:
+      get_new_files='y'
 
     if get_new_files=='y':
       download_atomdb_emissivity_files(adbroot, userid, version)
 
-    get_new_nei_files=question(\
-      "Do you wish to download the non-equilibrium emissivity data for these files (recommended)?",\
-      "y",multichoice=["y","n"])
+    if default_answer!='yes':
+      get_new_nei_files=question(\
+        "Do you wish to download the non-equilibrium emissivity data for these files (recommended)?",\
+        "y",multichoice=["y","n"])
 
+    else:
+      get_new_nei_files='y'
     if get_new_nei_files=='y':
       download_atomdb_nei_emissivity_files(adbroot, userid, version)
 
@@ -726,12 +737,15 @@ def switch_version(version, force=False):
     return
 
   # check current version
-  curversion = get_current_database_version()
+  try:
+    curversion = get_current_database_version()
 
-  if curversion == version:
-    if not(force):
-      print("Already using version %s. Not changing anything!" %(version))
-      return
+    if curversion == version:
+      if not(force):
+        print("Already using version %s. Not changing anything!" %(version))
+        return
+  except:
+    pass
 
   # ok, otherwise we must do things!
   startdir = os.getcwd()
@@ -864,10 +878,12 @@ def switch_version(version, force=False):
   # OK, download complete. Now to make symlinks
 
   flistlist = ['apec_vVERSION_line.fits', 'apec_vVERSION_coco.fits',\
-                'filemap_vVERSION', 'apec_vVERSION_linelist.fits']
+                'filemap_vVERSION', 'apec_vVERSION_linelist.fits',\
+		'apec_vVERSION.par']
   if int(version[0]) >=3:
     flistlist.append('apec_vVERSION_nei_line.fits')
     flistlist.append('apec_vVERSION_nei_comp.fits')
+    flistlist.append('apec_vVERSION_nei.par')
 
   for flist in flistlist:
 
@@ -2047,7 +2063,7 @@ def write_dr_file(fname, dat, lvdat = None,overwrite=False):
              array=lvdat['APEDID'])]
            ))
 
-    print('combining HDUs')
+    print('combining HDUs with hud2')
     hdu2.header['EXTNAME']=('DR_LEVELS')
 
     hdulist = pyfits.HDUList([hdu0,hdu1, hdu2])
@@ -2056,7 +2072,7 @@ def write_dr_file(fname, dat, lvdat = None,overwrite=False):
 
 
     # combine hdus
-    print('combining HDUs')
+    print('combining HDUs without hdu2')
     hdulist = pyfits.HDUList([hdu0,hdu1])
 
   # write out file (overwrite any existing file)
