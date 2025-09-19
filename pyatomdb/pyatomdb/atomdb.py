@@ -4952,6 +4952,30 @@ def get_data(Z, z1, ftype, datacache=False, \
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
 
+def purge_datacache(datacache):
+  if len(datacache.keys())==0:
+    datacache={}
+    return(datacache)
+  for k in datacache['data'].keys():
+    for j in datacache['data'][k].keys():
+      if type(datacache['data'][k][j]) == pyfits.hdu.hdulist.HDUList:
+        datacache['data'][k][j].close()
+      else:
+        for i in datacache['data'][k][j].keys():
+          if type(datacache['data'][k][j][i]) == pyfits.hdu.hdulist.HDUList:
+            datacache['data'][k][j][i].close()
+          else:
+            for h in datacache['data'][k][j][i].keys():
+              if type(datacache['data'][k][j][i][h]) == pyfits.hdu.hdulist.HDUList:
+                datacache['data'][k][j][i][h].close()
+              else:
+	      
+                pass
+  datacache={}
+  return(datacache)
+
+        
+
 def __sort_pi_data(pidat, lev_init, lev_final):
   """
   Given the pidat (returned by opening the PI data file, i.e.
