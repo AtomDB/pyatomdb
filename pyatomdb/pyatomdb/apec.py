@@ -14,7 +14,12 @@ import scipy, ctypes
 import astropy.io.fits as pyfits
 #from joblib import Parallel, delayed
 
-def calc_full_ionbal(Te, tau=False, init_pop='ionizing', Te_init=False, Zlist=False, teunit='K',\
+
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+
+def calc_full_ionbal_old(Te, tau=False, init_pop='ionizing', Te_init=False, Zlist=False, teunit='K',\
                     extrap=True, cie=True, settings=False, datacache=False, allowmulti=True):
   """
   Calculate the ionization balance for all the elements in Zlist.
@@ -153,7 +158,7 @@ def calc_full_ionbal(Te, tau=False, init_pop='ionizing', Te_init=False, Zlist=Fa
 
     # now solve
 #    pop[Z] = solve_ionbal(ionrate, recrate, doubleionrate = dblionrate, init_pop=init_pop[Z], tau=tau)
-    pop[Z] = _calc_elem_ionbal(Z, kT, tau=tau, init_pop=init_pop,\
+    pop[Z] = calc_elem_ionbal(Z, kT, tau=tau, init_pop=init_pop,\
                teunit='keV', extrap=extrap, settings=settings,\
                datacache=datacache, multiion=allowmulti)
 
@@ -163,18 +168,124 @@ def calc_full_ionbal(Te, tau=False, init_pop='ionizing', Te_init=False, Zlist=Fa
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
-def _calc_elem_ionbal(Z, Te, tau=False, init_pop='ionizing', teunit='K',\
-                    extrap=True, settings=False, datacache=False, \
-                    allowmulti=True):
+
+
+def calc_full_ionbal(Te, tau=False, init_pop='ionizing', Zlist=False, teunit='K',\
+                    extrap=True, cie=True, settings=False, datacache=False, allowmulti=True):
   """
   Calculate the ionization balance for all the elements in Zlist.
 
   One of init_pop or Te_init should be set. If neither is set, assume
   all elements start from neutral.
-  
-  THIS FUNCTION IS PARTIALLY BROKEN WITH MULTI IONIZATION
-  USE calc_full_ionbal instead.
 
+
+  Parameters
+  ----------
+  Te : float
+    electron temperature in keV or K (default K)
+  tau : float
+    N_e * t for the non-equilibrium ioniziation (default False, i.e. off)
+  init_pop : string or float
+    if 'ionizing' : all ionizing from neutral (so [1,0,0,0...])
+    if 'recombining': all recombining from ionized (so[...0,0,1])
+    if dict of arrays : the actual fractional populations (so init_pop[6] is the array for carbon)
+    if single float : the temperature (same units as Te)
+  Zlist : int array
+    array of nuclear charges to include in calculation (e.g. [8,26] for
+    oxygen and iron)
+  teunit : {'K' , 'keV'}
+    units of temperatures (default K)
+  extrap : bool
+    Extrappolate rates to values outside their given range. (default False)
+  cie : bool
+    If true, collisional ionization equilbrium calculation
+    (tau, init_pop, Te_init all ignored)
+  settings : dict
+    See description in atomdb.get_data
+  datacache : dict
+    Used for caching the data. See description in atomdb.get_data
+  allowmulti : bool (default True)
+    If set, include multiple stage ionization and recombination rates
+
+  Returns
+  -------
+  final_pop : dict of float arrays, indexed by Z
+    final populations. E.g. final_pop[6]=[0.1,0.2,0.3,0.2,0.2,0.0,0.0]
+
+  """
+
+  # input checking
+
+  kT = util.convert_temp(Te, teunit, 'keV')
+
+
+  # input checking
+
+  if not cie:
+    # now we care about the initial population
+    if isinstance(init_pop, str):
+      if init_pop.lower() == 'ionizing':
+        init_pop_calc = {}
+        for Z in Zlist:
+          init_pop_calc[Z]=numpy.zeros(Z+1)
+          init_pop_calc[Z][0] =1.0
+
+      elif init_pop.lower() == 'recombining':
+        init_pop_calc = {}
+        for Z in Zlist:
+          init_pop_calc[Z]=numpy.zeros(Z+1)
+          init_pop_calc[Z][-1] =1.0
+      else:
+        raise util.OptionError("Error: init_pop is set as a string, must be 'ionizing' or 'recombining'. Currently %s."%\
+             (init_pop))
+    elif isinstance(init_pop, float):
+      # this is an initial temperature
+      kT_init = util.convert_temp(init_pop, teunit, 'keV')
+
+      # just provide temperature
+      init_pop_calc={}
+      for Z in Zlist:
+        init_pop_calc[Z] = kT_init
+    elif isinstance(init_pop, dict):
+      # user has provided all ion abundances
+      init_pop_calc = init_pop[Z]
+      if len(init_pop_calc) != Z+1:
+        print("Error: population supplied has %i ions, should have %i"%(len(init_pop_calc), Z+1))
+    else:
+      raise util.OptionError("Error: invalid type for init_pop")
+
+  if not Zlist:
+    Zlist = list(range(1,29))
+
+  if cie:
+    # do some error checking
+    if util.keyword_check(init_pop):
+      if init_pop.lower() != 'ionizing':
+        print("Warning: you have specified an initial population for a CIE calculation. "+\
+              "Ignoring initial population.")
+
+  pop = {}
+  for Z in Zlist:
+    pop[Z] = calc_elem_ionbal(Z, kT, tau=tau, init_pop=init_pop_calc[Z], teunit='keV',\
+                    extrap=extrap, settings=settings, datacache=datacache, \
+                    allowmulti=allowmulti)
+
+  return pop
+
+
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+
+
+def calc_elem_ionbal(Z, Te, tau=False, init_pop='ionizing', teunit='K',\
+                    extrap=True, settings=False, datacache=False, \
+                    allowmulti=True):
+  """
+  Calculate the ionization balance for all the elements in Zlist.
+  If tau is set, then we perform an NEI calculation.
+  This code opens up the ionization and recombination rate files. It is
+  not the fast code based on the eigenvector files.
 
   Parameters
   ----------
@@ -188,7 +299,6 @@ def _calc_elem_ionbal(Z, Te, tau=False, init_pop='ionizing', teunit='K',\
     if 'ionizing' : all ionizing from neutral (so [1,0,0,0...])
     if 'recombining': all recombining from ionized (so[...0,0,1])
     if array: actual populations (e.g. [0, 0.1, 0.3, 0.5, 0.1, 0, 0])
-    if dict of arrays : the acutal fractional populations (so init_pop[6] is the array for carbon)
     if single float : the temperature (same units as Te)
   teunit : {'K' , 'keV'}
     units of temperatures (default K)
@@ -231,9 +341,9 @@ def _calc_elem_ionbal(Z, Te, tau=False, init_pop='ionizing', teunit='K',\
       kT_init = util.convert_temp(init_pop, teunit, 'keV')
 
       # rerun this routine in equilibrium mode to find the initial ion pop
-      init_pop_calc = _calc_elem_ionbal(Z, kT_init, \
+      init_pop_calc = calc_elem_ionbal(Z, kT_init, \
                                     teunit='keV', \
-                                    datacache=datacache,fast=False,
+                                    datacache=datacache,\
                                     settings = settings, extrap=extrap,\
                                     allowmulti=allowmulti)
 
@@ -246,44 +356,54 @@ def _calc_elem_ionbal(Z, Te, tau=False, init_pop='ionizing', teunit='K',\
       raise util.OptionError("Error: invalid type for init_pop")
 
 
-  # get the end point population
 
-  ionrate = numpy.zeros(Z, dtype=float)
-  recrate = numpy.zeros(Z, dtype=float)
-  multiionrate = []
-  for z1 in range(1,Z+1):
-    tmp= atomdb.get_ionrec_rate(kT, False, Te_unit='keV', \
-                       Z=Z, z1=z1, datacache=datacache, extrap=extrap,\
-                       settings=settings, multiion=allowmulti)
 
-    print(Z, z1, tmp)
-    ionrate[z1-1]=tmp[0]
-    recrate[z1-1]=tmp[1]
-    if allowmulti:
-       multiionrate.append(tmp[2])
 
-  print(Z)
-  # now Rearrange multiionrate, since we know all of these now
-  maxionsteps = 0
-  if allowmulti:
-    print('MIR', multiionrate)
-    for i in multiionrate:
-      print(i, len(i))
-      if len(i) > 0:
-        maxionsteps = max([maxionsteps, max(i.keys())])
-    print("MAXIONSTEPS", maxionsteps)
-    mcirate = numpy.zeros((maxionsteps-1, Z), dtype=float)
-    for ii, i in enumerate(multiionrate):
-      print('ii', ii, ', i', i)
-      if len(i) > 0:
-        for j in i.keys():
-          print(j, ii, i, mcirate.shape)
-          mcirate[j-2, ii] = i[j]
+  if (cie):
+    A = numpy.zeros((Z+1, Z+1), dtype=float)
+    if cie:
+      kT_init=kT
+    for z1 in range(1,Z+1):
+      tmp = \
+        atomdb.get_ionrec_rate(kT_init, False,  Te_unit='keV', \
+                   Z=Z, z1=z1, datacache=datacache, extrap=extrap,\
+                   settings=settings, multiion=allowmulti)
+
+      A[z1,z1-1] += tmp[0]
+      A[z1-1,z1] += tmp[1]
+
+      if allowmulti:
+        # in this case, multiple ionizations are returned as a dict
+        # indexed from 2 (for double ionization) in tmp[2].
+        for i in tmp[2].keys():
+          A[z1-1+i, z1-1]+=tmp[2][i]
+
+    init_pop_calc = solve_multi_ionbal(A)
 
   if cie:
-    final_pop = solve_ionbal(ionrate, recrate, multiionrate=mcirate)
-  else:
-    final_pop = solve_ionbal(ionrate, recrate, init_pop=init_pop_calc, tau=tau, multiionrate=mcirate)
+    return(init_pop_calc)
+
+  # get the end point population
+
+
+
+  A = numpy.zeros((Z+1, Z+1), dtype=float)
+
+  for z1 in range(1,Z+1):
+    tmp = \
+      atomdb.get_ionrec_rate(kT, False,  Te_unit='keV', \
+                 Z=Z, z1=z1, datacache=datacache, extrap=extrap,\
+                 settings=settings, multiion=allowmulti)
+
+    A[z1,z1-1] += tmp[0]
+    A[z1-1,z1] += tmp[1]
+
+    if allowmulti:
+      for i in tmp[2].keys():
+        A[z1-1+i, z1-1]+=tmp[2][i]
+
+
+  final_pop = solve_multi_ionbal(A, init_pop=init_pop_calc, tau=tau)
 
   return final_pop
 
@@ -436,8 +556,7 @@ def solve_ionbal(ionrate, recrate, init_pop=False, tau=False, multiionrate=None,
   # see Helfand and Hughes; removing the dF0/dt row leads to these extra terms.
   # (double ionization is new but algebra isn't hard).
   AA[0,:] -=ionrate[0]
-#  print('mcirate', mcirate.shape, mcirate)
-#  print('AA',AA.shape, AA)
+
   if AA.shape[0] > 1:
     for im in range(0, mcirate.shape[0]):
       AA[im+1,:] -=mcirate[im,0]
@@ -478,6 +597,162 @@ def solve_ionbal(ionrate, recrate, init_pop=False, tau=False, multiionrate=None,
     full_details['vl'] = vl
     full_details['eig'] = w
     return full_details
+  # return the data
+  return Ion_pop
+
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+
+def solve_multi_ionbal(ionrecrate, init_pop=False, tau=False, return_details=False):
+  """
+  solve_ionbal: given a set of ionization and recombination rates, find
+  the equilibrium ionization balance. If init_pop and tau are set, do an
+  non-equilibrium calculation starting from init_pop and evolving for
+  n_e * t = tau (cm^-3 s)
+
+  Parameters
+  ----------
+  ionrecrate : float array
+    A Z+1 x Z+1 element array, with ionization and recombination rates
+    indexed as [final, initial]
+  init_pop : float array
+    initial population of ions for non-equlibrium calculations. Will be renormalised to 1.
+  tau : float
+    N_e * t for the non-equilibrium ioniziation
+
+  Returns
+  -------
+  final_pop : float array
+    final populations.
+  full_details : dict
+    If return_details is set, return parts of the calculation:
+    'eqpop' : equilibrium popn
+    'vl_out' : left eigenvector
+    'vr_out' : right eigenvector
+    'eig_out' : eigenvalues
+
+
+  Notes
+  -----
+  Note that init_pop & final_pop will have 1 more element than ionrate and recrate.
+
+  """
+#
+#
+  # first, calculate the equilibrium solution
+
+  try:
+    if init_pop==False:
+      do_equilib=True
+    else:
+      do_equilib=False
+  except ValueError:
+    do_equilib=False
+
+  # element is number of ions -1
+  Z = ionrecrate.shape[0]-1
+
+  # set up for equilibrium calculation
+  # lower case for equilibrium, upper case for non-equilibrium
+  b = numpy.zeros(Z+1, dtype=float)
+  a = numpy.zeros((Z+1,Z+1), dtype=float)
+
+  # add ionrec and diagonal elements into "a"
+  for iZ in range(0,Z+1):
+    a[iZ,iZ] -= sum(ionrecrate[:,iZ])
+    for iiZ in range(0,Z+1):
+      if iiZ==iZ: continue
+      a[iiZ,iZ] += ionrecrate[iiZ,iZ]
+
+  # conservation of population
+  for iZ in range(0,Z+1):
+    a[0,iZ]=1.0
+  b[0]=1.0
+
+
+ # solve
+  eqpop=numpy.linalg.solve(a,b)
+
+ # remove any rounding error negatives
+  eqpop[eqpop<0] = 0.0
+
+ # set neutral popn = 1-sum(other pops)
+  eqpop[0] = max([1.0-sum(eqpop[1:]), 0])
+
+ # if we are doing an equilibrium calculation, we are done.
+  if do_equilib == True:
+    return eqpop
+
+ # now the NEI part
+
+#  ndim=Z+1
+#  AA = numpy.zeros((ndim-1,ndim-1), dtype=float)
+
+
+  ndim = Z+1
+
+  # AAA array is smaller than ionrecrate, as we omit the neutral.
+  AAA = numpy.zeros((ndim-1, ndim-1), dtype=float)
+
+  # populate with stuff:
+  # DIAGONAL TERMS, omitting ionization from the neutral
+  for ifrom in range(1,ndim):
+    for ito in range(ndim):
+      AAA[ifrom-1,ifrom-1] -= ionrecrate[ito, ifrom]
+
+
+  # OFF DIAGONAL TERMS, again omitting the neutral
+  for ifrom in range(1,ndim):
+    for ito in range(1, ndim):
+      if ito == ifrom: continue
+      AAA[ito-1,ifrom-1] += ionrecrate[ito, ifrom]
+
+
+  # IONIZATION FROM NEUTRAL ION
+  # This gets subtracted from all ions.
+  for ito in range(1,ndim):
+
+    AAA[ito-1,:] -= ionrecrate[ito,0]
+
+
+  w,v = numpy.linalg.eig(AAA)
+
+  # now copy VR to AA
+  AA=v
+
+  # b_in is difference betwen initial and final populations
+  b_in=init_pop[1:]-eqpop[1:]
+
+  # solve for initial conditions
+  b_out=numpy.linalg.solve(AA,b_in)
+
+  # include exponential decay term
+  C = b_out*numpy.exp( w*tau )
+
+  # get change
+  G = numpy.dot(v,C)
+
+  # solve for population
+  Ion_pop=numpy.zeros(Z+1)
+  Ion_pop[1:]= G + eqpop[1:]
+
+  # make sure everything is > 0
+  Ion_pop[Ion_pop<0] = 0.0
+
+  # set neutral to be the residual (or zero)
+  Ion_pop[0]=max([1-sum(Ion_pop[1:]), 0.0])
+
+  if return_details:
+    vl = numpy.matrix(v)**-1
+    full_details={}
+    full_details['eqpop'] = eqpop
+    full_details['vr'] = v
+    full_details['vl'] = vl
+    full_details['eig'] = w
+    full_details['ionpop']=Ion_pop
+    return full_details
+
   # return the data
   return Ion_pop
 
@@ -5545,6 +5820,9 @@ def generate_apec_headerblurb(settings, linehdulist, cocohdulist):
     hc.append(('SATOM',atomic.Ztoelsymb(Z), 'Element name'), end=True)
   hc.add_comment('*** END INITIALIZATION VALUES ***',after=len(hl)-1)
 
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
 
 def return_ionbal(Z, Te, init_pop=False, tau=False,\
                        teunit='K', \
@@ -5592,17 +5870,15 @@ def return_ionbal(Z, Te, init_pop=False, tau=False,\
     return ionbal
 
   else:
-#    ionbal = _calc_elem_ionbal(Z, Te, tau=tau, init_pop=init_pop, teunit=teunit,\
-                               #extrap=extrap, settings=settings, datacache=datacache,\
-                               #allowmulti=allowmulti)
-    if tau!=False:
-        cie=False
-    else:
-        cie=True
-    ionbal = calc_full_ionbal(Te, tau=tau, init_pop=init_pop, Zlist=[Z], teunit=teunit,\
-                            extrap=extrap, cie=cie, settings=settings, datacache=datacache,\
+
+#    if tau!=False:
+#        cie=False
+#    else:
+#        cie=True
+    ionbal = calc_elem_ionbal(Z, Te, tau=tau, init_pop=init_pop, teunit=teunit,\
+                            extrap=extrap, settings=settings, datacache=datacache,\
                             allowmulti=allowmulti)
-    ionbal=ionbal[Z]
+
     return ionbal
 
 
@@ -5700,7 +5976,7 @@ def _solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, \
       d = pyfits.open(fname)
     else:
       d = filename
-    
+
   else:
     d = atomdb.get_data(Z, False, 'eigen', datacache=datacache)
   telist = numpy.logspace(4,9,1251)
