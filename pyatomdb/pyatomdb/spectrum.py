@@ -285,7 +285,7 @@ def __make_ion_spectrum(bins, index, Z,z1, linefile="$ATOMDB/apec_nei_line.fits"
     same length as bins (can be useful for plotting results)
   nei : bool
     If set, return the spectrum from the driving ion being Z, rmJ. If not set,
-    return the spectrum for the collisional ionization equilibrium *BUT*
+    return the spectrum for the collisional ionization equilibrium *BUT*\ 
     note that the continuum will be wrong, as it is provided for each element
     as a whole.
   dolines : bool
@@ -1788,6 +1788,7 @@ class CIESession():
 
   Attributes
   ----------
+    fart noti : dict
   datacache : dict
     Any Atomdb FITS files which have to be opened are stored here
   spectra : CIESpectra
@@ -1847,7 +1848,7 @@ class CIESession():
   >>> s.dopseudo = False
   >>> s.docont = False
   >>> s.doeebrems = False
-  >>> # s.dolines = False would turn off lines
+  >>> \# s.dolines = False would turn off lines
   >>> spec = s.return_spectrum(1.0)
 
   spec is in photons cm^5 s^-1 bin^-1; ebins are the bin edges (so spec is
@@ -1861,7 +1862,7 @@ class CIESession():
                      abundset='AG89'):
     """
     Initialization routine. Can set the line and continuum files here
-
+    
     Parameters
     -----
     linefile : str or HDUList
@@ -2824,7 +2825,7 @@ class CIESession():
     Returns
     -------
     emiss_aeff : array(float)
-      Emissivity * Aeff
+      Emissivity \* Aeff
     """
 
 
@@ -3572,7 +3573,7 @@ class CIESession_RS(CIESession):
     Returns
     -------
     emiss_aeff : array(float)
-      Emissivity * Aeff
+      Emissivity \* Aeff
     """
 
 
@@ -5526,56 +5527,56 @@ class _LineData_RS():
 
     #print(self.osc)
 
-    '''
-    #print(self.elements)
-    if len(self.elements) != 0:
-      # read the ionization balance table
-      ionfrac = atomdb._get_precalc_ionfrac(os.path.expandvars(settings['IonBalanceTable']),self.elements[0] , T)
-      #else:
-      #ionfrac=apec._calc_elem_ionbal(self.lines['Element'][1], T)
-      # calculate the ionization balance
-      #ionftmp = apec.calc_full_ionbal(T, 1e14, Te_init=T, Zlist=[self.elements[1]], extrap=True)
-      #ionfrac = ionftmp[self.elements[1]]
-
-
-
-      energy_priyankev = const.HC_IN_KEV_A/self.lines['Lambda']
-
-      ion=ionfrac[self.lines['Ion']-1]
-      #print(energy_kev, self.lines['Lambda'],ion)
-
-      u_th_sq= 2*const.BOLTZMAN_CONSTANT*T/(2*self.lines['Element'][0]*(const.PROTON_MASS)*((100*(const.LIGHTSPEED))**2))
-
-
-      u_turb_sq =  2* (((1000*velocity_broadening)/const.LIGHTSPEED)**2)
-
-
-      delta_E = 1.60218e-9*energy_kev*math.sqrt(u_th_sq + u_turb_sq )
-
-
-
-      tau = 1.15e23*N_e*0.83*Abund[self.lines['Element'][0]-1]*ion*(math.pi**0.5)*(2**0.5)*(const.PLANCK_CONSTANT)*(const.CLASSICAL_ELECTRON_RADIUS)*(const.LIGHTSPEED*100)*self.lines['Oscil_str']/delta_E
-
-
-
-
-      self.lines['Epsilon'] = self.line_stock['Epsilon']
-
-      for taus in range(len(tau)):
-        if tau[taus] > 0.5 and tau[taus]<1:
-          #print(self.lines['Element'][0], self.lines['Lambda'][taus],tau[taus])
-          factor = (1-(math.exp(-tau[taus])))
-          self.lines['Epsilon'][taus] = self.lines['Epsilon'][taus] * (1-factor)
-
-
-        if tau[taus] >= 1:
-          print(tau[taus], self.lines['Lambda'][taus], self.lines['Element'][taus])
-          factor = (1-(math.exp(-tau[taus])))/(tau[taus])
-          self.lines['Epsilon'][taus] = self.lines['Epsilon'][taus] * (factor)
-
-
-
-      '''
+#    '''
+#    #print(self.elements)
+#    if len(self.elements) != 0:
+#      # read the ionization balance table
+#      ionfrac = atomdb._get_precalc_ionfrac(os.path.expandvars(settings['IonBalanceTable']),self.elements[0] , T)
+#      #else:
+#      #ionfrac=apec._calc_elem_ionbal(self.lines['Element'][1], T)
+#      # calculate the ionization balance
+#      #ionftmp = apec.calc_full_ionbal(T, 1e14, Te_init=T, Zlist=[self.elements[1]], extrap=True)
+#      #ionfrac = ionftmp[self.elements[1]]
+#
+#
+#
+#      energy_priyankev = const.HC_IN_KEV_A/self.lines['Lambda']
+#
+#      ion=ionfrac[self.lines['Ion']-1]
+#      #print(energy_kev, self.lines['Lambda'],ion)
+#
+#      u_th_sq= 2*const.BOLTZMAN_CONSTANT*T/(2*self.lines['Element'][0]*(const.PROTON_MASS)*((100*(const.LIGHTSPEED))**2))
+#
+#
+#      u_turb_sq =  2* (((1000*velocity_broadening)/const.LIGHTSPEED)**2)
+#
+#
+#      delta_E = 1.60218e-9*energy_kev*math.sqrt(u_th_sq + u_turb_sq )
+#
+#
+#
+#      tau = 1.15e23*N_e*0.83*Abund[self.lines['Element'][0]-1]*ion*(math.pi**0.5)*(2**0.5)*(const.PLANCK_CONSTANT)*(const.CLASSICAL_ELECTRON_RADIUS)*(const.LIGHTSPEED*100)*self.lines['Oscil_str']/delta_E
+#
+#
+#
+#
+#      self.lines['Epsilon'] = self.line_stock['Epsilon']
+#
+#      for taus in range(len(tau)):
+#        if tau[taus] > 0.5 and tau[taus]<1:
+#          #print(self.lines['Element'][0], self.lines['Lambda'][taus],tau[taus])
+#          factor = (1-(math.exp(-tau[taus])))
+#          self.lines['Epsilon'][taus] = self.lines['Epsilon'][taus] * (1-factor)
+#
+#
+#        if tau[taus] >= 1:
+#          print(tau[taus], self.lines['Lambda'][taus], self.lines['Element'][taus])
+#          factor = (1-(math.exp(-tau[taus])))/(tau[taus])
+#          self.lines['Epsilon'][taus] = self.lines['Epsilon'][taus] * (factor)
+#
+#
+#
+#      '''
 
     #start = time.time()
     #print(start)
@@ -6190,7 +6191,7 @@ class NEISession(CIESession):
     Telist : float or array(float)
       Temperature(s) in keV or K
     taulist : float or array(float)
-      ionization timescale(s), ne * t (cm^-3 s).
+      ionization timescale(s), ne \* t (cm^-3 s).
     Z : int
       nuclear charge of element
     z1 : int
@@ -6309,7 +6310,7 @@ class NEISession(CIESession):
     Te : float
       Temperature in keV or K
     tau : float
-      ionization timescale, ne * t (cm^-3 s).
+      ionization timescale, ne \* t (cm^-3 s).
     init_pop : string or float
       if 'ionizing' : all ionizing from neutral (so [1,0,0,0...])
       if 'recombining': all recombining from ionized (so[...0,0,1])
@@ -6507,7 +6508,7 @@ class _NEISpectrum(_CIESpectrum):
     Te : float
       Electron temperature (default, keV)
     tau : float
-      ionization timescale, ne * t (cm^-3 s).
+      ionization timescale, ne \* t (cm^-3 s).
     init_pop : string or float
       if 'ionizing' : all ionizing from neutral (so [1,0,0,0...])
       if 'recombining': all recombining from ionized (so[...0,0,1])
@@ -6587,7 +6588,7 @@ class _NEISpectrum(_CIESpectrum):
     Te : float
       Electron temperature (default, keV)
     tau : float
-      ionization timescale, ne * t (cm^-3 s).
+      ionization timescale, ne \* t (cm^-3 s).
     init_pop : string or float
       if 'ionizing' : all ionizing from neutral (so [1,0,0,0...])
       if 'recombining': all recombining from ionized (so[...0,0,1])
@@ -6740,7 +6741,7 @@ class _NEISpectrum(_CIESpectrum):
     Te : float
       Temperature in keV or K
     tau : float
-      ionization timescale, ne * t (cm^-3 s).
+      ionization timescale, ne \* t (cm^-3 s).
     Z : int
       nuclear charge of element
     z1 : int
@@ -6841,7 +6842,7 @@ class _NEISpectrum(_CIESpectrum):
     Te : float
       Electron temperature (default, keV)
     tau : float
-      ionization timescale, ne * t (cm^-3 s).
+      ionization timescale, ne \* t (cm^-3 s).
     init_pop : string or float
       if 'ionizing' : all ionizing from neutral (so [1,0,0,0...])
       if 'recombining': all recombining from ionized (so[...0,0,1])
@@ -7146,11 +7147,11 @@ class PShockSession(NEISession):
     Te : float
       Temperature in keV or K
     tau_u : float
-      Upper limit of ionization timescale, ne * t (cm^-3 s).
+      Upper limit of ionization timescale, ne \* t (cm^-3 s).
     specrange : [float, float]
       Minimum and maximum values for interval in which to search
     tau_l :
-      lower limit of ionization timescale, ne * t (cm^-3 s) (defaults to 0)
+      lower limit of ionization timescale, ne \* t (cm^-3 s) (defaults to 0)
     init_pop : string or float
       if 'ionizing' : all ionizing from neutral (so [1,0,0,0...])
       if 'recombining': all recombining from ionized (so[...0,0,1])
@@ -7218,9 +7219,9 @@ class PShockSession(NEISession):
     Te : float
       Temperature in keV or K
     tau_u : float
-      Upper limit of ionization timescale, ne * t (cm^-3 s).
+      Upper limit of ionization timescale, ne \* t (cm^-3 s).
     tau_l :
-      lower limit of ionization timescale, ne * t (cm^-3 s) (defaults to 0)
+      lower limit of ionization timescale, ne \* t (cm^-3 s) (defaults to 0)
     init_pop : string or float
       if 'ionizing' : all ionizing from neutral (so [1,0,0,0...])
       if 'recombining': all recombining from ionized (so[...0,0,1])
@@ -7278,7 +7279,7 @@ class PShockSession(NEISession):
     Telist : float or array(float)
       Temperature(s) in keV or K
     tau_ulist : float
-      ionization timescale(s), ne * t (cm^-3 s).
+      ionization timescale(s), ne \* t (cm^-3 s).
     Z : int
       nuclear charge of element
     z1 : int
@@ -7288,7 +7289,7 @@ class PShockSession(NEISession):
     lo : int
       lower level for transition
     tau_llist : float
-      lower limit of ionization timescale(s), ne * t (cm^-3 s).
+      lower limit of ionization timescale(s), ne \* t (cm^-3 s).
     specunit : {'Angstrom','keV'}
       Units for wavelength or energy (a returned value)
     teunit : {'keV' , 'K'}
@@ -7497,9 +7498,9 @@ class _PShockSpectrum(_NEISpectrum):
     Te : float
       Electron temperature (default, keV)
     tau_u : float
-      Upper limit of ionization timescale, ne * t (cm^-3 s).
+      Upper limit of ionization timescale, ne \* t (cm^-3 s).
     tau_l :
-      lower limit of ionization timescale, ne * t (cm^-3 s) (defaults to 0)
+      lower limit of ionization timescale, ne \* t (cm^-3 s) (defaults to 0)
     init_pop : string or float
       if 'ionizing' : all ionizing from neutral (so [1,0,0,0...])
       if 'recombining': all recombining from ionized (so[...0,0,1])
@@ -7612,9 +7613,9 @@ class _PShockSpectrum(_NEISpectrum):
     Te : float
       Electron temperature (default, keV)
     tau_u : float
-      Upper limit of ionization timescale, ne * t (cm^-3 s).
+      Upper limit of ionization timescale, ne \* t (cm^-3 s).
     tau_l :
-      lower limit of ionization timescale, ne * t (cm^-3 s) (defaults to 0)
+      lower limit of ionization timescale, ne \* t (cm^-3 s) (defaults to 0)
     init_pop : string or float
       if 'ionizing' : all ionizing from neutral (so [1,0,0,0...])
       if 'recombining': all recombining from ionized (so[...0,0,1])
@@ -7762,7 +7763,7 @@ class _PShockSpectrum(_NEISpectrum):
     Te : float
       Temperature in keV or K
     tau_u : float
-      ionization timescale, ne * t (cm^-3 s).
+      ionization timescale, ne \* t (cm^-3 s).
     Z : int
       nuclear charge of element
     z1 : int
@@ -7772,7 +7773,7 @@ class _PShockSpectrum(_NEISpectrum):
     lo : int
       lower level for transition
     tau_l :
-      lower limit of ionization timescale, ne * t (cm^-3 s) (defaults to 0)
+      lower limit of ionization timescale, ne \* t (cm^-3 s) (defaults to 0)
     specunit : {'Angstrom','keV'}
       Units for wavelength or energy (a returned value)
     teunit : {'keV' , 'K'}
@@ -7867,9 +7868,9 @@ class _PShockSpectrum(_NEISpectrum):
     Te : float
       Electron temperature (default, keV)
     tau_u : float
-      Upper limit of ionization timescale, ne * t (cm^-3 s).
+      Upper limit of ionization timescale, ne \* t (cm^-3 s).
     tau_l :
-      lower limit of ionization timescale, ne * t (cm^-3 s) (defaults to 0)
+      lower limit of ionization timescale, ne \* t (cm^-3 s) (defaults to 0)
     init_pop :    init_pop : string or float
       if 'ionizing' : all ionizing from neutral (so [1,0,0,0...])
       if 'recombining': all recombining from ionized (so[...0,0,1])
@@ -8330,12 +8331,15 @@ class KappaSession(NEISession):
     -------
     ret : dict
       Dictionary containing:
-      Te, kappa, teunit: as input
-      wavelength : line wavelength (A)
-      energy : line energy (keV)
-      epsilon : emissivity in ph cm^3 s-1 (or ph cm^5 s^-1 if apply_aeff=True)
-                first index is temperature, second is kappa. If Te or kappa was
-                supplied as a scalar, then that index is removed
+
+        Te, kappa, teunit: as input
+
+        wavelength : line wavelength (A)
+
+        energy : line energy (keV)
+
+        epsilon : emissivity in ph cm^3 s-1 (or ph cm^5 s^-1 if apply_aeff=True)
+                  first index is temperature, second is tau.
 
     """
 

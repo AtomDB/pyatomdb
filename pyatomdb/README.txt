@@ -280,3 +280,8 @@ April 8th 2025
 Remade and updated examples to work with AtomDB 3.1.X
 Fixed bug with return_spectrum when initial population was specified in K.
 Finally purged all use of pycurl
+
+1.1.0
+September 25th 2025
+Merged Kappa model into main PyAtomDB, pyatomdb.spectrum.KappaSession
+Made multiple ionization calculation more transparent.

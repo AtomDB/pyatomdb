@@ -1,3 +1,5 @@
+.. _example-page-label:
+
 ========================
 PyAtomDB Example Scripts
 ========================
@@ -232,6 +234,55 @@ Separating out these features can be turned on and off using the ``by_ion_drv`` 
 
 .. literalinclude:: ../examples/spectrum_session_examples_8_nei_linelist.py
 
+
+.. _examples-kappa:
+
+++++++++++++++++++
+KappaSession Class
+++++++++++++++++++
+
+Derived from the NEISession class, this handles non-Maxwellian spectra (see :ref:`models-kappa`). As such, all of the calls to it are
+exactly the same. Adding response, setting abundances obtaining spectra, etc all work the same way.
+Therefore I will only outline what is different.
+
+The main difference is that a non Maxwellian plasma requires 1 more piece of information to define it. The :math:`{\kappa}` parameter describes the degree of non-Maxwellian. The minimum value, 2, implies a significantly enhanced high energy tail. At high values, the electron distribution is more Maxwellian:
+
+  kappa
+    kappa value for distribution. Must be > 1.5
+    
+Note that the first time you call this model, it will do two things:
+
+  - Download the hahnsavin.fits file, which contains the coefficients from the source paper
+  - Generate the kappa_ir.fits file, which will require downloading a lot of atomic data files (2 for each ion).
+  
+These files should be stored in your $ATOMDB folder. If you find that the code is regenerating these every time, please check you have this variable set and/or contact us for help.
+
+~~~~~~~~~~~~~~~~~
+Making a Spectrum
+~~~~~~~~~~~~~~~~~
+
+As an example, this will plot a simple spectrum at :math:\ `2 \\times 10^5` K, with and without line emission present.
+
+.. literalinclude:: ../examples/spectrum_kappa_examples_1.py
+
+.. figure:: ../examples/spectrum_kappa_examples_1.svg
+    :align: center
+    :alt: Spectrum Kappa Example 1
+    :figclass: align-center
+
+    Kappa distribution spectrum with and without lines.
+
+
+As an example, this will 2 different kappa model spectra and compare with a Maxwellian CIE model.
+
+.. literalinclude:: ../examples/spectrum_kappa_examples_2.py
+
+.. figure:: ../examples/spectrum_kappa_examples_2.svg
+    :align: center
+    :alt: Spectrum Kappa Example 2
+    :figclass: align-center
+
+    Kappa distribution spectrum compared with Maxwellian CIE. 
 
 -------------------
 Getting Atomic Data

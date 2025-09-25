@@ -51,6 +51,7 @@ Contents
 
    installation
    examples
+   models
    modules
    license
    contact

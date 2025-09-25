@@ -6672,8 +6672,8 @@ def format_level(level):
   str
     The formatted string.
 
-  Example
-  -------
+  Examples
+  --------
   # Read in O VII levels
   >>> a = pyatomdb.atomdb.get_data(8,7,'LV')
   # Format level 15 nicely
