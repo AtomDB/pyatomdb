@@ -3226,7 +3226,7 @@ class CIESession_RS(CIESession):
 
     #else:
       #print("File osc.fits exists.")
-  def __init__(self, oscfile="$ATOMDB/apec_osc.fits",\
+  def __init__(self, oscfile="$ATOMDB/apec_line.fits",\
                      cocofile="$ATOMDB/apec_coco.fits",\
                      elements=False,\
                      abundset='AG89'):
@@ -3271,7 +3271,7 @@ class CIESession_RS(CIESession):
         o.write(content)
         o.close()
 
-      os.symlink(os.path.expandvars("$ATOMDB/"+fname), os.path.expandvars("$ATOMDB/apec_osc.fits"))
+      os.symlink(os.path.expandvars("$ATOMDB/"+fname), os.path.expandvars("$ATOMDB/apec_line.fits"))
 
     linefile=oscfile
 
@@ -8156,4 +8156,5 @@ def __get_nei_line_emissivity(Z, z1, up, lo):
       emiss[jj['Ion_drv']][i] = jj['Epsilon'] * ionbal[jj['ion_drv']-1]
 
   return emiss
+
 
