@@ -17,7 +17,8 @@ ME_KEV = 510.99895069 #keV (CODATA 2022)
 ME_KEV_OLD = 510.99895
 RYDBERG = 0.013605693122990 # in keV, updated to CODATA value 6/11/2024. Previously 0.013605804
 BREMS_COEFF = 1.6542996e-20
-PLANCK_CONSTANT = 6.626176e-27 # erg-seconds
+PLANCK_CONSTANT_OLD = 6.626176e-27 # erg-seconds
+PLANCK_CONSTANT = 6.62607015e-27 # erg-seconds
 CLASSICAL_ELECTRON_RADIUS = 2.8179403205e-13 #cm
 CLASSICAL_ELECTRON_RADIUS_OLD = 2.8179403262e-13 #cm
 PROTON_MASS = 1.67262192595e-24 # gm  (CODATA 2022)
@@ -94,6 +95,9 @@ INTERP_E_RATE_INC_MAX=750  #/*!< Include only maximum; min is out */
 INTERP_P_RATE_INC_MAX=850  #/*!< Include only maximum; min is out */
 
 INTERP_I_UPSILON=900     #/*!< Include both left & right boundaries */
+
+INTERP_E_OMEGA=1000     #/*!< Include both left & right boundaries */
+
 
 PROTON_BT=1001 #/*!< For Burgess-Tully Proton excitation rates */
 
