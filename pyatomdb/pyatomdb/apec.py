@@ -263,7 +263,9 @@ def calc_full_ionbal(Te, tau=False, init_pop='ionizing', Zlist=False, teunit='K'
       if init_pop.lower() != 'ionizing':
         print("Warning: you have specified an initial population for a CIE calculation. "+\
               "Ignoring initial population.")
-
+    init_pop_calc={}
+    for Z in Zlist:
+      init_pop_calc[Z]=None
   pop = {}
   for Z in Zlist:
     pop[Z] = calc_elem_ionbal(Z, kT, tau=tau, init_pop=init_pop_calc[Z], teunit='keV',\
@@ -324,6 +326,10 @@ def calc_elem_ionbal(Z, Te, tau=False, init_pop='ionizing', teunit='K',\
     init_pop_calc=False
   else:
     cie = False
+    
+  print("CIE IS", cie)
+  print("TAU IS", tau)
+  
   if not cie:
       # if it's not equilibrium, get the initial population
     if isinstance(init_pop, str):
@@ -2045,6 +2051,7 @@ def create_lhdu_cie(linedata):
   cols.append(pyfits.Column(name='Ion', format='1J',  array=linedata['ion']))
   cols.append(pyfits.Column(name='UpperLev', format='1J', array=linedata['upperlev']))
   cols.append(pyfits.Column(name='LowerLev', format='1J',  array=linedata['lowerlev']))
+  cols.append(pyfits.Column(name='Oscil_str', format='1E',  array=linedata['oscil_str']))
 
   coldefs = pyfits.ColDefs(cols)
   tbhdu = pyfits.BinTableHDU.from_columns(coldefs)
@@ -2075,6 +2082,7 @@ def create_lhdu_nei(linedata):
   cols.append(pyfits.Column(name='Ion_drv', format='1J',  array=linedata['ion_drv']))
   cols.append(pyfits.Column(name='UpperLev', format='1J', array=linedata['upperlev']))
   cols.append(pyfits.Column(name='LowerLev', format='1J',  array=linedata['lowerlev']))
+  cols.append(pyfits.Column(name='Oscil_str', format='1E',  array=linedata['oscil_str']))
 
   coldefs = pyfits.ColDefs(cols)
   tbhdu = pyfits.BinTableHDU.from_columns(coldefs)
@@ -2213,7 +2221,8 @@ def run_apec_element(settings, te, dens, Z):
       ionfrac = atomdb._get_precalc_ionfrac(os.path.expandvars(settings['IonBalanceTable']), Z, te)
     else:
       # calculate the ionization balance
-      ionftmp = calc_full_ionbal(te, 1e14, Te_init=te, Zlist=[Z], extrap=True)
+      print("CHECK: T=%e"%(te))
+      ionftmp = calc_full_ionbal(te, False, Zlist=[Z], extrap=True, teunit='K')
       ionfrac = ionftmp[Z]
 
   else:
@@ -2925,7 +2934,8 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                  'elem_drv',\
                                  'ion_drv', \
                                  'upperlev',\
-                                 'lowerlev'],\
+                                 'lowerlev', \
+                                 'oscil_str'],\
                         'formats':[float,\
                                    float,\
                                    float,\
@@ -2935,7 +2945,8 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                    int,\
                                    int,\
                                    int,\
-                                   int]})
+                                   int,\
+                                   float]})
 
   elif dtype =='linelist_cie':
     ret = numpy.dtype({'names':['lambda',\
@@ -2945,7 +2956,8 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                  'element',\
                                  'ion', \
                                  'upperlev',\
-                                 'lowerlev'],\
+                                 'lowerlev',\
+                                 'oscil_str'],\
                         'formats':[float,\
                                    float,\
                                    float,\
@@ -2953,7 +2965,8 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                    int,\
                                    int,\
                                    int,\
-                                   int]})
+                                   int,\
+                                   float]})
   elif dtype =='linelist_cie_spectrum':
     ret = numpy.dtype({'names':['Lambda',\
                                  'Lambda_Err',\
@@ -3388,6 +3401,15 @@ def do_lines(Z, z1, lev_pop, N_e, datacache=False, settings=False, z1_drv_in=-1)
   linelist['upperlev'] = ladat[1].data['upper_lev']
   linelist['lowerlev'] = ladat[1].data['lower_lev']
 
+
+
+  degup = lvdat[1].data['lev_deg'][linelist['upperlev']-1]
+  deglo = lvdat[1].data['lev_deg'][linelist['lowerlev']-1]
+
+  f_ij = ladat[1].data.field('einstein_a') * (degup*1.0/deglo) * (linelist['lambda']**2/6.6702e15)
+  linelist['oscil_str'] = f_ij
+
+
   # I have a linelist. Yay.
   t1=time.time()
   print("finished making linelist at %s: took %f seconds"%(time.asctime(), t1-tstart))
@@ -3408,6 +3430,7 @@ def do_lines(Z, z1, lev_pop, N_e, datacache=False, settings=False, z1_drv_in=-1)
 
       # do the 2 photon fun
       twoph = numpy.zeros(len(ebins)-1, dtype=float)
+      linelist['oscil_str'][ila] = 0.0
       if settings['TwoPhoton']:
 #        if len(ila) > 1:
 
@@ -3434,6 +3457,7 @@ def do_lines(Z, z1, lev_pop, N_e, datacache=False, settings=False, z1_drv_in=-1)
                       (linelist['lowerlev']==1))[0]
     if len(ila)>0:
       twoph = numpy.zeros(len(ebins)-1, dtype=float)
+      linelist['oscil_str'][ila] = 0.0
       if settings['TwoPhoton']:
         for iila in ila:
 
@@ -3456,6 +3480,7 @@ def do_lines(Z, z1, lev_pop, N_e, datacache=False, settings=False, z1_drv_in=-1)
                       (linelist['lowerlev']==1))[0]
     if len(ila)>0:
       twoph = numpy.zeros(len(ebins)-1, dtype=float)
+      linelist['oscil_str'][ila] = 0.0
       if settings['TwoPhoton']:
         for iila in ila:
           tmp2ph={}
