@@ -2271,8 +2271,10 @@ def run_apec_element(settings, te, dens, Z):
     cieout = generate_cie_outputs(settings, Z, linelist, contlist, pseudolist)
     return cieout
   elif settings['Ionization']=='NEI':
-    ionftmp= calc_full_ionbal(te, 1e14, Te_init=te, Zlist=[Z], extrap=True)
+    # get the CIE ionbal
+    ionftmp= calc_full_ionbal(te, False,  Zlist=[Z], extrap=True)
     ionfrac_nei = ionftmp[Z]
+    # Use these to filter the line list
     neiout = generate_nei_outputs(settings, Z, linelist, contlist, pseudolist, ionfrac_nei)
     return neiout
 
