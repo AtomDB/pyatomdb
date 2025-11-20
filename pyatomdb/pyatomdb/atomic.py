@@ -690,7 +690,7 @@ def config_to_occup(cfgstr, nel=-1, shlmax=-1, noccup=[-1], nonly=False):
     ntmp = re.search("^[0-9]+",cfg)
     n.append(int(ntmp.group(0)))
     ltmp = re.search("[a-zA-Z]",cfg)
-    l.append(llist.index(ltmp.group(0)))
+    l.append(llist.index(ltmp.group(0).lower()))
     otmp = re.search("[0-9]+$",cfg)
     o.append(int(otmp.group(0)))
 
@@ -873,15 +873,18 @@ def parse_config(cfgstr):
     c = cfgstr.decode('ascii').split()
   except AttributeError:
     c = cfgstr.split()
-
-
+  #c=c.lower()
+  print("cfgstr", cfgstr)
+  print("c", c)
   ret=[]
   for ic in c:
+    print(ic)
     cfg = []
     ntmp = re.search("^[0-9]+",ic)
     cfg.append(int(ntmp.group(0)))
     ltmp = re.search("[a-zA-Z]",ic)
-    cfg.append(llist.index(ltmp.group(0)))
+    print(ltmp.group(0))
+    cfg.append(llist.index(ltmp.group(0).lower()))
     otmp = re.search("[0-9]+$",ic)
     cfg.append(int(otmp.group(0)))
 
