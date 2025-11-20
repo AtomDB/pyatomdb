@@ -5599,7 +5599,7 @@ def __interpol_huntd(x, y, z):
 #-------------------------------------------------------------------------------
 
 
-def get_oscillator_strength(Z, z1, upperlev, lowerlev, datacache=False):
+def get_oscillator_strength(Z, z1, upperlev, lowerlev, datacache=False, force_wv_obs=False):
 
 
   """
@@ -5663,6 +5663,10 @@ def get_oscillator_strength(Z, z1, upperlev, lowerlev, datacache=False):
   g_j = lvdat[1].data['lev_deg'][up-1]
   g_i = lvdat[1].data['lev_deg'][lo-1]
   lam = ladat[1].data['wavelen'][i]
+  if force_wv_obs:
+    if numpy.isfinite(ladat[1].data['wave_obs'][i]):
+      if ladat[1].data['wave_obs'][i] > 0:
+        lam = ladat[1].data['wave_obs'][i]
 
 
   f_ij = Aji * (g_j*1.0/g_i) * (lam**2/6.6702e15)
