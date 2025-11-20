@@ -3049,6 +3049,16 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
   elif dtype == 'cocoparams':
     ret = numpy.dtype({'names':['kT','EDensity','Time','NElement','NCont', 'NPseudo'],\
                        'formats':[float, float, float, int, int, int]})
+  elif dtype == 'lvdat':
+    ret = numpy.dtype({'names':['elec_config','energy','e_error','n_quan','l_quan','s_quan','lev_deg','phot_type',\
+                                'phot_par','energy_ref','phot_ref','arad_tot','aaut_tot','arad_ref','aaut_ref'],\
+                       'formats':['|S40', float, float, int, int, float, int, int,\
+                                  (float,20), '|S20','|S20', float, float, '|S20','|S20']})
+  elif dtype == 'ladat':
+    ret = numpy.dtype({'names':['upper_lev','lower_lev','wavelen','wave_obs','wave_err','einstein_a','ein_a_err',\
+                                'wave_ref','wv_obs_ref','ein_a_ref'],\
+                       'formats':[int, int, float, float, float, float, float, '|S20','|S20','|S20']})
+
   elif dtype == 'ecdat':
     # Electron collisional data
     ret = numpy.dtype({'names':['lower_lev','upper_lev','coeff_type',\
