@@ -25,7 +25,7 @@ PROTON_MASS = 1.67262192595e-24 # gm  (CODATA 2022)
 PROTON_MASS_OLD = 1.67262192e-24 # gm
 ELECTRON_MASS =9.1093837139e-28 #gm (CODATA 2022)
 ELECTRON_MASS_OLD =9.1e-28 #gm # for backwards compatibility
-BOLTZMAN_CONSTANT = 1.380649e-16 #cgs (CODATA 2022, unchanged)
+BOLTZMAN_CONSTANT = 1.380649e-16 #cgs erg/K(CODATA 2022, unchanged)
 
 HC_IN_KEV_A = 12.39841984 #  hc for converting keV to Ang #UPDATED 2025-Sep (CODATA 2022)
 HC_IN_KEV_A_OLD = 12.398425 #  hc for converting keV to Ang # for backwards compatibility
