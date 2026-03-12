@@ -327,9 +327,6 @@ def calc_elem_ionbal(Z, Te, tau=False, init_pop='ionizing', teunit='K',\
   else:
     cie = False
     
-  print("CIE IS", cie)
-  print("TAU IS", tau)
-  
   if not cie:
       # if it's not equilibrium, get the initial population
     if isinstance(init_pop, str):
@@ -2977,7 +2974,8 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                  'Element',\
                                  'Ion', \
                                  'UpperLev',\
-                                 'LowerLev'],\
+                                 'LowerLev',\
+                                 'Oscil_str'],\
                         'formats':[numpy.float32,\
                                    numpy.float32,\
                                    numpy.float32,\
@@ -2985,7 +2983,8 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                    numpy.int32,\
                                    numpy.int32,\
                                    numpy.int32,\
-                                   numpy.int32]})
+                                   numpy.int32,\
+                                   numpy.float32]})
   elif dtype =='linelist_nei_spectrum':
     ret = numpy.dtype({'names':['Lambda',\
                                  'Lambda_Err',\
@@ -2996,7 +2995,8 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                  'Ion', \
                                  'Ion_drv', \
                                  'UpperLev',\
-                                 'LowerLev'],\
+                                 'LowerLev',\
+                                 'Oscil_str'],\
                         'formats':[numpy.float32,\
                                    numpy.float32,\
                                    numpy.float32,\
@@ -3006,7 +3006,8 @@ def generate_datatypes(dtype, npseudo=0, ncontinuum=0):
                                    numpy.int32,\
                                    numpy.int32,\
                                    numpy.int32,\
-                                   numpy.int32]})
+                                   numpy.int32,\
+                                   numpy.float32]})
   elif dtype == 'linetype_cap':
     ret = numpy.dtype({'names':['Lambda',\
                                  'Lambda_Err',\

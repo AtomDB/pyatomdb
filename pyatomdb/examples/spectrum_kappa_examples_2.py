@@ -33,8 +33,8 @@ fig = pylab.figure()
 fig.show()
 ax = fig.add_subplot(111)
 
-ax.loglog(ebins, spectrum, drawstyle='steps', label='$\kappa =%.1f$'%(kp))
-ax.loglog(ebins, spectrum_kmaxw, drawstyle='steps', label='$\kappa = %.1f$'%(kp_hi))
+ax.loglog(ebins, spectrum, drawstyle='steps', label='$\\kappa =%.1f$'%(kp))
+ax.loglog(ebins, spectrum_kmaxw, drawstyle='steps', label='$\\kappa = %.1f$'%(kp_hi))
 ax.loglog(ebins, spectrum_maxw, drawstyle='steps', label='Maxw')
 
 ax.legend(loc=0)
