@@ -2267,7 +2267,7 @@ class CIESession():
 
       else:
         
-        from scipy.sparse import bsr_array
+        from scipy.sparse import csr_array
 
         chanoffset = self.rmf['EBOUNDS'].data['CHANNEL'][0]
         
@@ -2314,14 +2314,14 @@ class CIESession():
 
         
         # now make the actual sparse matrix.
-        
-        self.rmfmatrix =  bsr_array((data, (row, col)), shape=(len(self.specbins)-1, len(self.ebins_out)-1),\
+
+        self.rmfmatrix =  csr_array((data, (row,col)), shape=(len(self.ebins_out)-1, len(self.specbins)-1),\
                           dtype=data.dtype)
         
 
         # some housekeeping
         self.specbin_units='keV'
-        self.aeff = self.rmfmatrix.sum(1)
+        self.aeff = self.rmfmatrix.sum(0)
         if util.keyword_check(self.arf):
           self.aeff *=self.arf
         self.response_set = True
@@ -2484,7 +2484,7 @@ class CIESession():
     elif self.response_type=='sparse':
       #arfdat = self.arf
       ret = spectrum*self.arf
-      ret = (self.rmfmatrix*ret).sum(1)
+      ret = self.rmfmatrix @ ret
 
       return(ret)
 
@@ -2837,8 +2837,11 @@ class CIESession():
     """
 
 
+    # Effective area is applied on the *input* energies, as defined in the arf
+    # this is stored in specbins
+
     if specunit.lower()=='kev':
-      binwidth = self.ebins_out[1:]-self.ebins_out[:-1]
+      binwidth = self.specbins[1:]-self.specbins[:-1]
       factor = numpy.zeros(len(linelist), dtype=float)
       for i, ss in enumerate(linelist):
         e = const.HC_IN_KEV_A/ss['Lambda']
@@ -2856,7 +2859,7 @@ class CIESession():
 
 
     elif specunit.lower()=='a':
-      wvbins=12.398425/self.ebins_out[::-1]
+      wvbins=12.398425/self.specbins[::-1]
       binwidth = wvbins[1:]-wvbins[:-1]
       factor = numpy.zeros(len(linelist), dtype=float)
       for i, ss in enumerate(linelist):
