@@ -5361,8 +5361,254 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
+def get_level_information(Z, z1, lvl, is_dr, datacache=None, settings=None, dr=False):
+  
+  ret = {}
+    
+  #if (lvl > 10000) & (Z>20) & (z1<5):
+    #dr = True
+  
+  if is_dr:
+    drdat = get_data(Z, z1, 'DR', datacache=datacache, settings=settings)
+    if len(drdat)==3:
+      # we have level information!
+      i = numpy.where(datdat[2].data['DRLEVID'] == lvl)[0]
+      if len(i)==0:
+        # There is no DR data available
+        ret['Energy'] = 'DR Representative Level'
+        ret['Configuration'] = 'DR Representative Level'
+        parity = 'DR Representative Level'
+        ret['Quantum State'] = 'DR Representative Level'
+        ret['Level'] = lvl
+        ret['reference']='DR Representative Level'
+        ret['phot_type']='DR Representative Level'
+        ret['phot_ref']='DR Representative Level'
+      else:  
+        # we have DR level data available
+        ret['Energy'] = 'DR Representative Level'
+        ret['Configuration'] = drdat[2].data[i[0]]['ELEC_CONFIG']
+        parity = atomic.get_parity(ret['Configuration'])
+        ret['Quantum State'] = 'n=%i, L=%i, S=%.1f, degeneracy=%i, parity=%s'%\
+                         (drdat[2].data[i[0]]['N_QUAN'],\
+                          drdat[2].data[i[0]]['L_QUAN'],\
+                          drdat[2].data[i[0]]['S_QUAN'],\
+                          drdat[2].data[i[0]]['LEV_DEG'],\
+                          parity)
+        ret['Level'] = datdat[2].data['DRLEVID'][i[0]]
+        ret['reference']=parse_reference_string(drdat[2].data[i[0]]['energy_ref'])
+        ret['phot_type']='DR Representative Level'
+        ret['phot_ref']='DR Representative Level'
+    else:
+      # There is no DR data available
+      ret['Energy'] = 'DR Representative Level'
+      ret['Configuration'] = 'DR Representative Level'
+      parity = 'DR Representative Level'
+      ret['Quantum State'] = 'DR Representative Level'
+      ret['Level'] = lvl
+      ret['reference']='DR Representative Level'
+      ret['phot_type']='DR Representative Level'
+      ret['phot_ref']='DR Representative Level'
+         
+  else:
+    lvdat = get_data(Z, z1, 'LV', datacache=datacache, settings=settings)
+    ret['Energy']=lvdat[1].data[lvl-1]['ENERGY']
+    ret['Configuration']=lvdat[1].data[lvl-1]['ELEC_CONFIG']
+    parity = atomic.get_parity(ret['Configuration'])
+  
+    ret['Quantum State']='n=%i, L=%i, S=%.1f, degeneracy=%i, parity=%s'%\
+                         (lvdat[1].data[lvl-1]['N_QUAN'],\
+                         lvdat[1].data[lvl-1]['L_QUAN'],\
+                         lvdat[1].data[lvl-1]['S_QUAN'],\
+                         lvdat[1].data[lvl-1]['LEV_DEG'],\
+                         parity)
+  
+    ret['Level']=int(lvl)
+    ret['reference']=parse_reference_string(lvdat[1].data[lvl-1]['energy_ref'])
+    ret['phot_type']=lvdat[1].data[lvl-1]['PHOT_TYPE']
+    ret['phot_ref']=parse_pi_type(lvdat[1].data[lvl-1]['PHOT_TYPE'])
+  
+    try:
+      ret['aaut_tot']= lvdat[1].data[lvl-1]['AAUT_TOT']
+      ret['arad_tot']= lvdat[1].data[lvl-1]['ARAD_TOT']
+    except:
+      pass
+  #print("Returning", ret) 
+  return(ret)
+    
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
+def get_transition_information(Z, z1, up, lo, datacache=None, settings=None):
+    
+  # get upper and lower level information
+    
+  levelinfo = {}
+  if datacache is None:
+    datacache={}
+  
+  
+  # FIND OUT IF IT IS A DR TRANSITION
+  
+  lvdat = get_data(Z, z1, 'LV', datacache=datacache, settings=settings)
+  out = {}
+  i=['up','lo']
+  is_dr=False
+  if (up >= len(lvdat[1].data)) | (lo >= len(lvdat[1].data)):
+      is_dr=True
+      
+  out['lvl'] = {}
+  for ii, lvl in enumerate([up, lo]):
+    out['lvl'][i[ii]] = get_level_information(Z, z1, lvl, is_dr, datacache=datacache, settings=settings)
+  
+  if is_dr:
+    drdat=get_data(Z, z1+1, 'DR', datacache=datacache, settings=settings)
+    dr = drdat[1].data
+    j = numpy.where((dr['UPPER_LEV'] == up) &(dr['LOWER_LEV'] == lo))[0]
+    #print("Found %i matches for DR transition"%(len(j)))
+    out['dr'] = dr[j]
+  
+  else:
+    for trtype in ['la','ec','pc']:
+      dat = get_data(Z, z1, trtype, datacache=datacache, settings=settings)
+      if type(dat)==bool:
+          
+        continue
+      i = numpy.where((dat[1].data['UPPER_LEV'] == up) &\
+                      (dat[1].data['LOWER_LEV'] == lo))[0]
+      
+      if len(i) ==0:
+        i = numpy.where((dat[1].data['UPPER_LEV'] == lo) &\
+                        (dat[1].data['LOWER_LEV'] == up))[0]
+      
+      if len(i) > 0:
+        out[trtype] = dat[1].data[i]
+        
+  return(out, is_dr)
+  
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
+def make_transition_information_table(dat, Z, z1, is_dr):
+    
+  # get upper and lower level information
+  ret = {}
+  
+  for i in ['up','lo']:
+    ret[i]  = {}
+  
+    ret[i]['title']="Energy Level %i"%(dat['lvl'][i]['Level'])
+  
+    ret[i]['data'] = []
+    ret[i]['labels'] = []
+  
+    ret[i]['labels'].append('Electron configuration')
+    ret[i]['data'].append(dat['lvl'][i]['Configuration'])
+
+    ret[i]['labels'].append('Energy above ground (eV)')
+    try:
+      ret[i]['data'].append(float(dat['lvl'][i]['Energy']))
+    except:
+      ret[i]['data'].append(dat['lvl'][i]['Energy'])
+  
+    ret[i]['labels'].append('Quantum state')
+    ret[i]['data'].append(dat['lvl'][i]['Quantum State'])
+  
+    ret[i]['labels'].append('Energy level data source')
+    ret[i]['data'].append(dat['lvl'][i]['reference'])
+
+    ret[i]['labels'].append('Photoionization data source')
+    ret[i]['data'].append(dat['lvl'][i]['phot_ref'])
+  
+    
+  # now make a table!
+  dictionary = {}
+  dictionary['WAVELEN']   = 'Wavelength (Å)'
+  dictionary['WAVE_OBS']  = 'Observed wavelength (Å)'
+  dictionary['WAVE_ERR']  = 'Wavelength error (Å)'
+  dictionary['DR_TYPE']   = 'DR data type'
+  dictionary['E_EXCITE']  = 'Resonance excitation energy (keV)'
+  dictionary['EEXC_ERR']  = 'Excitation energy error (keV)'
+  dictionary['SATELINT']  = 'Satellite line intensity, Q (s^-1)'
+  dictionary['SATINTERR'] = 'Satellite line intensity error (s^-1)'
+  #dictionary['PARAMS']    = 'Satellite line intensity parameters'
+  dictionary['DRRATE_REF']= 'Satellite line intensity reference'
+  dictionary['WAVE_REF']  = 'Wavelength reference'
+  dictionary['WV_OBS_REF']= 'Observed wavelength reference'
+  dictionary['AAUT_TOT']  = 'Total autoionizing lifetime (s^-1)'
+  dictionary['ARAD_TOT']  = 'Total radiative lifetime (s^-1)'
+  dictionary['UPPER_LEV']  = 'Upper level index'
+  dictionary['LOWER_LEV']  = 'Lower level index'
+  dictionary['EINSTEIN_A']  = 'Transition probability (s^-1)'
+  dictionary['EIN_A_REF']  = 'Transition probability reference'
+  dictionary['EIN_A_ERR']  = 'Transition probability error'
+  dictionary['COEFF_TYPE']  = 'Coefficient type'
+  dictionary['MIN_TEMP']  = 'Minimum temperature (K)'
+  dictionary['MAX_TEMP']  = 'Maximum temperature (K)'
+  dictionary['INF_LIMIT'] = 'Born limit'
+  dictionary['REFERENCE'] = 'Reference'
+  
+  
+  dictionary['la'] = "Radiative transition information from %i -> %i"
+  dictionary['ec'] = "Electron collision information from %i -> %i"
+  dictionary['pc'] = "Proton collision information from %i -> %i"
+  dictionary['dr'] = "DR satellite line information from %i -> %i"
+  
+  if is_dr:
+    #drdat=get_data(Z, z1, 'DR', datacache=datacache, settings=settings)
+    #dr = drdat[1].data
+    #j = numpy.where((dr['UPPER_LEV'] == up) &(dr['LOWER_LEV'] == lo))[0]
+    #print('datdr', dat['dr'])
+    
+    if len(dat['dr'])>0:
+      key='dr'
+      #j = j[0]
+      ret['dr'] = {}
+      ret['dr']['descr'] = []
+      ret['dr']['labels'] = []
+      ret['dr']['data'] = []
+      ret['dr']['title'] = dictionary[key]%(dat[key]['UPPER_LEV'], dat[key]['LOWER_LEV'])
+      for i in dat['dr'].dtype.descr:
+        try:
+          #print('i', i, ', i[0]',i[0])
+          ret['dr']['descr'].append(dictionary[i[0]])
+          ret['dr']['labels'].append(i[0])
+          ret['dr']['data'].append(dat['dr'][i[0]][0])
+        
+        
+        
+        except KeyError:
+          continue  
+  
+  else:
+    for key in dat.keys():
+      if key in ['lvl', 'up', 'lo']: continue
+      ret[key]={}
+      ret[key]['descr'] = []
+      ret[key]['labels'] = []
+      ret[key]['data'] = []
+      #j = numpy.where((dat['UPPER_LEV'] == up) &(dat['LOWER_LEV'] == lo))[0]
+#      print('KEY', key, ', DAT KEY', dat[key])
+      ret[key]['title'] = dictionary[key]%(dat[key]['UPPER_LEV'], dat[key]['LOWER_LEV'])
+      for i in dat[key].dtype.descr:
+        try:
+#          print('i', i, ', i[0]',i[0])
+          ret[key]['descr'].append(dictionary[i[0]])
+          ret[key]['labels'].append(i[0])
+          ret[key]['data'].append(dat[key][i[0]][0])
+        except KeyError:
+#          print("No match found: key %s, label %s"%(key, i))
+          pass
+          #raise()
+          
+      
+        
+
+      
+   
+  return(ret)
+  
 #def _calc_ionrec_ea(Z, Te, Ne, \
           #par_type, ionrec_par, min_temp, max_temp, temperatures):
   ## Te is in K
@@ -5388,6 +5634,53 @@ def sigma_photoion(E, Z, z1, pi_type, pi_coeffts, xstardata=False, xstarfinallev
 #-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
 
+def parse_reference_string(reference, txt='', output_format='markdown'):
+  if txt=='':
+    txt = reference
+  if "NIST" in txt:
+    web = 'https://www.nist.gov/pml/atomic-spectra-database'
+  elif "afoster" in txt:
+    web = 'http://adsabs.harvard.edu/abs/2012ApJ...756..128F'
+  elif "AtomDB 3.0" in txt:
+    web = ''
+  else:
+    web= "http://adsabs.harvard.edu/abs/%s"%(txt)
+ 
+  if output_format.lower()=='html':
+    return "<a href=\"%s\">%s</a>"%(web, txt)
+
+  return "[%s](%s)"%(txt, web)
+  #return "WASSUP"
+
+
+def parse_pi_type(pitype, output_format='markdown'):
+  if pitype==-1:
+    txt = "None"
+    web = ''
+  elif pitype == 0:
+    txt = "Hydrogenic"
+    web = ''
+  elif pitype == 1:
+    txt = "Clark, Cowan, and Bobrowicz 1986"
+    web = "http://adsabs.harvard.edu/abs/1986ADNDT..34..415C"
+  elif pitype == 2:
+    txt = "Verner and Yakovlev 1995"
+    web = "http://adsabs.harvard.edu/abs/1995A&AS..109..125V"
+  elif pitype == 3:
+    txt = "from XSTAR"
+    web = ""
+  else:
+    txt = ""
+    web = ""
+
+  if web=='':
+    return(txt)
+
+  if output_format.lower()=='html':
+    return "<a href=\"%s\">%s</a>"%(web, txt)
+
+  return "[%s](%s)"%(txt, web)
+  
 
 #-----------------------------------------------------------------------
 def _A_twoph(A,E0,E):
