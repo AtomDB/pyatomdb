@@ -4,6 +4,7 @@ __all__=["atomdb","util","atomic","spectrum","const","apec"]
 import os
 from . import spectrum
 from . import atomic
+from . import atomdb
 import ctypes
 from . import apec
 from . import util
