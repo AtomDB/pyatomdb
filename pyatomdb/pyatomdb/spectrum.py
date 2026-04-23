@@ -2763,7 +2763,7 @@ class CIESession():
 
   def return_linelist(self, Te, specrange, specunit='A', \
                                teunit='keV', apply_aeff=False, nearest=False,\
-                               apply_binwidth=False):
+                               apply_binwidth=False, format_data='numpy'):
     """
     Get the list of line emissivities vs wavelengths
 
@@ -2786,6 +2786,10 @@ class CIESession():
     apply_binwidth : bool
       Divide the line emissivity by the width of the bin they occupy
       to give emissivity per angstrom or per keV.
+    format_data : {'numpy','pandas'}
+      How to format the output linelist. More formats can be added by request.
+      "numpy" is the raw output. Error checking is not done here, if not
+      "pandas", numpy is returned.
 
     Returns
     -------
@@ -2815,6 +2819,29 @@ class CIESession():
       epsilon_aeff =  self._apply_linelist_aeff(s, specunit, apply_binwidth)
 
       s['Epsilon'] = epsilon_aeff
+      
+    if format_data.lower()=='pandas':
+      # convert to pandas dataframe
+      import pandas as pd
+      
+      nm = []
+      fm = []
+      for i in s.dtype.descr:
+        nm.append(i[0])
+        fm.append(i[1].replace('>','<'))
+      dt = numpy.dtype({'names':nm, 'formats':fm})
+      dd = numpy.zeros(len(s), dtype=dt)
+      for n in nm:
+        dd[n] = s[n]
+      df = pd.DataFrame(dd)
+      ions = []
+    
+      for i in range(len(df)):
+        ions.append(atomic.spectroscopic_name(df['Element'][i], df['Ion'][i]))
+      df.insert(1,'Energy', const.HC_IN_KEV_A/df['Lambda'])
+      df.insert(1,'Spectroscopic', ions)
+
+      return(df)
     return(s)
 
   def _apply_linelist_aeff(self, linelist, specunit, apply_binwidth):
