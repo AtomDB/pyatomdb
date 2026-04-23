@@ -1113,5 +1113,54 @@ def shorten_config(cfgstr, nel=0):
       i[ii] = 0
   else:
     pass
+    
+def parse_pi_type(pitype):
+  if pitype==-1:
+    ret = "None"
+  elif pitype == 0:
+    ret = "Hydrogenic"
+  elif pitype == 1:
+    ret = "<a href=\"http://adsabs.harvard.edu/abs/1986ADNDT..34..415C\"> "+\
+          "Clark, Cowan, and Bobrowicz 1986</a>"
+  elif pitype == 2:
+    ret = "<a href=\"http://adsabs.harvard.edu/abs/1995A&AS..109..125V\"> "+\
+          "Verner and Yakovlev 1995</a>"
+  elif pitype == 3:
+    ret = "from XSTAR"
+  else:
+    ret = ""
+  return ret
+  
+
+def get_transition_type(updat, lodat):
+  delta_j = (updat['lev_deg']-updat['lev_deg'])/2
+  parityup = webatomdb.get_parity(updat['elec_config'])
+  paritylo = webatomdb.get_parity(lodat['elec_config'])
+  
+  t_type = "none"
+  
+  
+  if ( ( (updat['lev_deg'] != lodat['lev_deg'])|\
+         (not(updat['lev_deg']==1 & lodat['lev_deg']==1))) &\
+      (abs(delta_j) < 2) &\
+      (parityup != paritylo)):
+    t_type = 'E1'
+    
+  elif (( (updat['lev_deg'] != lodat['lev_deg'])|\
+         (not(updat['lev_deg']==1 & lodat['lev_deg']==1))) &\
+      (abs(delta_j) < 2) &\
+      (parityup == paritylo)):
+    t_type = 'M1'
+  
+  else:
+    if parityup == paritylo:
+      if abs(delta_j) < 3:
+        if not(updat['lev_deg']==1 & lodat['lev_deg']==1):
+          if not(updat['lev_deg']==2 & lodat['lev_deg']==2):
+            if not(updat['lev_deg']==0 & lodat['lev_deg']==1):
+              if not(updat['lev_deg']==1 & lodat['lev_deg']==0):
+                t_type = 'E2'
+  return t_type
+       
 
 
