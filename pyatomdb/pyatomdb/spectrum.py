@@ -5408,8 +5408,7 @@ class _LineData():
         emax = max(eedges)
         emin = min(eedges)
         # identify all the good lines!
-        igood = numpy.where(((elines >= emin) & (eneg < emax))  |\
-                  ((elines < emin) & (eplu < emin)))[0]
+        igood = numpy.where((eplu > emin) & (eneg < emax))[0]
         spec = numpy.zeros(len(eedges))
 #        t0 = time.time()
         for iline in igood:
@@ -9759,7 +9758,7 @@ def calc_ee_brems_spec(ebins, Te, dens, teunit='keV'):
     electron-electron bremsstrahlung in ph cm^3 s^-1 bin^-1
 
   """
-
+ 
   # convert temperature to keV if required
   kT = util.convert_temp(Te, teunit, 'keV')
 

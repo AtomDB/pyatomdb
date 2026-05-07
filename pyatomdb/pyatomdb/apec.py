@@ -1264,12 +1264,12 @@ def calc_ee_brems(E, T, N):
   Returns
   -------
   array(float)
-    ee_brems in photons cm^s s^-1 keV-1 at each point E.
+    ee_brems in photons cm^3 s^-1 keV-1 at each point E.
     This should be multiplied by the bin width to get flux per bin.
 
   References
   ----------
-  Need to check this!
+  S. Nozawa, K. Takahashi, Y. Kohyama and N. Itoh A&A, 499 3 (2009) 661-667
   """
 #
 #  T is the electron temperature (in keV)
@@ -1279,7 +1279,6 @@ def calc_ee_brems(E, T, N):
 
 # series of data constants
 # Region I, k_BT<=1 keV
-  #print "T=%f"%(T)
 
   aI1 = numpy.array([(3.15847E+0, -2.52430E+0, 4.04877E-1, 6.13466E-1, 6.28867E-1, 3.29441E-1),
              (2.46819E-2, 1.03924E-1, 1.98935E-1, 2.18843E-1, 1.20482E-1, -4.82390E-2),
@@ -1339,7 +1338,7 @@ def calc_ee_brems(E, T, N):
                (0.0000000E+0, -1.6053650E+2, -4.6080700E+1, -2.7617000E+1, -3.4943210E+2),
                (1.9970000E-1, 2.3392500E+1, 8.7301000E+0, 8.8453000E+0, 9.2205900E+1)])
 # column aII_0j-aIII_2j, bIII_0j, bIII_1j; line j=0-8
-  #print "E:",E
+  
   aI = numpy.hstack((aI1,aI2))
 
   inum1 = numpy.arange(11)
@@ -1367,17 +1366,10 @@ def calc_ee_brems(E, T, N):
   tao = T/const.ME_KEV
   # find the length of the input
   Earray, Eisvec =  util.make_vec(E)
-  #if isinstance(E, (collections.Sequence, numpy.ndarray)):
-  #  x = E/T
-  #  (numx,) = x.shape
-  #else:
-  #  Earray = numpy.array([E])
 
   x = Earray/T
   numx=len(Earray)
 
-  #print "x", x
-  #print "numx:", numx
   GI = numpy.zeros((numx,))
   AIIr = numpy.zeros((numx,))
   BIIr = numpy.zeros((numx,))
@@ -1389,7 +1381,7 @@ def calc_ee_brems(E, T, N):
   if T<0.05:
     ret = numpy.zeros(len(x), dtype=float)
   elif 0.05<=T<70.:
-    # hmm
+
     GI=numpy.zeros(len(x))
     theta = (1/1.35) * ( numpy.log10(tao) + 2.65)
     bigx = (1/2.5) * (numpy.log10(x) + 1.50)
