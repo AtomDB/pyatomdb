@@ -136,13 +136,14 @@ def calc_precalc_spectrum(telescope, response, temperature_value, broadening_val
 
 app = Dash(
     __name__,
-    requests_pathname_prefix='/apps/newapp/ai/',
-    routes_pathname_prefix='/apps/newapp/ai/',
+    requests_pathname_prefix='/apps/newapp/',
+    routes_pathname_prefix='/apps/newapp/',
 )
 server = app.server 
 
 # Layout
-app.layout = html.Div([
+app.layout = html.Div(style={"--Dash-Fill-Interactive-Strong": "#772007"},
+    children=[
     
     # Header 
     html.H1(
@@ -154,7 +155,7 @@ app.layout = html.Div([
     
     html.Div(className = 'atomdbinnerbox',
         children=[
-            html.P("Here you can plot spectra for a range of instruments and temperatures, list the strong lines in a wavelength range, and by clicking on the points on the graph or on the table"),
+            html.P("Use this page to plot collisional ionization equilibrium spectra for a range of instruments and temperatures, or list the strong lines in a wavelength range. You can get details on the transitions by clicking on the points on the graph or the lines on the table."),
             html.Details([
                 html.Summary('Plot Interactive Spectra'),
                 html.Div(id = 'interactive-plot-div',
@@ -164,6 +165,7 @@ app.layout = html.Div([
                         html.Div(className = 'atomdbbox',
                             id='telescope-div',
                             children=[
+                                html.P("Select the instrument and plasma parameters, then click 'Update Graph' to display the data. Clicking on data points will show transition information in the 'Transition Details' section below."),
                                 'Telescope:',
                                 dcc.Dropdown(
                                     options=responses['Telescope'].unique(),
@@ -238,6 +240,15 @@ app.layout = html.Div([
                                         inline=True,
                                         id='radio-specunits'
                                     ), 
+                                    
+                                    html.P('Set Spectral Range (you can also zoom and pan on the plot). If both set to zero, full range will be displayed.'),
+                                    
+                                    html.Div(['X-min:', dcc.Input(0.0,id='graph-xmin-number', type='number', style={'width':'60px'}, min=0),
+                                    ' X-max:', dcc.Input(0.0,id='graph-xmax-number', type='number', style={'width':'60px'}, min=0)]),
+                                    html.Div(['Y-min:', dcc.Input(0.0,id='graph-ymin-number', type='number', style={'width':'60px'}, min=0),
+                                    ' Y-max:', dcc.Input(0.0,id='graph-ymax-number', type='number', style={'width':'60px'}, min=0)]),
+                                    
+                                    
                                     html.Button(
                                         'Update Graph',
                                         id='update-button',
@@ -340,7 +351,6 @@ app.layout = html.Div([
                     ),
                     html.P("Found zero lines", id='linelist-output'),
                     html.Button("Download As CSV", id="linelist-csv-button", n_clicks=0),
-                    html.Button("Show Selected Transition Info", id="linelist-selected-button", n_clicks=0)
                     ]
             )
                 
@@ -409,10 +419,16 @@ def update_broadening(broadening_value):
     Input('update-button', 'n_clicks'),
     State('radio-yaxis', 'value'),
     State('radio-xaxis', 'value'),
-    State('radio-specunits', 'value')
+    State('radio-specunits', 'value'),
+    State('graph-xmin-number', 'value'),
+    State('graph-xmax-number', 'value'),
+    State('graph-ymin-number', 'value'),
+    State('graph-ymax-number', 'value'),
+    
 )
 def update_graph(telescope, response, temperature_value, broadening_value,
-                 n_clicks, radioyaxis, radioxaxis, specunits):
+                 n_clicks, radioyaxis, radioxaxis, specunits,
+                 xmin, xmax, ymin, ymax):
     # Use pre-calculated spectra
     eedges, a, lines = calc_precalc_spectrum(
         telescope, response, temperature_value, broadening_value
@@ -506,6 +522,36 @@ def update_graph(telescope, response, temperature_value, broadening_value,
     else:
         fig.update_layout(xaxis_type="linear")
 
+    if xmin is None:
+        xmin = 0.0
+    if xmax is None:
+        xmax = 0.0
+    if ymin is None:
+        ymin = 0.0
+    if ymax is None:
+        ymax = 0.0
+        
+    if xmin < 0:
+        xmin=0.0
+    if xmax < 0:
+        xmax=0.0
+    if ymin < 0:
+        ymin=0.0
+    if ymax < 0:
+        ymax=0.0
+        
+    if xmin > xmax:
+        xmin = 0.0
+        
+    if ymin > ymax:
+        ymin = 0.0
+        
+    if xmax > 0:
+        fig.update_xaxes(range=[xmin, xmax])
+    if ymax > 0:
+        fig.update_yaxes(range=[ymin, ymax])
+        
+
 #    print("a",a)
     return fig
 
@@ -594,7 +640,7 @@ def make_linelist(n_clicks, temperature_value, spec_min_in,
                            },
                            )]
 
-      textout="Found %i lines"%(len(s))
+      textout="Found %i lines. Click on a transition to display more information below."%(len(s))
     
       return(grid, textout)
 
@@ -828,5 +874,10 @@ def make_transition_information_table(dat):
 # ----------------------------------------------------------------------
 
 if __name__ == '__main__':
-    # Access in browser at http://127.0.0.1:8051/
-    app.run(host='127.0.0.1', port=8054, debug=True, use_reloader=True)
+    # Access in browser at http://127.0.0.1:8052/
+    if os.environ["DEBUG"] == '1':
+      print("DEBUG")
+      app.run(host='127.0.0.1', port=8050, debug=True, use_reloader=True)
+    else:
+      print("NO DEBUG")
+      app.run(host='127.0.0.1', port=8050, debug=False, use_reloader=False)

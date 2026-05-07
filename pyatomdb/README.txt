@@ -285,3 +285,7 @@ Finally purged all use of pycurl
 September 25th 2025
 Merged Kappa model into main PyAtomDB, pyatomdb.spectrum.KappaSession
 Made multiple ionization calculation more transparent.
+
+1.2.0
+April 23rd 2026
+Added in web.py, which is not useful as part of pyatomdb but does generate the online plotting content. This will undergo frequent revision. Other minor changes for making web content with Plotly and Dash.

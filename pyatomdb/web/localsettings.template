@@ -1,0 +1,17 @@
+import os
+
+# This should be updated for your particular webserver/site
+# DATAFILEPATH is where the pre-calculated spectra are stored 
+# DEBUG is whether the server is in debug mode, (1 = yes, 0 = no)
+# ATOMDB is where the AtomDB data is stored
+# copy this file to localsettings.py and then update it as appropriate
+
+os.environ['DATAFILEPATH'] = '/home/afoster/export1/projects/website/cfa/cgi-bin/test/data'
+
+os.environ['DEBUG']='1'
+os.environ['ATOMDB'] = os.environ['DATAFILEPATH']+'/atomdb'
+
+if os.environ['DEBUG'] == '1':
+  print("THIS IS LOCALSETTINGS")
+  print("os.environ['ATOMDB'] = ",os.environ['ATOMDB'])
+
