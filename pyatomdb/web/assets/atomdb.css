@@ -1,0 +1,73 @@
+
+body {
+    font-family: roboto, sans-serif;
+}
+h1, h2, h3, h4, h5, h6 {
+    color: black;
+    background-color:#FDEAE5;
+}
+
+.div-atomdb {
+    margin:10px;
+    background:'#FDEAE5';
+}
+
+
+.app-header {
+    height: 60px;
+    line-height: 60px;
+    border-bottom: thin lightgrey solid;
+}
+
+.app-header .app-header--title {
+    font-size: 22px;
+    padding-left: 50px;
+}
+.shadowbox {
+  width: 15em;
+  border: 1px solid #333333;
+  box-shadow: 8px 8px 5px #444444;
+  padding: 8px 12px;
+  background-image: linear-gradient(180deg, white, #dddddd 40%, #cccccc);
+}
+.atomdbbox {
+#  width: 40em;
+#  border: 1px solid #333333;
+#  box-shadow: 8px 8px 5px #444444;
+  padding: 8px 12px;
+  margin: 20px;
+  background-color: #FDEAE5;
+#  background: 'blue';
+#  background-color: #8888FF;
+#  font-size: 22px;
+  border: thin lightgrey solid;
+}
+
+.atomdbinnerbox {
+#  width: 40em;
+#  border: 1px solid #333333;
+#  box-shadow: 8px 8px 5px #444444;
+  padding: 8px 12px;
+  margin: 20px;
+  background-color: #fefcfc;
+#  background: 'blue';
+#  background-color: #8888FF;
+#  font-size: 22px;
+  border: thin lightgrey solid;
+}
+
+input[type="radio"] {
+    accent-color: #772007;
+}
+.rc-slider-track {
+    background-color: #772007;
+}
+
+input[type="range"] {
+ accent-color: #772007;
+}   
+
+.dash-options-list-option-checkbox {
+    accent-color: #772007;
+    outline-color: #772007;
+}
