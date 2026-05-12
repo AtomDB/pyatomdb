@@ -2369,7 +2369,7 @@ def _calc_ionrec_ci(cidat, Te, extrap=False, ionpot=False):
     elif ((cidat['par_type']> const.CI_DERE) &\
           (cidat['par_type']<= const.CI_DERE+20)):
       npts = cidat['par_type']-const.CI_DERE
-      ci[ici] = _calc_ci_dere(Te[ici], ionpot, cidat['Temperature'][:npts], \
+      ci[ici] = _calc_ci_dere(Te[ici], ionpot, cidat['temperature'][:npts], \
                              cidat['ionrec_par'][:npts])
 
 
