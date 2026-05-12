@@ -30,15 +30,16 @@ try:
 except ImportError:
   import pyfits
 
-import numpy, os, hashlib, pickle, math, re
+import numpy, os, hashlib, pickle, math#, re
 # other pyatomdb modules
 #import pyatomdb.atomic, pyatomdb.util, pyatomdb.const, atomdb, apec
 from . import atomic, util, const, atomdb, apec
 
-import time, wget, bz2
+import wget, bz2#, time
 import warnings
 from astropy.modeling.models import Voigt1D
-from scipy.interpolate import UnivariateSpline
+import time
+#from scipy.interpolate import UnivariateSpline
 
 
 def __make_spectrum(bins, index, linefile="$ATOMDB/apec_line.fits",\
@@ -1684,7 +1685,7 @@ class _Lorentzian_CDF():
     return ret
 
 
-
+from scipy.special import voigt_profile
 class _Voigt_CDF():
   """
   For fast interpolation, pre-calculate the CDF and interpolate it when
@@ -1715,7 +1716,7 @@ class _Voigt_CDF():
 
 
   def __init__(self, sigma, gamma):
-    from scipy.special import voigt_profile
+    
     self.x = numpy.linspace(-12,12,2400)
     self.broadentype='Voigt'
 
@@ -3004,7 +3005,7 @@ class CIESession():
 
 
 
-  def _adjust_line_lambda(self, change, Z, z1, upper,lower, quantity="Epsilon", method="Replace", trackchanges=False):
+  def _adjust_line_lambda(self, change, Z, z1, upper,lower, quantity="Epsilon", method="Replace", trackchanges=False, z1_drv=0):
     """
     Change the emissivity or wavelength of a line. Integer parameters set to 0 mean "all". Note this all
     happens in memory and does not edit the underlying files.
@@ -3030,6 +3031,8 @@ class CIESession():
       "Divide" : divide existing value by change
       "Add" : add change to existing value
       "Subtract" : subtract change from existing
+    z1_drv : int or array(int)
+      which driving ions to switch the wavelengths for. Default (0) means all.
     Returns
     -------
     None
@@ -3752,7 +3755,7 @@ class CIESession_RS(CIESession):
 
 
 
-  def _adjust_line_lambda(self, change, Z, z1, upper,lower, quantity="Epsilon", method="Replace", trackchanges=False):
+  def _adjust_line_lambda(self, change, Z, z1, upper,lower, quantity="Epsilon", method="Replace", trackchanges=False, z1_drv=0):
     """
     Change the emissivity or wavelength of a line. Integer parameters set to 0 mean "all". Note this all
     happens in memory and does not edit the underlying files.
@@ -3778,6 +3781,9 @@ class CIESession_RS(CIESession):
       "Divide" : divide existing value by change
       "Add" : add change to existing value
       "Subtract" : subtract change from existing
+    z1_drv : int or array(int)
+      which driving ions to switch the wavelengths for. Default (0) means all.
+
     Returns
     -------
     None
@@ -7226,7 +7232,9 @@ class PShockSession(NEISession):
 
   def return_linelist(self,Te, tau_u, specrange, tau_l = 0.0, init_pop='ionizing',specunit='A', \
                                teunit='keV', apply_aeff=False, by_ion_drv = False,\
-                               nearest=False, apply_binwidth=False):
+                               nearest=False, apply_binwidth=False,\
+                               log_interp=True, freeze_ion_pop=False):
+      
     """
     Get the list of line emissivities vs wavelengths
 
@@ -7256,8 +7264,14 @@ class PShockSession(NEISession):
     by_ion_drv : bool
       If true, keep lines which are the same but have different ion_drv separate.
       Otherwise, merge them.
-    nearest :
+    nearest : bool
+      calculate spectrum at nearest temperature in linelist, no
+      interpolation. Ionization fraction calculation still exact.
     apply_binwidth :
+    log_interp : bool
+      Perform linear interpolation on a logT/logEpsilon grid (default), or linear.
+    freeze_ion_pop : bool
+      If True, skip the ion population calculation, use init_pop as the final pop instead.
 
     Returns
     -------
@@ -8327,7 +8341,8 @@ class KappaSession(NEISession):
 
   def return_linelist(self, Te, kappa, specrange, specunit='A', \
                                teunit='keV', apply_aeff=False, \
-                               develop=False):
+                               apply_binwidth=False,\
+                               log_interp=True):
     """
     Get the list of line emissivities vs wavelengths
 
@@ -8347,6 +8362,9 @@ class KappaSession(NEISession):
     apply_aeff : bool
       If true, apply the effective area to the lines in the linelist to
       modify their intensities.
+    apply_binwidth :
+    log_interp : bool
+      Perform linear interpolation on a logT/logEpsilon grid (default), or linear.
 
     Returns
     -------
@@ -9042,7 +9060,7 @@ class _KappaSpectrum(_NEISpectrum):
 
               for i, iikT in enumerate(ikT):
 
-                s[i] += self.spectra[ikT[0]][Z][z1].return_spectrum(self.ebins,\
+                s[i] += self.spectra[iikT][Z][z1].return_spectrum(self.ebins,\
                                   kT,\
                                   ebins_checksum = self.ebins_checksum,\
                                   thermal_broadening = self.thermal_broadening,\
@@ -9336,10 +9354,13 @@ class ir_data():
     self.elements=elements
     ionrec_data = {}
     ir = pyfits.open(irfile)
-    for irdat in ir['KAPPA_IR'].data:
-      Z = irdat['ELEMENT']
+    d = numpy.array(ir['KAPPA_IR'].data)
+    d.dtype.names = [n.lower() for n in d.dtype.names]
 
-      z1 = irdat['ION_INIT']
+    for irdat in d:
+      Z = irdat['element']
+
+      z1 = irdat['ion_init']
       if not Z in ionrec_data.keys():
         ionrec_data[Z] = {}
       if not z1 in ionrec_data[Z].keys():
@@ -9350,15 +9371,15 @@ class ir_data():
         ionrec_data[Z][z1]['DR']=False
 
 #      print(irdat)
-      if ionrec_data[Z][z1][irdat['TR_TYPE']]==False:
-        ionrec_data[Z][z1][irdat['TR_TYPE']]={}
+      if ionrec_data[Z][z1][irdat['tr_type'].decode()]==False:
+        ionrec_data[Z][z1][irdat['tr_type'].decode()]={}
+      
+      ionrec_data[Z][z1][irdat['tr_type'].decode()][irdat['ion_final']-1]=numpy.array(irdat)
 
-      ionrec_data[Z][z1][irdat['TR_TYPE']][irdat['ION_FINAL']-1]=irdat
+    for ionpot in ir['ionpot'].data:
+      ionrec_data[ionpot['element']][ionpot['ion']]['IONPOT'] = ionpot['IONPOT']
 
-    for ionpot in ir['IONPOT'].data:
-      ionrec_data[ionpot['ELEMENT']][ionpot['ION']]['IONPOT'] = ionpot['IONPOT']
-
-      ionrec_data[ionpot['ELEMENT']][ionpot['ION']]['IP_DERE'] = ionpot['IP_DERE']
+      ionrec_data[ionpot['element']][ionpot['ion']]['IP_DERE'] = ionpot['IP_DERE']
 #    print(ionrec_data[12])
 #    zzz=input()
     self.ionrecdata=ionrec_data
@@ -9385,7 +9406,7 @@ class ir_data():
         for dd in self.ionrecdata[Z][z1]['CI'].keys():
           ionpot = self.ionrecdata[Z][z1]['IONPOT']
           d=self.ionrecdata[Z][z1]['CI'][dd]
-          if ((d['PAR_TYPE']>=const.CI_DERE) & (d['PAR_TYPE']<=const.CI_DERE+20)):
+          if ((d['par_type']>=const.CI_DERE) & (d['par_type']<=const.CI_DERE+20)):
             try:
               ionpot = self.ionrecdata[Z][z1]['IP_DERE']
             except:
@@ -9402,8 +9423,9 @@ class ir_data():
           d = self.ionrecdata[Z][z1]['DR'][dd]
           #print('d DR:',d)
           #print(self.ionrecdata[Z][z1]['DR'])
-
-          if d != False:
+          try:
+            d==False
+          except TypeError:
             drrate = atomdb._calc_ionrec_dr(d, Tvec, extrap=True)
             ionrec[d['ion_final']-1, d['ion_init']-1,:]+=drrate
       else:
@@ -9412,9 +9434,10 @@ class ir_data():
       if self.ionrecdata[Z][z1]['RR'] != False:
         for dd in self.ionrecdata[Z][z1]['RR'].keys():
           d = self.ionrecdata[Z][z1]['RR'][dd]
-          #print('d RR:',d)
-
-          if d != False:
+#          print('d RR:',d)
+          try:
+            d == False
+          except TypeError:
             rrrate = atomdb._calc_ionrec_rr(d, Tvec, extrap=True)
             ionrec[d['ion_final']-1, d['ion_init']-1,:]+=rrrate
       else:
@@ -9424,7 +9447,9 @@ class ir_data():
         for dd in self.ionrecdata[Z][z1]['EA'].keys():
           d = self.ionrecdata[Z][z1]['EA'][dd]
           #print('d EA:',d)
-          if d != False:
+          try:
+            d==False
+          except TypeError:
             earate = atomdb._calc_ionrec_ea(d, Tvec, extrap=True)
             ionrec[d['ion_final']-1, d['ion_init']-1,:]+=earate
       else:
@@ -9771,6 +9796,109 @@ def calc_ee_brems_spec(ebins, Te, dens, teunit='keV'):
   ee = (ebins[1:]-ebins[:-1]) * (eespec[1:]+eespec[:-1])/2
 
   return ee
+
+
+
+
+def _broaden_lines(linelist, eedges, T,\
+                  thermal_broadening = False, \
+                  velocity_broadening = 0.0, \
+                  broaden_limit = 1e-20,\
+                  broaden_object=False):
+    """
+    return the line emission spectrum at tempterature T
+
+    Parameters
+    ----------
+
+    eedges : array
+      energy bin edges, keV
+    T : float
+      temperature in Kelvin
+    ebins_checksum : string
+      the md5 checksum of eedges
+    thermal_broadening : bool
+      true to apply thermal broadening
+    velocity_broadening : float
+      velocity broadening to apply, km/s. Set <=0 for none (default)
+    broaden_limit : float
+      only broaden lines stronger than this.
+    broaden_object : class
+      Object with routine "broaden" which applies line broadening. Usually a Gaussian.
+
+    Returns
+    -------
+    spectrum : array(float)
+      Emissivity on eedges spectral bins of the lines, in ph cm^3 s^-1 bin^-1
+    """
+    if velocity_broadening is None:
+      velocity_broadening=0.0
+
+    if ((thermal_broadening == False) & \
+        (velocity_broadening == False)):
+    
+      spec,zzz = numpy.histogram(const.HC_IN_KEV_A/linelist['Lambda'], \
+                                 bins=eedges, \
+                                 weights = linelist['Epsilon'])
+    else:
+
+      # ind = strong line indicies
+      # nonind = weak line indicies
+      ind = linelist['Epsilon']>broaden_limit
+      nonind = ~ind
+
+        # calculate the widths of the strong lines
+      llist = linelist[ind]
+
+        # get a raw dictionary of masses in amu
+      masslist = atomic.Z_to_mass(1,raw=True)
+
+      if thermal_broadening==False:
+        T=0.0
+        Tb = 0.0
+      else:
+        Tb = util.convert_temp(T, 'K','keV')*const.ERG_KEV/(masslist[llist['Element']]*1e3*const.AMUKG)
+
+      if velocity_broadening <0:
+        velocity_broadening = 0.0
+        vb=0.0
+      else:
+        vb = (velocity_broadening * 1e5)**2
+
+      wcoeff = numpy.sqrt(Tb+vb) / (const.LIGHTSPEED*1e2)
+
+      elines = const.HC_IN_KEV_A/linelist['Lambda'][ind]
+      width = wcoeff*elines
+
+
+        # Filter out lines more than NSIGMALIMIT sigma outside the range
+      NSIGMALIMIT=4
+      eplu = elines+NSIGMALIMIT*width
+      eneg = elines-NSIGMALIMIT*width
+      emax = max(eedges)
+      emin = min(eedges)
+      # identify all the good lines!
+      igood = numpy.where((eplu > emin) & (eneg < emax))[0]
+      spec = numpy.zeros(len(eedges))
+#        t0 = time.time()
+      for iline in igood:
+
+        spec += broaden_object.broaden(const.HC_IN_KEV_A/llist['Lambda'][iline],\
+                         width[iline],eedges)*llist['Epsilon'][iline]
+
+#        t1 = time.time()
+#        print("Broadeninging %i lines, in %f seconds"%(len(igood), t1-t0))
+      spec = spec[1:]-spec[:-1]
+
+
+        # Then add on the weak lines
+      s,z = numpy.histogram(const.HC_IN_KEV_A/linelist['Lambda'][nonind], \
+                            bins = eedges,\
+                            weights = linelist['Epsilon'][nonind])
+      spec+=s
+      
+    return spec
+
 
 
 #### LEGACY CODE BEYOND THIS POINT
