@@ -24,7 +24,9 @@ kappamodelobject.abund_xspectoatomdb['lodd'] = 'Lodd03'
 
 pykappaInfo = ("kT            \"keV\"   1.0 0.00862 0.00862 86. 86. 0.01",
              "kappa         \"\"      3.0 2.0 2.0 100. 1000. 0.01",
-             "abund         \"\"      1.0 0.0 0.0 10.0 10.0 0.01")
+             "abund         \"\"      1.0 0.0 0.0 10.0 10.0 0.01",
+             "Redshift     \"\"     0.0 0.0 0.0 10.0 10.0 0.01",
+             "Velocity      \"km/s\"      0.0 0.0 0.0 1000.0 2000.0 0.01")
 
 pyvkappaInfo = ("kT            \"keV\"   1.0 0.00862 0.00862 86. 86. 0.01",
               "kappa         \"\"      3.0 2.0 2.0 100. 1000. 0.01",
@@ -42,7 +44,9 @@ pyvkappaInfo = ("kT            \"keV\"   1.0 0.00862 0.00862 86. 86. 0.01",
               "Ar            \"\"      1.0 0.0 0.0 10.0 10.0 -0.01",
               "Ca            \"\"      1.0 0.0 0.0 10.0 10.0 -0.01",
               "Fe            \"\"      1.0 0.0 0.0 10.0 10.0 -0.01",
-              "Ni            \"\"      1.0 0.0 0.0 10.0 10.0 -0.01")
+              "Ni            \"\"      1.0 0.0 0.0 10.0 10.0 -0.01",
+              "Redshift     \"\"     0.0 0.0 0.0 10.0 10.0 0.01",
+              "Velocity      \"km/s\"      0.0 0.0 0.0 1000.0 2000.0 0.01")
 
 
 pyvvkappaInfo = ("kT            \"keV\"   1.0 0.00862 0.00862 86. 86. 0.01",
@@ -73,7 +77,9 @@ pyvvkappaInfo = ("kT            \"keV\"   1.0 0.00862 0.00862 86. 86. 0.01",
                "Cr            \"\"      1.0 0.0 0.0 10.0 10.0 -0.01",
                "Mn            \"\"      1.0 0.0 0.0 10.0 10.0 -0.01",
                "Fe            \"\"      1.0 0.0 0.0 10.0 10.0 -0.01",
-               "Ni            \"\"      1.0 0.0 0.0 10.0 10.0 -0.01")
+               "Ni            \"\"      1.0 0.0 0.0 10.0 10.0 -0.01",
+               "Redshift     \"\"     0.0 0.0 0.0 10.0 10.0 0.01",
+               "Velocity      \"km/s\"      0.0 0.0 0.0 1000.0 2000.0 0.01")
 
 
 def pykappa(engs, params, flux):
@@ -104,27 +110,35 @@ def pykappa(engs, params, flux):
 
   # This is the call that will return everything. So set everything!
   ebins = numpy.array(engs)
-  kappamodelobject.set_response(ebins, raw=True)
+
   # kappa model has the 14 main elements
+
   elarray = kappamodelobject.elements
   abund = numpy.zeros(len(elarray))
 
+
+  offset = len(params)-3
   
-  if len(params)==4:
+  if len(params)==6:
     # kappa case
     elarray=[2,6,7,8,10,12,13,14,16,18,20,26,28]
     abund = float(params[2])
-  elif len(params)==18:
+  elif len(params)==20:
     # vkappa case
     elarray=[1,2,6,7,8,9,10,12,13,14,16,18,20,26,28]
     abund = numpy.array(params[2:17])
-  elif len(params)==30:
+  elif len(params)==32:
     # vvkappa case
     elarray=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,\
              20,21,22,23,24,25,26,28]
     abund = numpy.array(params[2:29])
-    
 
+  redshift = float(params[offset])
+  velocity = float(params[offset+1])
+  
+  kappamodelobject.set_response(ebins*(1.0+redshift), raw=True)
+  kappamodelobject.set_broadening(True, velocity_broadening=velocity)
+  
   T = float(params[0])
   k = float(params[1])
 
