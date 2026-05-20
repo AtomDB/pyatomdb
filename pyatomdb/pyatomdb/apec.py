@@ -6066,16 +6066,15 @@ def _solve_ionbal_eigen(Z, Te, init_pop=False, tau=False, \
     fspectmp = numpy.matrix(lefteigenvec) * numpy.matrix(work).transpose()
 
     delt = 1.0
-
     worktmp = numpy.zeros(Z)
 
     for itau, ttau in enumerate(tau_vec):
       if Z >1:
         for i in range(Z):
-          worktmp[i] = fspectmp[i]*numpy.exp(dd.data['EIG'][kTindex,i]*delt*ttau)
+          worktmp[i] = numpy.squeeze(fspectmp[i]*numpy.exp(dd.data['EIG'][kTindex,i]*delt*ttau))
 
       else:
-        worktmp[0] = fspectmp[0]*numpy.exp(dd.data['EIG'][kTindex]*delt*ttau)
+        worktmp[0] = numpy.squeeze(fspectmp[0]*numpy.exp(dd.data['EIG'][kTindex]*delt*ttau))
 
       frac = numpy.zeros(Z+1)
       for i in range(Z):
