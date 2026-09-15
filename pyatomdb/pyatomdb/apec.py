@@ -1280,6 +1280,8 @@ def calc_ee_brems(E, T, N):
 # series of data constants
 # Region I, k_BT<=1 keV
 
+  from scipy.special import exp1
+
   aI1 = numpy.array([(3.15847E+0, -2.52430E+0, 4.04877E-1, 6.13466E-1, 6.28867E-1, 3.29441E-1),
              (2.46819E-2, 1.03924E-1, 1.98935E-1, 2.18843E-1, 1.20482E-1, -4.82390E-2),
              (-2.11118E-2, -8.53821E-2, -1.52444E-1, -1.45660E-1, -4.63705E-2, 8.16592E-2),
@@ -1380,7 +1382,7 @@ def calc_ee_brems(E, T, N):
   GpwIII = numpy.zeros((numx,))
   if T<0.05:
     ret = numpy.zeros(len(x), dtype=float)
-  elif 0.05<=T<70.:
+  elif 0.05<=T<1.:
 
     GI=numpy.zeros(len(x))
     theta = (1/1.35) * ( numpy.log10(tao) + 2.65)
@@ -1390,13 +1392,14 @@ def calc_ee_brems(E, T, N):
          GI += aI[i,j]*(theta**i)*(bigx**j)
     GI *= numpy.sqrt(8/(3*numpy.pi))
     ret = 1.455e-16*N**2*numpy.exp(-x)/(x*numpy.sqrt(tao))*GI
-  elif 70.<=T<300.:
+  elif 1.<=T<300.:
     taoII = tao
+    Ei0[:,] = exp1(x)
     for k in range(numx):
-      def integrand(t):
-        return numpy.exp(-1.0*t)/t
-      [Ei0[k,],error] = scipy.integrate.quad(integrand,x[k,],\
-                                             numpy.inf,args=())
+#      def integrand(t):
+#        return numpy.exp(-1.0*t)/t
+#      [Ei0[k,],error] = scipy.integrate.quad(integrand,x[k,],\
+#                                             numpy.inf,args=())
       AIIr[k,] = numpy.sum(aII*taoII**(aIIj/8.)*x[k,]**(aIIi))
       BIIr[k,] = numpy.sum(bII*taoII**(bIIj/8.)*x[k,]**(bIIi))
       FCCII[k,] = 1.+numpy.sum(cII*taoII**(cIIj/6.)*x[k,]**(cIIi/8.))
@@ -1407,6 +1410,7 @@ def calc_ee_brems(E, T, N):
     ret = 1.455e-16*N**2*numpy.exp(-x)/(x*numpy.sqrt(taoII))*GII
   elif 300.<=T<7000.:
     taoIII = tao
+    Ei0[:,] = exp1(x)
     for k in range(numx):
       GpwIII[k,] = numpy.sum(aIII*taoIII**(aIIj/8.)*x[k,]**(aIIi))-\
                    numpy.exp(x[k,])*(-1.0)*Ei0[k,]*\
@@ -1415,6 +1419,7 @@ def calc_ee_brems(E, T, N):
            (x*numpy.sqrt(taoIII))*GpwIII
   else:
     taoIV = tao
+    Ei0[:,] = exp1(x)
     GIV = 3./(4.*numpy.pi*numpy.sqrt(taoIV))*\
           (28./3.+2.*x+x**2/2.+2.*(8./3.+4.*x/3.+x**2)*\
           (numpy.log(2.*taoIV)-0.57721)-numpy.exp(x) \
@@ -1875,6 +1880,8 @@ def run_apec(fname):
   chdulist.insert(0,PricHDU)
   chdulist.insert(1,seccHDU)
   tmpchdulist = pyfits.HDUList(chdulist)
+  generate_apec_headerblurb(settings, tmplhdulist, tmpchdulist)
+  
   if settings['Ionization']=='CIE':
     tmpchdulist.writeto('%s_coco.fits'%(fileroot), overwrite=True, checksum=True)
   elif settings['Ionization']=='NEI':

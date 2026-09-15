@@ -293,3 +293,7 @@ Added in web.py, which is not useful as part of pyatomdb but does generate the o
 1.2.1
 August 13th 2026
 Updated solve_ionbal_eigen to work with numpy >=2.5 (issues with matrix data indexing)
+
+1.2.2
+September 15th 2026
+Corrections to eebrems in the  1 < T < 300keV
