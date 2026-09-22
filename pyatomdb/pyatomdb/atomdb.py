@@ -2980,7 +2980,7 @@ def _calc_ionrec_ea(cidat, Te, extrap=False):
 
 
   elif (cidat['par_type'] == const.EA_URDAMPILLETA):
-    ea[iea]+=_calc_ea_urdam(Te, cidat['ionrec_par'])
+    ea[iea]+=_calc_ea_urdam(Te[iea], cidat['ionrec_par'])
   else:
     print("calc_ionrec_rate: EA type %i not recognized" %(cidat['par_type']))
   # now extrappolate if required

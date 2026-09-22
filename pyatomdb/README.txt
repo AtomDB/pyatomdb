@@ -297,3 +297,8 @@ Updated solve_ionbal_eigen to work with numpy >=2.5 (issues with matrix data ind
 1.2.2
 September 15th 2026
 Corrections to eebrems in the  1 < T < 300keV
+
+1.2.3
+September 22nd 2026
+Update to indexing in the ionization rate calculations which was causing issues with the Kappa model. Thanks to Kotaro Fukushima for spotting this.
+	
